@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { MapPin, Menu, X, MoreHorizontal } from 'lucide-react';
+import { MapPin, X, MoreHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type NavLinkProps = {
   to: string;

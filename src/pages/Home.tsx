@@ -178,21 +178,6 @@ const Home = () => {
         </div>
       </section>
       
-      {/* CTA Section */}
-      <section className="py-16 px-4 bg-blue-600 text-white text-center">
-        <div className="container mx-auto max-w-2xl">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">Ready to Start Exploring?</h2>
-          <p className="text-lg opacity-90 mb-8">Create your free account and begin your journey through London's blue plaques today.</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition duration-300">
-              Sign Up Free
-            </Button>
-            <Button variant="outline" className="bg-blue-700 border border-blue-500 text-white px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition duration-300">
-              Take a Tour
-            </Button>
-          </div>
-        </div>
-      </section>
       
       {/* Mobile Nav (mobile only) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-40">

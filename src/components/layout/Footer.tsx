@@ -1,4 +1,3 @@
-import React from 'react';
 import { MapPin, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -54,25 +53,7 @@ export const Footer = ({ simplified = false }: FooterProps) => {
               </ul>
             </div>
             
-            <div>
-              <h3 className="font-semibold mb-3">Resources</h3>
-              <ul className="space-y-2">
-                <li><Link to="/blog" className="text-gray-600 hover:text-blue-600">Blog</Link></li>
-                <li><Link to="/faq" className="text-gray-600 hover:text-blue-600">FAQ</Link></li>
-                <li><Link to="/contact" className="text-gray-600 hover:text-blue-600">Contact</Link></li>
-                <li><Link to="/api" className="text-gray-600 hover:text-blue-600">API</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold mb-3">Legal</h3>
-              <ul className="space-y-2">
-                <li><Link to="/terms" className="text-gray-600 hover:text-blue-600">Terms</Link></li>
-                <li><Link to="/privacy" className="text-gray-600 hover:text-blue-600">Privacy</Link></li>
-                <li><Link to="/cookies" className="text-gray-600 hover:text-blue-600">Cookies</Link></li>
-                <li><Link to="/licensing" className="text-gray-600 hover:text-blue-600">Licensing</Link></li>
-              </ul>
-            </div>
+
           </div>
         </div>
         

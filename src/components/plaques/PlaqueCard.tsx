@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 // Use the updated Plaque type
-import { Plaque } from '@/utils/plaqueAdapter';
+import { Plaque } from '@/types/plaque';
 
 type PlaqueCardProps = {
   plaque: Plaque;
@@ -124,11 +124,6 @@ export const PlaqueCard = ({
           </p>
         )}
         
-        {plaque.added && (
-          <div className="mt-3 text-xs text-gray-500 text-right">
-            Added {plaque.added}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

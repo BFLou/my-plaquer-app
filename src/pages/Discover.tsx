@@ -1,5 +1,4 @@
-// Modified version of src/pages/Discover.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapIcon } from "lucide-react";
 import { 
@@ -12,15 +11,15 @@ import {
   FilterBar,
   FilterSheet,
   EmptyState,
-  type Plaque,
-  type ViewMode
 } from "@/components";
+import { Plaque, ViewMode } from "@/types/plaque"; // Import from types, not components
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from 'sonner';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
-import plaqueData from '../data/plaque_data.json'; // We'll create this file in a moment
+import plaqueData from '../data/plaque_data.json';
+import Pagination from '@/components/plaques/Pagination'; // Import the pagination component
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -28,7 +27,8 @@ const Discover = () => {
   const searchParams = new URLSearchParams(location.search);
   
   // State
-  const [plaques, setPlaques] = useState<Plaque[]>([]);
+  const [allPlaques, setAllPlaques] = useState<Plaque[]>([]); // Store all plaques
+  const [plaques, setPlaques] = useState<Plaque[]>([]);       // Store filtered plaques
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,6 +36,11 @@ const Discover = () => {
   const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
   
   // Filter states
   const [postcode, setPostcode] = useState('');
@@ -65,14 +70,19 @@ const Discover = () => {
     if (postcode) {
       setPostcode(postcode);
     }
+    
+    const page = searchParams.get('page');
+    if (page) {
+      setCurrentPage(parseInt(page, 10));
+    }
   }, []);
 
-  // Load plaque data from JSON file
+  // Load plaque data
   useEffect(() => {
     try {
       setLoading(true);
       
-      // Use the imported data instead of trying to read a file
+      // Use imported data
       const adaptedData = adaptPlaquesData(plaqueData);
       
       // Set some plaques as visited and add to favorites for demo
@@ -82,7 +92,7 @@ const Discover = () => {
         setFavorites([adaptedData[0].id, adaptedData[1].id]);
       }
       
-      setPlaques(adaptedData);
+      setAllPlaques(adaptedData);
       setLoading(false);
     } catch (error) {
       console.error('Error loading plaque data:', error);
@@ -95,8 +105,54 @@ const Discover = () => {
     }
   }, []);
 
+  // Apply filters to get filtered plaques
+  const filteredPlaques = useMemo(() => {
+    return allPlaques.filter((plaque) => {
+      const matchesSearch = 
+        (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) || 
+        (plaque.inscription?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+        (plaque.address?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
+        
+      const matchesPostcode = postcode ? plaque.postcode === postcode : true;
+      const matchesColor = plaqueColor ? (plaque.color?.toLowerCase() === plaqueColor.toLowerCase()) : true;
+      const matchesProfession = profession ? plaque.profession === profession : true;
+      const matchesVisited = onlyVisited ? plaque.visited : true;
+      const matchesFavorite = onlyFavorites ? favorites.includes(plaque.id) : true;
 
-  // Update URL when filters or view mode change
+      return matchesSearch && 
+            matchesPostcode && 
+            matchesColor && 
+            matchesProfession && 
+            matchesVisited && 
+            matchesFavorite;
+    });
+  }, [allPlaques, searchQuery, postcode, plaqueColor, profession, onlyVisited, onlyFavorites, favorites]);
+
+  // Sort and paginate plaques
+  const sortedAndPaginatedPlaques = useMemo(() => {
+    // Sort plaques
+    const sorted = [...filteredPlaques].sort((a, b) => {
+      if (sortOption === 'a-z') return (a.title || '').localeCompare(b.title || '');
+      if (sortOption === 'z-a') return (b.title || '').localeCompare(a.title || '');
+      return b.id - a.id; // Default to newest
+    });
+    
+    // Calculate total pages
+    const total = Math.ceil(sorted.length / itemsPerPage);
+    setTotalPages(total);
+    
+    // Adjust current page if needed
+    if (currentPage > total && total > 0) {
+      setCurrentPage(1);
+    }
+    
+    // Get current page items
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sorted.slice(startIndex, endIndex);
+  }, [filteredPlaques, sortOption, currentPage, itemsPerPage]);
+
+  // Update URL when filters, sort, or page change
   useEffect(() => {
     const params = new URLSearchParams();
     
@@ -128,54 +184,36 @@ const Discover = () => {
       params.set('favorites', 'true');
     }
     
+    if (currentPage > 1) {
+      params.set('page', currentPage.toString());
+    }
+    
     const newUrl = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     navigate(newUrl, { replace: true });
-  }, [viewMode, searchQuery, postcode, plaqueColor, profession, onlyVisited, onlyFavorites]);
+  }, [viewMode, searchQuery, postcode, plaqueColor, profession, onlyVisited, onlyFavorites, currentPage, navigate, location.pathname]);
 
   // Derive available filter options from data
-  const availablePostcodes = [...new Set(plaques
-    .filter(p => p.postcode && p.postcode !== "Unknown")
-    .map(p => p.postcode as string))];
+  const availablePostcodes = useMemo(() => {
+    return [...new Set(allPlaques
+      .filter(p => p.postcode && p.postcode !== "Unknown")
+      .map(p => p.postcode as string))];
+  }, [allPlaques]);
     
-  const availableProfessions = [...new Set(plaques
-    .filter(p => p.profession && p.profession !== "Unknown")
-    .map(p => p.profession as string))];
+  const availableProfessions = useMemo(() => {
+    return [...new Set(allPlaques
+      .filter(p => p.profession && p.profession !== "Unknown")
+      .map(p => p.profession as string))];
+  }, [allPlaques]);
     
-  const availableColors = [...new Set(plaques
-    .filter(p => p.color && p.color !== "Unknown")
-    .map(p => p.color as string))];
-
-  // Apply filters to get filtered plaques
-  const filteredPlaques = plaques.filter((plaque) => {
-    const matchesSearch = 
-      (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) || 
-      (plaque.inscription?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
-      (plaque.address?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
-      
-    const matchesPostcode = postcode ? plaque.postcode === postcode : true;
-    const matchesColor = plaqueColor ? (plaque.color?.toLowerCase() === plaqueColor.toLowerCase()) : true;
-    const matchesProfession = profession ? plaque.profession === profession : true;
-    const matchesVisited = onlyVisited ? plaque.visited : true;
-    const matchesFavorite = onlyFavorites ? favorites.includes(plaque.id) : true;
-
-    return matchesSearch && 
-           matchesPostcode && 
-           matchesColor && 
-           matchesProfession && 
-           matchesVisited && 
-           matchesFavorite;
-  });
-
-  // Sort plaques based on the selected option
-  const sortedPlaques = [...filteredPlaques].sort((a, b) => {
-    if (sortOption === 'a-z') return (a.title || '').localeCompare(b.title || '');
-    if (sortOption === 'z-a') return (b.title || '').localeCompare(a.title || '');
-    return b.id - a.id; // Default to newest
-  });
+  const availableColors = useMemo(() => {
+    return [...new Set(allPlaques
+      .filter(p => p.color && p.color !== "Unknown")
+      .map(p => p.color as string))];
+  }, [allPlaques]);
 
   // Handler functions
   const handleSearch = () => {
-    // URL updating is handled by the useEffect
+    setCurrentPage(1); // Reset to first page on search
   };
 
   const handleViewModeChange = (mode: ViewMode) => {
@@ -206,7 +244,7 @@ const Discover = () => {
 
   const handleMarkVisited = (id: number) => {
     // In a real app, this would update the plaque's visited status in the database
-    setPlaques(prev => prev.map(p => 
+    setAllPlaques(prev => prev.map(p => 
       p.id === id ? { ...p, visited: true } : p
     ));
     
@@ -223,15 +261,20 @@ const Discover = () => {
     setProfession('');
     setOnlyVisited(false);
     setOnlyFavorites(false);
+    setCurrentPage(1); // Reset to first page
     setFiltersOpen(false);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   // Define common categories for the search hero
   const categories = [
     { label: "Notable Authors", onClick: () => { setProfession('novelist'); handleSearch(); } },
     { label: "London Landmarks", onClick: () => { setProfession('place'); handleSearch(); } },
-    { label: "Scientists", onClick: () => { setProfession('scientist'); handleSearch(); } },
-    // Add any additional categories based on the data
+    { label: "Musicians", onClick: () => { setProfession('composer'); handleSearch(); } },
+    { label: "Legal Figures", onClick: () => { setProfession('lawyer'); handleSearch(); } },
   ];
 
   // Get active filters for display
@@ -244,7 +287,7 @@ const Discover = () => {
 
   // Find nearby plaques for the detail view
   const getNearbyPlaques = (currentPlaque: Plaque) => {
-    return plaques.filter(p => 
+    return allPlaques.filter(p => 
       p.id !== currentPlaque.id && 
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
@@ -298,7 +341,16 @@ const Discover = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">
-            {loading ? "Loading plaques..." : `${sortedPlaques.length} ${sortedPlaques.length === 1 ? 'Plaque' : 'Plaques'}`}
+            {loading ? "Loading plaques..." : (
+              <>
+                {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'}
+                {filteredPlaques.length > 0 && (
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredPlaques.length)} of {filteredPlaques.length}
+                  </span>
+                )}
+              </>
+            )}
           </h2>
           
           <ViewToggle
@@ -315,11 +367,11 @@ const Discover = () => {
               <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
             ))}
           </div>
-        ) : sortedPlaques.length > 0 ? (
+        ) : filteredPlaques.length > 0 ? (
           <>
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedPlaques.map((plaque) => (
+                {sortedAndPaginatedPlaques.map((plaque) => (
                   <PlaqueCard 
                     key={plaque.id}
                     plaque={plaque}
@@ -333,7 +385,7 @@ const Discover = () => {
             
             {viewMode === 'list' && (
               <div className="space-y-3">
-                {sortedPlaques.map((plaque) => (
+                {sortedAndPaginatedPlaques.map((plaque) => (
                   <PlaqueListItem 
                     key={plaque.id}
                     plaque={plaque}
@@ -353,6 +405,15 @@ const Discover = () => {
                   <p className="text-gray-500 mt-2">Interactive map would be displayed here with plaque locations</p>
                 </div>
               </div>
+            )}
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             )}
           </>
         ) : (
