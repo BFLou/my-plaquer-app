@@ -3,9 +3,8 @@ import { MapPin, Star, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-// Use the updated Plaque type
 import { Plaque } from '@/types/plaque';
+import PlaqueImage from './PlaqueImage'; // Import the new component
 
 type PlaqueCardProps = {
   plaque: Plaque;
@@ -44,18 +43,23 @@ export const PlaqueCard = ({
   // Handle location display (address or custom formatted location)
   const locationDisplay = plaque.location || plaque.address || '';
 
+  // Image source with fallback
+  const imageUrl = plaque.image || plaque.main_photo;
+
   return (
     <Card 
       className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer group ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
       onClick={handleClick}
     >
       <div className="relative h-40 bg-blue-50">
-        <img 
-          src={plaque.image || "/api/placeholder/400/300"} 
+        <PlaqueImage 
+          src={imageUrl}
           alt={plaque.title} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          placeholderClassName="bg-blue-50"
         />
-        <div className="absolute top-2 right-2 flex gap-1">
+        
+        <div className="absolute top-2 right-2 flex gap-1 z-10">
           {plaque.visited && (
             <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
               <CheckCircle size={12} className="mr-1" /> Visited
@@ -123,7 +127,6 @@ export const PlaqueCard = ({
             {plaque.inscription}
           </p>
         )}
-        
       </CardContent>
     </Card>
   );

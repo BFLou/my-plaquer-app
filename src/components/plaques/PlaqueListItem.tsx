@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
+import PlaqueImage from './PlaqueImage'; // Import the image component
 
 type PlaqueListItemProps = {
   plaque: Plaque;
@@ -42,9 +43,8 @@ export const PlaqueListItem = ({
   // Handle location display (address or custom formatted location)
   const locationDisplay = plaque.location || plaque.address || '';
 
-  // Handle image URL
+  // Image source with fallback
   const imageUrl = plaque.image || plaque.main_photo;
-  const hasValidImage = imageUrl && imageUrl !== "Unknown";
 
   return (
     <Card 
@@ -53,17 +53,12 @@ export const PlaqueListItem = ({
     >
       <div className="flex flex-col sm:flex-row">
         <div className="relative sm:w-32 sm:h-auto h-32 shrink-0">
-          {hasValidImage ? (
-            <img 
-              src={imageUrl} 
-              alt={plaque.title} 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100">
-              <MapPin size={24} className="text-gray-400" />
-            </div>
-          )}
+          <PlaqueImage 
+            src={imageUrl}
+            alt={plaque.title} 
+            className="w-full h-full object-cover"
+            fallbackIcon={<MapPin size={24} className="text-gray-400" />}
+          />
         </div>
         
         <div className="flex-grow p-4">
@@ -135,12 +130,6 @@ export const PlaqueListItem = ({
             <p className="mt-2 text-sm text-gray-600 line-clamp-2">
               {plaque.inscription}
             </p>
-          )}
-          
-          {plaque.added && (
-            <span className="text-xs text-gray-500 mt-2 block sm:text-right">
-              Added {plaque.added}
-            </span>
           )}
         </div>
       </div>

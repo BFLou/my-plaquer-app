@@ -1,14 +1,11 @@
-import React from 'react';
-import { MapPin, Star, CheckCircle, X, User, Info, ExternalLink, Calendar } from 'lucide-react';
+import { MapPin, Star, CheckCircle, X, Info, ExternalLink, Calendar } from 'lucide-react';
 import { 
   Sheet, 
   SheetContent,
-  SheetHeader,
-  SheetTitle, 
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plaque } from '@/types/plaque';
 
 type PlaqueDetailProps = {
