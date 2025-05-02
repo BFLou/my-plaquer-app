@@ -3,7 +3,7 @@ import { MapPin, Star, CheckCircle } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { type Plaque } from './PlaqueCard';
+import { Plaque } from '@/types/plaque';
 
 type PlaqueListItemProps = {
   plaque: Plaque;
@@ -36,6 +36,16 @@ export const PlaqueListItem = ({
     if (onSelect) onSelect(plaque.id);
   };
 
+  // Handle color for display (merging color and colour fields)
+  const plaqueColor = plaque.color || plaque.colour || 'unknown';
+  
+  // Handle location display (address or custom formatted location)
+  const locationDisplay = plaque.location || plaque.address || '';
+
+  // Handle image URL
+  const imageUrl = plaque.image || plaque.main_photo;
+  const hasValidImage = imageUrl && imageUrl !== "Unknown";
+
   return (
     <Card 
       className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
@@ -43,11 +53,17 @@ export const PlaqueListItem = ({
     >
       <div className="flex flex-col sm:flex-row">
         <div className="relative sm:w-32 sm:h-auto h-32 shrink-0">
-          <img 
-            src={plaque.image} 
-            alt={plaque.title} 
-            className="w-full h-full object-cover"
-          />
+          {hasValidImage ? (
+            <img 
+              src={imageUrl} 
+              alt={plaque.title} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-100">
+              <MapPin size={24} className="text-gray-400" />
+            </div>
+          )}
         </div>
         
         <div className="flex-grow p-4">
@@ -55,7 +71,9 @@ export const PlaqueListItem = ({
             <div>
               <h3 className="font-semibold text-lg">{plaque.title}</h3>
               <p className="text-gray-500 text-sm flex items-center mt-1">
-                <MapPin size={14} className="mr-1" /> {plaque.location}
+                <MapPin size={14} className="mr-1 shrink-0" /> 
+                <span className="truncate">{locationDisplay}</span>
+                {plaque.area && <span className="ml-1 hidden sm:inline">, {plaque.area}</span>}
               </p>
             </div>
             
@@ -82,31 +100,48 @@ export const PlaqueListItem = ({
             </div>
           </div>
           
-          <div className="mt-2 flex items-center gap-2">
-            <Badge 
-              variant="outline" 
-              className={`
-                ${plaque.color === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                ${plaque.color === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                ${plaque.color === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
-                ${plaque.color === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
-              `}
-            >
-              {plaque.color.charAt(0).toUpperCase() + plaque.color.slice(1)}
-            </Badge>
-            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-              {plaque.profession}
-            </Badge>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {plaqueColor && plaqueColor !== "Unknown" && (
+              <Badge 
+                variant="outline" 
+                className={`
+                  ${plaqueColor === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                  ${plaqueColor === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                  ${plaqueColor === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                  ${plaqueColor === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
+                  ${plaqueColor === 'grey' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
+                `}
+              >
+                {plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} Plaque
+              </Badge>
+            )}
+            
+            {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
+              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
+                 (plaque.lead_subject_primary_role as string).slice(1)}
+              </Badge>
+            )}
+            
             {plaque.visited && (
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 <CheckCircle size={12} className="mr-1" /> Visited
               </Badge>
             )}
-            
-            {plaque.added && (
-              <span className="text-xs text-gray-500 ml-auto">Added {plaque.added}</span>
-            )}
           </div>
+          
+          {/* Short description preview - using inscription */}
+          {plaque.inscription && (
+            <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+              {plaque.inscription}
+            </p>
+          )}
+          
+          {plaque.added && (
+            <span className="text-xs text-gray-500 mt-2 block sm:text-right">
+              Added {plaque.added}
+            </span>
+          )}
         </div>
       </div>
     </Card>

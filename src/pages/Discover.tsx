@@ -1,3 +1,4 @@
+// Modified version of src/pages/Discover.tsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MapIcon } from "lucide-react";
@@ -17,83 +18,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-
-// Mock data for plaques - in a real app, this would be fetched from an API
-const PLAQUES = [
-  { 
-    id: 1, 
-    title: "Charles Dickens", 
-    location: "48 Doughty Street, Camden", 
-    postcode: "WC1N",
-    color: "blue",
-    profession: "Author",
-    description: "The famous author lived here from 1837 to 1839, where he wrote Oliver Twist and Nicholas Nickleby.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  { 
-    id: 2, 
-    title: "Florence Nightingale", 
-    location: "10 South Street, Westminster", 
-    postcode: "W1K",
-    color: "blue",
-    profession: "Nurse",
-    description: "The pioneering nurse lived here from 1865 until her death in 1910.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  { 
-    id: 3, 
-    title: "Jimi Hendrix", 
-    location: "23 Brook Street, Mayfair", 
-    postcode: "W1K",
-    color: "blue",
-    profession: "Musician",
-    description: "The legendary guitarist lived here in 1968-69, next door to Handel's former home.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  { 
-    id: 4, 
-    title: "Sir Isaac Newton", 
-    location: "87 Jermyn Street, St. James's", 
-    postcode: "SW1Y",
-    color: "blue",
-    profession: "Scientist",
-    description: "The mathematician and physicist lived here from 1696 to 1700.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  { 
-    id: 5, 
-    title: "George Orwell", 
-    location: "27b Canonbury Square, Islington", 
-    postcode: "N1",
-    color: "green",
-    profession: "Author",
-    description: "The author of '1984' and 'Animal Farm' lived here from 1944 to 1947.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  { 
-    id: 6, 
-    title: "Emmeline Pankhurst", 
-    location: "50 Clarendon Road, Holland Park", 
-    postcode: "W11",
-    color: "blue",
-    profession: "Activist",
-    description: "The suffragette leader lived here from 1916 until her death in 1928.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  }
-];
-
-// Available filter options
-const POSTCODES = ["WC1N", "W1K", "N1", "SW1Y", "W11"];
-const PROFESSIONS = ["Author", "Scientist", "Musician", "Activist", "Nurse", "Politician"];
-const PLAQUE_COLORS = ["Blue", "Green", "Brown", "Black"];
+import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -101,10 +27,12 @@ const Discover = () => {
   const searchParams = new URLSearchParams(location.search);
   
   // State
+  const [plaques, setPlaques] = useState<Plaque[]>([]);
+  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
-  const [favorites, setFavorites] = useState<number[]>([1, 4]); // Pre-favorite some plaques
+  const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
@@ -127,17 +55,47 @@ const Discover = () => {
       setSearchQuery(search);
     }
     
-    const category = searchParams.get('category');
-    if (category === 'authors') {
-      setProfession('Author');
-    } else if (category === 'scientists') {
-      setProfession('Scientist');
+    const profession = searchParams.get('profession');
+    if (profession) {
+      setProfession(profession);
     }
     
-    const location = searchParams.get('location');
-    if (location === 'westminster') {
-      setPostcode('W1K');
+    const postcode = searchParams.get('postcode');
+    if (postcode) {
+      setPostcode(postcode);
     }
+  }, []);
+
+  // Load plaque data from JSON file
+  useEffect(() => {
+    const fetchPlaques = async () => {
+      try {
+        setLoading(true);
+        const response = await window.fs.readFile('plaque_data.json', { encoding: 'utf8' });
+        const data = JSON.parse(response);
+        const adaptedData = adaptPlaquesData(data);
+        
+        // Set some plaques as visited and add to favorites for demo
+        if (adaptedData.length > 0) {
+          adaptedData[0].visited = true;
+          adaptedData[2].visited = true;
+          setFavorites([adaptedData[0].id, adaptedData[1].id]);
+        }
+        
+        setPlaques(adaptedData);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading plaque data:', error);
+        setLoading(false);
+        toast({
+          title: "Error loading plaque data",
+          description: "Could not load the plaque data. Please try again later.",
+          duration: 3000,
+        });
+      }
+    };
+
+    fetchPlaques();
   }, []);
 
   // Update URL when filters or view mode change
@@ -176,12 +134,28 @@ const Discover = () => {
     navigate(newUrl, { replace: true });
   }, [viewMode, searchQuery, postcode, plaqueColor, profession, onlyVisited, onlyFavorites]);
 
+  // Derive available filter options from data
+  const availablePostcodes = [...new Set(plaques
+    .filter(p => p.postcode && p.postcode !== "Unknown")
+    .map(p => p.postcode as string))];
+    
+  const availableProfessions = [...new Set(plaques
+    .filter(p => p.profession && p.profession !== "Unknown")
+    .map(p => p.profession as string))];
+    
+  const availableColors = [...new Set(plaques
+    .filter(p => p.color && p.color !== "Unknown")
+    .map(p => p.color as string))];
+
   // Apply filters to get filtered plaques
-  const filteredPlaques = PLAQUES.filter((plaque) => {
-    const matchesSearch = plaque.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          plaque.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredPlaques = plaques.filter((plaque) => {
+    const matchesSearch = 
+      (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) || 
+      (plaque.inscription?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+      (plaque.address?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
+      
     const matchesPostcode = postcode ? plaque.postcode === postcode : true;
-    const matchesColor = plaqueColor ? plaque.color.toLowerCase() === plaqueColor.toLowerCase() : true;
+    const matchesColor = plaqueColor ? (plaque.color?.toLowerCase() === plaqueColor.toLowerCase()) : true;
     const matchesProfession = profession ? plaque.profession === profession : true;
     const matchesVisited = onlyVisited ? plaque.visited : true;
     const matchesFavorite = onlyFavorites ? favorites.includes(plaque.id) : true;
@@ -196,9 +170,9 @@ const Discover = () => {
 
   // Sort plaques based on the selected option
   const sortedPlaques = [...filteredPlaques].sort((a, b) => {
-    if (sortOption === 'a-z') return a.title.localeCompare(b.title);
-    if (sortOption === 'z-a') return b.title.localeCompare(a.title);
-    return a.id - b.id; // Default to newest
+    if (sortOption === 'a-z') return (a.title || '').localeCompare(b.title || '');
+    if (sortOption === 'z-a') return (b.title || '').localeCompare(a.title || '');
+    return b.id - a.id; // Default to newest
   });
 
   // Handler functions
@@ -234,6 +208,10 @@ const Discover = () => {
 
   const handleMarkVisited = (id: number) => {
     // In a real app, this would update the plaque's visited status in the database
+    setPlaques(prev => prev.map(p => 
+      p.id === id ? { ...p, visited: true } : p
+    ));
+    
     toast({
       title: "Marked as visited",
       description: "This plaque has been marked as visited in your profile",
@@ -250,11 +228,12 @@ const Discover = () => {
     setFiltersOpen(false);
   };
 
+  // Define common categories for the search hero
   const categories = [
-    { label: "Famous Authors", onClick: () => { setProfession('Author'); handleSearch(); } },
-    { label: "Women in History", onClick: () => { setSearchQuery(''); setProfession(''); handleSearch(); } },
-    { label: "Scientists", onClick: () => { setProfession('Scientist'); handleSearch(); } },
-    { label: "Westminster", onClick: () => { setPostcode('W1K'); handleSearch(); } },
+    { label: "Notable Authors", onClick: () => { setProfession('novelist'); handleSearch(); } },
+    { label: "London Landmarks", onClick: () => { setProfession('place'); handleSearch(); } },
+    { label: "Scientists", onClick: () => { setProfession('scientist'); handleSearch(); } },
+    // Add any additional categories based on the data
   ];
 
   // Get active filters for display
@@ -267,7 +246,7 @@ const Discover = () => {
 
   // Find nearby plaques for the detail view
   const getNearbyPlaques = (currentPlaque: Plaque) => {
-    return PLAQUES.filter(p => 
+    return plaques.filter(p => 
       p.id !== currentPlaque.id && 
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
@@ -278,7 +257,7 @@ const Discover = () => {
       {/* Search Hero */}
       <SearchHero
         title="Discover London's Plaques"
-        subtitle="Explore London's rich history through its blue plaques and historical markers."
+        subtitle="Explore London's rich history through its commemorative plaques and historical markers."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         onSearch={handleSearch}
@@ -321,7 +300,7 @@ const Discover = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">
-            {sortedPlaques.length} {sortedPlaques.length === 1 ? 'Plaque' : 'Plaques'}
+            {loading ? "Loading plaques..." : `${sortedPlaques.length} ${sortedPlaques.length === 1 ? 'Plaque' : 'Plaques'}`}
           </h2>
           
           <ViewToggle
@@ -332,7 +311,13 @@ const Discover = () => {
           />
         </div>
         
-        {sortedPlaques.length > 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
+            ))}
+          </div>
+        ) : sortedPlaques.length > 0 ? (
           <>
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -412,7 +397,7 @@ const Discover = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All postcodes</SelectItem>
-              {POSTCODES.map(code => (
+              {availablePostcodes.map(code => (
                 <SelectItem key={code} value={code}>{code}</SelectItem>
               ))}
             </SelectContent>
@@ -427,8 +412,10 @@ const Discover = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All colors</SelectItem>
-              {PLAQUE_COLORS.map(color => (
-                <SelectItem key={color} value={color.toLowerCase()}>{color}</SelectItem>
+              {availableColors.map(color => (
+                <SelectItem key={color} value={color.toLowerCase()}>
+                  {color.charAt(0).toUpperCase() + color.slice(1)}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -442,7 +429,7 @@ const Discover = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All professions</SelectItem>
-              {PROFESSIONS.map(prof => (
+              {availableProfessions.map(prof => (
                 <SelectItem key={prof} value={prof}>{prof}</SelectItem>
               ))}
             </SelectContent>

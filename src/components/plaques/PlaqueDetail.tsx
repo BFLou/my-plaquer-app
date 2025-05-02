@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Star, CheckCircle, X, User } from 'lucide-react';
+import { MapPin, Star, CheckCircle, X, User, Info, ExternalLink, Calendar } from 'lucide-react';
 import { 
   Sheet, 
   SheetContent,
@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { type Plaque } from './PlaqueCard';
+import { Plaque } from '@/types/plaque';
 
 type PlaqueDetailProps = {
   plaque: Plaque | null;
@@ -42,16 +42,74 @@ export const PlaqueDetail = ({
     if (onMarkVisited) onMarkVisited(plaque.id);
   };
 
+  // Parse organisations if available
+  let organisations: string[] = [];
+  try {
+    if (plaque.organisations && plaque.organisations !== "[]" && plaque.organisations !== "Unknown") {
+      organisations = JSON.parse(plaque.organisations);
+    }
+  } catch (e) {
+    console.error('Error parsing organisations:', e);
+  }
+
+  // Parse subjects if available
+  let subjects: Array<{name: string, years?: string, type?: string, role?: string}> = [];
+  try {
+    if (plaque.subjects && plaque.subjects !== "[]") {
+      const parsedSubjects = JSON.parse(plaque.subjects);
+      subjects = parsedSubjects.map((subject: string) => {
+        const parts = subject.split('|');
+        return {
+          name: parts[0],
+          years: parts[1],
+          type: parts[2],
+          role: parts[3]
+        };
+      });
+    }
+  } catch (e) {
+    console.error('Error parsing subjects:', e);
+  }
+
+  // Format life years for subject
+  const lifeYears = () => {
+    if (plaque.lead_subject_born_in && plaque.lead_subject_died_in &&
+        plaque.lead_subject_born_in !== "Unknown" && plaque.lead_subject_died_in !== "Unknown") {
+      return `(${plaque.lead_subject_born_in} - ${plaque.lead_subject_died_in})`;
+    }
+    return '';
+  };
+
+  // Format plaque color for display
+  const plaqueColor = plaque.color || plaque.colour || 'unknown';
+
+  // Get location display
+  const locationDisplay = plaque.location || plaque.address || '';
+
+  // Handle missing image
+  const imageUrl = plaque.image || plaque.main_photo;
+  const hasValidImage = imageUrl && imageUrl !== "Unknown";
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="bottom" className="h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0">
         <div className="h-full flex flex-col overflow-hidden">
           <div className="relative h-56 bg-blue-50">
-            <img 
-              src={plaque.image} 
-              alt={plaque.title} 
-              className="w-full h-full object-cover"
-            />
+            {hasValidImage ? (
+              <img 
+                src={imageUrl} 
+                alt={plaque.title} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <div className="text-center p-4">
+                  <Info size={40} className="mx-auto mb-2 text-gray-400" />
+                  <p className="text-gray-500">No image available</p>
+                </div>
+              </div>
+            )}
+            
             <Button 
               variant="ghost" 
               size="icon" 
@@ -60,6 +118,7 @@ export const PlaqueDetail = ({
             >
               <X size={18} />
             </Button>
+            
             {onFavoriteToggle && (
               <Button 
                 variant="ghost" 
@@ -74,25 +133,44 @@ export const PlaqueDetail = ({
           
           <div className="p-6 overflow-y-auto flex-grow">
             <h2 className="text-2xl font-bold mb-1">{plaque.title}</h2>
-            <p className="text-gray-600 flex items-center mb-4">
-              <MapPin size={16} className="mr-1" /> {plaque.location}
+            
+            <p className="text-gray-600 flex items-start mt-1 mb-4">
+              <MapPin size={16} className="mr-1 mt-1 shrink-0" /> 
+              <span>{locationDisplay}</span>
+              {plaque.area && <span className="ml-1">, {plaque.area}</span>}
+              {plaque.postcode && <span className="ml-1">, {plaque.postcode}</span>}
             </p>
             
             <div className="flex flex-wrap gap-2 mb-6">
-              <Badge 
-                variant="outline" 
-                className={`
-                  ${plaque.color === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                  ${plaque.color === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                  ${plaque.color === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
-                  ${plaque.color === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
-                `}
-              >
-                {plaque.color.charAt(0).toUpperCase() + plaque.color.slice(1)} Plaque
-              </Badge>
-              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                {plaque.profession}
-              </Badge>
+              {plaqueColor && plaqueColor !== "Unknown" && (
+                <Badge 
+                  variant="outline" 
+                  className={`
+                    ${plaqueColor === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                    ${plaqueColor === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                    ${plaqueColor === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                    ${plaqueColor === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
+                    ${plaqueColor === 'grey' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
+                  `}
+                >
+                  {plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} Plaque
+                </Badge>
+              )}
+              
+              {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
+                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                  {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
+                   (plaque.lead_subject_primary_role as string).slice(1)}
+                </Badge>
+              )}
+              
+              {plaque.erected && plaque.erected !== "Unknown" && (
+                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                  <Calendar size={12} className="mr-1" />
+                  {plaque.erected}
+                </Badge>
+              )}
+              
               {plaque.visited && (
                 <Badge variant="secondary" className="bg-green-100 text-green-800">
                   <CheckCircle size={12} className="mr-1" /> Visited
@@ -100,24 +178,106 @@ export const PlaqueDetail = ({
               )}
             </div>
             
+            {/* Inscription */}
             <div className="mb-6">
-              <h3 className="font-medium mb-2">About</h3>
-              <p className="text-gray-700 leading-relaxed">
-                {plaque.description}
-              </p>
+              <h3 className="font-medium mb-2">Inscription</h3>
+              <div className="border-l-4 border-gray-300 pl-4 italic">
+                {plaque.inscription}
+              </div>
             </div>
             
+            {/* Subject Information */}
+            {plaque.lead_subject_name && plaque.lead_subject_name !== "Unknown" && (
+              <div className="mb-6">
+                <h3 className="font-medium mb-2">About</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium">{plaque.lead_subject_name} {lifeYears()}</h4>
+                  {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
+                    <p className="text-gray-600 capitalize mt-1">{plaque.lead_subject_primary_role}</p>
+                  )}
+                  
+                  {/* Wikipedia link if available */}
+                  {plaque.lead_subject_wikipedia && plaque.lead_subject_wikipedia !== "Unknown" && (
+                    <a 
+                      href={plaque.lead_subject_wikipedia as string} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center text-sm text-blue-600 hover:underline"
+                    >
+                      <ExternalLink size={14} className="mr-1" />
+                      Learn more on Wikipedia
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* All Subjects (if multiple) */}
+            {subjects.length > 1 && (
+              <div className="mb-6">
+                <h3 className="font-medium mb-2">All Subjects</h3>
+                <div className="space-y-2">
+                  {subjects.map((subject, index) => (
+                    <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                      <p className="font-medium">{subject.name} {subject.years}</p>
+                      {subject.role && (
+                        <p className="text-gray-600 text-sm capitalize">{subject.role}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Plaque Metadata */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-500 mb-1">Erected</h4>
-                <p className="font-medium">1968</p>
+                <p className="font-medium">{plaque.erected || 'Unknown'}</p>
               </div>
+              
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-500 mb-1">Organization</h4>
-                <p className="font-medium">English Heritage</p>
+                <p className="font-medium">
+                  {organisations.length > 0 
+                    ? organisations.join(', ') 
+                    : 'Unknown'}
+                </p>
               </div>
+
+              {plaque.series && plaque.series !== "Unknown" && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">Series</h4>
+                  <p className="font-medium">{plaque.series}</p>
+                </div>
+              )}
+
+              {plaque.language && plaque.language !== "Unknown" && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-500 mb-1">Language</h4>
+                  <p className="font-medium">{plaque.language}</p>
+                </div>
+              )}
             </div>
             
+            {/* Location Information */}
+            {plaque.latitude && plaque.longitude && (
+              <div className="mb-6">
+                <h3 className="font-medium mb-2">Location</h3>
+                <div className="bg-gray-200 p-4 rounded-lg text-center">
+                  <p className="mb-2">Map coordinates: {plaque.latitude}, {plaque.longitude}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.open(`https://maps.google.com/?q=${plaque.latitude},${plaque.longitude}`, '_blank')}
+                  >
+                    <MapPin className="mr-2 h-4 w-4" /> View on Google Maps
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Nearby Plaques */}
             {nearbyPlaques.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-medium mb-2">Nearby Plaques</h3>
@@ -129,13 +289,14 @@ export const PlaqueDetail = ({
                       onClick={() => onSelectNearbyPlaque?.(nearbyPlaque)}
                     >
                       <h4 className="font-medium text-sm mb-1 truncate">{nearbyPlaque.title}</h4>
-                      <p className="text-gray-500 text-xs truncate">{nearbyPlaque.location}</p>
+                      <p className="text-gray-500 text-xs truncate">{nearbyPlaque.address || nearbyPlaque.location}</p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
             
+            {/* User Contributions Section */}
             <div className="space-y-3">
               <h3 className="font-medium">User Contributions</h3>
               
@@ -150,7 +311,7 @@ export const PlaqueDetail = ({
                   </div>
                 </div>
                 <p className="text-sm text-gray-700">
-                  Visited this plaque during my London walking tour. The building has been beautifully preserved and there's a small exhibition inside that's worth checking out.
+                  Visited this plaque during my London walking tour. It's worth taking the time to explore the surrounding area as well.
                 </p>
               </div>
             </div>
@@ -176,7 +337,12 @@ export const PlaqueDetail = ({
               <Button 
                 className="flex-1" 
                 variant="outline"
-                onClick={() => window.open(`https://maps.google.com/?q=${plaque.location}`, '_blank')}
+                onClick={() => {
+                  const location = plaque.latitude && plaque.longitude 
+                    ? `${plaque.latitude},${plaque.longitude}`
+                    : plaque.address;
+                  window.open(`https://maps.google.com/?q=${location}`, '_blank');
+                }}
               >
                 <MapPin className="mr-2 h-4 w-4" /> Directions
               </Button>

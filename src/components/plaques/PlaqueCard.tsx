@@ -4,18 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-export type Plaque = {
-  id: number;
-  title: string;
-  location: string;
-  postcode?: string;
-  color: string;
-  profession: string;
-  description: string;
-  visited: boolean;
-  image: string;
-  added?: string;
-};
+// Use the updated Plaque type
+import { Plaque } from '@/utils/plaqueAdapter';
 
 type PlaqueCardProps = {
   plaque: Plaque;
@@ -48,6 +38,12 @@ export const PlaqueCard = ({
     if (onSelect) onSelect(plaque.id);
   };
 
+  // Handle color for display (merging color and colour fields)
+  const plaqueColor = plaque.color || plaque.colour || 'unknown';
+  
+  // Handle location display (address or custom formatted location)
+  const locationDisplay = plaque.location || plaque.address || '';
+
   return (
     <Card 
       className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer group ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
@@ -55,7 +51,7 @@ export const PlaqueCard = ({
     >
       <div className="relative h-40 bg-blue-50">
         <img 
-          src={plaque.image} 
+          src={plaque.image || "/api/placeholder/400/300"} 
           alt={plaque.title} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -94,25 +90,39 @@ export const PlaqueCard = ({
         </div>
         <CardDescription className="flex items-center text-gray-500">
           <MapPin size={14} className="mr-1 shrink-0" /> 
-          <span className="truncate">{plaque.location}</span>
+          <span className="truncate">{locationDisplay}</span>
         </CardDescription>
       </CardHeader>
       
       <CardContent className="pt-0">
-        <Badge 
-          variant="outline" 
-          className={`
-            ${plaque.color === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-            ${plaque.color === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-            ${plaque.color === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
-            ${plaque.color === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
-          `}
-        >
-          {plaque.color.charAt(0).toUpperCase() + plaque.color.slice(1)} Plaque
-        </Badge>
-        <Badge variant="outline" className="ml-2 bg-gray-50 text-gray-700 border-gray-200">
-          {plaque.profession}
-        </Badge>
+        {plaqueColor && plaqueColor !== "Unknown" && (
+          <Badge 
+            variant="outline" 
+            className={`
+              ${plaqueColor === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+              ${plaqueColor === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+              ${plaqueColor === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+              ${plaqueColor === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
+              ${plaqueColor === 'grey' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
+            `}
+          >
+            {plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} Plaque
+          </Badge>
+        )}
+        
+        {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
+          <Badge variant="outline" className="ml-2 bg-gray-50 text-gray-700 border-gray-200">
+            {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
+             (plaque.lead_subject_primary_role as string).slice(1)}
+          </Badge>
+        )}
+        
+        {/* Short description preview - using inscription */}
+        {plaque.inscription && (
+          <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+            {plaque.inscription}
+          </p>
+        )}
         
         {plaque.added && (
           <div className="mt-3 text-xs text-gray-500 text-right">
