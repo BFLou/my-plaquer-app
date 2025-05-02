@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from 'sonner';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
+import plaqueData from '../data/plaque_data.json'; // We'll create this file in a moment
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -68,35 +69,32 @@ const Discover = () => {
 
   // Load plaque data from JSON file
   useEffect(() => {
-    const fetchPlaques = async () => {
-      try {
-        setLoading(true);
-        const response = await window.fs.readFile('plaque_data.json', { encoding: 'utf8' });
-        const data = JSON.parse(response);
-        const adaptedData = adaptPlaquesData(data);
-        
-        // Set some plaques as visited and add to favorites for demo
-        if (adaptedData.length > 0) {
-          adaptedData[0].visited = true;
-          adaptedData[2].visited = true;
-          setFavorites([adaptedData[0].id, adaptedData[1].id]);
-        }
-        
-        setPlaques(adaptedData);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading plaque data:', error);
-        setLoading(false);
-        toast({
-          title: "Error loading plaque data",
-          description: "Could not load the plaque data. Please try again later.",
-          duration: 3000,
-        });
+    try {
+      setLoading(true);
+      
+      // Use the imported data instead of trying to read a file
+      const adaptedData = adaptPlaquesData(plaqueData);
+      
+      // Set some plaques as visited and add to favorites for demo
+      if (adaptedData.length > 0) {
+        adaptedData[0].visited = true;
+        adaptedData[2].visited = true;
+        setFavorites([adaptedData[0].id, adaptedData[1].id]);
       }
-    };
-
-    fetchPlaques();
+      
+      setPlaques(adaptedData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading plaque data:', error);
+      setLoading(false);
+      toast({
+        title: "Error loading plaque data",
+        description: "Could not load the plaque data. Please try again later.",
+        duration: 3000,
+      });
+    }
   }, []);
+
 
   // Update URL when filters or view mode change
   useEffect(() => {

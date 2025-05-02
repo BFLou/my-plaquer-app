@@ -1,5 +1,5 @@
 // src/utils/plaqueAdapter.ts
-import { Plaque } from '@/components';
+import { Plaque } from '@/types/plaque';
 
 export function adaptPlaqueData(plaque: any): Plaque {
   return {
