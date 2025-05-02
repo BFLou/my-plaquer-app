@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plaque } from '@/types/plaque';
+import PlaqueImage from './PlaqueImage'; // Import the PlaqueImage component
 
 type PlaqueDetailProps = {
   plaque: Plaque | null;
@@ -83,34 +84,27 @@ export const PlaqueDetail = ({
   // Get location display
   const locationDisplay = plaque.location || plaque.address || '';
 
-  // Handle missing image
+  // Image source with fallback
   const imageUrl = plaque.image || plaque.main_photo;
-  const hasValidImage = imageUrl && imageUrl !== "Unknown";
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="bottom" className="h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0">
         <div className="h-full flex flex-col overflow-hidden">
           <div className="relative h-56 bg-blue-50">
-            {hasValidImage ? (
-              <img 
-                src={imageUrl} 
-                alt={plaque.title} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                <div className="text-center p-4">
-                  <Info size={40} className="mx-auto mb-2 text-gray-400" />
-                  <p className="text-gray-500">No image available</p>
-                </div>
-              </div>
-            )}
+            {/* Replace the old image handling with PlaqueImage component */}
+            <PlaqueImage 
+              src={imageUrl}
+              alt={plaque.title} 
+              className="w-full h-full object-cover"
+              placeholderClassName="bg-blue-50"
+              plaqueColor={plaqueColor}
+            />
             
             <Button 
               variant="ghost" 
               size="icon" 
-              className="absolute top-4 right-4 rounded-full bg-black/30 text-white hover:bg-black/40"
+              className="absolute top-4 right-4 rounded-full bg-black/30 text-white hover:bg-black/40 z-10"
               onClick={onClose}
             >
               <X size={18} />
@@ -120,7 +114,7 @@ export const PlaqueDetail = ({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`absolute top-4 left-4 rounded-full bg-black/30 hover:bg-black/40 ${isFavorite ? 'text-amber-500' : 'text-white'}`}
+                className={`absolute top-4 left-4 rounded-full bg-black/30 hover:bg-black/40 z-10 ${isFavorite ? 'text-amber-500' : 'text-white'}`}
                 onClick={handleFavoriteToggle}
               >
                 <Star size={18} className={isFavorite ? 'fill-amber-500' : ''} />
@@ -279,39 +273,37 @@ export const PlaqueDetail = ({
               <div className="mb-6">
                 <h3 className="font-medium mb-2">Nearby Plaques</h3>
                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                  {nearbyPlaques.map(nearbyPlaque => (
-                    <div 
-                      key={nearbyPlaque.id} 
-                      className="shrink-0 w-40 rounded-lg bg-gray-50 p-3 cursor-pointer hover:bg-gray-100 transition"
-                      onClick={() => onSelectNearbyPlaque?.(nearbyPlaque)}
-                    >
-                      <h4 className="font-medium text-sm mb-1 truncate">{nearbyPlaque.title}</h4>
-                      <p className="text-gray-500 text-xs truncate">{nearbyPlaque.address || nearbyPlaque.location}</p>
-                    </div>
-                  ))}
+                  {nearbyPlaques.map(nearbyPlaque => {
+                    // Get image URL and color for nearby plaque
+                    const nearbyImageUrl = nearbyPlaque.image || nearbyPlaque.main_photo;
+                    const nearbyPlaqueColor = nearbyPlaque.color || nearbyPlaque.colour || 'unknown';
+                    
+                    return (
+                      <div 
+                        key={nearbyPlaque.id} 
+                        className="shrink-0 w-40 rounded-lg bg-gray-50 overflow-hidden cursor-pointer hover:bg-gray-100 transition"
+                        onClick={() => onSelectNearbyPlaque?.(nearbyPlaque)}
+                      >
+                        <div className="h-20 bg-gray-100 relative">
+                          <PlaqueImage 
+                            src={nearbyImageUrl}
+                            alt={nearbyPlaque.title}
+                            className="w-full h-full object-cover"
+                            plaqueColor={nearbyPlaqueColor}
+                          />
+                        </div>
+                        <div className="p-3">
+                          <h4 className="font-medium text-sm mb-1 truncate">{nearbyPlaque.title}</h4>
+                          <p className="text-gray-500 text-xs truncate">
+                            {nearbyPlaque.address || nearbyPlaque.location}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
-            
-            {/* User Contributions Section */}
-            <div className="space-y-3">
-              <h3 className="font-medium">User Contributions</h3>
-              
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>JD</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">Jane Doe</p>
-                    <p className="text-xs text-gray-500">2 months ago</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-700">
-                  Visited this plaque during my London walking tour. It's worth taking the time to explore the surrounding area as well.
-                </p>
-              </div>
-            </div>
           </div>
           
           <div className="p-4 border-t">
