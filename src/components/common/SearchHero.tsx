@@ -56,7 +56,7 @@ export const SearchHero = ({
             <Input 
               type="text" 
               placeholder={placeholderText} 
-              className="pl-9 border-none shadow-none focus-visible:ring-0"
+              className="pl-9 border-none shadow-none focus-visible:ring-0 text-gray-800" // Added text-gray-800 to fix the text color
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
               onKeyDown={handleKeyDown}

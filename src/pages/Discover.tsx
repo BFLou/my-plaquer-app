@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { MapIcon } from "lucide-react";
+import { MapIcon, Filter as FilterIcon, SlidersHorizontal, BadgeCheck, FilterX } from "lucide-react";
 import { 
   PageContainer,
   PlaqueCard,
@@ -8,18 +8,237 @@ import {
   PlaqueDetail,
   SearchHero,
   ViewToggle,
-  FilterBar,
-  FilterSheet,
   EmptyState,
 } from "@/components";
-import { Plaque, ViewMode } from "@/types/plaque"; // Import from types, not components
+import { Plaque, ViewMode } from "@/types/plaque";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetDescription, 
+  SheetFooter,
+  SheetClose 
+} from "@/components/ui/sheet";
 import { toast } from 'sonner';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 import plaqueData from '../data/plaque_data.json';
-import Pagination from '@/components/plaques/Pagination'; // Import the pagination component
+import Pagination from '@/components/plaques/Pagination';
+import  MultiSelectFilter from '../components/common/MultiSelectFilter';
+import { cn } from "@/lib/utils";
+
+// Define color options with style mapping
+const getColorBadgeStyle = (color: string) => {
+  switch(color.toLowerCase()) {
+    case 'blue':
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+    case 'green':
+      return 'bg-green-50 text-green-700 border-green-200';
+    case 'brown':
+      return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'black':
+      return 'bg-gray-100 text-gray-700 border-gray-300';
+    case 'grey':
+    case 'gray':
+      return 'bg-gray-100 text-gray-700 border-gray-300';
+    default:
+      return 'bg-gray-50 text-gray-600 border-gray-200';
+  }
+};
+
+// Filter sheet component
+type FilterOption = {
+  label: string;
+  value: string;
+  color?: string;
+};
+
+type ImprovedFilterSheetProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  onApply: () => void;
+  onReset: () => void;
+  title?: string;
+  description?: string;
+  
+  // Filter state
+  postcodes: FilterOption[];
+  selectedPostcodes: string[];
+  onPostcodesChange: (values: string[]) => void;
+  
+  colors: FilterOption[];
+  selectedColors: string[];
+  onColorsChange: (values: string[]) => void;
+  
+  professions: FilterOption[];
+  selectedProfessions: string[];
+  onProfessionsChange: (values: string[]) => void;
+  
+  onlyVisited: boolean;
+  onVisitedChange: (value: boolean) => void;
+  
+  onlyFavorites: boolean;
+  onFavoritesChange: (value: boolean) => void;
+  
+  className?: string;
+};
+
+const ImprovedFilterSheet = ({
+  isOpen,
+  onClose,
+  onApply,
+  onReset,
+  title = "Filters",
+  description = "Refine your search",
+  
+  postcodes,
+  selectedPostcodes,
+  onPostcodesChange,
+  
+  colors,
+  selectedColors,
+  onColorsChange,
+  
+  professions,
+  selectedProfessions,
+  onProfessionsChange,
+  
+  onlyVisited,
+  onVisitedChange,
+  
+  onlyFavorites,
+  onFavoritesChange,
+  
+  className = ''
+}: ImprovedFilterSheetProps) => {
+  const handleSheetChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
+  // Count total active filters
+  const activeFiltersCount = 
+    selectedPostcodes.length + 
+    selectedColors.length + 
+    selectedProfessions.length + 
+    (onlyVisited ? 1 : 0) + 
+    (onlyFavorites ? 1 : 0);
+
+  return (
+    <Sheet open={isOpen} onOpenChange={handleSheetChange}>
+      <SheetContent side="left" className={`w-full sm:max-w-md ${className}`}>
+        <SheetHeader>
+          <div className="flex items-center justify-between">
+            <SheetTitle>{title}</SheetTitle>
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary" className="font-normal">
+                {activeFiltersCount} active
+              </Badge>
+            )}
+          </div>
+          {description && <SheetDescription>{description}</SheetDescription>}
+        </SheetHeader>
+        
+        <div className="grid gap-6 py-6">
+          <div className="space-y-4">
+            <Label className="text-base">Location</Label>
+            <MultiSelectFilter
+              options={postcodes}
+              selected={selectedPostcodes}
+              onChange={onPostcodesChange}
+              placeholder="All postcodes"
+              searchPlaceholder="Search postcodes..."
+              displayBadges={true}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="space-y-4">
+            <Label className="text-base">Plaque Colors</Label>
+            <MultiSelectFilter
+              options={colors}
+              selected={selectedColors}
+              onChange={onColorsChange}
+              placeholder="All colors"
+              searchPlaceholder="Search colors..."
+              displayBadges={true}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="space-y-4">
+            <Label className="text-base">Professions</Label>
+            <MultiSelectFilter
+              options={professions}
+              selected={selectedProfessions}
+              onChange={onProfessionsChange}
+              placeholder="All professions"
+              searchPlaceholder="Search professions..."
+              displayBadges={true}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="space-y-4">
+            <h3 className="text-base font-medium">Additional Filters</h3>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="visited" className="text-sm">Only Visited</Label>
+                <p className="text-muted-foreground text-xs">Show plaques you've visited</p>
+              </div>
+              <Switch 
+                id="visited" 
+                checked={onlyVisited} 
+                onCheckedChange={onVisitedChange}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="favorites" className="text-sm">Favorites</Label>
+                <p className="text-muted-foreground text-xs">Show only favorite plaques</p>
+              </div>
+              <Switch 
+                id="favorites" 
+                checked={onlyFavorites} 
+                onCheckedChange={onFavoritesChange}
+              />
+            </div>
+          </div>
+        </div>
+        
+        <SheetFooter className="flex flex-row gap-2 sm:justify-between">
+          <Button 
+            variant="outline" 
+            onClick={onReset}
+            className="flex-1 gap-2"
+          >
+            <FilterX size={16} />
+            Reset All
+          </Button>
+          <Button 
+            onClick={onApply}
+            className="flex-1 gap-2"
+          >
+            <BadgeCheck size={16} />
+            Apply Filters
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -28,7 +247,6 @@ const Discover = () => {
   
   // State
   const [allPlaques, setAllPlaques] = useState<Plaque[]>([]); // Store all plaques
-  const [plaques, setPlaques] = useState<Plaque[]>([]);       // Store filtered plaques
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,12 +260,17 @@ const Discover = () => {
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   
-  // Filter states
-  const [postcode, setPostcode] = useState('');
-  const [plaqueColor, setPlaqueColor] = useState('');
-  const [profession, setProfession] = useState('');
+  // Enhanced filter states - now arrays for multi-select
+  const [selectedPostcodes, setSelectedPostcodes] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
   const [onlyVisited, setOnlyVisited] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  // Options for filters - will be populated from data
+  const [postcodeOptions, setPostcodeOptions] = useState<FilterOption[]>([]);
+  const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
+  const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
 
   // Initialize state from URL params on first load
   useEffect(() => {
@@ -61,14 +284,29 @@ const Discover = () => {
       setSearchQuery(search);
     }
     
-    const profession = searchParams.get('profession');
-    if (profession) {
-      setProfession(profession);
+    const postcodesParam = searchParams.get('postcodes');
+    if (postcodesParam) {
+      setSelectedPostcodes(postcodesParam.split(','));
     }
     
-    const postcode = searchParams.get('postcode');
-    if (postcode) {
-      setPostcode(postcode);
+    const colorsParam = searchParams.get('colors');
+    if (colorsParam) {
+      setSelectedColors(colorsParam.split(','));
+    }
+    
+    const professionsParam = searchParams.get('professions');
+    if (professionsParam) {
+      setSelectedProfessions(professionsParam.split(','));
+    }
+    
+    const visited = searchParams.get('visited');
+    if (visited === 'true') {
+      setOnlyVisited(true);
+    }
+    
+    const favs = searchParams.get('favorites');
+    if (favs === 'true') {
+      setOnlyFavorites(true);
     }
     
     const page = searchParams.get('page');
@@ -105,28 +343,77 @@ const Discover = () => {
     }
   }, []);
 
+  // Derive filter options from data
+  useEffect(() => {
+    if (allPlaques.length > 0) {
+      // Get unique postcode options
+      const postcodes = [...new Set(allPlaques
+        .filter(p => p.postcode && p.postcode !== "Unknown")
+        .map(p => p.postcode as string))]
+        .sort()
+        .map(code => ({ label: code, value: code }));
+      setPostcodeOptions(postcodes);
+      
+      // Get unique color options with style mapping
+      const colors = [...new Set(allPlaques
+        .filter(p => p.color && p.color !== "Unknown")
+        .map(p => p.color?.toLowerCase() as string))]
+        .sort()
+        .map(color => ({ 
+          label: color.charAt(0).toUpperCase() + color.slice(1), 
+          value: color,
+          color: getColorBadgeStyle(color)
+        }));
+      setColorOptions(colors);
+      
+      // Get unique profession options
+      const professions = [...new Set(allPlaques
+        .filter(p => p.profession && p.profession !== "Unknown")
+        .map(p => p.profession as string))]
+        .sort()
+        .map(prof => ({ 
+          label: prof.charAt(0).toUpperCase() + prof.slice(1), 
+          value: prof 
+        }));
+      setProfessionOptions(professions);
+    }
+  }, [allPlaques]);
+
   // Apply filters to get filtered plaques
   const filteredPlaques = useMemo(() => {
     return allPlaques.filter((plaque) => {
+      // Match search query
       const matchesSearch = 
         (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) || 
         (plaque.inscription?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
         (plaque.address?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
-        
-      const matchesPostcode = postcode ? plaque.postcode === postcode : true;
-      const matchesColor = plaqueColor ? (plaque.color?.toLowerCase() === plaqueColor.toLowerCase()) : true;
-      const matchesProfession = profession ? plaque.profession === profession : true;
+      
+      // Match postcode (any selected, or all if none selected)
+      const matchesPostcode = selectedPostcodes.length === 0 || 
+        (plaque.postcode && selectedPostcodes.includes(plaque.postcode));
+      
+      // Match color (any selected, or all if none selected)
+      const matchesColor = selectedColors.length === 0 || 
+        (plaque.color && selectedColors.includes(plaque.color.toLowerCase()));
+      
+      // Match profession (any selected, or all if none selected)
+      const matchesProfession = selectedProfessions.length === 0 || 
+        (plaque.profession && selectedProfessions.includes(plaque.profession));
+      
+      // Match visited status
       const matchesVisited = onlyVisited ? plaque.visited : true;
+      
+      // Match favorite status
       const matchesFavorite = onlyFavorites ? favorites.includes(plaque.id) : true;
 
       return matchesSearch && 
-            matchesPostcode && 
-            matchesColor && 
-            matchesProfession && 
-            matchesVisited && 
-            matchesFavorite;
+             matchesPostcode && 
+             matchesColor && 
+             matchesProfession && 
+             matchesVisited && 
+             matchesFavorite;
     });
-  }, [allPlaques, searchQuery, postcode, plaqueColor, profession, onlyVisited, onlyFavorites, favorites]);
+  }, [allPlaques, searchQuery, selectedPostcodes, selectedColors, selectedProfessions, onlyVisited, onlyFavorites, favorites]);
 
   // Sort and paginate plaques
   const sortedAndPaginatedPlaques = useMemo(() => {
@@ -164,16 +451,16 @@ const Discover = () => {
       params.set('search', searchQuery);
     }
     
-    if (postcode) {
-      params.set('postcode', postcode);
+    if (selectedPostcodes.length > 0) {
+      params.set('postcodes', selectedPostcodes.join(','));
     }
     
-    if (plaqueColor) {
-      params.set('color', plaqueColor);
+    if (selectedColors.length > 0) {
+      params.set('colors', selectedColors.join(','));
     }
     
-    if (profession) {
-      params.set('profession', profession);
+    if (selectedProfessions.length > 0) {
+      params.set('professions', selectedProfessions.join(','));
     }
     
     if (onlyVisited) {
@@ -190,30 +477,15 @@ const Discover = () => {
     
     const newUrl = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     navigate(newUrl, { replace: true });
-  }, [viewMode, searchQuery, postcode, plaqueColor, profession, onlyVisited, onlyFavorites, currentPage, navigate, location.pathname]);
-
-  // Derive available filter options from data
-  const availablePostcodes = useMemo(() => {
-    return [...new Set(allPlaques
-      .filter(p => p.postcode && p.postcode !== "Unknown")
-      .map(p => p.postcode as string))];
-  }, [allPlaques]);
-    
-  const availableProfessions = useMemo(() => {
-    return [...new Set(allPlaques
-      .filter(p => p.profession && p.profession !== "Unknown")
-      .map(p => p.profession as string))];
-  }, [allPlaques]);
-    
-  const availableColors = useMemo(() => {
-    return [...new Set(allPlaques
-      .filter(p => p.color && p.color !== "Unknown")
-      .map(p => p.color as string))];
-  }, [allPlaques]);
+  }, [viewMode, searchQuery, selectedPostcodes, selectedColors, selectedProfessions, onlyVisited, onlyFavorites, currentPage, navigate, location.pathname]);
 
   // Handler functions
   const handleSearch = () => {
     setCurrentPage(1); // Reset to first page on search
+    // Close the filter sheet if it's open when searching
+    if (filtersOpen) {
+      setFiltersOpen(false);
+    }
   };
 
   const handleViewModeChange = (mode: ViewMode) => {
@@ -255,10 +527,15 @@ const Discover = () => {
     });
   };
 
+  const applyFilters = () => {
+    setCurrentPage(1); // Reset to first page when applying filters
+    setFiltersOpen(false);
+  };
+
   const resetFilters = () => {
-    setPostcode('');
-    setPlaqueColor('');
-    setProfession('');
+    setSelectedPostcodes([]);
+    setSelectedColors([]);
+    setSelectedProfessions([]);
     setOnlyVisited(false);
     setOnlyFavorites(false);
     setCurrentPage(1); // Reset to first page
@@ -271,19 +548,20 @@ const Discover = () => {
 
   // Define common categories for the search hero
   const categories = [
-    { label: "Notable Authors", onClick: () => { setProfession('novelist'); handleSearch(); } },
-    { label: "London Landmarks", onClick: () => { setProfession('place'); handleSearch(); } },
-    { label: "Musicians", onClick: () => { setProfession('composer'); handleSearch(); } },
-    { label: "Legal Figures", onClick: () => { setProfession('lawyer'); handleSearch(); } },
+    { label: "Notable Authors", onClick: () => { setSelectedProfessions(['novelist']); handleSearch(); } },
+    { label: "London Landmarks", onClick: () => { setSelectedProfessions(['place']); handleSearch(); } },
+    { label: "Musicians", onClick: () => { setSelectedProfessions(['composer']); handleSearch(); } },
+    { label: "Legal Figures", onClick: () => { setSelectedProfessions(['lawyer']); handleSearch(); } },
   ];
 
-  // Get active filters for display
-  const activeFilters = [];
-  if (postcode) activeFilters.push(`Postcode: ${postcode}`);
-  if (plaqueColor) activeFilters.push(`Color: ${plaqueColor}`);
-  if (profession) activeFilters.push(`Profession: ${profession}`);
-  if (onlyVisited) activeFilters.push('Visited');
-  if (onlyFavorites) activeFilters.push('Favorites');
+  // Generate active filters for display
+  const activeFilters = [
+    ...selectedPostcodes.map(code => `Postcode: ${code}`),
+    ...selectedColors.map(color => `Color: ${color.charAt(0).toUpperCase() + color.slice(1)}`),
+    ...selectedProfessions.map(prof => `Profession: ${prof.charAt(0).toUpperCase() + prof.slice(1)}`),
+    ...(onlyVisited ? ['Visited'] : []),
+    ...(onlyFavorites ? ['Favorites'] : [])
+  ];
 
   // Find nearby plaques for the detail view
   const getNearbyPlaques = (currentPlaque: Plaque) => {
@@ -292,6 +570,9 @@ const Discover = () => {
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
   };
+
+  // Get the total count of active filters
+  const activeFiltersCount = activeFilters.length;
 
   return (
     <PageContainer activePage="discover">
@@ -309,10 +590,46 @@ const Discover = () => {
       <section className="bg-white border-b border-gray-200 sticky top-[61px] z-20">
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
-            <FilterBar 
-              onFilterClick={() => setFiltersOpen(true)} 
-              activeFilters={activeFilters}
-            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={() => setFiltersOpen(true)}
+            >
+              <FilterIcon size={16} /> 
+              Filters
+              {activeFiltersCount > 0 && (
+                <Badge 
+                  variant="secondary" 
+                  className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center"
+                >
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+            
+            {/* Active filters display */}
+            {activeFiltersCount > 0 && (
+              <div className="hidden md:flex gap-1 items-center ml-2 overflow-x-auto max-w-md flex-wrap">
+                {activeFilters.map((filter, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="outline" 
+                    className="bg-blue-50 text-blue-700 border-blue-200"
+                  >
+                    {filter}
+                  </Badge>
+                ))}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                  onClick={resetFilters}
+                >
+                  Clear All
+                </Button>
+              </div>
+            )}
             
             <div className="flex gap-2">
               <Select value={sortOption} onValueChange={setSortOption}>
@@ -439,82 +756,33 @@ const Discover = () => {
         onSelectNearbyPlaque={handlePlaqueClick}
       />
       
-      {/* Filter Sheet */}
-      <FilterSheet
+      {/* Enhanced Filter Sheet */}
+      <ImprovedFilterSheet
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        onApply={() => setFiltersOpen(false)}
+        onApply={applyFilters}
         onReset={resetFilters}
         title="Filters"
         description="Refine your plaque search"
-      >
-        <div className="space-y-2">
-          <Label>Postcode</Label>
-          <Select value={postcode} onValueChange={setPostcode}>
-            <SelectTrigger>
-              <SelectValue placeholder="All postcodes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All postcodes</SelectItem>
-              {availablePostcodes.map(code => (
-                <SelectItem key={code} value={code}>{code}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         
-        <div className="space-y-2">
-          <Label>Plaque Color</Label>
-          <Select value={plaqueColor} onValueChange={setPlaqueColor}>
-            <SelectTrigger>
-              <SelectValue placeholder="All colors" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All colors</SelectItem>
-              {availableColors.map(color => (
-                <SelectItem key={color} value={color.toLowerCase()}>
-                  {color.charAt(0).toUpperCase() + color.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        postcodes={postcodeOptions}
+        selectedPostcodes={selectedPostcodes}
+        onPostcodesChange={setSelectedPostcodes}
         
-        <div className="space-y-2">
-          <Label>Profession</Label>
-          <Select value={profession} onValueChange={setProfession}>
-            <SelectTrigger>
-              <SelectValue placeholder="All professions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All professions</SelectItem>
-              {availableProfessions.map(prof => (
-                <SelectItem key={prof} value={prof}>{prof}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        colors={colorOptions}
+        selectedColors={selectedColors}
+        onColorsChange={setSelectedColors}
         
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="visited">Only show visited</Label>
-            <Switch 
-              id="visited" 
-              checked={onlyVisited} 
-              onCheckedChange={setOnlyVisited} 
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <Label htmlFor="favorites">Only show favorites</Label>
-            <Switch 
-              id="favorites" 
-              checked={onlyFavorites} 
-              onCheckedChange={setOnlyFavorites} 
-            />
-          </div>
-        </div>
-      </FilterSheet>
+        professions={professionOptions}
+        selectedProfessions={selectedProfessions}
+        onProfessionsChange={setSelectedProfessions}
+        
+        onlyVisited={onlyVisited}
+        onVisitedChange={setOnlyVisited}
+        
+        onlyFavorites={onlyFavorites}
+        onFavoritesChange={setOnlyFavorites}
+      />
     </PageContainer>
   );
 };
