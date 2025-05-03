@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 type PlaqueImageProps = {
   src?: string | null;
@@ -6,69 +6,101 @@ type PlaqueImageProps = {
   className?: string;
   placeholderClassName?: string;
   plaqueColor?: string;
+  onLoad?: () => void;
 };
 
 /**
- * A component to handle plaque images with a simplified circular plaque fallback
+ * A component to handle plaque images with a sophisticated fallback system
  */
-const PlaqueImage = ({
+export const PlaqueImage: React.FC<PlaqueImageProps> = ({
   src,
   alt,
   className = '',
   placeholderClassName = 'bg-gray-50',
-  plaqueColor = 'blue'
-}: PlaqueImageProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  plaqueColor = 'blue',
+  onLoad
+}) => {
+  const [loadingState, setLoadingState] = useState<'loading' | 'loaded' | 'error'>('loading');
   
   // Check if the image URL is valid
   const hasValidSrc = src && src !== 'Unknown' && src !== 'null';
   
+  // Generate a deterministic placeholder based on alt text if no image
+  const placeholderText = useMemo(() => {
+    if (!alt) return '?';
+    return alt.split(' ')
+      .map(word => word[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  }, [alt]);
+  
   // Handle image loading completion
   const handleImageLoaded = () => {
-    setIsLoading(false);
+    setLoadingState('loaded');
+    if (onLoad) onLoad();
   };
   
   // Handle image loading error
   const handleImageError = () => {
-    setIsLoading(false);
-    setHasError(true);
+    setLoadingState('error');
   };
   
-  // Determine color palette based on plaque color
-  let mainColor = '#1d4ed8'; // blue default
-  let bgColor = '#eff6ff';
-  let textColor = '#1e40af';
+  // Preload image
+  useEffect(() => {
+    if (hasValidSrc) {
+      const img = new Image();
+      img.src = src as string;
+      img.onload = handleImageLoaded;
+      img.onerror = handleImageError;
+      
+      return () => {
+        img.onload = null;
+        img.onerror = null;
+      };
+    } else {
+      setLoadingState('error');
+    }
+  }, [src, hasValidSrc]);
   
-  switch ((plaqueColor || '').toLowerCase()) {
-    case 'green':
-      mainColor = '#15803d';
-      bgColor = '#f0fdf4';
-      textColor = '#166534';
-      break;
-    case 'brown':
-      mainColor = '#b45309';
-      bgColor = '#fffbeb';
-      textColor = '#92400e';
-      break;
-    case 'grey':
-    case 'gray':
-      mainColor = '#4b5563';
-      bgColor = '#f9fafb';
-      textColor = '#374151';
-      break;
-    case 'black':
-      mainColor = '#1f2937';
-      bgColor = '#f9fafb';
-      textColor = '#111827';
-      break;
-    default:
-      // Blue is default
-      break;
-  }
+  // Determine color palette based on plaque color
+  const colorStyles = useMemo(() => {
+    let mainColor = '#1d4ed8'; // blue default
+    let bgColor = '#eff6ff';
+    let textColor = '#1e40af';
+    
+    switch ((plaqueColor || '').toLowerCase()) {
+      case 'green':
+        mainColor = '#15803d';
+        bgColor = '#f0fdf4';
+        textColor = '#166534';
+        break;
+      case 'brown':
+        mainColor = '#b45309';
+        bgColor = '#fffbeb';
+        textColor = '#92400e';
+        break;
+      case 'grey':
+      case 'gray':
+        mainColor = '#4b5563';
+        bgColor = '#f9fafb';
+        textColor = '#374151';
+        break;
+      case 'black':
+        mainColor = '#1f2937';
+        bgColor = '#f9fafb';
+        textColor = '#111827';
+        break;
+      default:
+        // Blue is default
+        break;
+    }
+    
+    return { mainColor, bgColor, textColor };
+  }, [plaqueColor]);
   
   // Render fallback if src is invalid or image failed to load
-  if (!hasValidSrc || hasError) {
+  if (loadingState === 'error') {
     return (
       <div className={`${placeholderClassName} w-full h-full flex items-center justify-center`}>
         <div className="w-3/5 max-w-[140px] aspect-square relative">
@@ -77,14 +109,15 @@ const PlaqueImage = ({
             viewBox="0 0 120 120" 
             xmlns="http://www.w3.org/2000/svg"
             className="w-full h-full filter drop-shadow-md"
+            aria-label={alt}
           >
             {/* Outer circle */}
             <circle 
               cx="60" 
               cy="60" 
               r="55" 
-              fill={bgColor} 
-              stroke={mainColor}
+              fill={colorStyles.bgColor} 
+              stroke={colorStyles.mainColor}
               strokeWidth="3"
             />
             
@@ -93,8 +126,8 @@ const PlaqueImage = ({
               cx="60"
               cy="60"
               r="42"
-              fill={bgColor}
-              stroke={mainColor}
+              fill={colorStyles.bgColor}
+              stroke={colorStyles.mainColor}
               strokeWidth="1.5"
             />
             
@@ -113,12 +146,12 @@ const PlaqueImage = ({
             <p 
               className="font-serif font-medium text-center px-2"
               style={{ 
-                color: textColor,
+                color: colorStyles.textColor,
                 fontSize: 'calc(7px + 0.8vmin)',
                 maxWidth: '70px'
               }}
             >
-              No Image Available
+              {placeholderText}
             </p>
           </div>
           
@@ -136,9 +169,9 @@ const PlaqueImage = ({
   }
   
   return (
-    <>
+    <div className="relative w-full h-full">
       {/* Placeholder while loading */}
-      {isLoading && (
+      {loadingState === 'loading' && (
         <div className={`absolute inset-0 flex items-center justify-center ${placeholderClassName}`}>
           <div className="animate-pulse flex flex-col items-center">
             <div className="h-12 w-12 rounded-full bg-gray-200 mb-2"></div>
@@ -147,15 +180,18 @@ const PlaqueImage = ({
         </div>
       )}
       
-      {/* Actual image */}
-      <img 
-        src={src}
-        alt={alt}
-        className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-        onLoad={handleImageLoaded}
-        onError={handleImageError}
-      />
-    </>
+      {/* Actual image with fade-in effect */}
+      {hasValidSrc && (
+        <img 
+          src={src as string}
+          alt={alt}
+          className={`${className} transition-opacity duration-300 ${loadingState === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={handleImageLoaded}
+          onError={handleImageError}
+          loading="lazy"
+        />
+      )}
+    </div>
   );
 };
 
