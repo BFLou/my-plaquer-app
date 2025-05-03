@@ -1,56 +1,53 @@
 // src/types/plaque.ts
-
 export type Plaque = {
-    id: number;
-    machine_tag?: string;
-    title: string;
-    inscription: string;
-    latitude?: number;
-    longitude?: number;
-    country?: string;
-    area?: string;
-    address: string;
-    erected?: string | number;
-    main_photo?: string;
-    colour?: string;
-    organisations?: string;
-    language?: string;
-    series?: string;
-    series_ref?: string;
-    postcode?: string;
-    
-    // For UI display and compatibility
-    location?: string;
-    color?: string;
-    profession?: string;
-    description?: string;
-    visited?: boolean;
-    image?: string;
-    added?: string;
-    
-    // Subject information
-    lead_subject_id?: number;
-    lead_subject_machine_tag?: string;
-    lead_subject_name?: string;
-    lead_subject_surname?: string;
-    lead_subject_sex?: string;
-    lead_subject_born_in?: number | string;
-    lead_subject_died_in?: number | string;
-    lead_subject_type?: string;
-    lead_subject_roles?: string;
-    lead_subject_primary_role?: string;
-    lead_subject_wikipedia?: string;
-    lead_subject_dbpedia?: string;
-    lead_subject_image?: string;
-    
-    // Other fields
-    subjects?: string;
-    geolocated?: boolean;
-    photographed?: boolean;
-    number_of_subjects?: number;
-    number_of_male_subjects?: number;
-    number_of_female_subjects?: number;
-    number_of_inanimate_subjects?: number;
-  };
-  
-  export type ViewMode = 'grid' | 'list' | 'map';
+  id: number;
+  title: string;
+  location?: string;
+  address?: string;
+  postcode?: string;
+  color?: string;
+  colour?: string; // Alternative spelling
+  profession?: string;
+  description?: string;
+  inscription?: string;
+  visited?: boolean;
+  image?: string;
+  main_photo?: string; // Alternative field name
+  added?: string;
+  erected?: string;
+  organisations?: string;
+  subjects?: string;
+  lead_subject_name?: string;
+  lead_subject_born_in?: string;
+  lead_subject_died_in?: string;
+  lead_subject_primary_role?: string;
+  lead_subject_wikipedia?: string;
+  latitude?: number;
+  longitude?: number;
+  area?: string;
+  series?: string;
+  language?: string;
+  isFavorite?: boolean;
+};
+
+export type ViewMode = 'grid' | 'list' | 'map';
+
+export type Collection = {
+  id: number;
+  name: string;
+  description?: string;
+  icon: string;
+  color: string;
+  plaques: number;
+  updated: string;
+  isPublic?: boolean;
+  isFavorite?: boolean;
+};
+
+export type NewCollection = {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  isPublic?: boolean;
+};

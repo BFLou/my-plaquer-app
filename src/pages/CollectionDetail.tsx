@@ -1,9 +1,10 @@
+// src/pages/CollectionDetail.tsx (Updated)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Edit, Trash, Share2, Star, CheckCircle, 
   MapPin, Plus, Clock, User, Eye, EyeOff, PenLine,
-  X, MoreHorizontal, Search, Download, Map as MapIcon
+  X, MoreHorizontal, Search, Download, MapIcon
 } from 'lucide-react';
 import {
   PageContainer,
@@ -12,20 +13,15 @@ import {
   PlaqueDetail,
   CollectionStats,
   ViewToggle,
-  FilterBar,
-  FilterSheet,
   EmptyState,
   ActionBar,
-  CollectionCreator,
   type Plaque,
-  type Collection,
   type ViewMode
 } from '@/components';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,8 +40,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { toast } from 'sonner';
+import { useUser } from '../contexts/UserContext';
 
-// Sample data for plaques
+// Sample data for plaques - will be replaced with real data from API
 const PLAQUES: Plaque[] = [
   { 
     id: 1, 
@@ -82,34 +79,10 @@ const PLAQUES: Plaque[] = [
     visited: false,
     image: "/api/placeholder/400/300",
     added: "1 month ago"
-  },
-  { 
-    id: 4, 
-    title: "Sir Isaac Newton", 
-    location: "87 Jermyn Street, St. James's", 
-    postcode: "SW1Y",
-    color: "blue",
-    profession: "Scientist",
-    description: "The mathematician and physicist lived here from 1696 to 1700.",
-    visited: true,
-    image: "/api/placeholder/400/300",
-    added: "2 weeks ago"
-  },
-  { 
-    id: 5, 
-    title: "George Orwell", 
-    location: "27b Canonbury Square, Islington", 
-    postcode: "N1",
-    color: "green",
-    profession: "Author",
-    description: "The author of '1984' and 'Animal Farm' lived here from 1944 to 1947.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    added: "1 week ago"
   }
 ];
 
-// Additional available plaques
+// Additional available plaques for demo
 const ADDITIONAL_PLAQUES: Plaque[] = [
   { 
     id: 6, 
@@ -137,23 +110,19 @@ const ADDITIONAL_PLAQUES: Plaque[] = [
   }
 ];
 
-// Sample collections data
-const SAMPLE_COLLECTIONS: Collection[] = [
-  { id: 1, icon: '🎭', name: 'Theatre Legends', plaques: 5, updated: '2 days ago', color: 'bg-blue-500', isPublic: true, description: "A collection of plaques dedicated to the most influential figures in London's theatre history." },
-  { id: 2, icon: '🎶', name: 'Musical Icons', plaques: 3, updated: 'yesterday', color: 'bg-green-500', isPublic: false },
-  { id: 3, icon: '📚', name: 'Literary Giants', plaques: 4, updated: 'last week', color: 'bg-red-500', isPublic: true },
-];
-
 const CollectionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  // Get user data from context
+  const { collections, visitedPlaques, isVisited, markVisited, favorites, toggleFavorite } = useUser();
   
   // Convert id to number
   const collectionId = parseInt(id || '1');
   
   // State
   const [loading, setLoading] = useState(true);
-  const [collection, setCollection] = useState<Collection | null>(null);
+  const [collection, setCollection] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortOption, setSortOption] = useState('recently_added');
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,36 +134,39 @@ const CollectionDetail = () => {
   const [collectionPlaques, setCollectionPlaques] = useState<Plaque[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   
-  // Simulating fetching data from an API
+  // Simulating fetching data from API - in real app, replace with API call
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Find collection
-        const foundCollection = SAMPLE_COLLECTIONS.find(c => c.id === collectionId);
+        // Find collection from user data
+        const foundCollection = collections.find(c => c.id === collectionId);
         
         if (foundCollection) {
           setCollection(foundCollection);
           setEditNameValue(foundCollection.name);
           
-          // For demo purposes, we'll use the first 5 plaques for collection 1,
-          // next 3 for collection 2, etc.
-          if (collectionId === 1) {
-            setCollectionPlaques(PLAQUES.slice(0, 5));
-          } else if (collectionId === 2) {
-            setCollectionPlaques(PLAQUES.slice(0, 3));
-          } else if (collectionId === 3) {
-            setCollectionPlaques(PLAQUES.slice(0, 4));
-          } else {
-            setCollectionPlaques([]);
-          }
+          // For demo purposes, we'll use plaques from our constant data
+          // In a real app, you would fetch the plaques by IDs from the API
+          const collectionPlaquesData = foundCollection.plaques.map(plaqueId => {
+            const plaque = PLAQUES.find(p => p.id === plaqueId);
+            if (plaque) {
+              // Update visited status based on user data
+              return {
+                ...plaque,
+                visited: isVisited(plaqueId),
+                isFavorite: favorites.includes(plaqueId)
+              };
+            }
+            return null;
+          }).filter(Boolean);
+          
+          setCollectionPlaques(collectionPlaquesData);
         } else {
           // Collection not found
-          toast.error("The collection you are looking for does not exist.", {
-            description: "Collection not found"
-          });
+          toast.error("The collection you are looking for does not exist.");
           navigate('/collections');
         }
         
@@ -202,14 +174,12 @@ const CollectionDetail = () => {
       } catch (error) {
         console.error('Error fetching collection:', error);
         setLoading(false);
-        toast.error("Failed to load collection data.", {
-          description: "Error"
-        });
+        toast.error("Failed to load collection data.");
       }
     };
     
     fetchData();
-  }, [collectionId, navigate]);
+  }, [collectionId, collections, navigate, isVisited, favorites]);
   
   // Methods
   const toggleSelectPlaque = (id: number) => {
@@ -235,16 +205,15 @@ const CollectionDetail = () => {
     setCollectionPlaques(prev => [...prev, ...plaquesAdded]);
     
     if (collection) {
+      // Update collection to include the new plaque IDs
+      const updatedPlaquesArray = [...collection.plaques, ...plaqueIds];
       setCollection({
         ...collection,
-        plaques: collection.plaques + plaquesAdded.length
+        plaques: updatedPlaquesArray
       });
     }
     
-    toast.success(`${plaquesAdded.length} plaques added to collection`, {
-      description: "Plaques Added",
-      duration: 2000,
-    });
+    toast.success(`${plaquesAdded.length} plaques added to collection`);
   };
   
   const handleRemovePlaques = () => {
@@ -254,45 +223,46 @@ const CollectionDetail = () => {
   };
   
   const confirmRemovePlaques = () => {
-    // In a real app, this would make an API call to remove the plaques
+    // Remove selected plaques from the collection
     setCollectionPlaques(prev => prev.filter(plaque => !selectedPlaques.includes(plaque.id)));
     
     if (collection) {
+      // Update the collection's plaques array
+      const updatedPlaquesArray = collection.plaques.filter(
+        (id: number) => !selectedPlaques.includes(id)
+      );
+      
       setCollection({
         ...collection,
-        plaques: collection.plaques - selectedPlaques.length
+        plaques: updatedPlaquesArray
       });
     }
     
     setSelectedPlaques([]);
     setRemoveConfirmOpen(false);
     
-    toast.success("The selected plaques have been removed from this collection", {
-      description: "Plaques Removed",
-      duration: 2000,
-    });
+    toast.success("The selected plaques have been removed from this collection");
   };
   
   const handleMarkVisited = () => {
-    // In a real app, this would make an API call to update the plaques
+    // Mark selected plaques as visited
+    selectedPlaques.forEach(id => {
+      markVisited(id);
+    });
+    
+    // Update local state
     setCollectionPlaques(prev => prev.map(plaque => 
       selectedPlaques.includes(plaque.id) ? { ...plaque, visited: true } : plaque
     ));
     
     setSelectedPlaques([]);
     
-    toast.success("The selected plaques have been marked as visited", {
-      description: "Plaques Marked as Visited",
-      duration: 2000,
-    });
+    toast.success("The selected plaques have been marked as visited");
   };
   
   const handleMovePlaques = () => {
     // In a real app, this would open a dialog to select which collection to move to
-    toast.info("This would open a collection selector in a real app", {
-      description: "Move Plaques",
-      duration: 2000,
-    });
+    toast.info("This would open a collection selector in a real app");
   };
   
   const handleEditName = () => {
@@ -305,10 +275,7 @@ const CollectionDetail = () => {
       setCollection({ ...collection, name: editNameValue });
       setIsEditingName(false);
       
-      toast.success("The collection name has been updated", {
-        description: "Collection Updated",
-        duration: 2000,
-      });
+      toast.success("The collection name has been updated");
     }
   };
   
@@ -322,22 +289,34 @@ const CollectionDetail = () => {
   };
   
   const handleToggleFavorite = (plaqueId: number) => {
-    // In a real app, this would update the plaque favorite status
-    toast.info("Toggling favorite status would be implemented in a real app", {
-      description: "Plaque Favorite Status",
-      duration: 2000,
-    });
+    // Toggle favorite status in the context
+    toggleFavorite(plaqueId);
+    
+    // Update local state
+    setCollectionPlaques(prev => 
+      prev.map(plaque => 
+        plaque.id === plaqueId 
+          ? { ...plaque, isFavorite: !favorites.includes(plaqueId) } 
+          : plaque
+      )
+    );
+    
+    toast.success(favorites.includes(plaqueId) 
+      ? "Removed from favorites" 
+      : "Added to favorites"
+    );
   };
   
   const handlePlaqueVisit = (plaqueId: number) => {
+    // Mark plaque as visited in context
+    markVisited(plaqueId);
+    
+    // Update local state
     setCollectionPlaques(prev => prev.map(plaque => 
       plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
     ));
     
-    toast.success("This plaque has been marked as visited", {
-      description: "Plaque Marked as Visited",
-      duration: 2000,
-    });
+    toast.success("This plaque has been marked as visited");
   };
   
   // Sort plaques based on the selected option
@@ -358,6 +337,27 @@ const CollectionDetail = () => {
       p.id !== currentPlaque.id && 
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
+  };
+  
+  // Format updated text
+  const getUpdatedText = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) {
+      return 'today';
+    } else if (diffInDays === 1) {
+      return 'yesterday';
+    } else if (diffInDays < 7) {
+      return `${diffInDays} days ago`;
+    } else if (diffInDays < 30) {
+      const weeks = Math.floor(diffInDays / 7);
+      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    } else {
+      const months = Math.floor(diffInDays / 30);
+      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    }
   };
   
   // If still loading, show a loading state
@@ -486,7 +486,8 @@ const CollectionDetail = () => {
                     <Edit size={16} className="mr-2" /> Edit Collection
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Star size={16} className="mr-2" /> Add to Favorites
+                    <Star size={16} className="mr-2" className={collection.is_favorite ? "text-amber-500 fill-amber-500" : ""} /> 
+                    {collection.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-red-600">
@@ -499,14 +500,19 @@ const CollectionDetail = () => {
           
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <Badge variant="outline" className="flex items-center gap-1">
-              <Clock size={12} /> Updated {collection.updated}
+              <Clock size={12} /> Updated {getUpdatedText(collection.updated_at)}
             </Badge>
             <Badge variant="outline">
-              {collection.plaques} plaques
+              {collection.plaques.length} plaques
             </Badge>
-            {collection.isPublic && (
+            {collection.is_public && (
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 <Eye size={12} className="mr-1" /> Public
+              </Badge>
+            )}
+            {collection.is_favorite && (
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                <Star size={12} className="mr-1 fill-amber-500" /> Favorite
               </Badge>
             )}
           </div>
@@ -517,7 +523,16 @@ const CollectionDetail = () => {
         </div>
         
         {/* Collection Stats */}
-        <CollectionStats collection={collection} plaques={collectionPlaques} className="mb-6" />
+        <CollectionStats 
+          collection={{
+            ...collection,
+            // Convert for component compatibility
+            plaques: collection.plaques.length,
+            updated: getUpdatedText(collection.updated_at)
+          }} 
+          plaques={collectionPlaques} 
+          className="mb-6" 
+        />
         
         {/* Collection Actions */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
@@ -580,6 +595,8 @@ const CollectionDetail = () => {
                     isSelected={selectedPlaques.includes(plaque.id)}
                     onSelect={toggleSelectPlaque}
                     onClick={handlePlaqueClick}
+                    isFavorite={favorites.includes(plaque.id)}
+                    onFavoriteToggle={handleToggleFavorite}
                   />
                 ))}
               </div>
@@ -594,6 +611,8 @@ const CollectionDetail = () => {
                     isSelected={selectedPlaques.includes(plaque.id)}
                     onSelect={toggleSelectPlaque}
                     onClick={handlePlaqueClick}
+                    isFavorite={favorites.includes(plaque.id)}
+                    onFavoriteToggle={handleToggleFavorite}
                   />
                 ))}
               </div>
@@ -640,6 +659,7 @@ const CollectionDetail = () => {
         isOpen={!!selectedPlaque}
         onClose={() => setSelectedPlaque(null)}
         onMarkVisited={handlePlaqueVisit}
+        isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
         onFavoriteToggle={handleToggleFavorite}
         nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
         onSelectNearbyPlaque={handlePlaqueClick}

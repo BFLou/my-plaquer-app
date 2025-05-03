@@ -1,32 +1,28 @@
+// src/App.tsx
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-
-// Import your page components
-import Home from './pages/Home';
-import Discover from './pages/Discover';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { UserProvider } from './contexts/UserContext';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
-import About from './pages/About';
-
-// Import any global providers
+import Discover from './pages/Discover';
+import UserDashboard from './pages/UserDashboard';
 import { Toaster } from 'sonner';
 
-export default function App() {
+function App() {
   return (
-    <Router>
-      {/* Provide any global context here */}
-      <main className="min-h-screen bg-gray-50">
+    <UserProvider>
+      <Router>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Discover />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/profile" element={<UserDashboard />} />
         </Routes>
-        
-        {/* Global components like Toaster for notifications */}
-        <Toaster position="top-right" />
-      </main>
-    </Router>
+        <Toaster position="bottom-right" />
+      </Router>
+    </UserProvider>
   );
 }
+
+export default App;

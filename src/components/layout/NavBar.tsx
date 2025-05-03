@@ -1,7 +1,10 @@
+// src/components/layout/NavBar.tsx (Updated)
 import React, { useState } from 'react';
-import { MapPin, X, MoreHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { MapPin, X, MoreHorizontal, User } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useUser } from '../../contexts/UserContext';
 
 type NavLinkProps = {
   to: string;
@@ -21,15 +24,17 @@ const NavLink = ({ to, children, isActive = false }: NavLinkProps) => (
 );
 
 type NavBarProps = {
-  activePage?: 'home' | 'discover' | 'collections' | 'about';
+  activePage?: 'home' | 'discover' | 'collections' | 'about' | 'profile';
 };
 
 export const NavBar = ({ activePage }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user } = useUser();
+  const location = useLocation();
   
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <MapPin className="text-white" size={16} />
@@ -39,11 +44,19 @@ export const NavBar = ({ activePage }: NavBarProps) => {
         
         {/* Desktop Navigation */}
         <nav className="hidden md:flex gap-6 items-center">
-          <NavLink to="/" isActive={activePage === 'home'}>Home</NavLink>
-          <NavLink to="/discover" isActive={activePage === 'discover'}>Discover</NavLink>
-          <NavLink to="/collections" isActive={activePage === 'collections'}>Collections</NavLink>
+          <NavLink to="/" isActive={activePage === 'home' || location.pathname === '/'}>Home</NavLink>
+          <NavLink to="/discover" isActive={activePage === 'discover' || location.pathname.includes('/discover')}>Discover</NavLink>
+          <NavLink to="/collections" isActive={activePage === 'collections' || location.pathname.includes('/collections')}>Collections</NavLink>
           <NavLink to="/about" isActive={activePage === 'about'}>About</NavLink>
-          <Button size="sm">Sign In</Button>
+          
+          {/* User Profile Link */}
+          <Link to="/profile" className="ml-2">
+            <Avatar className={activePage === 'profile' ? 'ring-2 ring-blue-600 ring-offset-2' : ''}>
+              <AvatarFallback className="bg-blue-100 text-blue-600">
+                {user.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
         </nav>
         
         {/* Mobile Menu Button */}
@@ -89,7 +102,13 @@ export const NavBar = ({ activePage }: NavBarProps) => {
             >
               About
             </Link>
-            <Button className="w-full" onClick={() => setIsMenuOpen(false)}>Sign In</Button>
+            <Link 
+              to="/profile" 
+              className={`${activePage === 'profile' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition flex items-center gap-2`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <User size={16} /> My Profile
+            </Link>
           </div>
         </div>
       )}
