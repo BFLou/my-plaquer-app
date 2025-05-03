@@ -1,19 +1,15 @@
-// src/components/plaques/map/PlaquePopup.tsx
+// src/components/plaques/map/PlaquePopup.jsx
 
-import React from 'react';
-import { Plaque } from '@/types/plaque';
-
-type PlaquePopupOptions = { 
-  onViewDetails: () => void, 
-  onAddToRoute?: () => void,
-  isFavorite?: boolean,
-  compact?: boolean
-};
-
+/**
+ * Creates popup content for a plaque marker
+ * @param {Object} plaque - The plaque data
+ * @param {Object} options - Options for popup creation
+ * @returns {HTMLElement} - DOM element for the popup content
+ */
 export const createPlaquePopupContent = (
-  plaque: Plaque, 
-  options: PlaquePopupOptions
-): HTMLElement => {
+  plaque, 
+  options
+) => {
   const { onViewDetails, onAddToRoute, isFavorite, compact = false } = options;
   
   // Create a DOM element for the popup
@@ -24,30 +20,41 @@ export const createPlaquePopupContent = (
     // Compact popup design for initial click
     popupContent.innerHTML = `
       <div class="p-2 max-w-[200px]">
-        <div class="font-semibold text-sm mb-1">${plaque.title}</div>
+        <div class="font-semibold text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
         <div class="text-xs text-gray-600 mb-2 truncate">${plaque.location || plaque.address || ''}</div>
         <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded w-full hover:bg-blue-600 transition-colors">View Details</button>
       </div>
     `;
   } else {
     // Full popup with image for when the user wants more info but not full panel
+    let imageHtml = '';
     if (plaque.image) {
-      popupContent.innerHTML = `
+      imageHtml = `
         <div class="w-full h-24 mb-2 bg-gray-100 overflow-hidden rounded">
-          <img src="${plaque.image}" alt="${plaque.title}" class="w-full h-full object-cover hover:scale-105 transition-transform" />
+          <img src="${plaque.image}" alt="${plaque.title || 'Plaque'}" class="w-full h-full object-cover hover:scale-105 transition-transform" />
         </div>
       `;
     }
     
-    popupContent.innerHTML += `
-      <div class="font-semibold">${plaque.title}</div>
-      <div class="text-xs text-gray-600">${plaque.location || plaque.address || ''}</div>
-      ${plaque.color ? `<div class="mt-1 text-xs">${plaque.color} Plaque</div>` : ''}
-      ${plaque.erected ? `<div class="mt-1 text-xs">Erected: ${plaque.erected}</div>` : ''}
-      <button class="view-details mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded w-full hover:bg-blue-600 transition-colors">View Details</button>
-      ${onAddToRoute ? `<button class="add-to-route mt-1 px-2 py-1 bg-green-500 text-white text-xs rounded w-full hover:bg-green-600 transition-colors">
-        Add to Route
-      </button>` : ''}
+    let addToRouteButton = '';
+    if (onAddToRoute) {
+      addToRouteButton = `
+        <button class="add-to-route mt-1 px-2 py-1 bg-green-500 text-white text-xs rounded w-full hover:bg-green-600 transition-colors">
+          Add to Route
+        </button>
+      `;
+    }
+    
+    popupContent.innerHTML = `
+      ${imageHtml}
+      <div class="p-2">
+        <div class="font-semibold">${plaque.title || 'Unnamed Plaque'}</div>
+        <div class="text-xs text-gray-600">${plaque.location || plaque.address || ''}</div>
+        ${plaque.color ? `<div class="mt-1 text-xs">${plaque.color} Plaque</div>` : ''}
+        ${plaque.erected ? `<div class="mt-1 text-xs">Erected: ${plaque.erected}</div>` : ''}
+        <button class="view-details mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded w-full hover:bg-blue-600 transition-colors">View Details</button>
+        ${addToRouteButton}
+      </div>
     `;
   }
   
@@ -56,7 +63,7 @@ export const createPlaquePopupContent = (
     const detailButton = popupContent.querySelector('.view-details');
     if (detailButton) {
       detailButton.addEventListener('click', () => {
-        onViewDetails();
+        if (onViewDetails) onViewDetails();
       });
     }
     

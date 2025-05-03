@@ -1,121 +1,92 @@
+// src/components/debug/PlaqueDataDebugger.jsx
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Eye, EyeOff } from 'lucide-react';
 
-// A simple component to debug plaque data and map loading issues
-const PlaqueDataDebugger = ({ plaques = [] }) => {
+/**
+ * A component to debug plaque data issues
+ * @param {Object} props
+ * @param {Array} props.plaques - Array of plaque objects
+ */
+const PlaqueDataDebugger = ({ plaques }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [leafletStatus, setLeafletStatus] = useState("Checking...");
-  
-  // Check if Leaflet is loaded
-  React.useEffect(() => {
-    if (window.L) {
-      setLeafletStatus("Loaded ✅");
-    } else {
-      setLeafletStatus("Not loaded ❌");
-      
-      // Check if Leaflet scripts are in the document
-      const leafletScript = document.querySelector('script[src*="leaflet.js"]');
-      const clusterScript = document.querySelector('script[src*="leaflet.markercluster.js"]');
-      
-      if (leafletScript) {
-        setLeafletStatus(prev => prev + " (Script tag exists but not initialized)");
-      }
-      
-      // Set up a listener to detect when Leaflet loads
-      const checkInterval = setInterval(() => {
-        if (window.L) {
-          setLeafletStatus("Loaded ✅ (Detected after delay)");
-          clearInterval(checkInterval);
-        }
-      }, 1000);
-      
-      // Clean up
-      return () => clearInterval(checkInterval);
-    }
-  }, []);
 
-  // Count how many plaques have valid coordinates
-  const validCoordinates = plaques.filter(plaque => 
-    plaque.latitude && plaque.longitude && 
-    !isNaN(parseFloat(plaque.latitude)) && !isNaN(parseFloat(plaque.longitude))
-  ).length;
-  
-  // Get map container status
-  const mapContainerExists = document.getElementById('plaque-map');
-  
-  // Get first few plaques for inspection
-  const samplePlaques = plaques.slice(0, 3);
-  
+  // Count plaques with valid coordinates
+  const validCoordPlaques = plaques.filter(p => {
+    if (!p.latitude || !p.longitude) return false;
+    
+    const lat = parseFloat(p.latitude);
+    const lng = parseFloat(p.longitude);
+    
+    return !isNaN(lat) && !isNaN(lng);
+  });
+
+  // Check if there are any plaques with invalid coordinates
+  const invalidCoordPlaques = plaques.filter(p => {
+    if (!p.latitude || !p.longitude) return true;
+    
+    const lat = parseFloat(p.latitude);
+    const lng = parseFloat(p.longitude);
+    
+    return isNaN(lat) || isNaN(lng);
+  });
+
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <Button 
-        onClick={() => setIsOpen(!isOpen)} 
-        variant="secondary"
-        className="shadow-lg bg-blue-500 text-white hover:bg-blue-600"
-      >
-        {isOpen ? "Hide Debug Info" : "Debug Map"}
-      </Button>
+    <div className="mt-4 border bg-gray-50 rounded-lg">
+      <div className="flex justify-between items-center p-2 cursor-pointer" 
+           onClick={() => setIsOpen(!isOpen)}>
+        <h3 className="text-sm font-medium text-gray-700">Map Debug Info</h3>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+          {isOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+        </Button>
+      </div>
       
       {isOpen && (
-        <Card className="p-4 mt-2 w-80 max-h-96 overflow-auto shadow-lg">
-          <h3 className="font-bold text-lg mb-2">Map Debug Info</h3>
+        <div className="p-4 border-t text-sm">
+          <ul className="space-y-2">
+            <li><strong>Total plaques:</strong> {plaques.length}</li>
+            <li><strong>Plaques with valid coordinates:</strong> {validCoordPlaques.length}</li>
+            <li><strong>Plaques with invalid coordinates:</strong> {invalidCoordPlaques.length}</li>
+          </ul>
           
-          <div className="space-y-2 text-sm">
-            <div>
-              <span className="font-medium">Leaflet Status:</span> {leafletStatus}
-            </div>
-            
-            <div>
-              <span className="font-medium">Map Container:</span> {mapContainerExists ? "Found ✅" : "Not found ❌"}
-            </div>
-            
-            <div>
-              <span className="font-medium">Total Plaques:</span> {plaques.length}
-            </div>
-            
-            <div>
-              <span className="font-medium">Plaques with Valid Coordinates:</span> {validCoordinates} ({((validCoordinates / plaques.length) * 100).toFixed(1)}%)
-            </div>
-            
-            <div>
-              <span className="font-medium">Sample Data:</span>
-              <pre className="mt-1 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-32">
-                {JSON.stringify(samplePlaques, null, 2)}
-              </pre>
-            </div>
-            
-            <div className="border-t pt-2 mt-2">
-              <h4 className="font-medium mb-1">Check for Map Errors</h4>
-              <div className="text-xs text-gray-600">
-                <p>Check browser console for errors like:</p>
-                <ul className="list-disc list-inside mt-1">
-                  <li>Failed to load resources (Leaflet CSS/JS)</li>
-                  <li>Map container not found</li>
-                  <li>Invalid coordinates in data</li>
-                </ul>
+          {invalidCoordPlaques.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium text-red-600 mb-2">Plaques with Invalid Coordinates:</h4>
+              <div className="max-h-40 overflow-y-auto bg-white p-2 rounded border text-xs">
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th className="text-left p-1">ID</th>
+                      <th className="text-left p-1">Title</th>
+                      <th className="text-left p-1">Latitude</th>
+                      <th className="text-left p-1">Longitude</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invalidCoordPlaques.map(plaque => (
+                      <tr key={plaque.id} className="border-t">
+                        <td className="p-1">{plaque.id}</td>
+                        <td className="p-1">{plaque.title}</td>
+                        <td className="p-1">{plaque.latitude || 'missing'}</td>
+                        <td className="p-1">{plaque.longitude || 'missing'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-            
-            <div className="border-t pt-2 mt-2">
-              <Button 
-                onClick={() => {
-                  // Force reload libraries
-                  const script = document.createElement('script');
-                  script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                  document.head.appendChild(script);
-                  
-                  setLeafletStatus("Reloading...");
-                }} 
-                variant="outline" 
-                size="sm"
-                className="w-full"
-              >
-                Reload Leaflet
-              </Button>
+          )}
+          
+          {plaques.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium mb-2">First Plaque Sample Data:</h4>
+              <pre className="bg-white p-2 rounded border text-xs overflow-x-auto">
+                {JSON.stringify(plaques[0], null, 2)}
+              </pre>
             </div>
-          </div>
-        </Card>
+          )}
+        </div>
       )}
     </div>
   );

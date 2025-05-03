@@ -1,411 +1,295 @@
-import React, { useEffect, useRef, useState } from "react";
-import { MapPin, Route, Trash, Clock } from 'lucide-react';
-import { Plaque } from "@/types/plaque";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+// src/components/plaques/PlaqueMap.jsx
 
-// Import our new components
-import useMapInitialization from './map/useMapInitialization';
-import createPlaqueMarker from './map/PlaqueMarker';
-import MapControlPanel from './map/MapControlPanel';
-import MapFilterPanel from './map/MapFilterPanel';
-import createPlaquePopupContent from './map/PlaquePopup';
+import React, { useRef, useEffect, useState } from 'react';
+import { createPlaqueMarker } from './map/PlaqueMarker';
+import { createPlaquePopupContent } from './map/PlaquePopup'; // Make sure this import is present
+import { MapControlPanel } from './map/MapControlPanel';
+import { MapFilterPanel } from './map/MapFilterPanel';
 
-interface PlaqueMapProps {
-  plaques: Plaque[];
-  onPlaqueClick?: (plaque: Plaque) => void;
-  favorites?: number[];
-  searchQuery?: string;
-  onSearchChange?: (query: string) => void;
-  onSearchSubmit?: () => void;
-  className?: string;
-}
-
-const PlaqueMap: React.FC<PlaqueMapProps> = ({
-  plaques = [],
+/**
+ * Interactive map component that displays plaques as markers
+ */
+const PlaqueMap = ({
+  plaques,
   onPlaqueClick,
   favorites = [],
-  searchQuery = "",
-  onSearchChange,
-  onSearchSubmit,
-  className = ""
+  selectedPlaqueId,
+  className = ''
 }) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<any[]>([]);
-  const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
-  const [mapFilterVisible, setMapFilterVisible] = useState(false);
-  const [routePlaques, setRoutePlaques] = useState<Plaque[]>([]);
-  
-  // Use our custom hook for map initialization
-  const { 
-    mapLoaded, 
-    mapError, 
-    mapInstance, 
-    clusterGroup, 
-    routeLine,
-    isScriptLoaded
-  } = useMapInitialization(mapRef);
+  const mapRef = useRef(null);
+  const [mapInstance, setMapInstance] = useState(null);
+  const markersRef = useRef([]);
+  const clusterGroupRef = useRef(null);
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quickCategories, setQuickCategories] = useState([]);
 
-  // Add markers when plaques data changes and map is loaded
+  // Initialize map
   useEffect(() => {
-    if (!mapLoaded || !mapInstance) return;
-    
-    try {
-      // Clear existing markers
-      if (clusterGroup) {
-        clusterGroup.clearLayers();
-      } else {
-        markersRef.current.forEach(marker => {
-          if (mapInstance) {
-            mapInstance.removeLayer(marker);
-          }
-        });
-        markersRef.current = [];
-      }
-      
-      // Filter plaques with valid coordinates
-      const validPlaques = plaques.filter(plaque => 
-        plaque.latitude && plaque.longitude && 
-        !isNaN(parseFloat(plaque.latitude as string)) && !isNaN(parseFloat(plaque.longitude as string))
-      );
-      
-      if (validPlaques.length === 0) return;
+    if (!mapRef.current || mapInstance) return;
 
-      // Create markers for each plaque using our utility function
-      const markers = validPlaques.map((plaque, index) => {
-        const marker = createPlaqueMarker(plaque, { 
-          L: window.L, 
-          onMarkerClick: () => setSelectedMarker(plaque.id),
-          favorites,
-          selectedMarkerId: selectedMarker
-        });
-        
-        if (!marker) return null;
-        
-        // Create popup with our utility function - using compact version for initial click
-        const popupContent = createPlaquePopupContent(plaque, {
-          onViewDetails: () => {
-            if (onPlaqueClick) onPlaqueClick(plaque);
-            marker.closePopup();
-          },
-          onAddToRoute: () => handleAddToRoute(plaque),
-          isFavorite: favorites.includes(plaque.id),
-          compact: true // Use compact version for initial click
-        });
-        
-        // Create popup with specified options
-        const popup = window.L.popup({
-          closeButton: true,
-          autoClose: true,
-          className: 'plaque-popup-container compact-popup',
-          offset: [0, -14]
-        }).setContent(popupContent);
-        
-        // Bind popup to marker
-        marker.bindPopup(popup);
-        
-        return marker;
-      }).filter(Boolean);
-      
-      // Add markers to map
-      if (clusterGroup && markers.length > 0) {
-        // Add to cluster group if available
-        clusterGroup.addLayers(markers);
-      } else if (markers.length > 0) {
-        // Otherwise add directly to map
-        markers.forEach(marker => {
-          marker.addTo(mapInstance);
-        });
-      }
-      
-      markersRef.current = markers;
-      
-      // Fit bounds to show all markers
-      if (markers.length > 0) {
-        const group = window.L.featureGroup(markers);
-        mapInstance.fitBounds(group.getBounds(), { padding: [50, 50] });
-      }
-    } catch (error) {
-      console.error("Error adding markers:", error);
+    // Check if Leaflet is loaded on window
+    if (!window.L) {
+      console.error('Leaflet not loaded. Make sure the library is included in your page.');
+      return;
     }
-  }, [plaques, mapLoaded, favorites, selectedMarker, mapInstance, clusterGroup]);
 
-  // Handle plaque click - this will just show the popup now, not directly open the panel
-  const handlePlaqueClick = (plaque: Plaque) => {
-    setSelectedMarker(plaque.id);
-    // Note: We don't call onPlaqueClick here anymore
-    // That will be handled by the View Details button in the popup
-  };
-  
-  // Handle adding a plaque to the route
-  const handleAddToRoute = (plaque: Plaque) => {
-    setRoutePlaques(prev => {
-      // Check if already in route
-      if (prev.some(p => p.id === plaque.id)) {
-        return prev; // Already in route
-      }
-      return [...prev, plaque]; // Add to route
+    const L = window.L;
+
+    // Initialize map with London center
+    console.log('Initializing map...');
+    const map = L.map(mapRef.current, {
+      center: [51.505, -0.09], // London
+      zoom: 13,
+      zoomControl: false // We'll add custom controls
     });
-    
-    // Show confirmation
-    if (mapInstance) {
-      const lat = parseFloat(plaque.latitude as string);
-      const lng = parseFloat(plaque.longitude as string);
-      
-      window.L.popup()
-        .setLatLng([lat, lng])
-        .setContent(`<div class="text-xs font-medium text-green-600">Added to route! (${routePlaques.length + 1} points)</div>`)
-        .openOn(mapInstance);
-      
-      setTimeout(() => {
-        mapInstance.closePopup();
-      }, 1500);
-    }
-  };
 
-  // Map control handlers
+    // Add tile layer (map background)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Create marker cluster group if available
+    if (L.markerClusterGroup) {
+      const clusterGroup = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 50,
+        zoomToBoundsOnClick: true,
+        spiderfyOnMaxZoom: true
+      });
+      map.addLayer(clusterGroup);
+      clusterGroupRef.current = clusterGroup;
+    } else {
+      console.warn('MarkerClusterGroup not available. Falling back to individual markers.');
+    }
+
+    // Add zoom control to the bottom right
+    L.control.zoom({
+      position: 'bottomright'
+    }).addTo(map);
+
+    // Add map styles for plaques
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .marker-drop-animation {
+        animation: markerDrop 0.5s ease-out;
+      }
+      @keyframes markerDrop {
+        0% { transform: translateY(-20px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+      }
+      .compact-popup .leaflet-popup-content-wrapper {
+        padding: 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+    `;
+    document.head.appendChild(style);
+
+    console.log('Map initialized successfully');
+    setMapInstance(map);
+
+    // Cleanup function
+    return () => {
+      console.log('Cleaning up map...');
+      if (style.parentNode) {
+        document.head.removeChild(style);
+      }
+      map.remove();
+      setMapInstance(null);
+    };
+  }, []);
+
+  // Build quick filter categories (first time only)
+  useEffect(() => {
+    if (plaques.length > 0 && quickCategories.length === 0) {
+      // Get most common colors
+      const colorCounts = {};
+      plaques.forEach(p => {
+        if (p.color) {
+          const color = p.color.toLowerCase();
+          colorCounts[color] = (colorCounts[color] || 0) + 1;
+        }
+      });
+
+      // Get most common professions
+      const professionCounts = {};
+      plaques.forEach(p => {
+        if (p.profession) {
+          professionCounts[p.profession] = (professionCounts[p.profession] || 0) + 1;
+        }
+      });
+
+      // Create categories from top colors and professions
+      const topCategories = [
+        ...Object.entries(colorCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([color, count]) => ({
+            label: `${color.charAt(0).toUpperCase() + color.slice(1)} (${count})`,
+            onClick: () => { /* Will implement later */ }
+          })),
+        ...Object.entries(professionCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([profession, count]) => ({
+            label: `${profession} (${count})`,
+            onClick: () => { /* Will implement later */ }
+          }))
+      ];
+
+      setQuickCategories(topCategories);
+    }
+  }, [plaques, quickCategories.length]);
+
+  // Update markers when plaques, favorites, or selectedPlaqueId change
+  useEffect(() => {
+    if (!mapInstance) return;
+    console.log(`Updating markers for ${plaques.length} plaques...`);
+
+    const L = window.L;
+    if (!L) return;
+
+    // Clear existing markers
+    if (clusterGroupRef.current) {
+      clusterGroupRef.current.clearLayers();
+    } else {
+      // Remove individual markers
+      markersRef.current.forEach(marker => {
+        if (marker) marker.remove();
+      });
+      markersRef.current = [];
+    }
+
+    // Create markers for each plaque
+    const newMarkers = plaques.map(plaque => 
+      createPlaqueMarker(plaque, {
+        L,
+        onMarkerClick: onPlaqueClick,
+        onViewDetails: onPlaqueClick,
+        favorites,
+        selectedMarkerId: selectedPlaqueId,
+        createPopupContent: createPlaquePopupContent // Pass the imported function
+      })
+    ).filter(Boolean); // Filter out null markers
+
+    // Add markers to map
+    if (clusterGroupRef.current) {
+      clusterGroupRef.current.addLayers(newMarkers);
+    } else {
+      newMarkers.forEach(marker => marker.addTo(mapInstance));
+      markersRef.current = newMarkers;
+    }
+
+    // If there are plaques but no markers were created, log an error
+    if (plaques.length > 0 && newMarkers.length === 0) {
+      console.error('No valid markers could be created. Check plaque coordinates.');
+    } else {
+      console.log(`Created ${newMarkers.length} markers out of ${plaques.length} plaques`);
+    }
+
+    // Fit bounds to show all markers if we have any
+    if (newMarkers.length > 0) {
+      try {
+        const group = L.featureGroup(newMarkers);
+        mapInstance.fitBounds(group.getBounds(), {
+          padding: [50, 50],
+          maxZoom: 16
+        });
+      } catch (error) {
+        console.error('Error fitting bounds:', error);
+      }
+    }
+    
+    // If we have a selected plaque, center on it
+    if (selectedPlaqueId) {
+      const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
+      if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
+        const lat = parseFloat(selectedPlaque.latitude);
+        const lng = parseFloat(selectedPlaque.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          mapInstance.setView([lat, lng], 16);
+        }
+      }
+    }
+
+  }, [mapInstance, plaques, favorites, selectedPlaqueId, onPlaqueClick]);
+
+  // Handle map actions
   const handleCenterMap = () => {
-    if (mapInstance) {
-      // Center on London
+    if (!mapInstance) return;
+    
+    // If we have markers, fit bounds
+    if (markersRef.current.length > 0 || (clusterGroupRef.current && clusterGroupRef.current.getLayers().length > 0)) {
+      const L = window.L;
+      const layers = clusterGroupRef.current ? clusterGroupRef.current.getLayers() : markersRef.current;
+      const group = L.featureGroup(layers);
+      mapInstance.fitBounds(group.getBounds(), {
+        padding: [50, 50],
+        maxZoom: 15
+      });
+    } else {
+      // Default center on London
       mapInstance.setView([51.505, -0.09], 13);
     }
   };
 
+  const handleToggleFilters = () => {
+    setFiltersVisible(prev => !prev);
+  };
+
   const handleFindMyLocation = () => {
-    if (navigator.geolocation) {
+    if (!mapInstance) return;
+    
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          if (mapInstance) {
-            const { latitude, longitude } = position.coords;
-            mapInstance.setView([latitude, longitude], 16);
-            
-            // Add a temporary marker at the user's location
-            const userMarker = window.L.circleMarker([latitude, longitude], {
-              radius: 8,
-              color: '#4299e1',
-              fillColor: '#3182ce',
-              fillOpacity: 0.8,
-              weight: 2
-            }).addTo(mapInstance);
-            
-            // Add a pulsing effect
-            const pulseMarker = window.L.circleMarker([latitude, longitude], {
-              radius: 16,
-              color: '#4299e1',
-              fillColor: '#3182ce',
-              fillOpacity: 0.3,
-              weight: 1
-            }).addTo(mapInstance);
-            
-            // Remove the markers after 5 seconds
-            setTimeout(() => {
-              if (mapInstance) {
-                mapInstance.removeLayer(userMarker);
-                mapInstance.removeLayer(pulseMarker);
-              }
-            }, 5000);
-          }
+          const { latitude, longitude } = position.coords;
+          mapInstance.setView([latitude, longitude], 15);
         },
         (error) => {
-          console.error("Error getting location:", error);
-          alert("Please enable location services to use this feature");
-        },
-        {
-          enableHighAccuracy: true, 
-          timeout: 5000, 
-          maximumAge: 0
+          console.error('Error getting location:', error);
+          alert('Could not get your location. Please check your browser settings.');
         }
       );
     } else {
-      alert("Your browser doesn't support geolocation");
+      alert('Geolocation is not supported by your browser.');
     }
   };
 
-  // Clear route handler
-  const handleClearRoute = () => {
-    setRoutePlaques([]);
-    
-    // Remove existing route lines
-    if (routeLine && mapInstance) {
-      mapInstance.removeLayer(routeLine);
-    }
-  };
-
-  // Define some category quick filters
-  const categories = [
-    { label: "Authors", onClick: () => handleCategorySearch("author") },
-    { label: "Scientists", onClick: () => handleCategorySearch("scientist") },
-    { label: "Composers", onClick: () => handleCategorySearch("composer") },
-    { label: "Politicians", onClick: () => handleCategorySearch("politician") }
-  ];
-
-  const handleCategorySearch = (category: string) => {
-    if (onSearchChange) onSearchChange(category);
-    if (onSearchSubmit) onSearchSubmit();
-    setMapFilterVisible(false);
-  };
-
-  // Calculate route
-  const calculateRoute = () => {
-    if (mapInstance && routePlaques.length > 1) {
-      const routePoints = routePlaques.map(plaque => 
-        [parseFloat(plaque.latitude as string), parseFloat(plaque.longitude as string)]
-      );
-      
-      // Remove existing routes first
-      if (routeLine) {
-        mapInstance.removeLayer(routeLine);
-      }
-      
-      const newRouteLine = window.L.polyline(routePoints, {
-        color: '#10b981',
-        weight: 5,
-        opacity: 0.7,
-        dashArray: '10, 10',
-        lineCap: 'round',
-        className: 'route-line'
-      }).addTo(mapInstance);
-      
-      // Calculate approximate distance
-      let totalDistance = 0;
-      for (let i = 0; i < routePoints.length - 1; i++) {
-        const start = window.L.latLng(routePoints[i][0], routePoints[i][1]);
-        const end = window.L.latLng(routePoints[i+1][0], routePoints[i+1][1]);
-        totalDistance += start.distanceTo(end);
-      }
-      
-      // Display distance in km
-      const distanceKm = (totalDistance / 1000).toFixed(2);
-      window.L.popup()
-        .setLatLng(routePoints[0])
-        .setContent(`<div class="p-2"><div class="font-medium text-sm">Route Details</div><div class="text-xs mt-1">Distance: ${distanceKm} km</div><div class="text-xs">Stops: ${routePlaques.length}</div></div>`)
-        .openOn(mapInstance);
-      
-      // Fit map to show the route
-      mapInstance.fitBounds(newRouteLine.getBounds(), {padding: [50, 50]});
-    }
+  const handleSearch = () => {
+    // Implement search functionality
+    console.log('Searching for:', searchQuery);
+    // This would typically filter the plaques based on the search query
   };
 
   return (
-    <div className={`relative rounded-xl overflow-hidden ${className}`}>
-      {/* Map container with fixed height */}
-      <div 
-        ref={mapRef} 
-        id="plaque-map" 
-        className="w-full h-[650px]"
-        style={{ backgroundColor: '#f0f0f0' }}
-      ></div>
-      
-      {/* Map loading state */}
-      {(!mapLoaded && !mapError) && (
-        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-            <p className="mt-2 text-gray-600">Loading map...</p>
-          </div>
-        </div>
-      )}
-      
-      {/* Map error state */}
-      {mapError && (
-        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-          <div className="text-center p-4">
-            <div className="text-red-500 text-5xl mb-4">⚠️</div>
-            <h3 className="text-xl font-medium text-gray-800 mb-2">Map Failed to Load</h3>
-            <p className="text-gray-600 mb-4">{mapError}</p>
-            <Button 
-              onClick={() => window.location.reload()}
-              variant="outline"
-            >
-              Reload Page
-            </Button>
-          </div>
-        </div>
-      )}
+    <div className={`relative w-full h-full ${className}`}>
+      <div ref={mapRef} className="w-full h-full"></div>
       
       {/* Map Controls */}
-      {mapLoaded && !mapError && (
-        <>
-          {/* Controls Panel */}
-          <MapControlPanel
-            onCenterMap={handleCenterMap}
-            onToggleFilters={() => setMapFilterVisible(!mapFilterVisible)}
-            onFindMyLocation={handleFindMyLocation}
-            filtersVisible={mapFilterVisible}
-          />
-          
-          {/* Filter Panel */}
-          <MapFilterPanel
-            visible={mapFilterVisible}
-            onClose={() => setMapFilterVisible(false)}
-            searchQuery={searchQuery || ""}
-            onSearchChange={(e) => onSearchChange?.(e.target.value)}
-            onSearch={() => onSearchSubmit?.()}
-            categories={categories}
-          />
-          
-          {/* Plaque counter */}
-          <div className="absolute top-4 right-[5.5rem] z-10 bg-white rounded-full px-3 py-1 shadow-md text-sm font-medium">
-            {plaques.length} {plaques.length === 1 ? 'Plaque' : 'Plaques'}
-          </div>
-          
-          {/* Route Controls - only show if there are route plaques */}
-          {routePlaques.length > 0 && (
-            <div className="absolute bottom-4 left-4 z-10 bg-white rounded-lg p-3 shadow-md">
-              <h4 className="font-medium text-sm mb-2">Route Planning</h4>
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin size={14} className="text-blue-500" />
-                <div className="text-xs text-gray-600">
-                  {routePlaques.length} stops selected
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleClearRoute}>
-                  Clear
-                </Button>
-                <Button size="sm" onClick={calculateRoute}>
-                  <Route size={14} className="mr-1" /> Calculate Route
-                </Button>
-              </div>
-            </div>
-          )}
-          
-          {/* Map Legend */}
-          <div className="absolute bottom-4 right-4 z-10 bg-white rounded-lg shadow-md p-3">
-            <h4 className="font-medium text-sm mb-2">Legend</h4>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <div className="bg-blue-500 w-4 h-4 rounded-full"></div>
-                <span className="text-xs">Blue Plaques</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="bg-green-500 w-4 h-4 rounded-full"></div>
-                <span className="text-xs">Green Plaques</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="bg-amber-500 w-4 h-4 rounded-full"></div>
-                <span className="text-xs">Brown Plaques</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="bg-gray-500 w-4 h-4 rounded-full"></div>
-                <span className="text-xs">Black/Grey Plaques</span>
-              </div>
-              {routePlaques.length > 0 && (
-                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-                  <div className="h-0.5 w-4 bg-green-500"></div>
-                  <span className="text-xs">Planned Route</span>
-                </div>
-              )}
-              {/* Show checkmark for visited plaques */}
-              <div className="flex items-center gap-2 border-t border-gray-100 pt-1">
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <div className="w-3 h-3 text-white bg-blue-500 rounded-full flex items-center justify-center text-[8px]">✓</div>
-                </div>
-                <span className="text-xs">Visited Plaques</span>
-              </div>
-            </div>
-          </div>
-        </>
+      <MapControlPanel
+        onCenterMap={handleCenterMap}
+        onToggleFilters={handleToggleFilters}
+        onFindMyLocation={handleFindMyLocation}
+        filtersVisible={filtersVisible}
+      />
+      
+      {/* Filter Panel */}
+      <MapFilterPanel
+        visible={filtersVisible}
+        onClose={() => setFiltersVisible(false)}
+        searchQuery={searchQuery}
+        onSearchChange={(e) => setSearchQuery(e.target.value)}
+        onSearch={handleSearch}
+        categories={quickCategories}
+      />
+      
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute bottom-2 left-2 z-10 bg-white bg-opacity-75 text-xs p-1 rounded">
+          {plaques.length} plaques / {markersRef.current.length || (clusterGroupRef.current ? clusterGroupRef.current.getLayers().length : 0)} markers
+        </div>
       )}
     </div>
   );

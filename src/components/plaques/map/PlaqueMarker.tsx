@@ -1,10 +1,12 @@
-// src/components/plaques/map/PlaqueMarker.tsx
+// src/components/plaques/map/PlaqueMarker.jsx
 
-import React from 'react';
-import { Plaque } from '@/types/plaque';
-
-// Helper function to create a marker for a plaque
-export const createPlaqueMarker = (plaque: Plaque, options: any) => {
+/**
+ * Helper function to create a marker for a plaque
+ * @param {Object} plaque - The plaque data
+ * @param {Object} options - Options for marker creation
+ * @returns {Object|null} - Leaflet marker or null if creation failed
+ */
+export const createPlaqueMarker = (plaque, options) => {
   const { 
     L, 
     onMarkerClick, 
@@ -16,16 +18,22 @@ export const createPlaqueMarker = (plaque: Plaque, options: any) => {
   } = options;
   
   try {
-    const lat = parseFloat(plaque.latitude as string);
-    const lng = parseFloat(plaque.longitude as string);
-    
-    if (isNaN(lat) || isNaN(lng)) {
-      console.warn(`Invalid coordinates for plaque ${plaque.id}`);
+    // Check if plaque has valid coordinates
+    if (!plaque.latitude || !plaque.longitude) {
+      console.warn(`Missing coordinates for plaque ${plaque.id}`);
       return null;
     }
     
-    // Get plaque color
-    const plaqueColor = (plaque.color?.toLowerCase() || 'blue') as string;
+    const lat = parseFloat(plaque.latitude);
+    const lng = parseFloat(plaque.longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      console.warn(`Invalid coordinates for plaque ${plaque.id}: lat=${plaque.latitude}, lng=${plaque.longitude}`);
+      return null;
+    }
+    
+    // Get plaque color with fallback to blue
+    const plaqueColor = (plaque.color?.toLowerCase() || 'blue');
     const bgColor = {
       'blue': '#3b82f6',
       'green': '#10b981',
@@ -50,27 +58,30 @@ export const createPlaqueMarker = (plaque: Plaque, options: any) => {
       })
     });
     
-    // Create the compact popup content
-    const popupContent = createPopupContent(plaque, {
-      onViewDetails: () => {
-        if (onViewDetails) onViewDetails(plaque);
-        marker.closePopup();
-      },
-      onAddToRoute: onAddToRoute ? () => onAddToRoute(plaque) : undefined,
-      isFavorite: favorites.includes(plaque.id),
-      compact: true // Use compact version for initial click
-    });
-    
-    // Create popup with specified options
-    const popup = L.popup({
-      closeButton: true,
-      autoClose: true,
-      className: 'plaque-popup-container compact-popup',
-      offset: [0, -14] // Adjust offset to position the popup better
-    }).setContent(popupContent);
-    
-    // Bind popup to marker
-    marker.bindPopup(popup);
+    // Create popup content if function exists
+    if (typeof createPopupContent === 'function') {
+      // Create the compact popup content
+      const popupContent = createPopupContent(plaque, {
+        onViewDetails: () => {
+          if (onViewDetails) onViewDetails(plaque);
+          marker.closePopup();
+        },
+        onAddToRoute: onAddToRoute ? () => onAddToRoute(plaque) : undefined,
+        isFavorite: favorites.includes(plaque.id),
+        compact: true // Use compact version for initial click
+      });
+      
+      // Create popup with specified options
+      const popup = L.popup({
+        closeButton: true,
+        autoClose: true,
+        className: 'plaque-popup-container compact-popup',
+        offset: [0, -14] // Adjust offset to position the popup better
+      }).setContent(popupContent);
+      
+      // Bind popup to marker
+      marker.bindPopup(popup);
+    }
     
     // Add click handler
     marker.on('click', function(e) {
@@ -91,6 +102,9 @@ export const createPlaqueMarker = (plaque: Plaque, options: any) => {
         markerElement.classList.add('marker-drop-animation');
       }
     }, 10);
+    
+    // Log success for debugging
+    console.log(`Created marker for plaque ${plaque.id} (${plaque.title})`);
     
     return marker;
   } catch (error) {
