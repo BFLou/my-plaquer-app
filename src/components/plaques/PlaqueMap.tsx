@@ -5,16 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plaque } from '@/types/plaque';
 
-// Import toast if available, otherwise create a simple fallback
-let toast;
-try {
-  toast = require('sonner').toast;
-} catch (error) {
-  toast = {
-    success: (message) => alert(message),
-    error: (message) => alert(message),
-    info: (message) => alert(message)
-  };
+// Load Leaflet and MarkerCluster dynamically
+declare global {
+  interface Window {
+    L: any;
+  }
 }
 
 interface PlaqueMapProps {
@@ -27,9 +22,6 @@ interface PlaqueMapProps {
   className?: string;
 }
 
-/**
- * A map component to display plaques geographically
- */
 const PlaqueMap: React.FC<PlaqueMapProps> = ({
   plaques = [],
   onPlaqueClick,
@@ -47,167 +39,140 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapFilterVisible, setMapFilterVisible] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
-  const [mapInitialized, setMapInitialized] = useState(false);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
-  // Initialize map on component mount
+  // Load Leaflet scripts
   useEffect(() => {
-    // Skip if already initialized to prevent duplicate initialization
-    if (mapInitialized) return;
-    
-    // Define a function to load the required scripts
-    const loadMapDependencies = async () => {
-      try {
-        // Check if Leaflet CSS is already loaded
-        if (!document.querySelector('link[href*="leaflet.css"]')) {
-          const linkLeaflet = document.createElement('link');
-          linkLeaflet.rel = 'stylesheet';
-          linkLeaflet.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-          document.head.appendChild(linkLeaflet);
-        }
-        
-        // Check if MarkerCluster CSS is already loaded
-        if (!document.querySelector('link[href*="MarkerCluster.css"]')) {
-          const linkCluster = document.createElement('link');
-          linkCluster.rel = 'stylesheet';
-          linkCluster.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
-          document.head.appendChild(linkCluster);
-          
-          const linkClusterDefault = document.createElement('link');
-          linkClusterDefault.rel = 'stylesheet';
-          linkClusterDefault.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
-          document.head.appendChild(linkClusterDefault);
-        }
-        
-        // Load Leaflet script if not already loaded
-        if (!(window as any).L) {
-          await new Promise<void>((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            script.async = true;
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error("Failed to load Leaflet"));
-            document.head.appendChild(script);
-          });
-        }
-        
-        // Load MarkerCluster script if not already loaded
-        if (!(window as any).L?.markerClusterGroup) {
-          await new Promise<void>((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-            script.async = true;
-            script.onload = () => {
-              console.log("MarkerCluster loaded successfully");
-              resolve();
-            };
-            script.onerror = (error) => {
-              console.warn("Failed to load MarkerCluster:", error);
-              // Continue without clustering
-              resolve();
-            };
-            document.head.appendChild(script);
-          });
-        }
-      } catch (error) {
-        console.error("Error loading map dependencies:", error);
-        setMapError("Error loading map dependencies");
-        throw error;
-      }
+    if (window.L) {
+      setIsScriptLoaded(true);
+      return;
+    }
+
+    // Create and load Leaflet CSS
+    const linkLeaflet = document.createElement('link');
+    linkLeaflet.rel = 'stylesheet';
+    linkLeaflet.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(linkLeaflet);
+
+    // Create and load MarkerCluster CSS
+    const linkCluster = document.createElement('link');
+    linkCluster.rel = 'stylesheet';
+    linkCluster.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
+    document.head.appendChild(linkCluster);
+
+    const linkClusterDefault = document.createElement('link');
+    linkClusterDefault.rel = 'stylesheet';
+    linkClusterDefault.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
+    document.head.appendChild(linkClusterDefault);
+
+    // Load Leaflet JS
+    const scriptLeaflet = document.createElement('script');
+    scriptLeaflet.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    scriptLeaflet.async = true;
+    scriptLeaflet.onload = () => {
+      // Load MarkerCluster JS after Leaflet is loaded
+      const scriptCluster = document.createElement('script');
+      scriptCluster.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+      scriptCluster.async = true;
+      scriptCluster.onload = () => {
+        setIsScriptLoaded(true);
+      };
+      document.head.appendChild(scriptCluster);
     };
-    
-    // Initialize the map
-    const initializeMap = async () => {
-      try {
-        if (!mapRef.current || !(window as any).L) return;
-        
-        const L = (window as any).L;
-        
-        // Verify the map container isn't already initialized
-        if (mapInstanceRef.current) {
-          console.log("Map already initialized, skipping");
-          return;
-        }
-        
-        // Create map instance - center on London by default
-        console.log("Creating new map instance");
-        const map = L.map(mapRef.current, {
-          center: [51.505, -0.09], // London coordinates
-          zoom: 13,
-          maxZoom: 18,
-          minZoom: 8,
-        });
-        
-        // Add tile layer (map background)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        
-        // Create marker cluster group if available
-        if (L.markerClusterGroup) {
-          const clusterGroup = L.markerClusterGroup({
-            showCoverageOnHover: false,
-            maxClusterRadius: 50,
-            iconCreateFunction: function(cluster) {
-              return L.divIcon({
-                html: `<div class="marker-cluster"><div>${cluster.getChildCount()}</div></div>`,
-                className: 'custom-cluster',
-                iconSize: L.point(40, 40)
-              });
-            }
-          });
-          
-          map.addLayer(clusterGroup);
-          clusterGroupRef.current = clusterGroup;
-        }
-        
-        // Add scale control
-        L.control.scale({
-          imperial: false,
-          position: 'bottomright'
-        }).addTo(map);
-        
-        // Store map instance
-        mapInstanceRef.current = map;
-        setMapLoaded(true);
-        
-      } catch (error) {
-        console.error("Map initialization error:", error);
-        setMapError(`Failed to initialize map: ${error}`);
+    document.head.appendChild(scriptLeaflet);
+
+    // Add some critical inline styles for the map
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .leaflet-container {
+        width: 100%;
+        height: 100%;
       }
-    };
-    
-    // Execute the async functions
-    const loadMap = async () => {
-      try {
-        await loadMapDependencies();
-        await initializeMap();
-        setMapInitialized(true);
-      } catch (error) {
-        console.error("Error setting up map:", error);
-        setMapError("Failed to load map components");
+      .custom-marker {
+        transition: transform 0.2s;
       }
-    };
-    
-    loadMap();
-    
-    // Cleanup function
+      .custom-marker:hover {
+        transform: scale(1.2);
+        z-index: 1000 !important;
+      }
+      .selected-marker {
+        transform: scale(1.2);
+        z-index: 1000 !important;
+      }
+    `;
+    document.head.appendChild(style);
+
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      // Cleanup if component unmounts
+      document.head.removeChild(linkLeaflet);
+      document.head.removeChild(linkCluster);
+      document.head.removeChild(linkClusterDefault);
+      document.head.removeChild(scriptLeaflet);
+      if (document.querySelector('script[src*="leaflet.markercluster.js"]')) {
+        document.head.removeChild(document.querySelector('script[src*="leaflet.markercluster.js"]')!);
       }
-      setMapInitialized(false);
+      document.head.removeChild(style);
     };
   }, []);
 
-  // Add markers when plaques data changes
+  // Initialize map once scripts are loaded
+  useEffect(() => {
+    if (!isScriptLoaded || !mapRef.current || mapInstanceRef.current) return;
+
+    try {
+      console.log("Initializing map");
+      // Initialize the map
+      const map = window.L.map(mapRef.current, {
+        center: [51.505, -0.09], // London coordinates
+        zoom: 13,
+        maxZoom: 18,
+        minZoom: 8,
+      });
+
+      // Add tile layer (map background)
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // Create marker cluster group if available
+      if (window.L.markerClusterGroup) {
+        const clusterGroup = window.L.markerClusterGroup({
+          showCoverageOnHover: false,
+          maxClusterRadius: 50,
+          iconCreateFunction: function(cluster: any) {
+            return window.L.divIcon({
+              html: `<div class="marker-cluster"><div>${cluster.getChildCount()}</div></div>`,
+              className: 'custom-cluster',
+              iconSize: window.L.point(40, 40)
+            });
+          }
+        });
+        
+        map.addLayer(clusterGroup);
+        clusterGroupRef.current = clusterGroup;
+      }
+
+      // Add scale control
+      window.L.control.scale({
+        imperial: false,
+        position: 'bottomright'
+      }).addTo(map);
+
+      // Store map instance
+      mapInstanceRef.current = map;
+      setMapLoaded(true);
+      
+    } catch (error) {
+      console.error("Map initialization error:", error);
+      setMapError(`Failed to initialize map: ${error}`);
+    }
+  }, [isScriptLoaded]);
+
+  // Add markers when plaques data changes and map is loaded
   useEffect(() => {
     if (!mapLoaded || !mapInstanceRef.current) return;
     
     try {
-      const L = (window as any).L;
-      if (!L) return;
-
       // Clear existing markers
       if (clusterGroupRef.current) {
         clusterGroupRef.current.clearLayers();
@@ -235,8 +200,8 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
           const lng = parseFloat(plaque.longitude as string);
           
           // Create marker
-          const marker = L.marker([lat, lng], { 
-            icon: L.divIcon({
+          const marker = window.L.marker([lat, lng], { 
+            icon: window.L.divIcon({
               className: `custom-marker ${selectedMarker === plaque.id ? 'selected-marker' : ''}`,
               html: `
                 <div class="bg-white rounded-full p-1 shadow-md ${favorites.includes(plaque.id) ? 'ring-2 ring-amber-500' : ''}">
@@ -293,10 +258,10 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
       }).filter(Boolean);
       
       // Add markers to map
-      if (clusterGroupRef.current) {
+      if (clusterGroupRef.current && markers.length > 0) {
         // Add to cluster group if available
         clusterGroupRef.current.addLayers(markers);
-      } else {
+      } else if (markers.length > 0) {
         // Otherwise add directly to map
         markers.forEach(marker => {
           marker.addTo(mapInstanceRef.current);
@@ -307,7 +272,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
       
       // Fit bounds to show all markers
       if (markers.length > 0) {
-        const group = L.featureGroup(markers);
+        const group = window.L.featureGroup(markers);
         mapInstanceRef.current.fitBounds(group.getBounds(), { padding: [50, 50] });
       }
     } catch (error) {
@@ -339,7 +304,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
             mapInstanceRef.current.setView([latitude, longitude], 16);
             
             // Add a temporary marker at the user's location
-            const userMarker = (window as any).L.circleMarker([latitude, longitude], {
+            const userMarker = window.L.circleMarker([latitude, longitude], {
               radius: 8,
               color: '#4299e1',
               fillColor: '#3182ce',
@@ -348,7 +313,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
             }).addTo(mapInstanceRef.current);
             
             // Add a pulsing effect
-            const pulseMarker = (window as any).L.circleMarker([latitude, longitude], {
+            const pulseMarker = window.L.circleMarker([latitude, longitude], {
               radius: 16,
               color: '#4299e1',
               fillColor: '#3182ce',
@@ -382,7 +347,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
 
   return (
     <div className={`relative rounded-xl overflow-hidden ${className}`}>
-      {/* Map container */}
+      {/* Map container with fixed height */}
       <div 
         ref={mapRef} 
         id="plaque-map" 
@@ -391,7 +356,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
       ></div>
       
       {/* Map loading state */}
-      {!mapLoaded && !mapError && (
+      {(!mapLoaded && !mapError) && (
         <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
           <div className="flex flex-col items-center">
             <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
@@ -452,7 +417,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
                   <div className="absolute inset-0 animate-ping bg-blue-400 rounded-full opacity-75 h-1 w-1 m-auto"></div>
                 </div>
               </Button>
-              {(window as any)?.L?.markerClusterGroup && (
+              {window.L?.markerClusterGroup && (
                 <Button 
                   variant="outline" 
                   size="sm" 
