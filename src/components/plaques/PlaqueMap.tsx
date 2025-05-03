@@ -1,8 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapPin, Search, Filter, Layers } from 'lucide-react';
+import { MapPin, Search, Filter, Layers, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Plaque } from '@/types/plaque';
+
+// Import toast if available, otherwise create a simple fallback
+let toast;
+try {
+  toast = require('sonner').toast;
+} catch (error) {
+  toast = {
+    success: (message) => alert(message),
+    error: (message) => alert(message),
+    info: (message) => alert(message)
+  };
+}
 
 interface PlaqueMapProps {
   plaques: Plaque[];
@@ -38,90 +51,147 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
 
   // Initialize map on component mount
   useEffect(() => {
-    if (mapInitialized) return; // Skip if already initialized
-
-    // Add Leaflet CSS
-    if (!document.querySelector('link[href*="leaflet.css"]')) {
-      const linkLeaflet = document.createElement('link');
-      linkLeaflet.rel = 'stylesheet';
-      linkLeaflet.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(linkLeaflet);
-    }
-
-    // Add MarkerCluster CSS
-    if (!document.querySelector('link[href*="MarkerCluster.css"]')) {
-      const linkCluster = document.createElement('link');
-      linkCluster.rel = 'stylesheet';
-      linkCluster.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
-      document.head.appendChild(linkCluster);
-      
-      const linkClusterDefault = document.createElement('link');
-      linkClusterDefault.rel = 'stylesheet';
-      linkClusterDefault.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
-      document.head.appendChild(linkClusterDefault);
-    }
-
-    // Define initializer function
-    const initializeLeaflet = () => {
+    // Skip if already initialized to prevent duplicate initialization
+    if (mapInitialized) return;
+    
+    // Define a function to load the required scripts
+    const loadMapDependencies = async () => {
       try {
-        // Check if map is already initialized
+        // Check if Leaflet CSS is already loaded
+        if (!document.querySelector('link[href*="leaflet.css"]')) {
+          const linkLeaflet = document.createElement('link');
+          linkLeaflet.rel = 'stylesheet';
+          linkLeaflet.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          document.head.appendChild(linkLeaflet);
+        }
+        
+        // Check if MarkerCluster CSS is already loaded
+        if (!document.querySelector('link[href*="MarkerCluster.css"]')) {
+          const linkCluster = document.createElement('link');
+          linkCluster.rel = 'stylesheet';
+          linkCluster.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
+          document.head.appendChild(linkCluster);
+          
+          const linkClusterDefault = document.createElement('link');
+          linkClusterDefault.rel = 'stylesheet';
+          linkClusterDefault.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
+          document.head.appendChild(linkClusterDefault);
+        }
+        
+        // Load Leaflet script if not already loaded
+        if (!(window as any).L) {
+          await new Promise<void>((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error("Failed to load Leaflet"));
+            document.head.appendChild(script);
+          });
+        }
+        
+        // Load MarkerCluster script if not already loaded
+        if (!(window as any).L?.markerClusterGroup) {
+          await new Promise<void>((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+            script.async = true;
+            script.onload = () => {
+              console.log("MarkerCluster loaded successfully");
+              resolve();
+            };
+            script.onerror = (error) => {
+              console.warn("Failed to load MarkerCluster:", error);
+              // Continue without clustering
+              resolve();
+            };
+            document.head.appendChild(script);
+          });
+        }
+      } catch (error) {
+        console.error("Error loading map dependencies:", error);
+        setMapError("Error loading map dependencies");
+        throw error;
+      }
+    };
+    
+    // Initialize the map
+    const initializeMap = async () => {
+      try {
+        if (!mapRef.current || !(window as any).L) return;
+        
+        const L = (window as any).L;
+        
+        // Verify the map container isn't already initialized
         if (mapInstanceRef.current) {
           console.log("Map already initialized, skipping");
           return;
         }
         
-        // Load MarkerCluster if needed
-        if (!(window as any).L.markerClusterGroup) {
-          const clusterScript = document.createElement('script');
-          clusterScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-          clusterScript.async = true;
+        // Create map instance - center on London by default
+        console.log("Creating new map instance");
+        const map = L.map(mapRef.current, {
+          center: [51.505, -0.09], // London coordinates
+          zoom: 13,
+          maxZoom: 18,
+          minZoom: 8,
+        });
+        
+        // Add tile layer (map background)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Create marker cluster group if available
+        if (L.markerClusterGroup) {
+          const clusterGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 50,
+            iconCreateFunction: function(cluster) {
+              return L.divIcon({
+                html: `<div class="marker-cluster"><div>${cluster.getChildCount()}</div></div>`,
+                className: 'custom-cluster',
+                iconSize: L.point(40, 40)
+              });
+            }
+          });
           
-          clusterScript.onload = () => {
-            initializeMap();
-          };
-          
-          clusterScript.onerror = () => {
-            setMapError("Failed to load marker cluster plugin");
-            // Initialize map anyway without clustering
-            initializeMap();
-          };
-          
-          document.head.appendChild(clusterScript);
-        } else {
-          // MarkerCluster already loaded, initialize map
-          initializeMap();
+          map.addLayer(clusterGroup);
+          clusterGroupRef.current = clusterGroup;
         }
+        
+        // Add scale control
+        L.control.scale({
+          imperial: false,
+          position: 'bottomright'
+        }).addTo(map);
+        
+        // Store map instance
+        mapInstanceRef.current = map;
+        setMapLoaded(true);
+        
       } catch (error) {
-        console.error("Error loading map dependencies:", error);
-        setMapError("Error loading map dependencies");
+        console.error("Map initialization error:", error);
+        setMapError(`Failed to initialize map: ${error}`);
       }
     };
-
-    // Check if Leaflet is already loaded
-    if ((window as any).L) {
-      initializeLeaflet();
-    } else {
-      // Load Leaflet JS
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.async = true;
-      
-      script.onload = () => {
-        initializeLeaflet();
-      };
-      
-      script.onerror = () => {
-        setMapError("Failed to load Leaflet map library");
-      };
-      
-      document.head.appendChild(script);
-    }
-
-    // Set initialized flag
-    setMapInitialized(true);
-
+    
+    // Execute the async functions
+    const loadMap = async () => {
+      try {
+        await loadMapDependencies();
+        await initializeMap();
+        setMapInitialized(true);
+      } catch (error) {
+        console.error("Error setting up map:", error);
+        setMapError("Failed to load map components");
+      }
+    };
+    
+    loadMap();
+    
+    // Cleanup function
     return () => {
-      // Clean up map instance when component unmounts
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -129,59 +199,6 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
       setMapInitialized(false);
     };
   }, []);
-
-  // Initialize the map
-  const initializeMap = () => {
-    try {
-      if (!mapRef.current || !(window as any).L) return;
-      
-      const L = (window as any).L;
-      
-      // Verify the map container isn't already initialized
-      if (mapInstanceRef.current) {
-        console.log("Map already initialized, skipping");
-        return;
-      }
-      
-      // Create map instance
-      console.log("Creating new map instance");
-      const map = L.map(mapRef.current, {
-        center: [51.505, -0.09],
-        zoom: 12,
-        maxZoom: 18
-      });
-      
-      // Add tile layer (map background)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(map);
-      
-      // Create marker cluster group if available
-      if (L.markerClusterGroup) {
-        const clusterGroup = L.markerClusterGroup({
-          showCoverageOnHover: false,
-          maxClusterRadius: 50,
-          iconCreateFunction: function(cluster: any) {
-            return L.divIcon({
-              html: `<div class="marker-cluster"><div>${cluster.getChildCount()}</div></div>`,
-              className: 'custom-cluster',
-              iconSize: L.point(40, 40)
-            });
-          }
-        });
-        
-        map.addLayer(clusterGroup);
-        clusterGroupRef.current = clusterGroup;
-      }
-      
-      mapInstanceRef.current = map;
-      setMapLoaded(true);
-      
-    } catch (error) {
-      console.error("Map initialization error:", error);
-      setMapError(`Failed to initialize map: ${error}`);
-    }
-  };
 
   // Add markers when plaques data changes
   useEffect(() => {
@@ -213,64 +230,67 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
 
       // Create markers for each plaque
       const markers = validPlaques.map(plaque => {
-        const lat = parseFloat(plaque.latitude as string);
-        const lng = parseFloat(plaque.longitude as string);
-        
-        // Determine marker color based on plaque color
-        let markerColor = 'blue';
-        if (plaque.color) {
-          const color = plaque.color.toLowerCase();
-          if (color === 'blue') markerColor = 'blue';
-          else if (color === 'green') markerColor = 'green';
-          else if (color === 'brown' || color === 'bronze') markerColor = 'orange';
-          else if (color === 'black' || color === 'grey' || color === 'gray') markerColor = 'gray';
-          else markerColor = 'blue';
-        }
-        
-        // Create custom icon
-        const icon = L.divIcon({
-          className: `custom-marker ${selectedMarker === plaque.id ? 'selected-marker' : ''}`,
-          html: `
-            <div class="bg-white rounded-full p-1 shadow-md ${favorites.includes(plaque.id) ? 'ring-2 ring-amber-500' : ''}">
-              <div class="bg-${markerColor}-500 text-white rounded-full w-7 h-7 flex items-center justify-center">
-                ${plaque.visited ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : ''}
-              </div>
-            </div>
-          `,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
-        });
-        
-        // Create marker
-        const marker = L.marker([lat, lng], { icon });
-        
-        // Create a popup with plaque info
-        const popupContent = document.createElement('div');
-        popupContent.className = 'plaque-popup';
-        popupContent.innerHTML = `
-          <div class="font-semibold">${plaque.title}</div>
-          <div class="text-xs text-gray-600">${plaque.location || plaque.address || ''}</div>
-          ${plaque.color ? `<div class="mt-1 text-xs">${plaque.color} Plaque</div>` : ''}
-          <button class="view-details mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded w-full">View Details</button>
-        `;
-        
-        // Add click handler to the View Details button
-        const detailButton = popupContent.querySelector('.view-details');
-        if (detailButton) {
-          detailButton.addEventListener('click', () => {
-            if (onPlaqueClick) onPlaqueClick(plaque);
+        try {
+          const lat = parseFloat(plaque.latitude as string);
+          const lng = parseFloat(plaque.longitude as string);
+          
+          // Create marker
+          const marker = L.marker([lat, lng], { 
+            icon: L.divIcon({
+              className: `custom-marker ${selectedMarker === plaque.id ? 'selected-marker' : ''}`,
+              html: `
+                <div class="bg-white rounded-full p-1 shadow-md ${favorites.includes(plaque.id) ? 'ring-2 ring-amber-500' : ''}">
+                  <div class="bg-blue-500 text-white rounded-full w-7 h-7 flex items-center justify-center">
+                    ${plaque.visited ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'}
+                  </div>
+                </div>
+              `,
+              iconSize: [28, 28],
+              iconAnchor: [14, 14]
+            })
           });
+          
+          // Create a popup with plaque info
+          const popupContent = document.createElement('div');
+          popupContent.className = 'plaque-popup';
+          popupContent.innerHTML = `
+            <div class="font-semibold">${plaque.title}</div>
+            <div class="text-xs text-gray-600">${plaque.location || plaque.address || ''}</div>
+            ${plaque.color ? `<div class="mt-1 text-xs">${plaque.color} Plaque</div>` : ''}
+            <button class="view-details mt-2 px-2 py-1 bg-blue-500 text-white text-xs rounded w-full">View Details</button>
+          `;
+          
+          // Add click handler to the View Details button
+          const detailButton = popupContent.querySelector('.view-details');
+          if (detailButton) {
+            detailButton.addEventListener('click', () => {
+              if (onPlaqueClick) onPlaqueClick(plaque);
+            });
+          }
+          
+          marker.bindPopup(popupContent);
+          
+          // Add click handler for the marker
+          marker.on('click', () => {
+            setSelectedMarker(plaque.id);
+            
+            // Highlight the selected marker with a pulse animation
+            const markerElement = marker.getElement();
+            if (markerElement) {
+              markerElement.classList.add('selected-marker');
+              // Remove the class after animation completes
+              setTimeout(() => {
+                markerElement.classList.remove('selected-marker');
+              }, 1500);
+            }
+          });
+          
+          return marker;
+        } catch (error) {
+          console.error(`Error creating marker for plaque ${plaque.id}:`, error);
+          return null;
         }
-        
-        marker.bindPopup(popupContent);
-        
-        // Add click handler for the marker
-        marker.on('click', () => {
-          setSelectedMarker(plaque.id);
-        });
-        
-        return marker;
-      });
+      }).filter(Boolean);
       
       // Add markers to map
       if (clusterGroupRef.current) {
@@ -305,13 +325,58 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
 
   const handleCenterMap = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([51.505, -0.09], 12);
+      // Center on London
+      mapInstanceRef.current.setView([51.505, -0.09], 13);
     }
   };
 
   const handleFindMyLocation = () => {
-    if (mapInstanceRef.current && 'locate' in mapInstanceRef.current) {
-      mapInstanceRef.current.locate({setView: true, maxZoom: 16});
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (mapInstanceRef.current) {
+            const { latitude, longitude } = position.coords;
+            mapInstanceRef.current.setView([latitude, longitude], 16);
+            
+            // Add a temporary marker at the user's location
+            const userMarker = (window as any).L.circleMarker([latitude, longitude], {
+              radius: 8,
+              color: '#4299e1',
+              fillColor: '#3182ce',
+              fillOpacity: 0.8,
+              weight: 2
+            }).addTo(mapInstanceRef.current);
+            
+            // Add a pulsing effect
+            const pulseMarker = (window as any).L.circleMarker([latitude, longitude], {
+              radius: 16,
+              color: '#4299e1',
+              fillColor: '#3182ce',
+              fillOpacity: 0.3,
+              weight: 1
+            }).addTo(mapInstanceRef.current);
+            
+            // Remove the markers after 5 seconds
+            setTimeout(() => {
+              if (mapInstanceRef.current) {
+                mapInstanceRef.current.removeLayer(userMarker);
+                mapInstanceRef.current.removeLayer(pulseMarker);
+              }
+            }, 5000);
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          alert("Please enable location services to use this feature");
+        },
+        {
+          enableHighAccuracy: true, 
+          timeout: 5000, 
+          maximumAge: 0
+        }
+      );
+    } else {
+      alert("Your browser doesn't support geolocation");
     }
   };
 
@@ -371,7 +436,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={() => setMapFilterVisible(!mapFilterVisible)}
-                className="h-8 w-8 p-0"
+                className={`h-8 w-8 p-0 ${mapFilterVisible ? 'bg-blue-50 text-blue-600' : ''}`}
                 title="Toggle filter panel"
               >
                 <Filter size={16} />
@@ -413,20 +478,19 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
                   className="h-6 w-6 p-0"
                   onClick={() => setMapFilterVisible(false)}
                 >
-                  <span className="sr-only">Close</span>
-                  ✕
+                  <X size={16} />
                 </Button>
               </div>
             </div>
             <div className="p-4">
               <form onSubmit={handleSearchSubmit} className="mb-4">
                 <div className="relative">
-                  <input
+                  <Input
                     type="text"
                     placeholder="Search plaques..."
-                    className="w-full pl-8 pr-3 py-2 border rounded-md text-sm"
                     value={searchQuery}
                     onChange={(e) => onSearchChange?.(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 text-sm"
                   />
                   <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                   <Button 
@@ -553,7 +617,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
                 <span className="text-xs">Green Plaques</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="bg-orange-500 w-4 h-4 rounded-full"></div>
+                <div className="bg-amber-500 w-4 h-4 rounded-full"></div>
                 <span className="text-xs">Brown Plaques</span>
               </div>
               <div className="flex items-center gap-2">
