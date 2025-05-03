@@ -216,4 +216,6 @@ const CollectionCreator = ({
   );
 };
 
-export default CollectionCreator;
+export { CollectionCreator };
+
+

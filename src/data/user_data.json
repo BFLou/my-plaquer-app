@@ -1,0 +1,184 @@
+{
+    "user": {
+      "id": 1,
+      "username": "testuser",
+      "email": "test@example.com",
+      "created_at": "2023-01-15T12:00:00Z",
+      "preferences": {
+        "default_view": "grid",
+        "default_sort": "newest"
+      }
+    },
+    "visited_plaques": [
+      {
+        "plaque_id": 485,
+        "visited_at": "2024-03-15T14:30:00Z",
+        "notes": "Visited during a walking tour of Brixton. Very interesting connection to Caribbean literature.",
+        "photos": ["/uploads/user_photos/visit_485_1.jpg"],
+        "rating": 4
+      },
+      {
+        "plaque_id": 1115,
+        "visited_at": "2024-02-20T11:15:00Z",
+        "notes": "Found this while shopping in Covent Garden. Surprised to learn Voltaire stayed here!",
+        "photos": ["/uploads/user_photos/visit_1115_1.jpg"],
+        "rating": 5
+      },
+      {
+        "plaque_id": 1120,
+        "visited_at": "2024-01-05T09:45:00Z",
+        "notes": "Big Wodehouse fan, so had to see this one.",
+        "photos": ["/uploads/user_photos/visit_1120_1.jpg", "/uploads/user_photos/visit_1120_2.jpg"],
+        "rating": 5
+      },
+      {
+        "plaque_id": 10011,
+        "visited_at": "2023-12-10T15:20:00Z",
+        "notes": "Found while Christmas shopping at Ealing Broadway.",
+        "photos": [],
+        "rating": 3
+      },
+      {
+        "plaque_id": 10014,
+        "visited_at": "2023-11-18T13:40:00Z",
+        "notes": "Took kids to see this - they loved learning Winnie the Pooh was 'born' here!",
+        "photos": ["/uploads/user_photos/visit_10014_1.jpg"],
+        "rating": 5
+      },
+      {
+        "plaque_id": 10027,
+        "visited_at": "2023-10-05T10:30:00Z",
+        "notes": "Interesting historical connection to literature.",
+        "photos": [],
+        "rating": 4
+      },
+      {
+        "plaque_id": 485,
+        "visited_at": "2023-07-12T16:45:00Z",
+        "notes": "Returned to show a friend who is interested in Caribbean history.",
+        "photos": ["/uploads/user_photos/visit_485_2.jpg"],
+        "rating": 4
+      },
+      {
+        "plaque_id": 10007,
+        "visited_at": "2023-06-22T11:00:00Z",
+        "notes": "Dad was a big Arthur Haynes fan, so visited for him.",
+        "photos": ["/uploads/user_photos/visit_10007_1.jpg"],
+        "rating": 4
+      },
+      {
+        "plaque_id": 10096,
+        "visited_at": "2023-05-14T14:15:00Z",
+        "notes": "Visited as part of an art history walking tour.",
+        "photos": [],
+        "rating": 3
+      },
+      {
+        "plaque_id": 10129,
+        "visited_at": "2023-04-27T13:30:00Z",
+        "notes": "Classical music fan - seeking out composer plaques around London.",
+        "photos": ["/uploads/user_photos/visit_10129_1.jpg"],
+        "rating": 5
+      }
+    ],
+    "collections": [
+      {
+        "id": 1,
+        "name": "Literary Giants",
+        "description": "Famous authors and poets who lived in London",
+        "icon": "📚",
+        "color": "bg-blue-500",
+        "created_at": "2023-05-10T09:30:00Z",
+        "updated_at": "2024-03-15T16:20:00Z",
+        "is_public": true,
+        "is_favorite": true,
+        "plaques": [
+          485, 1120, 10027, 10011, 10019
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Musical Icons",
+        "description": "Explore the homes and landmarks of famous musicians",
+        "icon": "🎵",
+        "color": "bg-purple-500",
+        "created_at": "2023-06-15T14:20:00Z",
+        "updated_at": "2024-01-25T10:15:00Z",
+        "is_public": false,
+        "is_favorite": false,
+        "plaques": [
+          10129, 10015, 10016
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Family Favorites",
+        "description": "Plaques we've visited as a family",
+        "icon": "👨‍👩‍👧‍👦",
+        "color": "bg-green-500",
+        "created_at": "2023-08-20T08:45:00Z",
+        "updated_at": "2024-02-28T19:30:00Z",
+        "is_public": true,
+        "is_favorite": true,
+        "plaques": [
+          10014, 10007, 10011, 10024
+        ]
+      },
+      {
+        "id": 4,
+        "name": "French Connections",
+        "description": "French figures with London links",
+        "icon": "🇫🇷",
+        "color": "bg-red-500",
+        "created_at": "2023-10-05T11:30:00Z",
+        "updated_at": "2024-03-01T13:45:00Z",
+        "is_public": false,
+        "is_favorite": false,
+        "plaques": [
+          1115, 10016
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Women in History",
+        "description": "Commemorating important women throughout London",
+        "icon": "👑",
+        "color": "bg-pink-500",
+        "created_at": "2023-11-08T16:15:00Z",
+        "updated_at": "2024-03-20T09:10:00Z",
+        "is_public": true,
+        "is_favorite": true,
+        "plaques": [
+          10090, 10672, 1154, 1156
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Five-Star Plaques",
+        "description": "My personal favorites - all rated 5 stars",
+        "icon": "⭐",
+        "color": "bg-yellow-500",
+        "created_at": "2024-01-02T08:00:00Z",
+        "updated_at": "2024-03-15T17:30:00Z",
+        "is_public": false,
+        "is_favorite": true,
+        "plaques": [
+          1115, 1120, 10014, 10129
+        ]
+      },
+      {
+        "id": 7,
+        "name": "Local History",
+        "description": "Historical markers in my neighborhood",
+        "icon": "🏠",
+        "color": "bg-teal-500",
+        "created_at": "2024-02-15T13:40:00Z",
+        "updated_at": "2024-03-10T12:15:00Z",
+        "is_public": true,
+        "is_favorite": false,
+        "plaques": [
+          10007, 10011, 10014, 10009
+        ]
+      }
+    ]
+  }
