@@ -36,6 +36,7 @@ import Pagination from '@/components/plaques/Pagination';
 import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
 import PlaqueMap from '../components/plaques/PlaqueMap';
+import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 
 // Import map styles
 import '../styles/map-styles.css';
@@ -138,6 +139,7 @@ const ImprovedFilterSheet = ({
     (onlyVisited ? 1 : 0) + 
     (onlyFavorites ? 1 : 0);
 
+    
   return (
     <Sheet open={isOpen} onOpenChange={handleSheetChange}>
       <SheetContent side="left" className={`w-full sm:max-w-md ${className}`}>
@@ -678,17 +680,21 @@ const Discover = () => {
           )
         ) : filteredPlaques.length > 0 ? (
           <>
-            {viewMode === 'map' && (
-              <PlaqueMap 
-                plaques={filteredPlaques}
-                onPlaqueClick={handlePlaqueClick}
-                favorites={favorites}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                onSearchSubmit={handleSearch}
-                className="rounded-xl overflow-hidden shadow-md"
-              />
-            )}
+{viewMode === 'map' && (
+  <>
+    <div className="w-full h-[650px]">
+      <PlaqueMap 
+        plaques={filteredPlaques}
+        onPlaqueClick={handlePlaqueClick}
+        favorites={favorites}
+        className="rounded-xl overflow-hidden shadow-md h-full"
+      />
+    </div>
+    
+    {/* Optional: Add the debugger component for troubleshooting */}
+    <PlaqueDataDebugger plaques={filteredPlaques} />
+  </>
+)}
             
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
