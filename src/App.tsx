@@ -5,6 +5,7 @@ import { UserProvider } from './contexts/UserContext';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import Discover from './pages/Discover';
+import Home from './pages/Home';
 import UserDashboard from './pages/UserDashboard';
 import { Toaster } from 'sonner';
 
@@ -13,7 +14,7 @@ function App() {
     <UserProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<Discover />} />
+          <Route path="/" element={<Home />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />

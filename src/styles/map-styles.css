@@ -1,0 +1,120 @@
+/* Styles for the plaque map component */
+
+/* Map container */
+#plaque-map {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+  
+  /* Custom marker styling */
+  .custom-marker {
+    background: transparent;
+    border: none;
+  }
+  
+  /* Style for the Leaflet popup */
+  .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  .leaflet-popup-content {
+    margin: 0;
+    padding: 0;
+    width: 220px !important;
+  }
+  
+  .plaque-popup {
+    padding: 12px;
+  }
+  
+  .plaque-popup .view-details {
+    transition: background-color 0.2s;
+  }
+  
+  .plaque-popup .view-details:hover {
+    background-color: #3b82f6;
+  }
+  
+  /* Marker cluster styling */
+  .marker-cluster {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    width: 40px !important;
+    height: 40px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 3px solid #3b82f6;
+  }
+  
+  .marker-cluster div {
+    background-color: #3b82f6;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Map control styling */
+  .leaflet-control-layers,
+  .leaflet-control-zoom {
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24) !important;
+  }
+  
+  .leaflet-control-layers-toggle,
+  .leaflet-control-zoom-in,
+  .leaflet-control-zoom-out {
+    background-color: white !important;
+    color: #4b5563 !important;
+  }
+  
+  .leaflet-control-layers-toggle:hover,
+  .leaflet-control-zoom-in:hover,
+  .leaflet-control-zoom-out:hover {
+    background-color: #f3f4f6 !important;
+  }
+  
+  /* Filter panel transition */
+  .filter-panel-transition {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+  
+  /* Marker animations */
+  @keyframes markerPulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .selected-marker {
+    animation: markerPulse 1.5s infinite;
+  }
+  
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    .leaflet-control-zoom {
+      display: none;
+    }
+    
+    .leaflet-control-attribution {
+      font-size: 8px;
+    }
+  }

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { MapIcon, Filter as FilterIcon, SlidersHorizontal, BadgeCheck, FilterX } from "lucide-react";
+import { 
+  MapIcon, Filter as FilterIcon, Search,
+  Map, Grid, List, BadgeCheck, FilterX
+} from "lucide-react";
 import { 
   PageContainer,
   PlaqueCard,
@@ -17,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Sheet, 
   SheetContent, 
@@ -24,14 +28,17 @@ import {
   SheetTitle, 
   SheetDescription, 
   SheetFooter,
-  SheetClose 
 } from "@/components/ui/sheet";
 import { toast } from 'sonner';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 import plaqueData from '../data/plaque_data.json';
 import Pagination from '@/components/plaques/Pagination';
-import  MultiSelectFilter from '../components/common/MultiSelectFilter';
+import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
+import PlaqueMap from '../components/plaques/PlaqueMap';
+
+// Import map styles
+import '../styles/map-styles.css';
 
 // Define color options with style mapping
 const getColorBadgeStyle = (color: string) => {
@@ -248,14 +255,14 @@ const Discover = () => {
   // State
   const [allPlaques, setAllPlaques] = useState<Plaque[]>([]); // Store all plaques
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('map'); // Default to map view
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
   const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
-  // Pagination state
+  // Pagination state (for list/grid views)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
@@ -415,7 +422,7 @@ const Discover = () => {
     });
   }, [allPlaques, searchQuery, selectedPostcodes, selectedColors, selectedProfessions, onlyVisited, onlyFavorites, favorites]);
 
-  // Sort and paginate plaques
+  // Sort and paginate plaques (for list/grid views)
   const sortedAndPaginatedPlaques = useMemo(() => {
     // Sort plaques
     const sorted = [...filteredPlaques].sort((a, b) => {
@@ -443,7 +450,7 @@ const Discover = () => {
   useEffect(() => {
     const params = new URLSearchParams();
     
-    if (viewMode !== 'grid') {
+    if (viewMode !== 'map') { // Changed default to 'map'
       params.set('view', viewMode);
     }
     
@@ -515,7 +522,7 @@ const Discover = () => {
   };
 
   const handleMarkVisited = (id: number) => {
-    // In a real app, this would update the plaque's visited status in the database
+    // Mark plaque as visited
     setAllPlaques(prev => prev.map(p => 
       p.id === id ? { ...p, visited: true } : p
     ));
@@ -538,7 +545,7 @@ const Discover = () => {
     setSelectedProfessions([]);
     setOnlyVisited(false);
     setOnlyFavorites(false);
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(1);
     setFiltersOpen(false);
   };
 
@@ -546,13 +553,13 @@ const Discover = () => {
     setCurrentPage(page);
   };
 
-  // Define common categories for the search hero
-  const categories = [
-    { label: "Notable Authors", onClick: () => { setSelectedProfessions(['novelist']); handleSearch(); } },
-    { label: "London Landmarks", onClick: () => { setSelectedProfessions(['place']); handleSearch(); } },
-    { label: "Musicians", onClick: () => { setSelectedProfessions(['composer']); handleSearch(); } },
-    { label: "Legal Figures", onClick: () => { setSelectedProfessions(['lawyer']); handleSearch(); } },
-  ];
+  // Find nearby plaques for the detail view
+  const getNearbyPlaques = (currentPlaque: Plaque) => {
+    return allPlaques.filter(p => 
+      p.id !== currentPlaque.id && 
+      (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
+    ).slice(0, 3);
+  };
 
   // Generate active filters for display
   const activeFilters = [
@@ -563,129 +570,126 @@ const Discover = () => {
     ...(onlyFavorites ? ['Favorites'] : [])
   ];
 
-  // Find nearby plaques for the detail view
-  const getNearbyPlaques = (currentPlaque: Plaque) => {
-    return allPlaques.filter(p => 
-      p.id !== currentPlaque.id && 
-      (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
-    ).slice(0, 3);
-  };
-
   // Get the total count of active filters
   const activeFiltersCount = activeFilters.length;
 
   return (
-    <PageContainer activePage="discover">
-      {/* Search Hero */}
-      <SearchHero
-        title="Discover London's Plaques"
-        subtitle="Explore London's rich history through its commemorative plaques and historical markers."
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearch={handleSearch}
-        categories={categories}
-      />
-      
-      {/* Filter Bar */}
-      <section className="bg-white border-b border-gray-200 sticky top-[61px] z-20">
+    <PageContainer activePage="discover" containerClass="flex flex-col">
+      {/* View Mode Selection Tabs - Now prominently featured at the top */}
+      <div className="bg-white border-b border-gray-200 sticky top-[61px] z-20">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex justify-between items-center">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-2"
-              onClick={() => setFiltersOpen(true)}
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+            {/* Left side: View Mode Tabs */}
+            <Tabs 
+              value={viewMode} 
+              onValueChange={(value) => handleViewModeChange(value as ViewMode)}
+              className="w-full sm:w-auto"
             >
-              <FilterIcon size={16} /> 
-              Filters
-              {activeFiltersCount > 0 && (
-                <Badge 
-                  variant="secondary" 
-                  className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center"
-                >
-                  {activeFiltersCount}
-                </Badge>
-              )}
-            </Button>
+              <TabsList className="w-full sm:w-auto">
+                <TabsTrigger value="map" className="flex-1 sm:flex-initial">
+                  <Map size={16} className="mr-2" /> Map View
+                </TabsTrigger>
+                <TabsTrigger value="grid" className="flex-1 sm:flex-initial">
+                  <Grid size={16} className="mr-2" /> Grid View
+                </TabsTrigger>
+                <TabsTrigger value="list" className="flex-1 sm:flex-initial">
+                  <List size={16} className="mr-2" /> List View
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             
-            {/* Active filters display */}
-            {activeFiltersCount > 0 && (
-              <div className="hidden md:flex gap-1 items-center ml-2 overflow-x-auto max-w-md flex-wrap">
-                {activeFilters.map((filter, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="outline" 
-                    className="bg-blue-50 text-blue-700 border-blue-200"
-                  >
-                    {filter}
-                  </Badge>
-                ))}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                  onClick={resetFilters}
-                >
-                  Clear All
-                </Button>
+            {/* Right side: Search and Filter */}
+            <div className="flex w-full sm:w-auto items-center gap-2">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  placeholder="Search plaques..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-300"
+                />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Select value={sortOption} onValueChange={setSortOption}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest</SelectItem>
-                  <SelectItem value="a-z">A to Z</SelectItem>
-                  <SelectItem value="z-a">Z to A</SelectItem>
-                </SelectContent>
-              </Select>
               
-              <ViewToggle
-                viewMode={viewMode}
-                onChange={handleViewModeChange}
-                variant="tabs"
-                className="hidden md:block"
-              />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="shrink-0"
+                onClick={() => setFiltersOpen(true)}
+              >
+                <FilterIcon size={16} className="mr-1" /> 
+                Filters
+                {activeFiltersCount > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center"
+                  >
+                    {activeFiltersCount}
+                  </Badge>
+                )}
+              </Button>
             </div>
           </div>
         </div>
-      </section>
+      </div>
       
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-4 flex-grow">
+        {/* Status bar */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-base font-medium text-gray-600">
             {loading ? "Loading plaques..." : (
               <>
-                {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'}
-                {filteredPlaques.length > 0 && (
-                  <span className="text-sm font-normal text-gray-500 ml-2">
-                    Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredPlaques.length)} of {filteredPlaques.length}
-                  </span>
-                )}
+                {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
               </>
             )}
           </h2>
           
-          <ViewToggle
-            viewMode={viewMode}
-            onChange={handleViewModeChange}
-            variant="tabs"
-            className="md:hidden"
-          />
+          {viewMode !== 'map' && (
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="a-z">A to Z</SelectItem>
+                <SelectItem value="z-a">Z to A</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
         
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
-            ))}
-          </div>
+          // Loading states for different view modes
+          viewMode === 'map' ? (
+            <div className="h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
+              <div className="flex flex-col items-center">
+                <div className="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+                <p className="mt-4 text-gray-600">Loading map...</p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
+              ))}
+            </div>
+          )
         ) : filteredPlaques.length > 0 ? (
           <>
+            {viewMode === 'map' && (
+              <PlaqueMap 
+                plaques={filteredPlaques}
+                onPlaqueClick={handlePlaqueClick}
+                favorites={favorites}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSearchSubmit={handleSearch}
+                className="rounded-xl overflow-hidden shadow-md"
+              />
+            )}
+            
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sortedAndPaginatedPlaques.map((plaque) => (
@@ -714,18 +718,8 @@ const Discover = () => {
               </div>
             )}
             
-            {viewMode === 'map' && (
-              <div className="rounded-xl overflow-hidden bg-gray-100 h-96 flex items-center justify-center text-center p-4">
-                <div>
-                  <MapIcon size={48} className="mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-xl font-medium text-gray-700">Map View</h3>
-                  <p className="text-gray-500 mt-2">Interactive map would be displayed here with plaque locations</p>
-                </div>
-              </div>
-            )}
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Pagination for grid and list views */}
+            {viewMode !== 'map' && totalPages > 1 && (
               <Pagination 
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -756,7 +750,7 @@ const Discover = () => {
         onSelectNearbyPlaque={handlePlaqueClick}
       />
       
-      {/* Enhanced Filter Sheet */}
+      {/* ImprovedFilterSheet */}
       <ImprovedFilterSheet
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}

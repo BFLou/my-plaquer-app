@@ -52,9 +52,11 @@ export const NavBar = ({ activePage }: NavBarProps) => {
           {/* User Profile Link */}
           <Link to="/profile" className="ml-2">
             <Avatar className={activePage === 'profile' ? 'ring-2 ring-blue-600 ring-offset-2' : ''}>
-              <AvatarFallback className="bg-blue-100 text-blue-600">
-                {user.username ? user.username.substring(0, 2).toUpperCase() : 'U'}
-              </AvatarFallback>
+            <AvatarFallback className="bg-blue-100 text-blue-600">
+  {(user?.username ?? 'User').substring(0, 2).toUpperCase()}
+</AvatarFallback>
+
+
             </Avatar>
           </Link>
         </nav>
