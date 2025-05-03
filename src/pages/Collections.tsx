@@ -9,8 +9,7 @@ import {
   AlertCircle, 
   Filter,
   Sparkles,
-  BookMarked,
-  Collection
+  BookMarked
 } from 'lucide-react';
 import {
   PageContainer,
@@ -38,64 +37,7 @@ import {
   SheetDescription, 
   SheetFooter
 } from "@/components/ui/sheet";
-
-// Sample collections data
-const SAMPLE_COLLECTIONS = [
-  { 
-    id: 1, 
-    icon: '🏛️', 
-    name: 'Historic London', 
-    description: 'A collection of famous plaques related to London landmarks and history', 
-    plaques: 18, 
-    updated: '2 days ago', 
-    color: 'bg-blue-500' 
-  },
-  { 
-    id: 2, 
-    icon: '🎵', 
-    name: 'Musical Icons', 
-    description: 'Explore the homes and landmarks of famous musicians', 
-    plaques: 12, 
-    updated: 'yesterday', 
-    color: 'bg-blue-600'
-  },
-  { 
-    id: 3, 
-    icon: '📚', 
-    name: 'Literary Giants', 
-    description: 'Famous authors and poets who lived in London', 
-    plaques: 15, 
-    updated: 'last week', 
-    color: 'bg-blue-700'
-  },
-  { 
-    id: 4, 
-    icon: '🏛️', 
-    name: 'Historic Landmarks', 
-    description: 'Important historical buildings and monuments across London', 
-    plaques: 22, 
-    updated: '3 weeks ago', 
-    color: 'bg-blue-500'
-  },
-  { 
-    id: 5, 
-    icon: '🧪', 
-    name: 'Scientists & Inventors', 
-    description: 'Great minds who changed the world with their discoveries', 
-    plaques: 8, 
-    updated: 'last month', 
-    color: 'bg-blue-600'
-  },
-  { 
-    id: 6, 
-    icon: '🎨', 
-    name: 'Artists & Painters', 
-    description: 'Visual artists who lived and worked in London', 
-    plaques: 14, 
-    updated: '2 months ago', 
-    color: 'bg-blue-700'
-  },
-];
+import userData from '../data/user_data.json';
 
 // Simplified Filter Sheet Component
 const SimpleFilterSheet = ({
@@ -191,41 +133,41 @@ const Collections = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   
-  // State
-  const [collections, setCollections] = useState(SAMPLE_COLLECTIONS);
-  const [viewMode, setViewMode] = useState('grid');
+  // Get collections directly from user_data.json
+  const [collections, setCollections] = useState(userData.collections);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortOption, setSortOption] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCollections, setSelectedCollections] = useState([]);
-  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [selectedCollections, setSelectedCollections] = useState<number[]>([]);
+  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   
   // Simplified filter states
-  const [selectedTypes, setSelectedTypes] = useState([]);
-  const [selectedPlaqueCounts, setSelectedPlaqueCounts] = useState([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedPlaqueCounts, setSelectedPlaqueCounts] = useState<string[]>([]);
   
   // Filter options
   const typeOptions = [
+    { label: 'Literary', value: 'literary' },
+    { label: 'Music', value: 'music' },
+    { label: 'Family', value: 'family' },
     { label: 'Historical', value: 'historical' },
-    { label: 'Arts & Culture', value: 'arts' },
-    { label: 'Science', value: 'science' },
-    { label: 'Architecture', value: 'architecture' },
-    { label: 'Walking Tours', value: 'tours' },
+    { label: 'Women', value: 'women' },
+    { label: 'Local', value: 'local' },
   ];
   
   const plaqueCountOptions = [
-    { label: 'Empty (0)', value: 'empty' },
-    { label: 'Few (1-10)', value: 'few' },
-    { label: 'Many (11-50)', value: 'many' },
-    { label: 'Lots (50+)', value: 'lots' },
+    { label: 'Small (1-3)', value: 'small' },
+    { label: 'Medium (4-6)', value: 'medium' },
+    { label: 'Large (7+)', value: 'large' },
   ];
   
   // Initialize state from URL params on first load
   useEffect(() => {
     const view = searchParams.get('view');
     if (view && (view === 'grid' || view === 'list' || view === 'map')) {
-      setViewMode(view);
+      setViewMode(view as ViewMode);
     }
     
     const search = searchParams.get('search');
@@ -236,6 +178,17 @@ const Collections = () => {
     const sort = searchParams.get('sort');
     if (sort) {
       setSortOption(sort);
+    }
+
+    // Get user's default preferences if available
+    if (userData.user.preferences) {
+      if (userData.user.preferences.default_view && !view) {
+        setViewMode(userData.user.preferences.default_view as ViewMode);
+      }
+      
+      if (userData.user.preferences.default_sort && !sort) {
+        setSortOption(userData.user.preferences.default_sort);
+      }
     }
   }, []);
   
@@ -279,18 +232,20 @@ const Collections = () => {
     const matchesSearch = collection.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          (collection.description && collection.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Simplified filtering logic
+    // Filter by type based on collection name/description
     const matchesType = selectedTypes.length === 0 || 
-                       (selectedTypes.includes('historical') && (collection.name.includes('Historic') || collection.description.includes('historical'))) ||
-                       (selectedTypes.includes('arts') && (collection.name.includes('Artist') || collection.description.includes('artist'))) ||
-                       (selectedTypes.includes('science') && collection.name.includes('Scientist'));
+                       (selectedTypes.includes('literary') && (collection.name.includes('Literary') || collection.description.includes('authors'))) ||
+                       (selectedTypes.includes('music') && (collection.name.includes('Music') || collection.description.includes('musicians'))) ||
+                       (selectedTypes.includes('family') && (collection.name.includes('Family'))) ||
+                       (selectedTypes.includes('women') && (collection.name.includes('Women'))) ||
+                       (selectedTypes.includes('local') && (collection.name.includes('Local')));
     
     // Match plaque counts
+    const plaqueCount = collection.plaques.length;
     const matchesPlaqueCounts = selectedPlaqueCounts.length === 0 || 
-                              (selectedPlaqueCounts.includes('empty') && collection.plaques === 0) ||
-                              (selectedPlaqueCounts.includes('few') && collection.plaques > 0 && collection.plaques <= 10) ||
-                              (selectedPlaqueCounts.includes('many') && collection.plaques > 10 && collection.plaques <= 50) ||
-                              (selectedPlaqueCounts.includes('lots') && collection.plaques > 50);
+                              (selectedPlaqueCounts.includes('small') && plaqueCount >= 1 && plaqueCount <= 3) ||
+                              (selectedPlaqueCounts.includes('medium') && plaqueCount >= 4 && plaqueCount <= 6) ||
+                              (selectedPlaqueCounts.includes('large') && plaqueCount >= 7);
     
     return matchesSearch && matchesType && matchesPlaqueCounts;
   });
@@ -298,35 +253,55 @@ const Collections = () => {
   // Sort collections based on selected option
   const sortedCollections = [...filteredCollections].sort((a, b) => {
     if (sortOption === 'newest') {
-      // Sort by update recency (simplified for demo)
-      if (a.updated.includes('now')) return -1;
-      if (b.updated.includes('now')) return 1;
-      if (a.updated.includes('today')) return -1;
-      if (b.updated.includes('today')) return 1;
-      if (a.updated.includes('yesterday')) return -1;
-      if (b.updated.includes('yesterday')) return 1;
-      if (a.updated.includes('days') && b.updated.includes('week')) return -1;
-      if (b.updated.includes('days') && a.updated.includes('week')) return 1;
-      return 0;
+      // Sort by update timestamp
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     }
-    if (sortOption === 'oldest') return 1; // Reverse of newest
-    if (sortOption === 'most_plaques') return b.plaques - a.plaques;
-    if (sortOption === 'alphabetical') return a.name.localeCompare(b.name);
+    if (sortOption === 'oldest') {
+      // Sort by creation timestamp
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+    if (sortOption === 'most_plaques') {
+      return b.plaques.length - a.plaques.length;
+    }
+    if (sortOption === 'alphabetical') {
+      return a.name.localeCompare(b.name);
+    }
     return 0;
   });
   
+  // Format the "updated X ago" text
+  const getUpdatedText = (timestamp: string): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) {
+      return 'today';
+    } else if (diffInDays === 1) {
+      return 'yesterday';
+    } else if (diffInDays < 7) {
+      return `${diffInDays} days ago`;
+    } else if (diffInDays < 30) {
+      const weeks = Math.floor(diffInDays / 7);
+      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    } else {
+      const months = Math.floor(diffInDays / 30);
+      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    }
+  };
+  
   // Handlers
-  const toggleSelect = (id) => {
+  const toggleSelect = (id: number) => {
     setSelectedCollections(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
   
-  const handleMenuOpen = (id) => {
+  const handleMenuOpen = (id: number) => {
     setMenuOpenId(menuOpenId === id ? null : id);
   };
   
-  const handleEdit = (id) => {
+  const handleEdit = (id: number) => {
     toast({
       title: "Edit Collection",
       description: `Editing collection ${id}`,
@@ -334,15 +309,17 @@ const Collections = () => {
     });
   };
   
-  const handleDuplicate = (id) => {
+  const handleDuplicate = (id: number) => {
     const collection = collections.find(c => c.id === id);
     if (collection) {
       const newCollection = {
         ...collection,
         id: collections.length + 1,
         name: `${collection.name} (Copy)`,
-        plaques: 0,
-        updated: 'just now'
+        plaques: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_favorite: false
       };
       setCollections([...collections, newCollection]);
       
@@ -354,7 +331,7 @@ const Collections = () => {
     }
   };
   
-  const handleShare = (id) => {
+  const handleShare = (id: number) => {
     toast({
       title: "Share Collection",
       description: "Sharing functionality would be implemented here",
@@ -362,7 +339,7 @@ const Collections = () => {
     });
   };
   
-  const handleDelete = (id) => {
+  const handleDelete = (id: number) => {
     setCollections(prev => prev.filter(collection => collection.id !== id));
     
     toast({
@@ -376,12 +353,15 @@ const Collections = () => {
     setCreateModalOpen(true);
   };
   
-  const handleSaveCollection = (newCollection) => {
+  const handleSaveCollection = (newCollection: NewCollection) => {
     const createdCollection = {
       id: collections.length + 1,
       ...newCollection,
-      plaques: 0,
-      updated: 'just now'
+      plaques: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_public: newCollection.isPublic || false,
+      is_favorite: false
     };
     setCollections([createdCollection, ...collections]);
     setCreateModalOpen(false);
@@ -429,7 +409,8 @@ const Collections = () => {
 
   // Calculate statistics
   const totalCollections = collections.length;
-  const totalPlaques = collections.reduce((sum, c) => sum + c.plaques, 0);
+  const totalPlaques = collections.reduce((sum, c) => sum + c.plaques.length, 0);
+  const favoritedCollections = collections.filter(c => c.is_favorite).length;
   
   return (
     <PageContainer activePage="collections">
@@ -441,7 +422,6 @@ const Collections = () => {
               <h1 className="text-3xl font-bold mb-2 text-white">My Collections</h1>
               <p className="text-blue-50">Curate your own plaque discoveries around London</p>
             </div>
-
           </div>
         </div>
         
@@ -471,18 +451,29 @@ const Collections = () => {
             </div>
           </div>
           
-          <div className="bg-blue-700 p-5 rounded-xl shadow-sm md:col-span-2">
+          <div className="bg-amber-500 p-5 rounded-xl shadow-sm">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-blue-100 mb-1 text-sm font-medium">Create Your Own Collection</div>
-                <div className="text-white font-medium max-w-xs">Organize plaques by theme, location, or historical period</div>
+                <div className="text-amber-100 mb-1 text-sm font-medium">Favorites</div>
+                <div className="text-3xl font-bold text-white">{favoritedCollections}</div>
               </div>
-              <Button 
-                onClick={handleCreateCollection} 
-                className="bg-white hover:bg-gray-100 text-blue-700"
-              >
-                <Plus size={16} className="mr-1" /> Create
-              </Button>
+              <div className="p-3 bg-amber-600 rounded-lg">
+                <Sparkles size={24} className="text-white" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-blue-700 p-5 rounded-xl shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-blue-100 mb-1 text-sm font-medium">Create New</div>
+                <Button 
+                  onClick={handleCreateCollection} 
+                  className="bg-white hover:bg-gray-100 text-blue-700 mt-2"
+                >
+                  <Plus size={16} className="mr-1" /> New Collection
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -591,39 +582,65 @@ const Collections = () => {
             <>
               {viewMode === 'grid' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedCollections.map((collection) => (
-                    <CollectionCard 
-                      key={collection.id}
-                      collection={collection}
-                      isSelected={selectedCollections.includes(collection.id)}
-                      menuOpenId={menuOpenId}
-                      onToggleSelect={toggleSelect}
-                      onMenuOpen={handleMenuOpen}
-                      onEdit={handleEdit}
-                      onDuplicate={handleDuplicate}
-                      onShare={handleShare}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+                  {sortedCollections.map((collection) => {
+                    // Format the "updated X ago" text
+                    const updatedText = getUpdatedText(collection.updated_at);
+                    
+                    // Create a collection object compatible with the component
+                    const collectionData = {
+                      ...collection,
+                      updated: updatedText,
+                      plaques: collection.plaques.length, // Convert array to count for display
+                      isFavorite: collection.is_favorite
+                    };
+                    
+                    return (
+                      <CollectionCard 
+                        key={collection.id}
+                        collection={collectionData}
+                        isSelected={selectedCollections.includes(collection.id)}
+                        menuOpenId={menuOpenId}
+                        onToggleSelect={toggleSelect}
+                        onMenuOpen={handleMenuOpen}
+                        onEdit={handleEdit}
+                        onDuplicate={handleDuplicate}
+                        onShare={handleShare}
+                        onDelete={handleDelete}
+                      />
+                    );
+                  })}
                 </div>
               )}
               
               {viewMode === 'list' && (
                 <div className="flex flex-col gap-4">
-                  {sortedCollections.map((collection) => (
-                    <CollectionListItem 
-                      key={collection.id}
-                      collection={collection}
-                      isSelected={selectedCollections.includes(collection.id)}
-                      menuOpenId={menuOpenId}
-                      onToggleSelect={toggleSelect}
-                      onMenuOpen={handleMenuOpen}
-                      onEdit={handleEdit}
-                      onDuplicate={handleDuplicate}
-                      onShare={handleShare}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+                  {sortedCollections.map((collection) => {
+                    // Format the "updated X ago" text
+                    const updatedText = getUpdatedText(collection.updated_at);
+                    
+                    // Create a collection object compatible with the component
+                    const collectionData = {
+                      ...collection,
+                      updated: updatedText,
+                      plaques: collection.plaques.length, // Convert array to count for display
+                      isFavorite: collection.is_favorite
+                    };
+                    
+                    return (
+                      <CollectionListItem 
+                        key={collection.id}
+                        collection={collectionData}
+                        isSelected={selectedCollections.includes(collection.id)}
+                        menuOpenId={menuOpenId}
+                        onToggleSelect={toggleSelect}
+                        onMenuOpen={handleMenuOpen}
+                        onEdit={handleEdit}
+                        onDuplicate={handleDuplicate}
+                        onShare={handleShare}
+                        onDelete={handleDelete}
+                      />
+                    );
+                  })}
                 </div>
               )}
               

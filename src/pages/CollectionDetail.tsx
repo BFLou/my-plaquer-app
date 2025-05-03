@@ -1,4 +1,4 @@
-// src/pages/CollectionDetail.tsx (Updated)
+// src/pages/CollectionDetail.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -42,80 +42,23 @@ import {
 import { toast } from 'sonner';
 import { useUser } from '../contexts/UserContext';
 
-// Sample data for plaques - will be replaced with real data from API
-const PLAQUES: Plaque[] = [
-  { 
-    id: 1, 
-    title: "Charles Dickens", 
-    location: "48 Doughty Street, Camden", 
-    postcode: "WC1N",
-    color: "blue",
-    profession: "Author",
-    description: "The famous author lived here from 1837 to 1839, where he wrote Oliver Twist and Nicholas Nickleby.",
-    visited: true,
-    image: "/api/placeholder/400/300",
-    added: "3 months ago"
-  },
-  { 
-    id: 2, 
-    title: "Florence Nightingale", 
-    location: "10 South Street, Westminster", 
-    postcode: "W1K",
-    color: "blue",
-    profession: "Nurse",
-    description: "The pioneering nurse lived here from 1865 until her death in 1910.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    added: "2 months ago"
-  },
-  { 
-    id: 3, 
-    title: "Jimi Hendrix", 
-    location: "23 Brook Street, Mayfair", 
-    postcode: "W1K",
-    color: "blue",
-    profession: "Musician",
-    description: "The legendary guitarist lived here in 1968-69, next door to Handel's former home.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    added: "1 month ago"
-  }
-];
-
-// Additional available plaques for demo
-const ADDITIONAL_PLAQUES: Plaque[] = [
-  { 
-    id: 6, 
-    title: "Ada Lovelace", 
-    location: "St. James's Square, Westminster", 
-    postcode: "W1",
-    color: "blue",
-    profession: "Mathematician",
-    description: "The world's first computer programmer lived here.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    added: "1 month ago"
-  },
-  { 
-    id: 7, 
-    title: "Emmeline Pankhurst", 
-    location: "50 Clarendon Road, Holland Park", 
-    postcode: "W11",
-    color: "blue",
-    profession: "Activist",
-    description: "The suffragette leader lived here until 1928.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    added: "2 months ago"
-  }
-];
-
 const CollectionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  // Get user data from context
-  const { collections, visitedPlaques, isVisited, markVisited, favorites, toggleFavorite } = useUser();
+  // Get user data from enhanced context
+  const { 
+    collections, 
+    favorites, 
+    isLoading: isUserDataLoading,
+    isVisited, 
+    markVisited, 
+    toggleFavorite,
+    getCollectionPlaques,
+    getAvailablePlaques,
+    addPlaquesToCollection,
+    removePlaquesFromCollection
+  } = useUser();
   
   // Convert id to number
   const collectionId = parseInt(id || '1');
@@ -132,14 +75,17 @@ const CollectionDetail = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [collectionPlaques, setCollectionPlaques] = useState<Plaque[]>([]);
+  const [availablePlaques, setAvailablePlaques] = useState<Plaque[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   
-  // Simulating fetching data from API - in real app, replace with API call
+  // Load collection data
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCollection = async () => {
+      // Wait for user data to be loaded
+      if (isUserDataLoading) return;
+      
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(true);
         
         // Find collection from user data
         const foundCollection = collections.find(c => c.id === collectionId);
@@ -148,38 +94,28 @@ const CollectionDetail = () => {
           setCollection(foundCollection);
           setEditNameValue(foundCollection.name);
           
-          // For demo purposes, we'll use plaques from our constant data
-          // In a real app, you would fetch the plaques by IDs from the API
-          const collectionPlaquesData = foundCollection.plaques.map(plaqueId => {
-            const plaque = PLAQUES.find(p => p.id === plaqueId);
-            if (plaque) {
-              // Update visited status based on user data
-              return {
-                ...plaque,
-                visited: isVisited(plaqueId),
-                isFavorite: favorites.includes(plaqueId)
-              };
-            }
-            return null;
-          }).filter(Boolean);
+          // Fetch plaques for this collection
+          const plaques = await getCollectionPlaques(collectionId);
+          setCollectionPlaques(plaques);
           
-          setCollectionPlaques(collectionPlaquesData);
+          // Fetch available plaques not in this collection
+          const available = await getAvailablePlaques(collectionId);
+          setAvailablePlaques(available);
         } else {
           // Collection not found
           toast.error("The collection you are looking for does not exist.");
           navigate('/collections');
         }
-        
-        setLoading(false);
       } catch (error) {
         console.error('Error fetching collection:', error);
-        setLoading(false);
         toast.error("Failed to load collection data.");
+      } finally {
+        setLoading(false);
       }
     };
     
-    fetchData();
-  }, [collectionId, collections, navigate, isVisited, favorites]);
+    fetchCollection();
+  }, [collectionId, collections, isUserDataLoading, navigate, getCollectionPlaques, getAvailablePlaques]);
   
   // Methods
   const toggleSelectPlaque = (id: number) => {
@@ -196,24 +132,30 @@ const CollectionDetail = () => {
     setAddPlaquesOpen(true);
   };
   
-  const handleAddPlaquesToCollection = (plaqueIds: number[]) => {
-    // In a real app, this would make an API call to add the plaques
-    const plaquesAdded = plaqueIds.map(id => 
-      ADDITIONAL_PLAQUES.find(p => p.id === id)
-    ).filter(Boolean) as Plaque[];
-    
-    setCollectionPlaques(prev => [...prev, ...plaquesAdded]);
-    
-    if (collection) {
-      // Update collection to include the new plaque IDs
-      const updatedPlaquesArray = [...collection.plaques, ...plaqueIds];
-      setCollection({
-        ...collection,
-        plaques: updatedPlaquesArray
-      });
+  const handleAddPlaquesToCollection = async (plaqueIds: number[]) => {
+    try {
+      // Add plaques using context method
+      await addPlaquesToCollection(collectionId, plaqueIds);
+      
+      // Update local state
+      const added = availablePlaques.filter(p => plaqueIds.includes(p.id));
+      setCollectionPlaques(prev => [...prev, ...added]);
+      setAvailablePlaques(prev => prev.filter(p => !plaqueIds.includes(p.id)));
+      
+      // Update collection in local state
+      if (collection) {
+        const updatedPlaquesArray = [...collection.plaques, ...plaqueIds];
+        setCollection({
+          ...collection,
+          plaques: updatedPlaquesArray
+        });
+      }
+      
+      toast.success(`${added.length} plaques added to collection`);
+    } catch (error) {
+      console.error('Error adding plaques:', error);
+      toast.error("Failed to add plaques to collection.");
     }
-    
-    toast.success(`${plaquesAdded.length} plaques added to collection`);
   };
   
   const handleRemovePlaques = () => {
@@ -222,26 +164,36 @@ const CollectionDetail = () => {
     }
   };
   
-  const confirmRemovePlaques = () => {
-    // Remove selected plaques from the collection
-    setCollectionPlaques(prev => prev.filter(plaque => !selectedPlaques.includes(plaque.id)));
-    
-    if (collection) {
-      // Update the collection's plaques array
-      const updatedPlaquesArray = collection.plaques.filter(
-        (id: number) => !selectedPlaques.includes(id)
-      );
+  const confirmRemovePlaques = async () => {
+    try {
+      // Remove plaques using context method
+      await removePlaquesFromCollection(collectionId, selectedPlaques);
       
-      setCollection({
-        ...collection,
-        plaques: updatedPlaquesArray
-      });
+      // Update local state
+      const removed = collectionPlaques.filter(p => selectedPlaques.includes(p.id));
+      setCollectionPlaques(prev => prev.filter(p => !selectedPlaques.includes(p.id)));
+      setAvailablePlaques(prev => [...prev, ...removed]);
+      
+      // Update collection in local state
+      if (collection) {
+        const updatedPlaquesArray = collection.plaques.filter(
+          (id: number) => !selectedPlaques.includes(id)
+        );
+        
+        setCollection({
+          ...collection,
+          plaques: updatedPlaquesArray
+        });
+      }
+      
+      setSelectedPlaques([]);
+      setRemoveConfirmOpen(false);
+      
+      toast.success("The selected plaques have been removed from this collection");
+    } catch (error) {
+      console.error('Error removing plaques:', error);
+      toast.error("Failed to remove plaques from collection.");
     }
-    
-    setSelectedPlaques([]);
-    setRemoveConfirmOpen(false);
-    
-    toast.success("The selected plaques have been removed from this collection");
   };
   
   const handleMarkVisited = () => {
@@ -328,14 +280,15 @@ const CollectionDetail = () => {
     return 0;
   }).filter(plaque => 
     plaque.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    plaque.location.toLowerCase().includes(searchQuery.toLowerCase())
+    (plaque.location && plaque.location.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   
   // Find nearby plaques for the detail view
   const getNearbyPlaques = (currentPlaque: Plaque) => {
     return collectionPlaques.filter(p => 
       p.id !== currentPlaque.id && 
-      (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
+      ((p.postcode && currentPlaque.postcode && p.postcode === currentPlaque.postcode) || 
+       (p.profession && currentPlaque.profession && p.profession === currentPlaque.profession))
     ).slice(0, 3);
   };
   
@@ -361,7 +314,7 @@ const CollectionDetail = () => {
   };
   
   // If still loading, show a loading state
-  if (loading) {
+  if (loading || isUserDataLoading) {
     return (
       <PageContainer>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -486,7 +439,10 @@ const CollectionDetail = () => {
                     <Edit size={16} className="mr-2" /> Edit Collection
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <Star size={16} className="mr-2" className={collection.is_favorite ? "text-amber-500 fill-amber-500" : ""} /> 
+                    <Star 
+                      size={16} 
+                      className={`mr-2 ${collection.is_favorite ? "text-amber-500 fill-amber-500" : ""}`} 
+                    /> 
                     {collection.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -682,43 +638,52 @@ const CollectionDetail = () => {
             </div>
             
             <div className="space-y-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-2">
-              {ADDITIONAL_PLAQUES.map(plaque => (
-                <div 
-                  key={plaque.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50"
-                  onClick={() => {
-                    handleAddPlaquesToCollection([plaque.id]);
-                    setAddPlaquesOpen(false);
-                  }}
-                >
-                  <div className="shrink-0 w-12 h-12 rounded-md overflow-hidden bg-gray-100">
-                    <img src={plaque.image} alt="" className="w-full h-full object-cover" />
+              {availablePlaques.length > 0 ? (
+                availablePlaques.map(plaque => (
+                  <div 
+                    key={plaque.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50"
+                    onClick={() => {
+                      handleAddPlaquesToCollection([plaque.id]);
+                      setAddPlaquesOpen(false);
+                    }}
+                  >
+                    <div className="shrink-0 w-12 h-12 rounded-md overflow-hidden bg-gray-100">
+                      <img src={plaque.image} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <h4 className="font-medium truncate">{plaque.title}</h4>
+                      <p className="text-xs text-gray-500 truncate">{plaque.location}</p>
+                    </div>
+                    <Checkbox />
                   </div>
-                  <div className="flex-grow min-w-0">
-                    <h4 className="font-medium truncate">{plaque.title}</h4>
-                    <p className="text-xs text-gray-500 truncate">{plaque.location}</p>
-                  </div>
-                  <Checkbox />
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <MapPin size={32} className="mx-auto mb-3 text-gray-400" />
+                  <p>No more plaques available to add</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
           
           <SheetFooter>
             <div className="flex justify-between items-center w-full">
               <div className="text-sm text-gray-600">
-                {ADDITIONAL_PLAQUES.length} plaque{ADDITIONAL_PLAQUES.length !== 1 ? 's' : ''} available
+                {availablePlaques.length} plaque{availablePlaques.length !== 1 ? 's' : ''} available
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setAddPlaquesOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => {
-                  handleAddPlaquesToCollection(ADDITIONAL_PLAQUES.map(p => p.id));
-                  setAddPlaquesOpen(false);
-                }}>
-                  Add All
-                </Button>
+                {availablePlaques.length > 0 && (
+                  <Button onClick={() => {
+                    handleAddPlaquesToCollection(availablePlaques.map(p => p.id));
+                    setAddPlaquesOpen(false);
+                  }}>
+                    Add All
+                  </Button>
+                )}
               </div>
             </div>
           </SheetFooter>
