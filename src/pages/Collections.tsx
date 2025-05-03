@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { List, Plus, MapIcon, Trash, Search, AlertCircle, Filter } from 'lucide-react';
+import { 
+  List, 
+  Plus, 
+  MapIcon, 
+  Trash, 
+  Search, 
+  AlertCircle, 
+  Filter,
+  Sparkles,
+  BookMarked,
+  Collection
+} from 'lucide-react';
 import {
   PageContainer,
   CollectionCard,
@@ -9,7 +20,7 @@ import {
   ViewToggle,
   EmptyState,
   ActionBar,
-  type Collection,
+  type Collection as CollectionType,
   type NewCollection,
   type ViewMode
 } from '@/components';
@@ -18,18 +29,162 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import CollectionsDashboard from '../components/collections/CollectionsDashboard';
-import CollectionsFilterSheet from '../components/collections/CollectionsFilterSheet';
+import MultiSelectFilter from '../components/common/MultiSelectFilter';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetDescription, 
+  SheetFooter
+} from "@/components/ui/sheet";
 
 // Sample collections data
 const SAMPLE_COLLECTIONS = [
-  { id: 1, icon: '🎭', name: 'Theatre Legends', description: 'A collection of famous plaques related to theatre history in London', plaques: 18, updated: '2 days ago', color: 'bg-blue-500', isPublic: true, isFavorite: true },
-  { id: 2, icon: '🎶', name: 'Musical Icons', description: 'Explore the homes and landmarks of famous musicians', plaques: 12, updated: 'yesterday', color: 'bg-green-500', isPublic: false, isFavorite: false },
-  { id: 3, icon: '📚', name: 'Literary Giants', description: 'Famous authors and poets who lived in London', plaques: 15, updated: 'last week', color: 'bg-red-500', isPublic: true, isFavorite: true },
-  { id: 4, icon: '🏛️', name: 'Historic Landmarks', description: 'Important historical buildings and monuments across London', plaques: 22, updated: '3 weeks ago', color: 'bg-purple-500', isPublic: false, isFavorite: false },
-  { id: 5, icon: '🧠', name: 'Scientists & Inventors', description: 'Great minds who changed the world with their discoveries', plaques: 8, updated: 'last month', color: 'bg-yellow-500', isPublic: true, isFavorite: false },
-  { id: 6, icon: '🎨', name: 'Artists & Painters', description: 'Visual artists who lived and worked in London', plaques: 14, updated: '2 months ago', color: 'bg-pink-500', isPublic: false, isFavorite: false },
+  { 
+    id: 1, 
+    icon: '🏛️', 
+    name: 'Historic London', 
+    description: 'A collection of famous plaques related to London landmarks and history', 
+    plaques: 18, 
+    updated: '2 days ago', 
+    color: 'bg-blue-500' 
+  },
+  { 
+    id: 2, 
+    icon: '🎵', 
+    name: 'Musical Icons', 
+    description: 'Explore the homes and landmarks of famous musicians', 
+    plaques: 12, 
+    updated: 'yesterday', 
+    color: 'bg-blue-600'
+  },
+  { 
+    id: 3, 
+    icon: '📚', 
+    name: 'Literary Giants', 
+    description: 'Famous authors and poets who lived in London', 
+    plaques: 15, 
+    updated: 'last week', 
+    color: 'bg-blue-700'
+  },
+  { 
+    id: 4, 
+    icon: '🏛️', 
+    name: 'Historic Landmarks', 
+    description: 'Important historical buildings and monuments across London', 
+    plaques: 22, 
+    updated: '3 weeks ago', 
+    color: 'bg-blue-500'
+  },
+  { 
+    id: 5, 
+    icon: '🧪', 
+    name: 'Scientists & Inventors', 
+    description: 'Great minds who changed the world with their discoveries', 
+    plaques: 8, 
+    updated: 'last month', 
+    color: 'bg-blue-600'
+  },
+  { 
+    id: 6, 
+    icon: '🎨', 
+    name: 'Artists & Painters', 
+    description: 'Visual artists who lived and worked in London', 
+    plaques: 14, 
+    updated: '2 months ago', 
+    color: 'bg-blue-700'
+  },
 ];
+
+// Simplified Filter Sheet Component
+const SimpleFilterSheet = ({
+  isOpen,
+  onClose,
+  onApply,
+  onReset,
+  
+  types,
+  selectedTypes,
+  onTypesChange,
+  
+  plaqueCounts,
+  selectedPlaqueCounts,
+  onPlaqueCountsChange,
+  
+  className = ''
+}) => {
+  const handleSheetChange = (open) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
+  // Count total active filters
+  const activeFiltersCount = 
+    selectedTypes.length + 
+    selectedPlaqueCounts.length;
+
+  return (
+    <Sheet open={isOpen} onOpenChange={handleSheetChange}>
+      <SheetContent side="left" className={`w-full sm:max-w-md ${className}`}>
+        <SheetHeader>
+          <div className="flex items-center justify-between">
+            <SheetTitle>Filter Collections</SheetTitle>
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary" className="font-normal">
+                {activeFiltersCount} active
+              </Badge>
+            )}
+          </div>
+          <SheetDescription>Refine your collections view</SheetDescription>
+        </SheetHeader>
+        
+        <div className="grid gap-6 py-6">
+          <div className="space-y-4">
+            <h3 className="text-base font-medium">Collection Type</h3>
+            <MultiSelectFilter
+              options={types}
+              selected={selectedTypes}
+              onChange={onTypesChange}
+              placeholder="All collection types"
+              searchPlaceholder="Search collection types..."
+              displayBadges={true}
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <h3 className="text-base font-medium">Number of Plaques</h3>
+            <MultiSelectFilter
+              options={plaqueCounts}
+              selected={selectedPlaqueCounts}
+              onChange={onPlaqueCountsChange}
+              placeholder="Any amount"
+              searchPlaceholder="Search plaque counts..."
+              displayBadges={true}
+            />
+          </div>
+        </div>
+        
+        <SheetFooter className="flex flex-row gap-2 sm:justify-between">
+          <Button 
+            variant="outline" 
+            onClick={onReset}
+            className="flex-1"
+          >
+            Reset All
+          </Button>
+          <Button 
+            onClick={onApply}
+            className="flex-1"
+          >
+            Apply Filters
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 const Collections = () => {
   const navigate = useNavigate();
@@ -37,37 +192,26 @@ const Collections = () => {
   const searchParams = new URLSearchParams(location.search);
   
   // State
-  const [collections, setCollections] = useState<Collection[]>(SAMPLE_COLLECTIONS);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [collections, setCollections] = useState(SAMPLE_COLLECTIONS);
+  const [viewMode, setViewMode] = useState('grid');
   const [sortOption, setSortOption] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCollections, setSelectedCollections] = useState<number[]>([]);
-  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+  const [selectedCollections, setSelectedCollections] = useState([]);
+  const [menuOpenId, setMenuOpenId] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   
-  // Enhanced Filter states - now arrays for multi-select
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedTimePeriods, setSelectedTimePeriods] = useState<string[]>([]);
-  const [selectedPlaqueCounts, setSelectedPlaqueCounts] = useState<string[]>([]);
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [onlyShared, setOnlyShared] = useState(false);
+  // Simplified filter states
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedPlaqueCounts, setSelectedPlaqueCounts] = useState([]);
   
   // Filter options
   const typeOptions = [
-    { label: 'Personal', value: 'personal' },
-    { label: 'Shared', value: 'shared' },
-    { label: 'Public', value: 'public' },
-    { label: 'Private', value: 'private' },
-    { label: 'Template', value: 'template' },
-  ];
-  
-  const timePeriodOptions = [
-    { label: 'Today', value: 'today' },
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'This Year', value: 'year' },
-    { label: 'Older', value: 'older' },
+    { label: 'Historical', value: 'historical' },
+    { label: 'Arts & Culture', value: 'arts' },
+    { label: 'Science', value: 'science' },
+    { label: 'Architecture', value: 'architecture' },
+    { label: 'Walking Tours', value: 'tours' },
   ];
   
   const plaqueCountOptions = [
@@ -81,7 +225,7 @@ const Collections = () => {
   useEffect(() => {
     const view = searchParams.get('view');
     if (view && (view === 'grid' || view === 'list' || view === 'map')) {
-      setViewMode(view as ViewMode);
+      setViewMode(view);
     }
     
     const search = searchParams.get('search');
@@ -92,11 +236,6 @@ const Collections = () => {
     const sort = searchParams.get('sort');
     if (sort) {
       setSortOption(sort);
-    }
-    
-    const favorites = searchParams.get('favorites');
-    if (favorites === 'true') {
-      setOnlyFavorites(true);
     }
   }, []);
   
@@ -120,20 +259,8 @@ const Collections = () => {
       params.set('types', selectedTypes.join(','));
     }
     
-    if (selectedTimePeriods.length > 0) {
-      params.set('time', selectedTimePeriods.join(','));
-    }
-    
     if (selectedPlaqueCounts.length > 0) {
       params.set('counts', selectedPlaqueCounts.join(','));
-    }
-    
-    if (onlyFavorites) {
-      params.set('favorites', 'true');
-    }
-    
-    if (onlyShared) {
-      params.set('shared', 'true');
     }
     
     const newUrl = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
@@ -143,10 +270,7 @@ const Collections = () => {
     searchQuery, 
     sortOption, 
     selectedTypes, 
-    selectedTimePeriods, 
-    selectedPlaqueCounts, 
-    onlyFavorites, 
-    onlyShared
+    selectedPlaqueCounts
   ]);
   
   // Filter collections based on the current filters
@@ -155,25 +279,11 @@ const Collections = () => {
     const matchesSearch = collection.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          (collection.description && collection.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Match type filters
-    const matchesTypes = selectedTypes.length === 0 || 
-                       (selectedTypes.includes('public') && collection.isPublic) ||
-                       (selectedTypes.includes('private') && !collection.isPublic);
-    
-    // Match favorites filter
-    const matchesFavorites = !onlyFavorites || collection.isFavorite;
-    
-    // Match shared filter (for demo purposes, consider all public collections as "shared")
-    const matchesShared = !onlyShared || collection.isPublic;
-    
-    // Match time periods (for demo purposes, this is simplified)
-    const matchesTimePeriods = selectedTimePeriods.length === 0 || 
-                             (selectedTimePeriods.includes('today') && collection.updated.includes('today')) ||
-                             (selectedTimePeriods.includes('week') && 
-                              (collection.updated.includes('today') || 
-                               collection.updated.includes('yesterday') || 
-                               collection.updated.includes('days') || 
-                               collection.updated.includes('week')));
+    // Simplified filtering logic
+    const matchesType = selectedTypes.length === 0 || 
+                       (selectedTypes.includes('historical') && (collection.name.includes('Historic') || collection.description.includes('historical'))) ||
+                       (selectedTypes.includes('arts') && (collection.name.includes('Artist') || collection.description.includes('artist'))) ||
+                       (selectedTypes.includes('science') && collection.name.includes('Scientist'));
     
     // Match plaque counts
     const matchesPlaqueCounts = selectedPlaqueCounts.length === 0 || 
@@ -182,12 +292,7 @@ const Collections = () => {
                               (selectedPlaqueCounts.includes('many') && collection.plaques > 10 && collection.plaques <= 50) ||
                               (selectedPlaqueCounts.includes('lots') && collection.plaques > 50);
     
-    return matchesSearch && 
-           matchesTypes && 
-           matchesFavorites && 
-           matchesShared && 
-           matchesTimePeriods && 
-           matchesPlaqueCounts;
+    return matchesSearch && matchesType && matchesPlaqueCounts;
   });
   
   // Sort collections based on selected option
@@ -211,18 +316,17 @@ const Collections = () => {
   });
   
   // Handlers
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (id) => {
     setSelectedCollections(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
   
-  const handleMenuOpen = (id: number) => {
+  const handleMenuOpen = (id) => {
     setMenuOpenId(menuOpenId === id ? null : id);
   };
   
-  const handleEdit = (id: number) => {
-    // In a real app, this would open the edit modal with the collection data
+  const handleEdit = (id) => {
     toast({
       title: "Edit Collection",
       description: `Editing collection ${id}`,
@@ -230,7 +334,7 @@ const Collections = () => {
     });
   };
   
-  const handleDuplicate = (id: number) => {
+  const handleDuplicate = (id) => {
     const collection = collections.find(c => c.id === id);
     if (collection) {
       const newCollection = {
@@ -250,7 +354,7 @@ const Collections = () => {
     }
   };
   
-  const handleShare = (id: number) => {
+  const handleShare = (id) => {
     toast({
       title: "Share Collection",
       description: "Sharing functionality would be implemented here",
@@ -258,22 +362,7 @@ const Collections = () => {
     });
   };
   
-  const handleToggleFavorite = (id: number) => {
-    setCollections(prev => prev.map(collection => 
-      collection.id === id ? { ...collection, isFavorite: !collection.isFavorite } : collection
-    ));
-    
-    const collection = collections.find(c => c.id === id);
-    if (collection) {
-      toast({
-        title: collection.isFavorite ? "Removed from favorites" : "Added to favorites",
-        description: `"${collection.name}" ${collection.isFavorite ? "removed from" : "added to"} favorites`,
-        duration: 2000,
-      });
-    }
-  };
-  
-  const handleDelete = (id: number) => {
+  const handleDelete = (id) => {
     setCollections(prev => prev.filter(collection => collection.id !== id));
     
     toast({
@@ -287,13 +376,12 @@ const Collections = () => {
     setCreateModalOpen(true);
   };
   
-  const handleSaveCollection = (newCollection: NewCollection) => {
+  const handleSaveCollection = (newCollection) => {
     const createdCollection = {
       id: collections.length + 1,
       ...newCollection,
       plaques: 0,
-      updated: 'just now',
-      isFavorite: false
+      updated: 'just now'
     };
     setCollections([createdCollection, ...collections]);
     setCreateModalOpen(false);
@@ -316,28 +404,9 @@ const Collections = () => {
     setSelectedCollections([]);
   };
   
-  const handleMerge = () => {
-    toast({
-      title: "Merge Collections",
-      description: "This would open a merge dialog in a real app",
-      duration: 2000,
-    });
-  };
-  
-  const handleExport = () => {
-    toast({
-      title: "Export Collections",
-      description: "This would export the selected collections in a real app",
-      duration: 2000,
-    });
-  };
-  
   const resetFilters = () => {
     setSelectedTypes([]);
-    setSelectedTimePeriods([]);
     setSelectedPlaqueCounts([]);
-    setOnlyFavorites(false);
-    setOnlyShared(false);
     setSearchQuery('');
     setFilterModalOpen(false);
   };
@@ -346,55 +415,77 @@ const Collections = () => {
     setFilterModalOpen(false);
   };
   
-  const handleViewAllFavorites = () => {
-    setOnlyFavorites(true);
-    // Scroll to collections list
-    document.getElementById('collections-list')?.scrollIntoView({ behavior: 'smooth' });
-  };
-  
   // Get active filters for display
   const activeFilters = [
     ...selectedTypes.map(type => {
       const option = typeOptions.find(opt => opt.value === type);
       return option ? `Type: ${option.label}` : `Type: ${type}`;
     }),
-    ...selectedTimePeriods.map(period => {
-      const option = timePeriodOptions.find(opt => opt.value === period);
-      return option ? `Updated: ${option.label}` : `Updated: ${period}`;
-    }),
     ...selectedPlaqueCounts.map(count => {
       const option = plaqueCountOptions.find(opt => opt.value === count);
       return option ? `Plaques: ${option.label}` : `Plaques: ${count}`;
-    }),
-    ...(onlyFavorites ? ['Favorites Only'] : []),
-    ...(onlyShared ? ['Shared Only'] : []),
+    })
   ];
+
+  // Calculate statistics
+  const totalCollections = collections.length;
+  const totalPlaques = collections.reduce((sum, c) => sum + c.plaques, 0);
   
   return (
     <PageContainer activePage="collections">
       <main className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-1">My Collections</h1>
-            <p className="text-gray-500">Organize and manage your plaque discoveries</p>
+        {/* Improved Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold mb-2 text-white">My Collections</h1>
+              <p className="text-blue-50">Curate your own plaque discoveries around London</p>
+            </div>
+
           </div>
-          <Button 
-            onClick={handleCreateCollection} 
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus size={20} /> Create Collection
-          </Button>
         </div>
         
-        {/* Collections Dashboard */}
-        <CollectionsDashboard 
-          collections={collections}
-          onCreateCollection={handleCreateCollection}
-          onViewAllFavorites={handleViewAllFavorites}
-          onOpenFilters={() => setFilterModalOpen(true)}
-          className="mb-8"
-        />
+        {/* Stylish Stats Section */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-blue-500 p-5 rounded-xl shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-blue-100 mb-1 text-sm font-medium">Collections</div>
+                <div className="text-3xl font-bold text-white">{totalCollections}</div>
+              </div>
+              <div className="p-3 bg-blue-600 rounded-lg">
+                <BookMarked size={24} className="text-white" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-blue-600 p-5 rounded-xl shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-blue-100 mb-1 text-sm font-medium">Total Plaques</div>
+                <div className="text-3xl font-bold text-white">{totalPlaques}</div>
+              </div>
+              <div className="p-3 bg-blue-700 rounded-lg">
+                <MapIcon size={24} className="text-white" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-blue-700 p-5 rounded-xl shadow-sm md:col-span-2">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-blue-100 mb-1 text-sm font-medium">Create Your Own Collection</div>
+                <div className="text-white font-medium max-w-xs">Organize plaques by theme, location, or historical period</div>
+              </div>
+              <Button 
+                onClick={handleCreateCollection} 
+                className="bg-white hover:bg-gray-100 text-blue-700"
+              >
+                <Plus size={16} className="mr-1" /> Create
+              </Button>
+            </div>
+          </div>
+        </div>
         
         {/* Controls */}
         <div className="sticky top-[61px] bg-white z-10 border-y border-gray-100 py-3 mb-6">
@@ -511,7 +602,6 @@ const Collections = () => {
                       onEdit={handleEdit}
                       onDuplicate={handleDuplicate}
                       onShare={handleShare}
-                      onToggleFavorite={handleToggleFavorite}
                       onDelete={handleDelete}
                     />
                   ))}
@@ -531,7 +621,6 @@ const Collections = () => {
                       onEdit={handleEdit}
                       onDuplicate={handleDuplicate}
                       onShare={handleShare}
-                      onToggleFavorite={handleToggleFavorite}
                       onDelete={handleDelete}
                     />
                   ))}
@@ -565,20 +654,12 @@ const Collections = () => {
             variant: "destructive",
             icon: <Trash size={16} />,
             onClick: handleBulkDelete
-          },
-          {
-            label: "Merge",
-            onClick: handleMerge
-          },
-          {
-            label: "Export",
-            onClick: handleExport
           }
         ]}
       />
       
-      {/* Enhanced Filter Sheet */}
-      <CollectionsFilterSheet
+      {/* Simplified Filter Sheet */}
+      <SimpleFilterSheet
         isOpen={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
         onApply={applyFilters}
@@ -588,19 +669,9 @@ const Collections = () => {
         selectedTypes={selectedTypes}
         onTypesChange={setSelectedTypes}
         
-        timePeriods={timePeriodOptions}
-        selectedTimePeriods={selectedTimePeriods}
-        onTimePeriodsChange={setSelectedTimePeriods}
-        
         plaqueCounts={plaqueCountOptions}
         selectedPlaqueCounts={selectedPlaqueCounts}
         onPlaqueCountsChange={setSelectedPlaqueCounts}
-        
-        onlyFavorites={onlyFavorites}
-        onFavoritesChange={setOnlyFavorites}
-        
-        onlyShared={onlyShared}
-        onSharedChange={setOnlyShared}
       />
       
       {/* Create Collection Modal */}
