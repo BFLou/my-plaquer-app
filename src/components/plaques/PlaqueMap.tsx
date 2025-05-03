@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Search, Badge } from 'lucide-react';
+import { MapPin, Route, Trash, Clock } from 'lucide-react';
 import { Plaque } from "@/types/plaque";
 import { Button } from "@/components/ui/button";
-import { Badge as UIBadge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 
 // Import our new components
 import useMapInitialization from './map/useMapInitialization';
@@ -75,28 +75,30 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
       const markers = validPlaques.map((plaque, index) => {
         const marker = createPlaqueMarker(plaque, { 
           L: window.L, 
-          onMarkerClick: () => handlePlaqueClick(plaque),
+          onMarkerClick: () => setSelectedMarker(plaque.id),
           favorites,
           selectedMarkerId: selectedMarker
         });
         
         if (!marker) return null;
         
-        // Create popup with our utility function
+        // Create popup with our utility function - using compact version for initial click
         const popupContent = createPlaquePopupContent(plaque, {
           onViewDetails: () => {
             if (onPlaqueClick) onPlaqueClick(plaque);
             marker.closePopup();
           },
           onAddToRoute: () => handleAddToRoute(plaque),
-          isFavorite: favorites.includes(plaque.id)
+          isFavorite: favorites.includes(plaque.id),
+          compact: true // Use compact version for initial click
         });
         
         // Create popup with specified options
         const popup = window.L.popup({
           closeButton: true,
           autoClose: true,
-          className: 'plaque-popup-container'
+          className: 'plaque-popup-container compact-popup',
+          offset: [0, -14]
         }).setContent(popupContent);
         
         // Bind popup to marker
@@ -128,10 +130,11 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
     }
   }, [plaques, mapLoaded, favorites, selectedMarker, mapInstance, clusterGroup]);
 
-  // Handle plaque click
+  // Handle plaque click - this will just show the popup now, not directly open the panel
   const handlePlaqueClick = (plaque: Plaque) => {
     setSelectedMarker(plaque.id);
-    if (onPlaqueClick) onPlaqueClick(plaque);
+    // Note: We don't call onPlaqueClick here anymore
+    // That will be handled by the View Details button in the popup
   };
   
   // Handle adding a plaque to the route
@@ -157,14 +160,6 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
       setTimeout(() => {
         mapInstance.closePopup();
       }, 1500);
-    }
-  };
-
-  // Handle search form submission
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (onSearchSubmit) {
-      onSearchSubmit();
     }
   };
 
@@ -217,8 +212,6 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
         },
         {
           enableHighAccuracy: true, 
-          timeout: 5000,
-          enableHighAccuracy: true, 
           timeout: 5000, 
           maximumAge: 0
         }
@@ -250,6 +243,47 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
     if (onSearchChange) onSearchChange(category);
     if (onSearchSubmit) onSearchSubmit();
     setMapFilterVisible(false);
+  };
+
+  // Calculate route
+  const calculateRoute = () => {
+    if (mapInstance && routePlaques.length > 1) {
+      const routePoints = routePlaques.map(plaque => 
+        [parseFloat(plaque.latitude as string), parseFloat(plaque.longitude as string)]
+      );
+      
+      // Remove existing routes first
+      if (routeLine) {
+        mapInstance.removeLayer(routeLine);
+      }
+      
+      const newRouteLine = window.L.polyline(routePoints, {
+        color: '#10b981',
+        weight: 5,
+        opacity: 0.7,
+        dashArray: '10, 10',
+        lineCap: 'round',
+        className: 'route-line'
+      }).addTo(mapInstance);
+      
+      // Calculate approximate distance
+      let totalDistance = 0;
+      for (let i = 0; i < routePoints.length - 1; i++) {
+        const start = window.L.latLng(routePoints[i][0], routePoints[i][1]);
+        const end = window.L.latLng(routePoints[i+1][0], routePoints[i+1][1]);
+        totalDistance += start.distanceTo(end);
+      }
+      
+      // Display distance in km
+      const distanceKm = (totalDistance / 1000).toFixed(2);
+      window.L.popup()
+        .setLatLng(routePoints[0])
+        .setContent(`<div class="p-2"><div class="font-medium text-sm">Route Details</div><div class="text-xs mt-1">Distance: ${distanceKm} km</div><div class="text-xs">Stops: ${routePlaques.length}</div></div>`)
+        .openOn(mapInstance);
+      
+      // Fit map to show the route
+      mapInstance.fitBounds(newRouteLine.getBounds(), {padding: [50, 50]});
+    }
   };
 
   return (
@@ -304,7 +338,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
           <MapFilterPanel
             visible={mapFilterVisible}
             onClose={() => setMapFilterVisible(false)}
-            searchQuery={searchQuery}
+            searchQuery={searchQuery || ""}
             onSearchChange={(e) => onSearchChange?.(e.target.value)}
             onSearch={() => onSearchSubmit?.()}
             categories={categories}
@@ -319,40 +353,18 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
           {routePlaques.length > 0 && (
             <div className="absolute bottom-4 left-4 z-10 bg-white rounded-lg p-3 shadow-md">
               <h4 className="font-medium text-sm mb-2">Route Planning</h4>
-              <div className="text-xs text-gray-600 mb-2">
-                {routePlaques.length} points selected
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin size={14} className="text-blue-500" />
+                <div className="text-xs text-gray-600">
+                  {routePlaques.length} stops selected
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={handleClearRoute}>
-                  Clear Route
+                  Clear
                 </Button>
-                <Button size="sm" onClick={() => {
-                  // In a real app, you would implement routing functionality here
-                  // For now, just show the route
-                  if (mapInstance) {
-                    const routePoints = routePlaques.map(plaque => 
-                      [parseFloat(plaque.latitude as string), parseFloat(plaque.longitude as string)]
-                    );
-                    
-                    // Remove existing routes first
-                    if (routeLine) {
-                      mapInstance.removeLayer(routeLine);
-                    }
-                    
-                    const newRouteLine = window.L.polyline(routePoints, {
-                      color: '#10b981',
-                      weight: 5,
-                      opacity: 0.7,
-                      dashArray: '10, 10',
-                      lineCap: 'round',
-                      className: 'route-line'
-                    }).addTo(mapInstance);
-                    
-                    // Fit map to show the route
-                    mapInstance.fitBounds(newRouteLine.getBounds(), {padding: [50, 50]});
-                  }
-                }}>
-                  Calculate Route
+                <Button size="sm" onClick={calculateRoute}>
+                  <Route size={14} className="mr-1" /> Calculate Route
                 </Button>
               </div>
             </div>
@@ -377,6 +389,19 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
               <div className="flex items-center gap-2">
                 <div className="bg-gray-500 w-4 h-4 rounded-full"></div>
                 <span className="text-xs">Black/Grey Plaques</span>
+              </div>
+              {routePlaques.length > 0 && (
+                <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+                  <div className="h-0.5 w-4 bg-green-500"></div>
+                  <span className="text-xs">Planned Route</span>
+                </div>
+              )}
+              {/* Show checkmark for visited plaques */}
+              <div className="flex items-center gap-2 border-t border-gray-100 pt-1">
+                <div className="w-4 h-4 flex items-center justify-center">
+                  <div className="w-3 h-3 text-white bg-blue-500 rounded-full flex items-center justify-center text-[8px]">✓</div>
+                </div>
+                <span className="text-xs">Visited Plaques</span>
               </div>
             </div>
           </div>

@@ -1,9 +1,19 @@
+// src/components/plaques/map/PlaqueMarker.tsx
+
 import React from 'react';
 import { Plaque } from '@/types/plaque';
 
 // Helper function to create a marker for a plaque
 export const createPlaqueMarker = (plaque: Plaque, options: any) => {
-  const { L, onMarkerClick, favorites = [], selectedMarkerId = null } = options;
+  const { 
+    L, 
+    onMarkerClick, 
+    onViewDetails,
+    onAddToRoute,
+    favorites = [], 
+    selectedMarkerId = null,
+    createPopupContent
+  } = options;
   
   try {
     const lat = parseFloat(plaque.latitude as string);
@@ -40,12 +50,38 @@ export const createPlaqueMarker = (plaque: Plaque, options: any) => {
       })
     });
     
+    // Create the compact popup content
+    const popupContent = createPopupContent(plaque, {
+      onViewDetails: () => {
+        if (onViewDetails) onViewDetails(plaque);
+        marker.closePopup();
+      },
+      onAddToRoute: onAddToRoute ? () => onAddToRoute(plaque) : undefined,
+      isFavorite: favorites.includes(plaque.id),
+      compact: true // Use compact version for initial click
+    });
+    
+    // Create popup with specified options
+    const popup = L.popup({
+      closeButton: true,
+      autoClose: true,
+      className: 'plaque-popup-container compact-popup',
+      offset: [0, -14] // Adjust offset to position the popup better
+    }).setContent(popupContent);
+    
+    // Bind popup to marker
+    marker.bindPopup(popup);
+    
     // Add click handler
     marker.on('click', function(e) {
       // Stop propagation to prevent zoom issues
       L.DomEvent.stopPropagation(e);
       
+      // Notify parent component about the click
       if (onMarkerClick) onMarkerClick(plaque);
+      
+      // Open the popup
+      marker.openPopup();
     });
     
     // Add drop-in animation
