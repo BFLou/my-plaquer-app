@@ -520,12 +520,18 @@ const Discover = () => {
 
 
   const handlePlaqueClick = (plaque: Plaque) => {
+    // Set maintainMapView to true when a plaque is selected
+    // This tells the map component to maintain its current view
     setMaintainMapView(true);
     setSelectedPlaque(plaque);
   };
 
+
   const handleCloseDetail = () => {
+    // Keep maintainMapView true when closing the detail panel
+    // This way, when selectedPlaque becomes null, the map won't reset
     setSelectedPlaque(null);
+    // We don't set maintainMapView back to false here
   };
 
 
@@ -689,16 +695,16 @@ const Discover = () => {
           <>
 {viewMode === 'map' && (
   <>
-    <div className="w-full h-[650px]">
-    <PlaqueMap 
-  plaques={filteredPlaques}
-  onPlaqueClick={handlePlaqueClick}
-  favorites={favorites}
-  selectedPlaqueId={selectedPlaque?.id}
-  maintainMapView={maintainMapView} // Add this prop
-  className="rounded-xl overflow-hidden shadow-md h-full"
-/>
-    </div>
+ <div className="w-full h-[650px]">
+            <PlaqueMap 
+              plaques={filteredPlaques}
+              onPlaqueClick={handlePlaqueClick}
+              favorites={favorites}
+              selectedPlaqueId={selectedPlaque?.id}
+              maintainMapView={maintainMapView}
+              className="rounded-xl overflow-hidden shadow-md h-full"
+            />
+          </div>
     
     {/* Optional: Add the debugger component for troubleshooting */}
     <PlaqueDataDebugger plaques={filteredPlaques} />

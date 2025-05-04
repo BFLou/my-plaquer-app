@@ -14,7 +14,7 @@ const PlaqueMap = ({
   onPlaqueClick,
   favorites = [],
   selectedPlaqueId,
-  maintainMapView = false, // Add this prop with default value
+  maintainMapView = false, // Flag to maintain map view when closing detail panel
   className = ''
 }) => {
   const mapRef = useRef(null);
@@ -24,6 +24,7 @@ const PlaqueMap = ({
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [quickCategories, setQuickCategories] = useState([]);
+  const [lastMapState, setLastMapState] = useState(null); // Store last map state
 
   // Initialize map
   useEffect(() => {
@@ -139,6 +140,14 @@ const PlaqueMap = ({
     `;
     document.head.appendChild(style);
 
+    // Store current view when map moves
+    map.on('moveend', () => {
+      setLastMapState({
+        center: map.getCenter(),
+        zoom: map.getZoom()
+      });
+    });
+
     console.log('Map initialized successfully');
     setMapInstance(map);
 
@@ -241,8 +250,8 @@ const PlaqueMap = ({
       console.log(`Created ${newMarkers.length} markers out of ${plaques.length} plaques`);
     }
 
-    // Fit bounds to show all markers if we have any
-    if (newMarkers.length > 0) {
+    // First load - fit bounds to show all markers if we have any
+    if (newMarkers.length > 0 && !lastMapState) {
       try {
         const group = L.featureGroup(newMarkers);
         mapInstance.fitBounds(group.getBounds(), {
@@ -255,37 +264,36 @@ const PlaqueMap = ({
     }
     
     // If we have a selected plaque, center on it
- // If we have a selected plaque, center on it only if not maintaining view
- if (selectedPlaqueId) {
-  const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
-  if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
-    const lat = parseFloat(selectedPlaque.latitude);
-    const lng = parseFloat(selectedPlaque.longitude);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      // Pan to the marker location without changing zoom
-      mapInstance.panTo([lat, lng], {
-        animate: true,
-        duration: 0.5
+    if (selectedPlaqueId) {
+      const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
+      if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
+        const lat = parseFloat(selectedPlaque.latitude);
+        const lng = parseFloat(selectedPlaque.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          // Pan to the marker location without changing zoom
+          mapInstance.panTo([lat, lng], {
+            animate: true,
+            duration: 0.5
+          });
+        }
+      }
+    } 
+    // Restore previous view if maintainMapView is true and we have a stored state
+    else if (maintainMapView && lastMapState) {
+      console.log('Maintaining previous map view:', lastMapState);
+      mapInstance.setView(lastMapState.center, lastMapState.zoom, {
+        animate: false
       });
     }
-  }
-} else if (!maintainMapView) {
-  // Only reset the view if we're not maintaining the view
-  // This is the key part - we don't reset if maintainMapView is true
-  if (markersRef.current.length > 0 || 
-     (clusterGroupRef.current && clusterGroupRef.current.getLayers().length > 0)) {
-    const L = window.L;
-    const layers = clusterGroupRef.current ? 
-                   clusterGroupRef.current.getLayers() : 
-                   markersRef.current;
-    const group = L.featureGroup(layers);
-    mapInstance.fitBounds(group.getBounds(), {
-      padding: [50, 50],
-      maxZoom: 16
-    });
-  }
-}
-}, [mapInstance, plaques, favorites, selectedPlaqueId, onPlaqueClick, maintainMapView]);
+    // Otherwise reset to show all markers
+    else if (!maintainMapView && newMarkers.length > 0) {
+      const group = L.featureGroup(newMarkers);
+      mapInstance.fitBounds(group.getBounds(), {
+        padding: [50, 50],
+        maxZoom: 16
+      });
+    }
+  }, [mapInstance, plaques, favorites, selectedPlaqueId, onPlaqueClick, maintainMapView, lastMapState]);
 
   // Handle map actions
   const handleCenterMap = () => {
@@ -361,6 +369,7 @@ const PlaqueMap = ({
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute bottom-2 left-2 z-10 bg-white bg-opacity-75 text-xs p-1 rounded">
           {plaques.length} plaques / {markersRef.current.length || (clusterGroupRef.current ? clusterGroupRef.current.getLayers().length : 0)} markers
+          {maintainMapView ? ' | View maintained' : ''}
         </div>
       )}
     </div>
