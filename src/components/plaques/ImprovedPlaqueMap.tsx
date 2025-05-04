@@ -1,11 +1,22 @@
 // src/components/plaques/ImprovedPlaqueMap.tsx
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Navigation, Filter, Target, CornerDownLeft, Route as RouteIcon, X } from 'lucide-react';
+import { Navigation, Filter, Target, CornerDownLeft, Route as RouteIcon, X, Save, AlertTriangle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import RouteBuilder from './RouteBuilder';
 
 type PlaqueMapProps = {
   plaques: Plaque[];
@@ -43,6 +54,7 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
   const [routeLine, setRouteLine] = useState<any>(null);
+  const [showClearRouteDialog, setShowClearRouteDialog] = useState(false);
   
   // Map state tracking
   const initializedRef = useRef(false);
@@ -675,19 +687,23 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
   // Toggle routing mode
   const toggleRoutingMode = () => {
     // Toggle the routing mode state
-    const newRoutingMode = !isRoutingMode;
-    setIsRoutingMode(newRoutingMode);
+    setIsRoutingMode(!isRoutingMode);
     
     if (isRoutingMode) {
-      // Clear route if exiting routing mode
-      clearRoute();
+      // If already in routing mode, ask for confirmation before clearing
+      if (routePoints.length > 0) {
+        setShowClearRouteDialog(true);
+      } else {
+        // If no route points, just exit routing mode
+        setIsRoutingMode(false);
+      }
     } else {
       // Entering routing mode
       toast.info("Route planning mode activated. Click 'Add to Route' in plaque popups to build your route.", {
         duration: 5000
       });
       
-      // IMPORTANT: Force refresh all markers to update popups with the "Add to Route" button
+      // Force refresh all markers to update popups with the "Add to Route" button
       if (mapInstance && clusterGroup) {
         // First store current map state
         const currentCenter = mapInstance.getCenter();
@@ -709,26 +725,31 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
   
   // Add plaque to route
   const addPlaqueToRoute = (plaque: Plaque) => {
-    if (!isRoutingMode || !mapInstance) return;
+    if (!isRoutingMode) {
+      // If not in routing mode, enter it first
+      setIsRoutingMode(true);
+      setTimeout(() => {
+        // Add the plaque after entering routing mode
+        addPlaqueToRoute(plaque);
+      }, 100);
+      return;
+    }
     
-    // Add to route points
-    setRoutePoints(prev => {
-      // Check if plaque is already in route
-      if (prev.some(p => p.id === plaque.id)) {
-        toast.info("This plaque is already in your route.");
-        return prev;
-      }
-      
-      const newPoints = [...prev, plaque];
-      
-      // Update route line
-      if (newPoints.length >= 2) {
-        updateRouteLine(newPoints);
-      }
-      
-      toast.success(`Added "${plaque.title}" to route (${newPoints.length} stops)`);
-      return newPoints;
-    });
+    // Check if plaque is already in route
+    if (routePoints.some(p => p.id === plaque.id)) {
+      toast.info("This plaque is already in your route.");
+      return;
+    }
+    
+    const newPoints = [...routePoints, plaque];
+    setRoutePoints(newPoints);
+    
+    // Update route line
+    if (newPoints.length >= 2) {
+      updateRouteLine(newPoints);
+    }
+    
+    toast.success(`Added "${plaque.title}" to route (${newPoints.length} stops)`);
   };
   
   // Update route line on map
@@ -740,6 +761,7 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     // Remove existing route line
     if (routeLine) {
       mapInstance.removeLayer(routeLine);
+      setRouteLine(null);
     }
     
     // Get valid coordinates
@@ -784,8 +806,7 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
       setRouteLine(polyline);
       
       // Save current view before modifying it
-     // Save current view before modifying it
-     lastViewStateRef.current = {
+      lastViewStateRef.current = {
         center: [mapInstance.getCenter().lat, mapInstance.getCenter().lng],
         zoom: mapInstance.getZoom()
       };
@@ -820,6 +841,8 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     
     setRouteLine(null);
     setRoutePoints([]);
+    setIsRoutingMode(false);
+    setShowClearRouteDialog(false);
   };
   
   // Export route
@@ -859,6 +882,53 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     URL.revokeObjectURL(url);
     
     toast.success("Route exported successfully");
+  };
+  
+  // Save route to localStorage
+  const saveRoute = () => {
+    if (routePoints.length < 2) {
+      toast.error("Add at least two plaques to create a route");
+      return;
+    }
+    
+    try {
+      // Prompt for route name
+      const routeName = prompt("Enter a name for this route:", `${routePoints.length} Plaques Walking Tour`);
+      
+      if (!routeName) {
+        return; // User cancelled
+      }
+      
+      // Create route data
+      const routeData = {
+        id: Date.now(),
+        name: routeName,
+        stops: routePoints.map(p => ({
+          id: p.id,
+          title: p.title,
+          location: p.location || p.address,
+          coordinates: [
+            parseFloat(p.latitude as unknown as string),
+            parseFloat(p.longitude as unknown as string)
+          ]
+        })),
+        created: new Date().toISOString()
+      };
+      
+      // Get existing saved routes or initialize empty array
+      const savedRoutes = JSON.parse(localStorage.getItem('plaqueroutes') || '[]');
+      
+      // Add new route
+      savedRoutes.push(routeData);
+      
+      // Save back to localStorage
+      localStorage.setItem('plaqueroutes', JSON.stringify(savedRoutes));
+      
+      toast.success(`Route "${routeName}" saved successfully`);
+    } catch (error) {
+      console.error('Error saving route:', error);
+      toast.error("Failed to save route. Please try again.");
+    }
   };
   
   return (
@@ -977,7 +1047,13 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
                 variant="ghost" 
                 size="sm" 
                 className="h-6 w-6 p-0"
-                onClick={() => setIsRoutingMode(false)}
+                onClick={() => {
+                  if (routePoints.length > 0) {
+                    setShowClearRouteDialog(true);
+                  } else {
+                    setIsRoutingMode(false);
+                  }
+                }}
               >
                 <X size={14} />
               </Button>
@@ -987,43 +1063,26 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
             </p>
           </div>
           
-          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100% - 130px)' }}>
-            {routePoints.length === 0 ? (
-              <div className="text-center py-4 text-sm text-gray-500">
-                No plaques added to route yet
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {routePoints.map((plaque, index) => (
-                  <div 
-                    key={plaque.id} 
-                    className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-md"
-                  >
-                    <span className="flex items-center gap-2 text-sm truncate flex-grow">
-                      <Badge variant="outline" className="shrink-0">{index + 1}</Badge>
-                      <span className="truncate">{plaque.title}</span>
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 w-6 p-0 text-red-500 shrink-0"
-                      onClick={() => removePlaqueFromRoute(plaque)}
-                    >
-                      <X size={14} />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100% - 180px)' }}>
+            <RouteBuilder 
+              routePoints={routePoints}
+              onRemovePoint={removePlaqueFromRoute}
+              onReorderPoints={(newPoints) => {
+                setRoutePoints(newPoints);
+                if (newPoints.length >= 2) {
+                  updateRouteLine(newPoints);
+                }
+              }}
+            />
           </div>
           
           <div className="p-4 border-t">
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="flex-1"
-                onClick={clearRoute}
+                onClick={() => setShowClearRouteDialog(true)}
                 disabled={routePoints.length === 0}
               >
                 Clear
@@ -1034,12 +1093,38 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
                 onClick={exportRoute}
                 disabled={routePoints.length < 2}
               >
-                Export Route
+                Export
               </Button>
             </div>
+            <Button 
+              variant="default" 
+              size="sm"
+              className="w-full flex items-center justify-center gap-1"
+              onClick={saveRoute}
+              disabled={routePoints.length < 2}
+            >
+              <Save size={16} />
+              Save Route
+            </Button>
           </div>
         </div>
       )}
+      
+      {/* Confirmation dialog for clearing route */}
+      <AlertDialog open={showClearRouteDialog} onOpenChange={setShowClearRouteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Route</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear this route? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={clearRoute}>Clear Route</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       {/* Map attribution - required for OSM */}
       <div className="absolute bottom-1 left-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
