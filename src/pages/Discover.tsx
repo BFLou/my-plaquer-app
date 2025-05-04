@@ -35,9 +35,10 @@ import plaqueData from '../data/plaque_data.json';
 import Pagination from '@/components/plaques/Pagination';
 import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
-import PlaqueMap from '../components/plaques/PlaqueMap';
 import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 import ImprovedPlaqueMap from '../components/plaques/ImprovedPlaqueMap';
+import RouteBuilder from '../components/plaques/RouteBuilder';
+import '../styles/map-styles.css'; // Make sure this is imported
 
 
 // Import map styles
@@ -266,6 +267,8 @@ const Discover = () => {
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [maintainMapView, setMaintainMapView] = useState(false);
+  const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
+  const [isRoutingMode, setIsRoutingMode] = useState(false);
 
   
   // Pagination state (for list/grid views)
@@ -391,6 +394,48 @@ const Discover = () => {
       setProfessionOptions(professions);
     }
   }, [allPlaques]);
+
+  const toggleRoutingMode = () => {
+    setIsRoutingMode(!isRoutingMode);
+    if (isRoutingMode) {
+      clearRoute();
+    }
+  };
+
+  // Add plaque to route
+const addPlaqueToRoute = (plaque: Plaque) => {
+  if (routePoints.some(p => p.id === plaque.id)) {
+    toast.info("This plaque is already in your route.");
+    return;
+  }
+  
+  setRoutePoints(prev => [...prev, plaque]);
+  toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
+};
+
+// Remove plaque from route
+const removePlaqueFromRoute = (plaqueId: number) => {
+  setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
+};
+
+// Clear route
+const clearRoute = () => {
+  setRoutePoints([]);
+  setIsRoutingMode(false);
+};
+
+// Draw route on map
+const drawRoute = (plaquesForRoute: Plaque[]) => {
+  // This function will be passed to the ImprovedPlaqueMap component
+  // The actual drawing happens inside the map component
+  if (plaquesForRoute.length < 2) {
+    toast.error("Add at least two plaques to create a route");
+    return;
+  }
+  
+  // You can add additional logic here if needed
+  toast.success(`Created route with ${plaquesForRoute.length} stops`);
+};
 
   // Apply filters to get filtered plaques
   const filteredPlaques = useMemo(() => {
@@ -695,22 +740,35 @@ const Discover = () => {
           )
         ) : filteredPlaques.length > 0 ? (
           <>
+// Replace with:
 {viewMode === 'map' && (
-  <>
- <div className="w-full h-[650px]">
- <ImprovedPlaqueMap 
-  plaques={filteredPlaques}
-  onPlaqueClick={handlePlaqueClick}
-  favorites={favorites}
-  selectedPlaqueId={selectedPlaque?.id}
-  maintainView={maintainMapView}  // Note the prop name change
-  className="rounded-xl overflow-hidden shadow-md h-full"
-/>
-          </div>
-    
-    {/* Optional: Add the debugger component for troubleshooting */}
-    <PlaqueDataDebugger plaques={filteredPlaques} />
-  </>
+   <>
+   <div className="flex h-[650px]">
+     <div className="flex-grow">
+       <ImprovedPlaqueMap 
+         plaques={filteredPlaques}
+         onPlaqueClick={handlePlaqueClick}
+         favorites={favorites}
+         selectedPlaqueId={selectedPlaque?.id}
+         maintainView={maintainMapView}
+         className="rounded-xl overflow-hidden shadow-md h-full"
+       />
+     </div>
+     
+     {/* Add Route Builder panel */}
+     <div className="w-80 ml-4 hidden lg:block">
+       <RouteBuilder 
+         plaques={filteredPlaques}
+         onDrawRoute={drawRoute}
+         onClearRoute={clearRoute}
+         className="h-full"
+       />
+     </div>
+   </div>
+   
+   {/* Optional: Add the debugger component for troubleshooting */}
+   <PlaqueDataDebugger plaques={filteredPlaques} />
+ </>
 )}
             
             {viewMode === 'grid' && (
