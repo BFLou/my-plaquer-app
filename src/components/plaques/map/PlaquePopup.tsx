@@ -1,16 +1,25 @@
-// src/components/plaques/map/PlaquePopup.jsx
+// src/components/plaques/map/PlaquePopup.tsx
+import { Plaque } from '@/types/plaque';
+
+type PopupOptions = {
+  onViewDetails?: () => void;
+  onAddToRoute?: () => void;
+  isFavorite?: boolean;
+  compact?: boolean;
+  isRoutingMode?: boolean;
+};
 
 /**
  * Creates popup content for a plaque marker
- * @param {Object} plaque - The plaque data
- * @param {Object} options - Options for popup creation
- * @returns {HTMLElement} - DOM element for the popup content
+ * @param plaque - The plaque data
+ * @param options - Options for popup creation
+ * @returns - DOM element for the popup content
  */
 export const createPlaquePopupContent = (
-  plaque, 
-  options
-) => {
-  const { onViewDetails, onAddToRoute, isFavorite, compact = false } = options;
+  plaque: Plaque, 
+  options: PopupOptions
+): HTMLElement => {
+  const { onViewDetails, onAddToRoute, isFavorite, compact = false, isRoutingMode = false } = options;
   
   // Create a DOM element for the popup
   const popupContent = document.createElement('div');
@@ -22,7 +31,14 @@ export const createPlaquePopupContent = (
       <div class="p-2 max-w-[200px]">
         <div class="font-semibold text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
         <div class="text-xs text-gray-600 mb-2 truncate">${plaque.location || plaque.address || ''}</div>
-        <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded w-full hover:bg-blue-600 transition-colors">View Details</button>
+        <div class="flex gap-2">
+          <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">View Details</button>
+          ${isRoutingMode ? `
+            <button class="add-to-route py-1 px-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
+              Add to Route
+            </button>
+          ` : ''}
+        </div>
       </div>
     `;
   } else {
@@ -37,7 +53,7 @@ export const createPlaquePopupContent = (
     }
     
     let addToRouteButton = '';
-    if (onAddToRoute) {
+    if (isRoutingMode) {
       addToRouteButton = `
         <button class="add-to-route mt-1 px-2 py-1 bg-green-500 text-white text-xs rounded w-full hover:bg-green-600 transition-colors">
           Add to Route

@@ -1,12 +1,27 @@
-// src/components/plaques/map/PlaqueMarker.jsx
+// src/components/plaques/map/PlaqueMarker.tsx
+import { Plaque } from '@/types/plaque';
+import { createPlaquePopupContent } from './PlaquePopup';
+
+type MarkerOptions = {
+  L: any;
+  onMarkerClick?: (plaque: Plaque) => void;
+  onViewDetails?: (plaque: Plaque) => void;
+  onAddToRoute?: (plaque: Plaque) => void;
+  favorites?: number[];
+  selectedMarkerId?: number | null;
+  isRoutingMode?: boolean;
+};
 
 /**
  * Helper function to create a marker for a plaque
- * @param {Object} plaque - The plaque data
- * @param {Object} options - Options for marker creation
- * @returns {Object|null} - Leaflet marker or null if creation failed
+ * @param plaque - The plaque data
+ * @param options - Options for marker creation
+ * @returns - Leaflet marker or null if creation failed
  */
-export const createPlaqueMarker = (plaque, options) => {
+export const createPlaqueMarker = (
+  plaque: Plaque, 
+  options: MarkerOptions
+): any | null => {
   const { 
     L, 
     onMarkerClick, 
@@ -14,7 +29,7 @@ export const createPlaqueMarker = (plaque, options) => {
     onAddToRoute,
     favorites = [], 
     selectedMarkerId = null,
-    createPopupContent
+    isRoutingMode = false
   } = options;
   
   try {
@@ -24,8 +39,8 @@ export const createPlaqueMarker = (plaque, options) => {
       return null;
     }
     
-    const lat = parseFloat(plaque.latitude);
-    const lng = parseFloat(plaque.longitude);
+    const lat = parseFloat(plaque.latitude as unknown as string);
+    const lng = parseFloat(plaque.longitude as unknown as string);
     
     if (isNaN(lat) || isNaN(lng)) {
       console.warn(`Invalid coordinates for plaque ${plaque.id}: lat=${plaque.latitude}, lng=${plaque.longitude}`);
@@ -58,33 +73,28 @@ export const createPlaqueMarker = (plaque, options) => {
       })
     });
     
-    // Create popup content if function exists
-    if (typeof createPopupContent === 'function') {
-      // Create the compact popup content
-      const popupContent = createPopupContent(plaque, {
-        onViewDetails: () => {
-          if (onViewDetails) onViewDetails(plaque);
-          marker.closePopup();
-        },
-        onAddToRoute: onAddToRoute ? () => onAddToRoute(plaque) : undefined,
-        isFavorite: favorites.includes(plaque.id),
-        compact: true // Use compact version for initial click
-      });
-      
-      // Create popup with specified options
-      const popup = L.popup({
-        closeButton: true,
-        autoClose: true,
-        className: 'plaque-popup-container compact-popup',
-        offset: [0, -14] // Adjust offset to position the popup better
-      }).setContent(popupContent);
-      
-      // Bind popup to marker
-      marker.bindPopup(popup);
-    }
+    // Create popup content
+    const popupContent = createPlaquePopupContent(plaque, {
+      onViewDetails: onViewDetails ? () => onViewDetails(plaque) : undefined,
+      onAddToRoute: onAddToRoute ? () => onAddToRoute(plaque) : undefined,
+      isFavorite: favorites.includes(plaque.id),
+      compact: true,
+      isRoutingMode // Pass the routing mode to popup creation
+    });
+    
+    // Create popup with specified options
+    const popup = L.popup({
+      closeButton: true,
+      autoClose: true,
+      className: 'plaque-popup-container compact-popup',
+      offset: [0, -14] // Adjust offset to position the popup better
+    }).setContent(popupContent);
+    
+    // Bind popup to marker
+    marker.bindPopup(popup);
     
     // Add click handler
-    marker.on('click', function(e) {
+    marker.on('click', function(e: any) {
       // Stop propagation to prevent zoom issues
       L.DomEvent.stopPropagation(e);
       
@@ -102,9 +112,6 @@ export const createPlaqueMarker = (plaque, options) => {
         markerElement.classList.add('marker-drop-animation');
       }
     }, 10);
-    
-    // Log success for debugging
-    console.log(`Created marker for plaque ${plaque.id} (${plaque.title})`);
     
     return marker;
   } catch (error) {

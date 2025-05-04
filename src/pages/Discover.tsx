@@ -746,7 +746,7 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
   <>
     <div className="flex h-[650px]">
       <div className="flex-grow">
-        <EnhancedPlaqueMap 
+        <ImprovedPlaqueMap 
           plaques={filteredPlaques}
           onPlaqueClick={handlePlaqueClick}
           favorites={favorites}
@@ -756,6 +756,9 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
         />
       </div>
     </div>
+    
+    {/* Optional: Add the debugger component for troubleshooting */}
+    <PlaqueDataDebugger plaques={filteredPlaques} />
   </>
 )}
             

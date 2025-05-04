@@ -214,6 +214,48 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     });
   };
   
+  // Helper function to create popup content
+  const createPopupContent = (plaque: Plaque) => {
+    const div = document.createElement('div');
+    div.className = 'plaque-popup p-2';
+    
+    // Get the current routing mode state
+    const currentRoutingMode = isRoutingMode;
+    
+    div.innerHTML = `
+      <div class="font-semibold text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
+      <div class="text-xs text-gray-600 mb-2 truncate">${plaque.location || plaque.address || ''}</div>
+      <div class="flex gap-2">
+        <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">View Details</button>
+        ${currentRoutingMode ? `
+          <button class="add-to-route py-1 px-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
+            Add to Route
+          </button>
+        ` : ''}
+      </div>
+    `;
+    
+    // Add event listeners after a small delay
+    setTimeout(() => {
+      const viewButton = div.querySelector('.view-details');
+      const routeButton = div.querySelector('.add-to-route');
+      
+      if (viewButton) {
+        viewButton.addEventListener('click', () => {
+          handlePlaqueClickStable(plaque);
+        });
+      }
+      
+      if (routeButton) {
+        routeButton.addEventListener('click', () => {
+          addPlaqueToRoute(plaque);
+        });
+      }
+    }, 10);
+    
+    return div;
+  };
+  
   // Add markers to map - extracted for reuse
   const addMarkers = (plaquesData: Plaque[], cluster: any, map: any) => {
     if (!window.L) return;
@@ -312,45 +354,6 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     });
   };
   
-  // Helper function to create popup content
-  const createPopupContent = (plaque: Plaque) => {
-    const div = document.createElement('div');
-    div.className = 'plaque-popup p-2';
-    
-    div.innerHTML = `
-      <div class="font-semibold text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
-      <div class="text-xs text-gray-600 mb-2 truncate">${plaque.location || plaque.address || ''}</div>
-      <div class="flex gap-2">
-        <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">View Details</button>
-        ${isRoutingMode ? `
-          <button class="add-to-route py-1 px-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
-            Add to Route
-          </button>
-        ` : ''}
-      </div>
-    `;
-    
-    // Add event listeners after a small delay
-    setTimeout(() => {
-      const viewButton = div.querySelector('.view-details');
-      const routeButton = div.querySelector('.add-to-route');
-      
-      if (viewButton) {
-        viewButton.addEventListener('click', () => {
-          handlePlaqueClickStable(plaque);
-        });
-      }
-      
-      if (routeButton) {
-        routeButton.addEventListener('click', () => {
-          addPlaqueToRoute(plaque);
-        });
-      }
-    }, 10);
-    
-    return div;
-  };
-  
   // Update markers when plaques change
   useEffect(() => {
     if (!mapInstance || !clusterGroup) return;
@@ -422,6 +425,27 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
       }
     }
   }, [selectedPlaqueId, mapInstance, markersMap, maintainView, plaques, favorites]);
+  
+  // Effect to update markers when routing mode changes
+  useEffect(() => {
+    // Only run this effect if map and cluster are initialized
+    if (!mapInstance || !clusterGroup) return;
+    
+    // Close any open popups
+    mapInstance.closePopup();
+    
+    // When routing mode changes, update all markers to refresh popups
+    addMarkers(plaques, clusterGroup, mapInstance);
+    
+    // Preserve the current map view
+    if (lastViewStateRef.current) {
+      mapInstance.setView(
+        lastViewStateRef.current.center,
+        lastViewStateRef.current.zoom,
+        { animate: false }
+      );
+    }
+  }, [isRoutingMode]);
   
   // Find the user's current location
   const findUserLocation = () => {
@@ -650,15 +674,36 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
   
   // Toggle routing mode
   const toggleRoutingMode = () => {
-    setIsRoutingMode(!isRoutingMode);
+    // Toggle the routing mode state
+    const newRoutingMode = !isRoutingMode;
+    setIsRoutingMode(newRoutingMode);
     
     if (isRoutingMode) {
-      // Clear route
+      // Clear route if exiting routing mode
       clearRoute();
     } else {
-      toast.info("Route planning mode activated. Click on plaques to add them to your route.", {
+      // Entering routing mode
+      toast.info("Route planning mode activated. Click 'Add to Route' in plaque popups to build your route.", {
         duration: 5000
       });
+      
+      // IMPORTANT: Force refresh all markers to update popups with the "Add to Route" button
+      if (mapInstance && clusterGroup) {
+        // First store current map state
+        const currentCenter = mapInstance.getCenter();
+        const currentZoom = mapInstance.getZoom();
+        
+        // Close any open popups to ensure they're recreated with the new content
+        mapInstance.closePopup();
+        
+        // Re-create all markers with new popups that include the "Add to Route" button
+        setTimeout(() => {
+          addMarkers(plaques, clusterGroup, mapInstance);
+          
+          // Restore map view to avoid map jumping
+          mapInstance.setView(currentCenter, currentZoom, { animate: false });
+        }, 50);
+      }
     }
   };
   
@@ -739,7 +784,8 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
       setRouteLine(polyline);
       
       // Save current view before modifying it
-      lastViewStateRef.current = {
+     // Save current view before modifying it
+     lastViewStateRef.current = {
         center: [mapInstance.getCenter().lat, mapInstance.getCenter().lng],
         zoom: mapInstance.getZoom()
       };
@@ -774,7 +820,6 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     
     setRouteLine(null);
     setRoutePoints([]);
-    setIsRoutingMode(false);
   };
   
   // Export route
@@ -924,30 +969,35 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
       
       {/* Route Panel - visible in routing mode */}
       {isRoutingMode && (
-        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-10 w-80">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-medium">Route Planner</h3>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0"
-              onClick={() => setIsRoutingMode(false)}
-            >
-              <X size={14} />
-            </Button>
+        <div className="absolute top-16 right-4 bottom-16 z-10 w-80 bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="p-4 border-b">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-medium">Route Builder</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0"
+                onClick={() => setIsRoutingMode(false)}
+              >
+                <X size={14} />
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Click on plaques and use "Add to Route" button to build your route
+            </p>
           </div>
           
-          {routePoints.length === 0 ? (
-            <div className="text-center py-2 text-sm text-gray-500">
-              Click on plaques to add them to your route
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="max-h-40 overflow-y-auto">
+          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100% - 130px)' }}>
+            {routePoints.length === 0 ? (
+              <div className="text-center py-4 text-sm text-gray-500">
+                No plaques added to route yet
+              </div>
+            ) : (
+              <div className="space-y-2">
                 {routePoints.map((plaque, index) => (
                   <div 
                     key={plaque.id} 
-                    className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0"
+                    className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-md"
                   >
                     <span className="flex items-center gap-2 text-sm truncate flex-grow">
                       <Badge variant="outline" className="shrink-0">{index + 1}</Badge>
@@ -964,27 +1014,30 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
                   </div>
                 ))}
               </div>
-              
-              <div className="flex gap-2 pt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={clearRoute}
-                >
-                  Clear
-                </Button>
-                <Button 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={exportRoute}
-                  disabled={routePoints.length < 2}
-                >
-                  Export Route
-                </Button>
-              </div>
+            )}
+          </div>
+          
+          <div className="p-4 border-t">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={clearRoute}
+                disabled={routePoints.length === 0}
+              >
+                Clear
+              </Button>
+              <Button 
+                size="sm" 
+                className="flex-1"
+                onClick={exportRoute}
+                disabled={routePoints.length < 2}
+              >
+                Export Route
+              </Button>
             </div>
-          )}
+          </div>
         </div>
       )}
       
