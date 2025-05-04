@@ -37,6 +37,7 @@ import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
 import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 import ImprovedPlaqueMap from '../components/plaques/ImprovedPlaqueMap';
+import EnhancedPlaqueMap from '../components/plaques/EnhancedPlaqueMap';
 import RouteBuilder from '../components/plaques/RouteBuilder';
 import '../styles/map-styles.css'; // Make sure this is imported
 
@@ -742,33 +743,20 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
           <>
 // Replace with:
 {viewMode === 'map' && (
-   <>
-   <div className="flex h-[650px]">
-     <div className="flex-grow">
-       <ImprovedPlaqueMap 
-         plaques={filteredPlaques}
-         onPlaqueClick={handlePlaqueClick}
-         favorites={favorites}
-         selectedPlaqueId={selectedPlaque?.id}
-         maintainView={maintainMapView}
-         className="rounded-xl overflow-hidden shadow-md h-full"
-       />
-     </div>
-     
-     {/* Add Route Builder panel */}
-     <div className="w-80 ml-4 hidden lg:block">
-       <RouteBuilder 
-         plaques={filteredPlaques}
-         onDrawRoute={drawRoute}
-         onClearRoute={clearRoute}
-         className="h-full"
-       />
-     </div>
-   </div>
-   
-   {/* Optional: Add the debugger component for troubleshooting */}
-   <PlaqueDataDebugger plaques={filteredPlaques} />
- </>
+  <>
+    <div className="flex h-[650px]">
+      <div className="flex-grow">
+        <EnhancedPlaqueMap 
+          plaques={filteredPlaques}
+          onPlaqueClick={handlePlaqueClick}
+          favorites={favorites}
+          selectedPlaqueId={selectedPlaque?.id}
+          maintainView={maintainMapView}
+          className="rounded-xl overflow-hidden shadow-md h-full"
+        />
+      </div>
+    </div>
+  </>
 )}
             
             {viewMode === 'grid' && (

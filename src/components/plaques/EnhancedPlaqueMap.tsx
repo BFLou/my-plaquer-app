@@ -1,21 +1,22 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Navigation, Filter, Target, CornerDownLeft, Route as RouteIcon, X } from 'lucide-react';
+import { Navigation, Filter, Target, CornerDownLeft, Route as RouteIcon, X, Map, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
+import RouteBuilder from './RouteBuilder';
 
-type PlaqueMapProps = {
+type EnhancedPlaqueMapProps = {
   plaques: Plaque[];
   onPlaqueClick: (plaque: Plaque) => void;
   favorites?: number[];
   selectedPlaqueId?: number | null;
-  maintainView?: boolean; // New prop to maintain view when changing selections
+  maintainView?: boolean;
   className?: string;
 };
 
-const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
+const EnhancedPlaqueMap: React.FC<EnhancedPlaqueMapProps> = ({
   plaques,
   onPlaqueClick,
   favorites = [],
@@ -655,7 +656,7 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
       // Clear route
       clearRoute();
     } else {
-      toast.info("Route planning mode activated. Click on plaques to add them to your route.", {
+      toast.info("Route planning mode activated. Click 'Add to Route' in plaque popups to build your route.", {
         duration: 5000
       });
     }
@@ -749,9 +750,9 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
   };
   
   // Remove plaque from route
-  const removePlaqueFromRoute = (plaque: Plaque) => {
+  const removePlaqueFromRoute = (plaqueId: number) => {
     setRoutePoints(prev => {
-      const newPoints = prev.filter(p => p.id !== plaque.id);
+      const newPoints = prev.filter(p => p.id !== plaqueId);
       
       // Update route line
       if (newPoints.length >= 2) {
@@ -773,7 +774,19 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     
     setRouteLine(null);
     setRoutePoints([]);
-    setIsRoutingMode(false);
+  };
+  
+  // Draw route on map
+  const drawRoute = (plaquesForRoute: Plaque[]) => {
+    if (plaquesForRoute.length < 2) {
+      toast.error("Add at least two plaques to create a route");
+      return;
+    }
+    
+    // Update route points and draw the route
+    setRoutePoints(plaquesForRoute);
+    updateRouteLine(plaquesForRoute);
+    toast.success(`Created route with ${plaquesForRoute.length} stops`);
   };
   
   // Export route
@@ -814,3 +827,179 @@ const ImprovedPlaqueMap: React.FC<PlaqueMapProps> = ({
     
     toast.success("Route exported successfully");
   };
+  
+  return (
+    <div className={`relative h-full ${className}`}>
+      <div className="flex h-full">
+        {/* Map container */}
+        <div 
+          ref={mapRef} 
+          className="w-full h-full rounded-lg overflow-hidden"
+        ></div>
+        
+        {/* Route builder panel - only shown when in routing mode */}
+        {isRoutingMode && (
+          <div className="absolute right-4 top-20 bottom-20 z-10 w-80 bg-white rounded-lg shadow-lg overflow-hidden">
+            <RouteBuilder 
+              plaques={plaques}
+              onDrawRoute={drawRoute}
+              onClearRoute={clearRoute}
+              className="h-full"
+            />
+          </div>
+        )}
+      </div>
+      
+      {/* Map controls */}
+      <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-md p-2">
+        <div className="flex flex-col gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 w-8 p-0"
+            onClick={findUserLocation}
+            disabled={isLoadingLocation}
+            title="Find my location"
+          >
+            {isLoadingLocation ? (
+              <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-blue-600 animate-spin"></div>
+            ) : (
+              <Navigation size={16} />
+            )}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={`h-8 w-8 p-0 ${showFilters ? 'bg-blue-50' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+            disabled={!userLocation}
+            title="Distance filter"
+          >
+            <Filter size={16} />
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={`h-8 w-8 p-0 ${isRoutingMode ? 'bg-green-50 text-green-600' : ''}`}
+            onClick={toggleRoutingMode}
+            title={isRoutingMode ? "Exit route planning" : "Plan a route"}
+          >
+            <RouteIcon size={16} />
+          </Button>
+          
+          {/* Reset button - visible when filters active */}
+          {showFilters && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 w-8 p-0 text-red-500"
+              onClick={resetFilters}
+              title="Reset filters"
+            >
+              <CornerDownLeft size={16} />
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      {/* Distance filter panel */}
+      {showFilters && userLocation && (
+        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-10 w-64">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-medium">Distance Filter</h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0"
+              onClick={() => setShowFilters(false)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500">Range: {maxDistance} km</span>
+              <Badge variant="outline" className="text-xs">
+                {filteredPlaquesCount} plaques
+              </Badge>
+            </div>
+            
+            <Slider
+              value={[maxDistance]}
+              min={0.5}
+              max={5}
+              step={0.5}
+              onValueChange={(values) => setMaxDistance(values[0])}
+              className="w-full"
+            />
+            
+            <Button 
+              size="sm" 
+              className="w-full"
+              onClick={applyDistanceFilter}
+            >
+              Apply Filter
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Route Panel - visible in routing mode when route has items */}
+      {isRoutingMode && routePoints.length > 0 && (
+        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-10 w-80">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-medium">Current Route</h3>
+            <Badge variant="outline">{routePoints.length} stops</Badge>
+          </div>
+          
+          <div className="space-y-2 max-h-40 overflow-y-auto mb-3">
+            {routePoints.map((plaque, index) => (
+              <div 
+                key={plaque.id} 
+                className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0"
+              >
+                <span className="flex items-center gap-2 text-sm truncate">
+                  <Badge variant="outline" className="shrink-0">{index + 1}</Badge>
+                  <span className="truncate">{plaque.title}</span>
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 text-red-500 shrink-0"
+                  onClick={() => removePlaqueFromRoute(plaque.id)}
+                >
+                  <X size={14} />
+                </Button>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={clearRoute}
+            >
+              Clear
+            </Button>
+            <Button 
+              size="sm" 
+              className="flex-1"
+              onClick={exportRoute}
+            >
+              Export Route
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Map attribution - required for OSM */}
+      <div className="absolute bottom-1 left-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
+        Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="text-blue-600">OpenStreetMap</a> contributors
+      </div>
+    </div>
+  );
