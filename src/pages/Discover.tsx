@@ -37,6 +37,8 @@ import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
 import PlaqueMap from '../components/plaques/PlaqueMap';
 import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
+import ImprovedPlaqueMap from '../components/plaques/ImprovedPlaqueMap';
+
 
 // Import map styles
 import '../styles/map-styles.css';
@@ -696,14 +698,14 @@ const Discover = () => {
 {viewMode === 'map' && (
   <>
  <div className="w-full h-[650px]">
-            <PlaqueMap 
-              plaques={filteredPlaques}
-              onPlaqueClick={handlePlaqueClick}
-              favorites={favorites}
-              selectedPlaqueId={selectedPlaque?.id}
-              maintainMapView={maintainMapView}
-              className="rounded-xl overflow-hidden shadow-md h-full"
-            />
+ <ImprovedPlaqueMap 
+  plaques={filteredPlaques}
+  onPlaqueClick={handlePlaqueClick}
+  favorites={favorites}
+  selectedPlaqueId={selectedPlaque?.id}
+  maintainView={maintainMapView}  // Note the prop name change
+  className="rounded-xl overflow-hidden shadow-md h-full"
+/>
           </div>
     
     {/* Optional: Add the debugger component for troubleshooting */}
