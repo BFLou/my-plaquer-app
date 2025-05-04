@@ -208,7 +208,11 @@ const PlaqueMap = ({
         const lat = parseFloat(selectedPlaque.latitude);
         const lng = parseFloat(selectedPlaque.longitude);
         if (!isNaN(lat) && !isNaN(lng)) {
-          mapInstance.setView([lat, lng], 16);
+          // Instead of setView which changes zoom, use panTo to maintain the current zoom
+          mapInstance.panTo([lat, lng], {
+            animate: true,
+            duration: 0.5
+          });
         }
       }
     }

@@ -257,7 +257,7 @@ const Discover = () => {
   // State
   const [allPlaques, setAllPlaques] = useState<Plaque[]>([]); // Store all plaques
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<ViewMode>('map'); // Default to map view
+  const [viewMode, setViewMode] = useState<ViewMode>('list'); // Default to map view
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
   const [favorites, setFavorites] = useState<number[]>([]);
@@ -452,7 +452,7 @@ const Discover = () => {
   useEffect(() => {
     const params = new URLSearchParams();
     
-    if (viewMode !== 'map') { // Changed default to 'map'
+    if (viewMode !== 'list') { // Changed default to 'map'
       params.set('view', viewMode);
     }
     
