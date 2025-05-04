@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { createPlaqueMarker } from './map/PlaqueMarker';
-import { createPlaquePopupContent } from './map/PlaquePopup'; // Make sure this import is present
+import { createPlaquePopupContent } from './map/PlaquePopup';
 import { MapControlPanel } from './map/MapControlPanel';
 import { MapFilterPanel } from './map/MapFilterPanel';
 
@@ -55,7 +55,27 @@ const PlaqueMap = ({
         showCoverageOnHover: false,
         maxClusterRadius: 50,
         zoomToBoundsOnClick: true,
-        spiderfyOnMaxZoom: true
+        spiderfyOnMaxZoom: true,
+        iconCreateFunction: function(cluster) {
+          const count = cluster.getChildCount();
+          // Determine size based on number of markers
+          let size = 40;
+          if (count > 50) size = 60;
+          else if (count > 20) size = 50;
+          
+          return L.divIcon({
+            html: `
+              <div class="flex items-center justify-center bg-white rounded-full p-1 shadow-md">
+                <div class="bg-blue-500 text-white rounded-full w-full h-full flex items-center justify-center font-semibold">
+                  ${count}
+                </div>
+              </div>
+            `,
+            className: 'custom-cluster',
+            iconSize: L.point(size, size),
+            iconAnchor: L.point(size/2, size/2)
+          });
+        }
       });
       map.addLayer(clusterGroup);
       clusterGroupRef.current = clusterGroup;
@@ -82,6 +102,38 @@ const PlaqueMap = ({
         padding: 0;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .custom-marker {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+        transition: transform 0.2s ease;
+      }
+      .custom-cluster {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+      }
+      .custom-cluster > div {
+        width: 90% !important;
+        height: 90% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+      }
+      .custom-cluster > div > div {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        height: 100% !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
       }
     `;
     document.head.appendChild(style);

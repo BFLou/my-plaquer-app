@@ -166,3 +166,39 @@
   border: none !important;
   transition: transform 0.2s ease;
 }
+
+.custom-marker {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+  transition: transform 0.2s ease;
+}
+
+.custom-cluster {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-cluster > div {
+  width: 90% !important;
+  height: 90% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
+}
+
+.custom-cluster > div > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}

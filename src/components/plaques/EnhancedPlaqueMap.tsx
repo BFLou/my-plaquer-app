@@ -108,43 +108,73 @@ const EnhancedPlaqueMap: React.FC<PlaqueMapProps> = ({
       document.head.appendChild(clusterDefaultCss);
       document.head.appendChild(clusterScript);
       
-      clusterScript.onload = () => {
-        cluster = L.markerClusterGroup({
-          showCoverageOnHover: false,
-          maxClusterRadius: 50,
-          iconCreateFunction: (cluster) => {
-            return L.divIcon({
-              html: `<div class="cluster-marker"><div>${cluster.getChildCount()}</div></div>`,
-              className: 'custom-cluster',
-              iconSize: L.point(40, 40)
-            });
-          }
-        });
-        map.addLayer(cluster);
-        setClusterGroup(cluster);
-        
-        // Add markers after cluster is initialized
-        addMarkersToMap(plaques, cluster, map);
-      };
-    } else {
-      cluster = L.markerClusterGroup({
-        showCoverageOnHover: false,
-        maxClusterRadius: 50,
-        iconCreateFunction: (cluster) => {
-          return L.divIcon({
-            html: `<div class="cluster-marker"><div>${cluster.getChildCount()}</div></div>`,
-            className: 'custom-cluster',
-            iconSize: L.point(40, 40)
-          });
-        }
-      });
-      map.addLayer(cluster);
-      setClusterGroup(cluster);
+// Update the cluster initialization code around line 86
+
+// For the version that loads the plugin dynamically:
+clusterScript.onload = () => {
+  cluster = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    maxClusterRadius: 50,
+    iconCreateFunction: (cluster) => {
+      const count = cluster.getChildCount();
+      // Determine size based on number of markers
+      let size = 40;
+      if (count > 50) size = 60;
+      else if (count > 20) size = 50;
       
-      // Add markers
-      addMarkersToMap(plaques, cluster, map);
+      return L.divIcon({
+        html: `
+          <div class="flex items-center justify-center bg-white rounded-full p-1 shadow-md">
+            <div class="bg-blue-500 text-white rounded-full w-full h-full flex items-center justify-center font-semibold">
+              ${count}
+            </div>
+          </div>
+        `,
+        className: 'custom-cluster',
+        iconSize: L.point(size, size),
+        iconAnchor: L.point(size/2, size/2)
+      });
     }
-    
+  });
+  map.addLayer(cluster);
+  setClusterGroup(cluster);
+  
+  // Add markers after cluster is initialized
+  addMarkersToMap(plaques, cluster, map);
+};
+
+// And also update the version that doesn't need loading:
+else {
+  cluster = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    maxClusterRadius: 50,
+    iconCreateFunction: (cluster) => {
+      const count = cluster.getChildCount();
+      // Determine size based on number of markers
+      let size = 40;
+      if (count > 50) size = 60;
+      else if (count > 20) size = 50;
+      
+      return L.divIcon({
+        html: `
+          <div class="flex items-center justify-center bg-white rounded-full p-1 shadow-md">
+            <div class="bg-blue-500 text-white rounded-full w-full h-full flex items-center justify-center font-semibold">
+              ${count}
+            </div>
+          </div>
+        `,
+        className: 'custom-cluster',
+        iconSize: L.point(size, size),
+        iconAnchor: L.point(size/2, size/2)
+      });
+    }
+  });
+  map.addLayer(cluster);
+  setClusterGroup(cluster);
+  
+  // Add markers
+  addMarkersToMap(plaques, cluster, map);
+}
     // Add routing control if available
     if (!L.Routing) {
       const routingScript = document.createElement('script');
