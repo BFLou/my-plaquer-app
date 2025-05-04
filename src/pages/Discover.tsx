@@ -263,6 +263,8 @@ const Discover = () => {
   const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [maintainMapView, setMaintainMapView] = useState(false);
+
   
   // Pagination state (for list/grid views)
   const [currentPage, setCurrentPage] = useState(1);
@@ -424,6 +426,7 @@ const Discover = () => {
     });
   }, [allPlaques, searchQuery, selectedPostcodes, selectedColors, selectedProfessions, onlyVisited, onlyFavorites, favorites]);
 
+  
   // Sort and paginate plaques (for list/grid views)
   const sortedAndPaginatedPlaques = useMemo(() => {
     // Sort plaques
@@ -515,13 +518,17 @@ const Discover = () => {
     });
   };
 
+
   const handlePlaqueClick = (plaque: Plaque) => {
+    setMaintainMapView(true);
     setSelectedPlaque(plaque);
   };
 
   const handleCloseDetail = () => {
     setSelectedPlaque(null);
   };
+
+
 
   const handleMarkVisited = (id: number) => {
     // Mark plaque as visited
@@ -683,12 +690,14 @@ const Discover = () => {
 {viewMode === 'map' && (
   <>
     <div className="w-full h-[650px]">
-      <PlaqueMap 
-        plaques={filteredPlaques}
-        onPlaqueClick={handlePlaqueClick}
-        favorites={favorites}
-        className="rounded-xl overflow-hidden shadow-md h-full"
-      />
+    <PlaqueMap 
+  plaques={filteredPlaques}
+  onPlaqueClick={handlePlaqueClick}
+  favorites={favorites}
+  selectedPlaqueId={selectedPlaque?.id}
+  maintainMapView={maintainMapView} // Add this prop
+  className="rounded-xl overflow-hidden shadow-md h-full"
+/>
     </div>
     
     {/* Optional: Add the debugger component for troubleshooting */}

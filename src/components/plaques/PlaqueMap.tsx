@@ -14,6 +14,7 @@ const PlaqueMap = ({
   onPlaqueClick,
   favorites = [],
   selectedPlaqueId,
+  maintainMapView = false, // Add this prop with default value
   className = ''
 }) => {
   const mapRef = useRef(null);
@@ -254,22 +255,37 @@ const PlaqueMap = ({
     }
     
     // If we have a selected plaque, center on it
-    if (selectedPlaqueId) {
-      const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
-      if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
-        const lat = parseFloat(selectedPlaque.latitude);
-        const lng = parseFloat(selectedPlaque.longitude);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          // Instead of setView which changes zoom, use panTo to maintain the current zoom
-          mapInstance.panTo([lat, lng], {
-            animate: true,
-            duration: 0.5
-          });
-        }
-      }
+ // If we have a selected plaque, center on it only if not maintaining view
+ if (selectedPlaqueId) {
+  const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
+  if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
+    const lat = parseFloat(selectedPlaque.latitude);
+    const lng = parseFloat(selectedPlaque.longitude);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      // Pan to the marker location without changing zoom
+      mapInstance.panTo([lat, lng], {
+        animate: true,
+        duration: 0.5
+      });
     }
-
-  }, [mapInstance, plaques, favorites, selectedPlaqueId, onPlaqueClick]);
+  }
+} else if (!maintainMapView) {
+  // Only reset the view if we're not maintaining the view
+  // This is the key part - we don't reset if maintainMapView is true
+  if (markersRef.current.length > 0 || 
+     (clusterGroupRef.current && clusterGroupRef.current.getLayers().length > 0)) {
+    const L = window.L;
+    const layers = clusterGroupRef.current ? 
+                   clusterGroupRef.current.getLayers() : 
+                   markersRef.current;
+    const group = L.featureGroup(layers);
+    mapInstance.fitBounds(group.getBounds(), {
+      padding: [50, 50],
+      maxZoom: 16
+    });
+  }
+}
+}, [mapInstance, plaques, favorites, selectedPlaqueId, onPlaqueClick, maintainMapView]);
 
   // Handle map actions
   const handleCenterMap = () => {
