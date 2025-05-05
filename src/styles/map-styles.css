@@ -333,3 +333,73 @@
   z-index: 9999 !important;
   position: relative;
 }
+
+/* src/styles/map-styles.css */
+/* Add these styles to your existing map-styles.css file */
+
+/* Route line animation */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+.animated-dash {
+  animation: dash 30s linear infinite;
+}
+
+/* Route marker styles */
+.route-marker-start {
+  background: #3b82f6 !important;
+  border: 2px solid white !important;
+}
+
+.route-marker-end {
+  background: #ef4444 !important;
+  border: 2px solid white !important;
+}
+
+.route-marker-waypoint {
+  background: #10b981 !important;
+  border: 2px solid white !important;
+}
+
+/* Ensure polylines are visible with proper z-index */
+.leaflet-overlay-pane {
+  z-index: 450 !important;
+}
+
+/* Make route lines more prominent */
+.leaflet-overlay-pane svg path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: visibleStroke;
+}
+
+/* Make sure markers remain on top of route lines */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+/* Make sure popup appears above everything */
+.leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+/* Distance label styling */
+.distance-label {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Additional hover effects for better UX */
+.route-marker:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s;
+}
+
+/* Fix for Safari route rendering issues */
+.leaflet-safari .leaflet-tile-container {
+  width: 100% !important;
+  height: 100% !important;
+}

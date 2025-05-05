@@ -4,7 +4,8 @@ import {
   MapIcon, Filter as FilterIcon, Search,
   Map, Grid, List, BadgeCheck, FilterX,
   Navigation, Route as RouteIcon, X, Trash, 
-  MapPin, CornerUpLeft, ArrowUp, ArrowDown
+  MapPin, CornerUpLeft, ArrowUp, ArrowDown,
+  Save, Download, ArrowUpDown
 } from "lucide-react";
 import { 
   PageContainer,
@@ -270,6 +271,7 @@ const Discover = () => {
   const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routeDistance, setRouteDistance] = useState(0);
+  const [useImperial, setUseImperial] = useState(false);
 
   // Pagination state (for list/grid views)
   const [currentPage, setCurrentPage] = useState(1);
@@ -408,30 +410,18 @@ const Discover = () => {
   // Effect to ensure route is drawn when routePoints change
   useEffect(() => {
     if (routePoints.length >= 2 && isRoutingMode && mapRef.current) {
-      // Small delay to ensure map has initialized
-      const timer = setTimeout(() => {
+      // We need to use a flag to prevent this from redrawing when 
+      // removePlaqueFromRoute already handled it
+      const handler = setTimeout(() => {
+        // Only draw if another draw hasn't happened recently
         if (mapRef.current && mapRef.current.drawRouteLine) {
           mapRef.current.drawRouteLine(routePoints);
         }
       }, 300);
       
-      return () => clearTimeout(timer);
+      return () => clearTimeout(handler);
     }
   }, [routePoints, isRoutingMode]);
-
-  const toggleRoutingMode = useCallback(() => {
-    setIsRoutingMode(prev => !prev);
-    if (!isRoutingMode) {
-      toast.success("Route planning mode activated. Click on plaques to add them to your route.");
-    } else {
-      // Clear the route when exiting routing mode
-      if (mapRef.current && mapRef.current.clearRoute) {
-        mapRef.current.clearRoute();
-      }
-      
-      // Don't clear route points here to preserve them when toggling back
-    }
-  }, [isRoutingMode]);
 
   // Add plaque to route
   const addPlaqueToRoute = useCallback((plaque: Plaque) => {
@@ -445,43 +435,37 @@ const Discover = () => {
   }, [routePoints]);
 
   // Remove plaque from route
-  const removePlaqueFromRoute = useCallback((plaqueId: number) => {
-    setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
-    toast.info("Removed plaque from route");
+// In Discover.tsx, update the removePlaqueFromRoute function:
+const removePlaqueFromRoute = useCallback((plaqueId) => {
+  setRoutePoints(prev => {
+    const updatedPoints = prev.filter(p => p.id !== plaqueId);
     
-    // Redraw route if there are still enough points
-    setTimeout(() => {
-      if (routePoints.length > 2 && mapRef.current && mapRef.current.drawRouteLine) {
-        mapRef.current.drawRouteLine(routePoints.filter(p => p.id !== plaqueId));
+    // If we still have enough points to draw a route, redraw it
+    if (updatedPoints.length >= 2 && mapRef.current) {
+      setTimeout(() => {
+        if (mapRef.current && mapRef.current.drawRouteLine) {
+          mapRef.current.drawRouteLine(updatedPoints);
+        }
+      }, 50);
+    } else if (updatedPoints.length < 2 && mapRef.current) {
+      // Clear the route entirely if we don't have enough points
+      if (mapRef.current.clearRoute) {
+        mapRef.current.clearRoute();
       }
-    }, 100);
-  }, [routePoints]);
+    }
+    
+    return updatedPoints;
+  });
+  
+  toast.info("Removed plaque from route");
+}, []);
 
   // Clear route
   const clearRoute = useCallback(() => {
-    setRoutePoints([]);
     if (mapRef.current && mapRef.current.clearRoute) {
       mapRef.current.clearRoute();
     }
-    toast.info("Route cleared");
-  }, []);
-
-  // Draw route on map
-  const drawRoute = useCallback((plaquesForRoute: Plaque[]) => {
-    if (plaquesForRoute.length < 2) {
-      toast.error("Add at least two plaques to create a route");
-      return;
-    }
-    
-    // Reference to map component needed
-    if (mapRef.current && mapRef.current.drawRouteLine) {
-      mapRef.current.drawRouteLine(plaquesForRoute);
-      const distance = calculateRouteDistance(plaquesForRoute);
-      setRouteDistance(distance);
-      toast.success(`Created route with ${plaquesForRoute.length} stops (${distance.toFixed(1)} km)`);
-    } else {
-      toast.error("Cannot draw route - map not ready");
-    }
+    setRoutePoints([]);
   }, []);
 
   // Export route as GeoJSON
@@ -775,6 +759,35 @@ const Discover = () => {
     }, 100);
   }, [routePoints]);
 
+  // Format distance based on unit preference
+  const formatDistance = useCallback((distanceKm: number) => {
+    if (useImperial) {
+      // Convert to miles (1 km = 0.621371 miles)
+      const miles = distanceKm * 0.621371;
+      return `${miles.toFixed(1)} mi`;
+    } else {
+      return `${distanceKm.toFixed(1)} km`;
+    }
+  }, [useImperial]);
+  
+  // Calculate walking time (assuming 5km/h or 3mph pace)
+  const getWalkingTimeString = useCallback((distanceKm: number) => {
+    if (distanceKm <= 0) return "0 min";
+    
+    // Walking speeds differ slightly between km and miles
+    const minutes = useImperial 
+      ? Math.round(distanceKm * 0.621371 * 20) // 20 minutes per mile
+      : Math.round(distanceKm * 12); // 12 minutes per km
+    
+    if (minutes < 60) {
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+    }
+  }, [useImperial]);
+
   // Handler functions
   const handleSearch = () => {
     setCurrentPage(1); // Reset to first page on search
@@ -874,21 +887,6 @@ const Discover = () => {
 
   // Get the total count of active filters
   const activeFiltersCount = activeFilters.length;
-
-  // Calculate walking time for route (assuming 5km/h pace)
-  const getWalkingTimeString = (distanceKm: number) => {
-    if (distanceKm <= 0) return "0 min";
-    
-    const minutes = Math.round(distanceKm * 12); // 12 minutes per km
-    
-    if (minutes < 60) {
-      return `${minutes} min`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-    }
-  };
 
   return (
     <PageContainer activePage="discover" containerClass="flex flex-col">
@@ -1007,154 +1005,13 @@ const Discover = () => {
                     maintainView={maintainMapView}
                     className="h-full w-full"
                     isRoutingMode={isRoutingMode}
+                    setIsRoutingMode={setIsRoutingMode}
                     routePoints={routePoints}
                     addPlaqueToRoute={addPlaqueToRoute}
                     removePlaqueFromRoute={removePlaqueFromRoute}
                     clearRoute={clearRoute}
                   />
                 </div>
-                
-                {/* Route planning toggle button */}
-                <div className="absolute bottom-6 left-6 z-50">
-                  <Button 
-                    variant={isRoutingMode ? "default" : "outline"}
-                    onClick={toggleRoutingMode}
-                    className={`flex items-center gap-2 ${isRoutingMode ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                    size="sm"
-                  >
-                    <RouteIcon size={16} />
-                    {isRoutingMode ? 'Exit Route Planning' : 'Plan a Route'}
-                    {routePoints.length > 0 && (
-                      <Badge className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center bg-white text-green-600">
-                        {routePoints.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
-                
-                {/* Active route display - Only show when in routing mode */}
-                {isRoutingMode && routePoints.length > 0 && (
-                  <div className="absolute left-6 top-20 z-50 bg-white rounded-lg shadow-lg p-3 w-72 max-h-[70vh] overflow-auto">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-sm font-medium flex items-center gap-1.5 text-green-800">
-                        <RouteIcon size={16} />
-                        Route Builder ({routePoints.length} stops)
-                      </h3>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-7 w-7 p-0" 
-                        onClick={clearRoute}
-                      >
-                        <X size={14} />
-                      </Button>
-                    </div>
-                    
-                    {/* Route stats display */}
-                    <div className="bg-green-50 p-2 rounded-md mb-3 flex justify-between items-center">
-                      <div className="text-xs text-green-700">
-                        <div className="font-medium">Distance: {routeDistance.toFixed(1)} km</div>
-                        <div>Walking time: ~{getWalkingTimeString(routeDistance)}</div>
-                      </div>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs bg-white"
-                        onClick={optimizeRoute}
-                        disabled={routePoints.length < 3}
-                      >
-                        Optimize
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-2 my-3">
-                      {routePoints.map((point, index) => (
-                        <div key={point.id} className="flex items-center gap-2 p-2 border rounded-md">
-                          <Badge className="h-6 w-6 flex-shrink-0 items-center justify-center p-0 bg-green-100 text-green-800 hover:bg-green-200">{index + 1}</Badge>
-                          <div className="flex-grow truncate text-sm">{point.title}</div>
-                          <div className="flex gap-1">
-                            {index > 0 && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0" 
-                                onClick={() => moveRoutePointUp(index)}
-                              >
-                                <ArrowUp size={14} />
-                              </Button>
-                            )}
-                            {index < routePoints.length - 1 && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-7 w-7 p-0" 
-                                onClick={() => moveRoutePointDown(index)}
-                              >
-                                <ArrowDown size={14} />
-                              </Button>
-                            )}
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50" 
-                              onClick={() => removePlaqueFromRoute(point.id)}
-                            >
-                              <Trash size={14} />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex gap-2 mt-4">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={clearRoute}
-                      >
-                        Clear Route
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={drawRoute.bind(null, routePoints)}
-                        disabled={routePoints.length < 2}
-                      >
-                        Draw Route
-                      </Button>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={exportRoute}
-                        disabled={routePoints.length < 2}
-                      >
-                        Export Route
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex-1"
-                        onClick={saveRoute}
-                        disabled={routePoints.length < 2}
-                      >
-                        Save Route
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Route planning indicator */}
-                {isRoutingMode && (
-                  <div className="absolute top-6 left-6 z-50 bg-green-100 text-green-800 px-3 py-1.5 rounded-md text-sm font-medium border border-green-200">
-                    Route Planning Mode Active
-                  </div>
-                )}
               </div>
             )}
 
