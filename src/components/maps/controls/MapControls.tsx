@@ -28,8 +28,8 @@ const MapControls: React.FC<MapControlsProps> = ({
 }) => {
   return (
     <TooltipProvider>
-      <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-md p-2">
-        <div className="flex flex-col gap-2">
+<div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
+<div className="flex flex-col gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 

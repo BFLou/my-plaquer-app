@@ -7,6 +7,7 @@
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.3s ease;
+  z-index: 1; /* Base level for map */
 }
 
 .map-container:hover {
@@ -112,6 +113,7 @@
 /* Location search styling */
 .location-search-panel {
   animation: fade-in 0.3s ease-out forwards;
+  z-index: 1000 !important;
 }
 
 @keyframes fade-in {
@@ -137,6 +139,7 @@
 /* Route panel styling */
 .route-panel {
   transition: width 0.3s ease, height 0.3s ease;
+  z-index: 950 !important;
 }
 
 .route-point {
@@ -236,4 +239,97 @@
     left: 5% !important;
     transform: none !important;
   }
+}
+
+/* Ensure proper z-index stacking */
+.leaflet-map-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-tile-pane {
+  z-index: 2 !important;
+}
+
+.leaflet-overlay-pane {
+  z-index: 3 !important;
+}
+
+.leaflet-shadow-pane {
+  z-index: 4 !important;
+}
+
+.leaflet-marker-pane {
+  z-index: 5 !important;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 6 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 7 !important;
+}
+
+/* Ensure map controls are visible */
+.leaflet-control-container {
+  z-index: 800 !important;
+}
+
+/* Z-index fixes for overlay panels */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+/* Make popups appear above map controls */
+.leaflet-popup {
+  z-index: 999 !important;
+}
+
+/* Make sure UI components appear above map */
+.ui-panel, 
+.filter-sheet, 
+.plaque-detail {
+  z-index: 9999 !important;
+}
+
+/* Higher z-index for Sheet components */
+.ui-sheet {
+  z-index: 9999 !important;
+}
+
+/* Route planning specific components */
+.route-planning-indicator {
+  z-index: 900 !important;
+  position: absolute;
+  background-color: rgba(16, 185, 129, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.route-panel-container {
+  z-index: 950 !important;
+  position: absolute;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* SheetContent z-index boost */
+.Sheet-content {
+  z-index: 9999 !important;
+}
+
+/* High z-index for all dialog components */
+[role="dialog"] {
+  z-index: 9999 !important;
+}
+
+/* Class for elements that should appear on top */
+.above-map {
+  z-index: 9999 !important;
+  position: relative;
 }

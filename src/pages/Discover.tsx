@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   MapIcon, Filter as FilterIcon, Search,
-  Map, Grid, List, BadgeCheck, FilterX
+  Map, Grid, List, BadgeCheck, FilterX,
+  Navigation, Route as RouteIcon, X, Trash, 
+  MapPin, CornerUpLeft
 } from "lucide-react";
 import { 
   PageContainer,
@@ -39,10 +41,6 @@ import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 import PlaqueMap from '../components/maps/PlaqueMap';
 import RouteBuilder from '../components/plaques/RouteBuilder';
 import '../styles/map-styles.css'; // Make sure this is imported
-
-
-// Import map styles
-import '../styles/map-styles.css';
 
 // Define color options with style mapping
 const getColorBadgeStyle = (color: string) => {
@@ -141,11 +139,11 @@ const ImprovedFilterSheet = ({
     selectedProfessions.length + 
     (onlyVisited ? 1 : 0) + 
     (onlyFavorites ? 1 : 0);
-
     
   return (
     <Sheet open={isOpen} onOpenChange={handleSheetChange}>
-      <SheetContent side="left" className={`w-full sm:max-w-md ${className}`}>
+      {/* Added z-[9999] class to ensure it appears above map */}
+      <SheetContent side="left" className={`w-full sm:max-w-md ${className} z-[9999]`}>
         <SheetHeader>
           <div className="flex items-center justify-between">
             <SheetTitle>{title}</SheetTitle>
@@ -399,43 +397,50 @@ const Discover = () => {
     setIsRoutingMode(!isRoutingMode);
     if (isRoutingMode) {
       clearRoute();
+    } else {
+      toast.success("Route planning mode activated. Click on plaques to add them to your route.");
     }
   };
 
   // Add plaque to route
-const addPlaqueToRoute = (plaque: Plaque) => {
-  if (routePoints.some(p => p.id === plaque.id)) {
-    toast.info("This plaque is already in your route.");
-    return;
-  }
-  
-  setRoutePoints(prev => [...prev, plaque]);
-  toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
-};
+  const addPlaqueToRoute = (plaque: Plaque) => {
+    if (routePoints.some(p => p.id === plaque.id)) {
+      toast.info("This plaque is already in your route.");
+      return;
+    }
+    
+    setRoutePoints(prev => [...prev, plaque]);
+    toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
+  };
 
-// Remove plaque from route
-const removePlaqueFromRoute = (plaqueId: number) => {
-  setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
-};
+  // Remove plaque from route
+  const removePlaqueFromRoute = (plaqueId: number) => {
+    setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
+    toast.info("Removed plaque from route");
+  };
 
-// Clear route
-const clearRoute = () => {
-  setRoutePoints([]);
-  setIsRoutingMode(false);
-};
+  // Clear route
+  const clearRoute = () => {
+    setRoutePoints([]);
+    setIsRoutingMode(false);
+    toast.info("Route cleared");
+  };
 
-// Draw route on map
-const drawRoute = (plaquesForRoute: Plaque[]) => {
-  // This function will be passed to the ImprovedPlaqueMap component
-  // The actual drawing happens inside the map component
-  if (plaquesForRoute.length < 2) {
-    toast.error("Add at least two plaques to create a route");
-    return;
-  }
-  
-  // You can add additional logic here if needed
-  toast.success(`Created route with ${plaquesForRoute.length} stops`);
-};
+  // Draw route on map
+  const drawRoute = (plaquesForRoute: Plaque[]) => {
+    if (plaquesForRoute.length < 2) {
+      toast.error("Add at least two plaques to create a route");
+      return;
+    }
+    
+    toast.success(`Created route with ${plaquesForRoute.length} stops`);
+  };
+
+  // Find user location
+  const findUserLocation = () => {
+    toast.info("Finding your location...");
+    // This function is implemented in the PlaqueMap component
+  };
 
   // Apply filters to get filtered plaques
   const filteredPlaques = useMemo(() => {
@@ -565,14 +570,12 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
     });
   };
 
-
   const handlePlaqueClick = (plaque: Plaque) => {
     // Set maintainMapView to true when a plaque is selected
     // This tells the map component to maintain its current view
     setMaintainMapView(true);
     setSelectedPlaque(plaque);
   };
-
 
   const handleCloseDetail = () => {
     // Keep maintainMapView true when closing the detail panel
@@ -584,7 +587,6 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
   const resetMapView = () => {
     setMaintainMapView(false);
   };  
-
 
   const handleMarkVisited = (id: number) => {
     // Mark plaque as visited
@@ -641,7 +643,7 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
   return (
     <PageContainer activePage="discover" containerClass="flex flex-col">
       {/* View Mode Selection Tabs - Now prominently featured at the top */}
-      <div className="bg-white border-b border-gray-200 sticky top-[61px] z-20">
+      <div className="bg-white border-b border-gray-200 sticky top-[61px] z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             {/* Left side: View Mode Tabs */}
@@ -700,7 +702,7 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
       </div>
       
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-4 flex-grow">
+      <div className="container mx-auto px-4 py-4 flex-grow relative">
         {/* Status bar */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-base font-medium text-gray-600">
@@ -743,115 +745,180 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
           )
         ) : filteredPlaques.length > 0 ? (
           <>
-{viewMode === 'map' && (
-  <>
-    <div className="flex h-[650px]">
-      <div className="flex-grow">
-        <PlaqueMap
-          plaques={filteredPlaques}
-          onPlaqueClick={handlePlaqueClick}
-          favorites={favorites}
-          selectedPlaqueId={selectedPlaque?.id}
-          maintainView={maintainMapView}
-          className="h-full w-full"
-        />
-      </div>
-    </div>
-    
-    {/* Optional: Add the debugger component for troubleshooting */}
-    {/* <PlaqueDataDebugger plaques={filteredPlaques} /> */}
-  </>
+            {viewMode === 'map' && (
+              <div className="relative">
+                <div className="h-[650px]">
+                  <PlaqueMap
+                    plaques={filteredPlaques}
+                    onPlaqueClick={handlePlaqueClick}
+                    favorites={favorites}
+                    selectedPlaqueId={selectedPlaque?.id}
+                    maintainView={maintainMapView}
+                    className="h-full w-full"
+                    // Added props for routing
+                    isRoutingMode={isRoutingMode}
+                    toggleRoutingMode={toggleRoutingMode}
+                    routePoints={routePoints}
+                    addPlaqueToRoute={addPlaqueToRoute}
+                    removePlaqueFromRoute={removePlaqueFromRoute}
+                    drawRoute={drawRoute}
+                    onFindLocation={findUserLocation}
+                  />
+                </div>
+                
+                {/* Route planning toggle button */}
+                <div className="absolute bottom-6 left-6 z-50">
+                  <Button 
+                    variant={isRoutingMode ? "default" : "outline"}
+                    onClick={toggleRoutingMode}
+                    className={`flex items-center gap-2 ${isRoutingMode ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                    size="sm"
+                  >
+                    <RouteIcon size={16} />
+                    {isRoutingMode ? 'Exit Route Planning' : 'Plan a Route'}
+                    {routePoints.length > 0 && (
+                      <Badge className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center bg-white text-green-600">
+                        {routePoints.length}
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+                
+                {/* Active route display */}
+                {isRoutingMode && routePoints.length > 0 && (
+ <div className="absolute left-6 bottom-20 z-50 bg-white rounded-lg shadow-lg p-3 w-72">
+ <div className="flex justify-between items-center mb-2">
+   <h3 className="text-sm font-medium flex items-center gap-1.5 text-green-800">
+     <RouteIcon size={16} />
+     Route Builder ({routePoints.length} stops)
+   </h3>
+   <Button 
+     variant="ghost" 
+     size="sm" 
+     className="h-6 w-6 p-0" 
+     onClick={clearRoute}
+   >
+     <X size={14} />
+   </Button>
+ </div>
+ <div className="max-h-40 overflow-y-auto">
+   {routePoints.map((point, index) => (
+     <div key={point.id} className="flex items-center gap-2 p-1 text-sm">
+       <Badge className="h-5 w-5 flex items-center justify-center p-0">{index + 1}</Badge>
+       <div className="flex-grow truncate">{point.title}</div>
+       <Button 
+         variant="ghost" 
+         size="sm" 
+         className="h-6 w-6 p-0 text-red-500" 
+         onClick={() => removePlaqueFromRoute(point.id)}
+       >
+         <Trash size={14} />
+       </Button>
+     </div>
+   ))}
+ </div>
+</div>
 )}
-            
-            {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedAndPaginatedPlaques.map((plaque) => (
-                  <PlaqueCard 
-                    key={plaque.id}
-                    plaque={plaque}
-                    isFavorite={favorites.includes(plaque.id)}
-                    onFavoriteToggle={toggleFavorite}
-                    onClick={handlePlaqueClick}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {viewMode === 'list' && (
-              <div className="space-y-3">
-                {sortedAndPaginatedPlaques.map((plaque) => (
-                  <PlaqueListItem 
-                    key={plaque.id}
-                    plaque={plaque}
-                    isFavorite={favorites.includes(plaque.id)}
-                    onFavoriteToggle={toggleFavorite}
-                    onClick={handlePlaqueClick}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {/* Pagination for grid and list views */}
-            {viewMode !== 'map' && totalPages > 1 && (
-              <Pagination 
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            )}
-          </>
-        ) : (
-          <EmptyState
-            icon={MapIcon}
-            title="No plaques found"
-            description="Try adjusting your filters or search criteria"
-            actionLabel="Reset Filters"
-            onAction={resetFilters}
-          />
-        )}
-      </div>
-      
-      {/* Plaque Detail */}
-      <PlaqueDetail
-        plaque={selectedPlaque}
-        isOpen={!!selectedPlaque}
-        onClose={handleCloseDetail}
-        isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
-        onFavoriteToggle={toggleFavorite}
-        onMarkVisited={handleMarkVisited}
-        nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
-        onSelectNearbyPlaque={handlePlaqueClick}
-      />
-      
-      {/* ImprovedFilterSheet */}
-      <ImprovedFilterSheet
-        isOpen={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        onApply={applyFilters}
-        onReset={resetFilters}
-        title="Filters"
-        description="Refine your plaque search"
-        
-        postcodes={postcodeOptions}
-        selectedPostcodes={selectedPostcodes}
-        onPostcodesChange={setSelectedPostcodes}
-        
-        colors={colorOptions}
-        selectedColors={selectedColors}
-        onColorsChange={setSelectedColors}
-        
-        professions={professionOptions}
-        selectedProfessions={selectedProfessions}
-        onProfessionsChange={setSelectedProfessions}
-        
-        onlyVisited={onlyVisited}
-        onVisitedChange={setOnlyVisited}
-        
-        onlyFavorites={onlyFavorites}
-        onFavoritesChange={setOnlyFavorites}
-      />
-    </PageContainer>
-  );
+
+{/* Route planning indicator */}
+{isRoutingMode && (
+<div className="absolute top-6 left-6 z-50 bg-green-100 text-green-800 px-3 py-1.5 rounded-md text-sm font-medium border border-green-200">
+ Route Planning Mode Active
+</div>
+)}
+</div>
+)}
+
+{viewMode === 'grid' && (
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+{sortedAndPaginatedPlaques.map((plaque) => (
+<PlaqueCard 
+ key={plaque.id}
+ plaque={plaque}
+ isFavorite={favorites.includes(plaque.id)}
+ onFavoriteToggle={toggleFavorite}
+ onClick={handlePlaqueClick}
+/>
+))}
+</div>
+)}
+
+{viewMode === 'list' && (
+<div className="space-y-3">
+{sortedAndPaginatedPlaques.map((plaque) => (
+<PlaqueListItem 
+ key={plaque.id}
+ plaque={plaque}
+ isFavorite={favorites.includes(plaque.id)}
+ onFavoriteToggle={toggleFavorite}
+ onClick={handlePlaqueClick}
+/>
+))}
+</div>
+)}
+
+{/* Pagination for grid and list views */}
+{viewMode !== 'map' && totalPages > 1 && (
+<Pagination 
+currentPage={currentPage}
+totalPages={totalPages}
+onPageChange={handlePageChange}
+/>
+)}
+</>
+) : (
+<EmptyState
+icon={MapIcon}
+title="No plaques found"
+description="Try adjusting your filters or search criteria"
+actionLabel="Reset Filters"
+onAction={resetFilters}
+/>
+)}
+</div>
+
+{/* Plaque Detail - added z-[9999] class to ensure it appears above map */}
+<PlaqueDetail
+plaque={selectedPlaque}
+isOpen={!!selectedPlaque}
+onClose={handleCloseDetail}
+isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
+onFavoriteToggle={toggleFavorite}
+onMarkVisited={handleMarkVisited}
+nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
+onSelectNearbyPlaque={handlePlaqueClick}
+className="z-[9999]"
+/>
+
+{/* ImprovedFilterSheet - z-index is set in the component */}
+<ImprovedFilterSheet
+isOpen={filtersOpen}
+onClose={() => setFiltersOpen(false)}
+onApply={applyFilters}
+onReset={resetFilters}
+title="Filters"
+description="Refine your plaque search"
+
+postcodes={postcodeOptions}
+selectedPostcodes={selectedPostcodes}
+onPostcodesChange={setSelectedPostcodes}
+
+colors={colorOptions}
+selectedColors={selectedColors}
+onColorsChange={setSelectedColors}
+
+professions={professionOptions}
+selectedProfessions={selectedProfessions}
+onProfessionsChange={setProfessionOptions}
+
+onlyVisited={onlyVisited}
+onVisitedChange={setOnlyVisited}
+
+onlyFavorites={onlyFavorites}
+onFavoritesChange={setOnlyFavorites}
+/>
+</PageContainer>
+);
 };
 
 export default Discover;
