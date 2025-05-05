@@ -581,6 +581,9 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
     // We don't set maintainMapView back to false here
   };
 
+  const resetMapView = () => {
+    setMaintainMapView(false);
+  };  
 
 
   const handleMarkVisited = (id: number) => {
@@ -740,22 +743,23 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
           )
         ) : filteredPlaques.length > 0 ? (
           <>
-// Replace with:
 {viewMode === 'map' && (
   <>
     <div className="flex h-[650px]">
       <div className="flex-grow">
-      <PlaqueMap
-        plaques={myPlaqueData}
-        onPlaqueClick={setSelectedPlaque}
-        favorites={favorites}
-        selectedPlaqueId={selectedPlaque?.id}
-      />
+        <PlaqueMap
+          plaques={filteredPlaques}
+          onPlaqueClick={handlePlaqueClick}
+          favorites={favorites}
+          selectedPlaqueId={selectedPlaque?.id}
+          maintainView={maintainMapView}
+          className="h-full w-full"
+        />
       </div>
     </div>
     
     {/* Optional: Add the debugger component for troubleshooting */}
-    <PlaqueDataDebugger plaques={filteredPlaques} />
+    {/* <PlaqueDataDebugger plaques={filteredPlaques} /> */}
   </>
 )}
             

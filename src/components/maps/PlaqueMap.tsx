@@ -1,3 +1,6 @@
+// src/components/maps/PlaqueMap.tsx
+// This replaces your existing PlaqueMap.tsx file
+
 import React, { useState, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import MapControls from './controls/MapControls';
@@ -42,11 +45,19 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
   const [showClearRouteDialog, setShowClearRouteDialog] = useState(false);
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
+  const [disableAutomaticZoom, setDisableAutomaticZoom] = useState(false);
 
-  // Initialize map
-  const { mapInstance, mapLoaded, mapError } = useMapInitialization(mapContainerRef);
+  // Initialize map with disabled auto-zoom
+  const { mapInstance, mapLoaded, mapError } = useMapInitialization(
+    mapContainerRef, 
+    { 
+      disableAutomaticZoom: true, // Add this option to prevent automatic zooming
+      zoom: 12, // Set an initial zoom level
+      center: [51.505, -0.09] // London coordinates
+    }
+  );
   
-  // Setup map markers
+  // Setup map markers with fixed styling
   const { markersMap } = useMapMarkers(
     mapInstance, 
     plaques, 
@@ -76,6 +87,14 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
     setRoutePoints
   );
 
+  // Handler to prevent automatic zooming on selection
+  const handleMapClick = () => {
+    if (mapInstance) {
+      // Disable automatic zooming behavior after a user click
+      setDisableAutomaticZoom(true);
+    }
+  };
+
   // Add plaque to route
   function addPlaqueToRoute(plaque: Plaque) {
     // Check if plaque is already in route
@@ -104,6 +123,17 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
     
     setIsRoutingMode(!isRoutingMode);
   }
+
+  // Add event listener for map click
+  React.useEffect(() => {
+    if (mapInstance) {
+      mapInstance.on('click', handleMapClick);
+      
+      return () => {
+        mapInstance.off('click', handleMapClick);
+      };
+    }
+  }, [mapInstance]);
 
   return (
     <div className={`relative ${className}`}>

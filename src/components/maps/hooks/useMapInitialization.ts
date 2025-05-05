@@ -1,3 +1,6 @@
+// src/components/maps/hooks/useMapInitialization.ts
+// This replaces your existing useMapInitialization.ts file
+
 import { useState, useEffect, useRef } from 'react';
 
 type MapOptions = {
@@ -5,6 +8,7 @@ type MapOptions = {
   zoom?: number;
   maxZoom?: number;
   minZoom?: number;
+  disableAutomaticZoom?: boolean; // New option to disable automatic zooming
 };
 
 export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement>, options: MapOptions = {}) => {
@@ -107,6 +111,29 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement>, op
           opacity: 1;
         }
       }
+      /* Added custom styles for markers */
+      .marker-cluster {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #3b82f6;
+        box-shadow: 0 0 0 2px white;
+      }
+      
+      .marker-cluster div {
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      }
+      
+      .custom-cluster-icon {
+        background: transparent !important;
+      }
     `;
     document.head.appendChild(style);
 
@@ -131,15 +158,27 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement>, op
       console.log("Initializing map");
       const defaultOptions = {
         center: [51.505, -0.09], // London coordinates
-        zoom: 13,
+        zoom: 12, // Increased initial zoom level
         maxZoom: 18,
         minZoom: 8,
+        disableAutomaticZoom: false
       };
       
       const mapOptions = { ...defaultOptions, ...options };
       
-      // Initialize the map
-      const map = window.L.map(mapRef.current, mapOptions);
+      // Initialize the map with zoomControl disabled to add it to custom position
+      const map = window.L.map(mapRef.current, {
+        center: mapOptions.center,
+        zoom: mapOptions.zoom,
+        maxZoom: mapOptions.maxZoom,
+        minZoom: mapOptions.minZoom,
+        zoomControl: false, // Disable default zoom control
+      });
+      
+      // Add zoom control to the top-right
+      window.L.control.zoom({
+        position: 'topright'
+      }).addTo(map);
 
       // Add tile layer (map background) - using more attractive tiles
       window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -148,27 +187,48 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement>, op
         maxZoom: 19
       }).addTo(map);
 
-      // Create marker cluster group if available
+      // Create marker cluster group if available with improved styles
       if (window.L.markerClusterGroup) {
         const clusterGroup = window.L.markerClusterGroup({
           showCoverageOnHover: false,
           maxClusterRadius: 50,
-          zoomToBoundsOnClick: true,
+          zoomToBoundsOnClick: !mapOptions.disableAutomaticZoom, // Disable auto-zoom if requested
           spiderfyOnMaxZoom: true,
           disableClusteringAtZoom: 18,
           animate: true,
           spiderfyDistanceMultiplier: 1.5,
           iconCreateFunction: function(cluster: any) {
+            const count = cluster.getChildCount();
+            let size = 40;
+            
+            // Adjust size based on count
+            if (count > 50) size = 60;
+            else if (count > 20) size = 50;
+            else if (count < 5) size = 36;
+            
             return window.L.divIcon({
-              html: `<div class="marker-cluster"><div>${cluster.getChildCount()}</div></div>`,
-              className: 'custom-cluster',
-              iconSize: window.L.point(40, 40)
+              html: `
+                <div class="flex items-center justify-center bg-white rounded-full shadow-lg border-2 border-blue-500">
+                  <div class="bg-blue-500 text-white rounded-full flex items-center justify-center w-full h-full font-semibold p-1">
+                    ${count}
+                  </div>
+                </div>
+              `,
+              className: 'custom-cluster-icon',
+              iconSize: window.L.point(size, size),
+              iconAnchor: window.L.point(size/2, size/2)
             });
           }
         });
         
-        // Modify how cluster clicks are handled
+        // Customize cluster click behavior
         clusterGroup.on('clusterclick', function(e) {
+          if (mapOptions.disableAutomaticZoom) {
+            // If auto-zoom is disabled, prefer spiderfying instead of zooming
+            e.layer.spiderfy();
+            return false; // Prevent default behavior
+          }
+          
           // Get zoom level
           const currentZoom = map.getZoom();
           const maxZoom = map.getMaxZoom();
