@@ -1,6 +1,5 @@
 // src/components/maps/hooks/useMapInitialization.ts
 // This replaces your existing useMapInitialization.ts file
-
 import { useState, useEffect, useRef } from 'react';
 
 type MapOptions = {
@@ -11,7 +10,7 @@ type MapOptions = {
   disableAutomaticZoom?: boolean; // New option to disable automatic zooming
 };
 
-export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement>, options: MapOptions = {}) => {
+export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | null>, options: MapOptions = {}) => {
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -222,8 +221,8 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement>, op
         });
         
         // Customize cluster click behavior
-        clusterGroup.on('clusterclick', function(e) {
-          if (mapOptions.disableAutomaticZoom) {
+        clusterGroup.on('clusterclick', function(e: any) {
+            if (mapOptions.disableAutomaticZoom) {
             // If auto-zoom is disabled, prefer spiderfying instead of zooming
             e.layer.spiderfy();
             return false; // Prevent default behavior

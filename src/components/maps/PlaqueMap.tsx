@@ -1,9 +1,8 @@
 // src/components/maps/PlaqueMap.tsx
-// This replaces your existing PlaqueMap.tsx file
 
 import React, { useState, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
-import MapControls from './controls/MapControls';
+import  MapControls  from './controls/MapControls';
 import FilterPanel from './controls/FilterPanel';
 import RoutePanel from './controls/RoutePanel';
 import useMapInitialization from './hooks/useMapInitialization';
@@ -48,7 +47,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
   const [disableAutomaticZoom, setDisableAutomaticZoom] = useState(false);
 
   // Initialize map with disabled auto-zoom
-  const { mapInstance, mapLoaded, mapError } = useMapInitialization(
+  const { mapInstance } = useMapInitialization(
     mapContainerRef, 
     { 
       disableAutomaticZoom: true, // Add this option to prevent automatic zooming
@@ -58,7 +57,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
   );
   
   // Setup map markers with fixed styling
-  const { markersMap } = useMapMarkers(
+  const {} = useMapMarkers(
     mapInstance, 
     plaques, 
     favorites, 
