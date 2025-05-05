@@ -1,14 +1,6 @@
-/**
- * Map utility functions for PlaqueMap component
- */
+// src/utils/map-utils.ts
+// Update the createPlaqueIcon function to fix alignment issues
 
-/**
- * Creates a marker icon based on plaque properties
- * @param {Object} plaque - The plaque object
- * @param {boolean} isFavorite - Whether the plaque is marked as favorite
- * @param {boolean} isSelected - Whether the plaque is currently selected
- * @returns {Object} Leaflet divIcon object
- */
 export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false) => {
   // Determine marker color based on plaque color
   let markerColor = 'blue';
@@ -21,10 +13,12 @@ export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false)
     else markerColor = 'blue';
   }
   
-  // Create icon HTML
+  // Create icon HTML with improved alignment
   const iconHtml = `
-    <div class="bg-white rounded-full p-1 shadow-md ${isFavorite ? 'ring-2 ring-amber-500' : ''}">
-      <div class="bg-${markerColor}-500 text-white rounded-full w-7 h-7 flex items-center justify-center">
+    <div class="flex items-center justify-center bg-white rounded-full p-1 shadow-md ${isFavorite ? 'ring-2 ring-amber-500' : ''}" 
+         style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px;">
+      <div class="bg-${markerColor}-500 text-white rounded-full w-7 h-7 flex items-center justify-center" 
+           style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background-color: ${getColorHex(markerColor)};">
         ${plaque.visited ? 
           '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : 
           '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
@@ -48,17 +42,24 @@ export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false)
   });
 };
 
-/**
- * Creates a popup for a plaque marker with optional routing capability
- * @param {Object} plaque - The plaque object
- * @param {Function} onPlaqueClick - Callback function when plaque details are requested
- * @param {boolean} isRoutingMode - Whether route building mode is active
- * @param {Function} onAddToRoute - Callback function to add plaque to route
- * @returns {HTMLElement} Popup content element
- */
+// Helper function to get hex colors
+function getColorHex(color) {
+  switch (color) {
+    case 'blue': return '#3b82f6';
+    case 'green': return '#10b981';
+    case 'amber': return '#d97706';
+    case 'gray': return '#4b5563';
+    default: return '#3b82f6';
+  }
+}
+
+// Update the createPlaquePopup function to fix route button issues
 export const createPlaquePopup = (plaque, onPlaqueClick, isRoutingMode = false, onAddToRoute = null) => {
   const popupContent = document.createElement('div');
   popupContent.className = 'plaque-popup p-2';
+  
+  // Ensure the routing mode parameter is correctly used
+  console.log("Creating popup with routing mode:", isRoutingMode);
   
   // Create popup content with conditional routing button
   popupContent.innerHTML = `

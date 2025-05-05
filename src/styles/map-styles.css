@@ -8,11 +8,22 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Custom marker styling */
+/* Custom marker styling with improved centering */
 .custom-marker {
   background: transparent !important;
   border: none !important;
   transition: transform 0.2s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.custom-marker > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .custom-marker:hover {
@@ -42,6 +53,49 @@
   }
 }
 
+/* Ensure popup content always displays properly */
+.plaque-popup {
+  min-width: 180px;
+}
+
+/* View details button styles */
+.view-details {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  border-radius: 0.25rem;
+  background-color: #3b82f6; /* blue-500 */
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.view-details:hover {
+  background-color: #2563eb; /* blue-600 */
+}
+
+/* Ensure the "Add to Route" button is properly visible */
+.add-to-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  border-radius: 0.25rem;
+  background-color: #10b981; /* green-500 */
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-to-route:hover {
+  background-color: #059669; /* green-600 */
+}
+
 /* Cluster marker styling */
 .custom-cluster {
   display: flex !important;
@@ -60,6 +114,16 @@
   box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
 }
 
+.custom-cluster > div > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
 /* Popup styles */
 .leaflet-popup-content-wrapper {
   border-radius: 8px;
@@ -74,6 +138,18 @@
 
 .leaflet-popup-tip {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Fix for compact popups */
+.compact-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+.compact-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 /* Map control styling */
@@ -97,7 +173,7 @@
 }
 
 /* Mobile optimizations */
-@media (max-width: 640px) {
+@media (max-width: A640px) {
   .leaflet-control-zoom {
     display: none;
   }
