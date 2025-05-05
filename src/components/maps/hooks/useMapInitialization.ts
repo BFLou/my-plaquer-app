@@ -1,5 +1,4 @@
 // src/components/maps/hooks/useMapInitialization.ts
-// This replaces your existing useMapInitialization.ts file
 import { useState, useEffect, useRef } from 'react';
 
 type MapOptions = {
@@ -7,7 +6,7 @@ type MapOptions = {
   zoom?: number;
   maxZoom?: number;
   minZoom?: number;
-  disableAutomaticZoom?: boolean; // New option to disable automatic zooming
+  disableAutomaticZoom?: boolean;
 };
 
 export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | null>, options: MapOptions = {}) => {
@@ -16,11 +15,8 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
   const [mapError, setMapError] = useState<string | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const clusterGroupRef = useRef<any>(null);
-  const heatLayerRef = useRef<any>(null);
-  const routeLineRef = useRef<any>(null);
   
-  // Load Leaflet scripts
+  // Load Leaflet scripts and styles
   useEffect(() => {
     if (window.L) {
       setIsScriptLoaded(true);
@@ -75,63 +71,120 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
     
     document.head.appendChild(scriptLeaflet);
 
-    // Add critical inline styles for the map
+    // Add styles for map and markers
     const style = document.createElement('style');
     style.innerHTML = `
       .leaflet-container {
         width: 100%;
         height: 100%;
+        font-family: ui-sans-serif, system-ui, sans-serif;
       }
+      
+      /* Custom marker styles */
       .custom-marker {
         background: transparent !important;
         border: none !important;
-        transition: transform 0.2s ease;
+        transition: all 0.3s ease;
       }
+      
       .custom-marker:hover {
-        transform: scale(1.2);
         z-index: 1000 !important;
       }
-      .selected-marker {
-        transform: scale(1.2);
-        z-index: 1000 !important;
-        animation: markerPulse 1.5s infinite;
+      
+      /* Popup styling */
+      .leaflet-popup-content-wrapper {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
       }
-      @keyframes markerPulse {
+      
+      .leaflet-popup-content {
+        margin: 0;
+        padding: 0;
+      }
+      
+      .leaflet-popup-tip {
+        background-color: white;
+      }
+      
+      /* Control styling */
+      .leaflet-control-zoom {
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+      }
+      
+      .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+        border-radius: 0.25rem !important;
+        color: #4b5563 !important;
+        border: 1px solid #e5e7eb !important;
+      }
+      
+      .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+        background-color: #f9fafb !important;
+        color: #1f2937 !important;
+      }
+      
+      /* Attribution styling */
+      .leaflet-control-attribution {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        padding: 0.25rem 0.5rem !important;
+        border-radius: 0.25rem !important;
+        font-size: 0.7rem !important;
+      }
+      
+      /* Customize cluster icons */
+      .marker-cluster {
+        background-color: rgba(59, 130, 246, 0.6) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+      }
+      
+      .marker-cluster div {
+        background-color: rgba(59, 130, 246, 0.8) !important;
+        color: white !important;
+        font-weight: bold !important;
+      }
+      
+      /* Animation for marker drop */
+      @keyframes marker-drop {
         0% {
-          transform: scale(1);
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        60% {
+          transform: translateY(5px);
           opacity: 1;
         }
-        50% {
-          transform: scale(1.1);
-          opacity: 0.8;
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
+      /* Scale animations for markers and clusters */
+      @keyframes scale-in {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
         }
         100% {
           transform: scale(1);
           opacity: 1;
         }
       }
-      /* Added custom styles for markers */
-      .marker-cluster {
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 50%;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        color: #3b82f6;
-        box-shadow: 0 0 0 2px white;
+      
+      /* Animating dash array for routes */
+      @keyframes dash {
+        to {
+          stroke-dashoffset: 1000;
+        }
       }
       
-      .marker-cluster div {
-        margin: 0;
-        padding: 0;
-        text-align: center;
-      }
-      
-      .custom-cluster-icon {
-        background: transparent !important;
+      /* Modern spiderfy lines */
+      .leaflet-marker-icon-wrapper svg line {
+        stroke: #3b82f6 !important;
+        stroke-width: 2 !important;
+        stroke-dasharray: 4, 4 !important;
       }
     `;
     document.head.appendChild(style);
@@ -157,9 +210,9 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
       console.log("Initializing map");
       const defaultOptions = {
         center: [51.505, -0.09], // London coordinates
-        zoom: 12, // Increased initial zoom level
+        zoom: 13,
         maxZoom: 18,
-        minZoom: 8,
+        minZoom: 4,
         disableAutomaticZoom: false
       };
       
@@ -172,88 +225,104 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
         maxZoom: mapOptions.maxZoom,
         minZoom: mapOptions.minZoom,
         zoomControl: false, // Disable default zoom control
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        wheelDebounceTime: 100,
+        wheelPxPerZoomLevel: 100,
+        bounceAtZoomLimits: false
       });
       
-      // Add zoom control to the top-right
+      // Add zoom control to the top-right with improved styling
       window.L.control.zoom({
-        position: 'topright'
+        position: 'topright',
+        zoomInTitle: 'Zoom in',
+        zoomOutTitle: 'Zoom out'
       }).addTo(map);
 
-      // Add tile layer (map background) - using more attractive tiles
+      // Add tile layer - using more attractive Carto tiles
       window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
-        maxZoom: 19
+        maxZoom: 20
       }).addTo(map);
 
-      // Create marker cluster group if available with improved styles
-      if (window.L.markerClusterGroup) {
-        const clusterGroup = window.L.markerClusterGroup({
-          showCoverageOnHover: false,
-          maxClusterRadius: 50,
-          zoomToBoundsOnClick: !mapOptions.disableAutomaticZoom, // Disable auto-zoom if requested
-          spiderfyOnMaxZoom: true,
-          disableClusteringAtZoom: 18,
-          animate: true,
-          spiderfyDistanceMultiplier: 1.5,
-          iconCreateFunction: function(cluster: any) {
-            const count = cluster.getChildCount();
-            let size = 40;
-            
-            // Adjust size based on count
-            if (count > 50) size = 60;
-            else if (count > 20) size = 50;
-            else if (count < 5) size = 36;
-            
-            return window.L.divIcon({
-              html: `
-                <div class="flex items-center justify-center bg-white rounded-full shadow-lg border-2 border-blue-500">
-                  <div class="bg-blue-500 text-white rounded-full flex items-center justify-center w-full h-full font-semibold p-1">
-                    ${count}
-                  </div>
-                </div>
-              `,
-              className: 'custom-cluster-icon',
-              iconSize: window.L.point(size, size),
-              iconAnchor: window.L.point(size/2, size/2)
-            });
-          }
-        });
-        
-        // Customize cluster click behavior
-        clusterGroup.on('clusterclick', function(e: any) {
-            if (mapOptions.disableAutomaticZoom) {
-            // If auto-zoom is disabled, prefer spiderfying instead of zooming
-            e.layer.spiderfy();
-            return false; // Prevent default behavior
-          }
-          
-          // Get zoom level
-          const currentZoom = map.getZoom();
-          const maxZoom = map.getMaxZoom();
-          
-          // If at max zoom, spiderfy instead of zooming out
-          if (currentZoom >= maxZoom) {
-            e.layer.spiderfy();
-            // Prevent default zoom-out behavior
-            return false;
-          }
-        });
-
-        map.addLayer(clusterGroup);
-        clusterGroupRef.current = clusterGroup;
-      }
-
-      // Add scale control
+      // Add scale control with metric only
       window.L.control.scale({
         imperial: false,
-        position: 'bottomright'
+        position: 'bottomright',
+        maxWidth: 150
       }).addTo(map);
+      
+      // Prevent zoom on scroll unless shift key is pressed
+      map.scrollWheelZoom.disable();
+      
+      // Add event listener to enable zoom on scroll when shift key is pressed
+      document.addEventListener('keydown', function(e) {
+        if (e.shiftKey) {
+          map.scrollWheelZoom.enable();
+        }
+      });
+      
+      document.addEventListener('keyup', function(e) {
+        if (e.key === 'Shift') {
+          map.scrollWheelZoom.disable();
+        }
+      });
+      
+      // Enable touch zoom
+      map.touchZoom.enable();
+      
+      // Add a subtle shadow overlay to make the markers pop
+      const shadowOverlay = window.L.rectangle(
+        [[-90, -180], [90, 180]], 
+        { 
+          color: 'transparent',
+          fillColor: '#000', 
+          fillOpacity: 0.03,
+          interactive: false
+        }
+      ).addTo(map);
+      
+      // Add double-click to zoom
+      map.doubleClickZoom.enable();
+      
+      // Prevent automatic zooming if requested
+      if (mapOptions.disableAutomaticZoom) {
+        // Store original fitBounds method
+        const originalFitBounds = map.fitBounds;
+        
+        // Override fitBounds to do nothing unless explicitly called
+        map.fitBounds = function() {
+          // Only apply if a specific flag is set
+          if (map._allowFitBounds) {
+            return originalFitBounds.apply(this, arguments);
+          }
+          return this;
+        };
+        
+        // Method to allow fitBounds calls
+        map.allowFitBounds = function() {
+          map._allowFitBounds = true;
+          return this;
+        };
+        
+        // Method to disallow fitBounds calls
+        map.disallowFitBounds = function() {
+          map._allowFitBounds = false;
+          return this;
+        };
+      }
       
       // Store map instance
       mapInstanceRef.current = map;
       setMapLoaded(true);
       
+      // Add map loaded event
+      setTimeout(() => {
+        mapRef.current?.dispatchEvent(new CustomEvent('map:loaded', { 
+          detail: { map } 
+        }));
+      }, 100);
     } catch (error: any) {
       console.error("Map initialization error:", error);
       setMapError(`Failed to initialize map: ${error.message}`);
@@ -265,9 +334,6 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
     mapError,
     mapInstance: mapInstanceRef.current,
     markers: markersRef.current,
-    clusterGroup: clusterGroupRef.current,
-    heatLayer: heatLayerRef.current,
-    routeLine: routeLineRef.current,
     isScriptLoaded
   };
 };
