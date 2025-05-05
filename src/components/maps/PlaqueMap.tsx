@@ -11,30 +11,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, MapPin, CornerUpLeft, Navigation, Filter, Route as RouteIcon, Map } from 'lucide-react';
+import { 
+  Search, 
+  MapPin, 
+  CornerUpLeft, 
+  Navigation, 
+  Filter, 
+  Route as RouteIcon, 
+  Map, 
+  X, 
+  Trash 
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { calculateRouteDistance } from './utils/routeUtils';
 
-// A simplified version of the PlaqueMap component to fix the issues
-const PlaqueMap = ({
+// Improved version of the PlaqueMap component with routing functionality
+const PlaqueMap = React.forwardRef(({
   plaques = [],
   onPlaqueClick = () => {},
   favorites = [],
   selectedPlaqueId = null,
   maintainView = false,
-  className = ''
-}) => {
+  className = '',
+  isRoutingMode = false,
+  routePoints = [],
+  addPlaqueToRoute = () => {},
+  removePlaqueFromRoute = () => {},
+  clearRoute = () => {}
+}, ref) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersLayerRef = useRef(null);
   const clusterGroupRef = useRef(null);
+  const routeLineRef = useRef(null);
   
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
-  const [isRoutingMode, setIsRoutingMode] = useState(false);
-  const [routePoints, setRoutePoints] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
+  const [routeLine, setRouteLine] = useState(null);
   
   // Load Leaflet and related libraries - only once
   useEffect(() => {
@@ -162,6 +178,17 @@ const PlaqueMap = ({
           transform: scale(0.8);
           opacity: 0;
         }
+      }
+      
+      /* Route line animation */
+      @keyframes dash {
+        to {
+          stroke-dashoffset: -1000;
+        }
+      }
+      
+      .animated-dash {
+        animation: dash 30s linear infinite;
       }
     `;
     document.head.appendChild(customStyles);
@@ -346,6 +373,9 @@ const PlaqueMap = ({
           'gray': '#4b5563'
         }[plaqueColor] || '#3b82f6';
         
+        // Check if plaque is in the route
+        const isInRoute = routePoints.some(p => p.id === plaque.id);
+        
         // Create marker with custom icon
         const isFavorite = favorites.includes(plaque.id);
         const isSelected = plaque.id === selectedPlaqueId;
@@ -364,7 +394,7 @@ const PlaqueMap = ({
                 background-color: white;
                 border-radius: 50%;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                border: ${isFavorite ? '2px solid #f59e0b' : '2px solid white'};
+                border: ${isInRoute ? '2px solid #10b981' : isFavorite ? '2px solid #f59e0b' : '2px solid white'};
                 padding: 2px;
               ">
                 <div style="
@@ -377,9 +407,11 @@ const PlaqueMap = ({
                   justify-content: center;
                   color: white;
                 ">
-                  ${plaque.visited 
-                    ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' 
-                    : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
+                  ${isInRoute ? 
+                    `<div style="font-weight: bold; font-size: 12px;">${routePoints.findIndex(p => p.id === plaque.id) + 1}</div>` :
+                    plaque.visited ? 
+                      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : 
+                      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
                   }
                 </div>
               </div>
@@ -406,15 +438,22 @@ const PlaqueMap = ({
             ` : ''}
             ${plaque.erected ? `<div class="text-xs text-gray-500 mt-1">Erected: ${plaque.erected}</div>` : ''}
             ${plaque.visited ? `<div class="text-xs text-green-600 mt-1">✓ You've visited this plaque</div>` : ''}
+            ${isInRoute ? `<div class="text-xs text-green-600 mt-1">• Stop #${routePoints.findIndex(p => p.id === plaque.id) + 1} in route</div>` : ''}
             <div class="flex gap-2 mt-3">
               <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
                 View Details
               </button>
-              ${isRoutingMode ? `
-                <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors">
-                  Add to Route
-                </button>
-              ` : ''}
+              ${isRoutingMode ? (
+                isInRoute ? `
+                  <button class="remove-from-route py-1.5 px-3 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 transition-colors">
+                    Remove from Route
+                  </button>
+                ` : `
+                  <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors">
+                    Add to Route
+                  </button>
+                `
+              ) : ''}
             </div>
           </div>
         `;
@@ -432,9 +471,9 @@ const PlaqueMap = ({
           }
           
           // Add route button click handler if in routing mode
-          const routeButton = popupContent.querySelector('.add-to-route');
-          if (routeButton) {
-            routeButton.addEventListener('click', () => {
+          const addRouteButton = popupContent.querySelector('.add-to-route');
+          if (addRouteButton) {
+            addRouteButton.addEventListener('click', () => {
               // Check if plaque is already in route
               const isAlreadyInRoute = routePoints.some(p => p.id === plaque.id);
               if (isAlreadyInRoute) {
@@ -443,8 +482,16 @@ const PlaqueMap = ({
               }
               
               // Add to route
-              setRoutePoints(prev => [...prev, plaque]);
-              toast.success(`Added "${plaque.title}" to route`);
+              addPlaqueToRoute(plaque);
+              marker.closePopup();
+            });
+          }
+          
+          // Remove from route button click handler
+          const removeRouteButton = popupContent.querySelector('.remove-from-route');
+          if (removeRouteButton) {
+            removeRouteButton.addEventListener('click', () => {
+              removePlaqueFromRoute(plaque.id);
               marker.closePopup();
             });
           }
@@ -513,7 +560,7 @@ const PlaqueMap = ({
     }
     
     console.log("Markers added successfully");
-  }, [plaques, favorites, selectedPlaqueId, maintainView, isRoutingMode, onPlaqueClick]);
+  }, [plaques, favorites, selectedPlaqueId, maintainView, isRoutingMode, routePoints, onPlaqueClick, addPlaqueToRoute, removePlaqueFromRoute]);
   
   // Find user's location
   const findUserLocation = useCallback(() => {
@@ -565,222 +612,405 @@ const PlaqueMap = ({
     }
   }, []);
   
-  // Update markers when plaques or selection changes
-  useEffect(() => {
-    if (mapInstanceRef.current && mapLoaded) {
-      addMapMarkers();
+  // Draw route line on the map
+  const drawRouteLine = useCallback((pointsForRoute) => {
+    if (!mapInstanceRef.current || !window.L || pointsForRoute.length < 2) {
+      console.log("Cannot draw route: Map not loaded or insufficient points");
+      return null;
     }
-  }, [mapLoaded, plaques, favorites, selectedPlaqueId, isRoutingMode, addMapMarkers]);
-
-  // Reset map function for development/testing
-  const resetMap = useCallback(() => {
-    console.log("Resetting map view");
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([51.505, -0.09], 13);
-    }
-  }, []);
-
-  // Route panel for displaying active route
-  const RoutePanel = () => {
-    if (!isRoutingMode || routePoints.length === 0) return null;
     
-    return (
-      <div className="absolute left-4 bottom-16 z-50 bg-white rounded-lg shadow-lg p-4 w-72 sm:w-80">
-        <div className="flex justify-between items-center border-b pb-3 mb-3">
-          <h3 className="text-sm font-medium flex items-center gap-1.5 text-green-800">
-            <RouteIcon size={16} />
-            Route Builder
-          </h3>
-          <div className="text-xs text-green-700">
-            {routePoints.length} stops
-          </div>
+    const map = mapInstanceRef.current;
+    
+    // Clear existing route line
+    if (routeLineRef.current) {
+      map.removeLayer(routeLineRef.current);
+      routeLineRef.current = null;
+    }
+    
+    // Get coordinates for each point
+    const latLngs = pointsForRoute
+      .filter(p => p.latitude && p.longitude)
+      .map(p => [
+        parseFloat(p.latitude),
+        parseFloat(p.longitude)
+      ]);
+    
+    if (latLngs.length < 2) {
+      console.log("Not enough valid coordinates to draw route");
+      return null;
+    }
+    
+    // Create route group to contain all route elements
+    const routeGroup = window.L.layerGroup();
+    
+    // Create polyline with animated dash effect
+    const routePolyline = window.L.polyline(latLngs, {
+      color: '#10b981', // green-500
+      weight: 4,
+      opacity: 0.8,
+      lineCap: 'round',
+      lineJoin: 'round',
+      dashArray: '10, 10',
+      className: 'animated-dash'
+    });
+    
+    routeGroup.addLayer(routePolyline);
+    
+    // Add route markers
+    pointsForRoute.forEach((point, index) => {
+      if (!point.latitude || !point.longitude) return;
+      
+      const lat = parseFloat(point.latitude);
+      const lng = parseFloat(point.longitude);
+      
+      if (isNaN(lat) || isNaN(lng)) return;
+      
+      // Create custom marker icon showing route order
+      const markerColor = index === 0 ? '#3b82f6' : // Start point (blue)
+                         index === pointsForRoute.length - 1 ? '#ef4444' : // End point (red)
+                         '#10b981'; // Waypoints (green)
+      
+      const markerLabel = index === 0 ? 'S' : 
+                          index === pointsForRoute.length - 1 ? 'E' : 
+                          (index + 1).toString();
+      
+      const routeMarker = window.L.marker([lat, lng], {
+        icon: window.L.divIcon({
+          className: 'route-marker',
+          html: `
+            <div style="
+              width: 24px;
+              height: 24px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-color: ${markerColor};
+              color: white;
+              border-radius: 50%;
+              font-weight: bold;
+              font-size: 12px;
+              border: 2px solid white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">
+              ${markerLabel}
+            </div>
+          `,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      });
+      
+      routeGroup.addLayer(routeMarker);
+      
+      // Add popup with route stop information
+      routeMarker.bindPopup(`
+        <div class="p-2">
+          <strong class="text-sm">Stop #${index + 1}</strong>
+          <div class="text-xs mt-1">${point.title}</div>
+          ${index > 0 ? `
+            <div class="text-xs text-gray-500 mt-1">
+              Distance from previous: ${calculateDistance(
+                parseFloat(pointsForRoute[index-1].latitude),
+                parseFloat(pointsForRoute[index-1].longitude),
+                lat,
+                lng
+              ).toFixed(2)} km
+            </div>
+          ` : ''}
         </div>
-        
-        <div className="max-h-64 overflow-y-auto mb-3">
-          <div className="space-y-2">
-            {routePoints.map((plaque, index) => (
-              <div 
-                key={plaque.id}
-                className="flex items-center gap-2 border p-2 rounded-md bg-white hover:bg-gray-50 transition-colors"
-              >
-                <div 
-                  className="w-6 h-6 p-0 flex items-center justify-center shrink-0 bg-green-50 text-green-700 rounded-full border border-green-200 text-xs font-medium"
-                >
-                  {index + 1}
-                </div>
-                
-                <div className="flex-grow min-w-0">
-                  <p className="font-medium text-sm truncate">{plaque.title}</p>
-                  <p className="text-xs text-gray-500 truncate">{plaque.location || plaque.address || 'No location'}</p>
-                </div>
-                
-                <button
-                  className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded"
-                  onClick={() => {
-                    setRoutePoints(prev => prev.filter(p => p.id !== plaque.id));
-                    toast.info(`Removed "${plaque.title}" from route`);
-                  }}
-                  title="Remove from route"
-                >
-                  <Trash size={16} />
-                </button>
+      `);
+    });
+    
+    // Add distance labels along the route
+    for (let i = 0; i < latLngs.length - 1; i++) {
+      const midPoint = [
+        (latLngs[i][0] + latLngs[i+1][0]) / 2,
+        (latLngs[i][1] + latLngs[i+1][1]) / 2
+      ];
+      
+      const distance = calculateDistance(
+        latLngs[i][0], latLngs[i][1],
+        latLngs[i+1][0], latLngs[i+1][1]
+      );
+      
+      // Only show distance label if it's more than 0.1 km
+      if (distance > 0.1) {
+        const distanceMarker = window.L.marker(midPoint, {
+          icon: window.L.divIcon({
+            className: 'distance-label',
+            html: `
+              <div style="
+                padding: 3px 6px;
+                background-color: white;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: 500;
+                color: #10b981;
+                border: 1px solid #d1fae5;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+              ">
+                ${distance.toFixed(1)} km
               </div>
-            ))}
-          </div>
-        </div>
+            `,
+            iconSize: [40, 20],
+            iconAnchor: [20, 10]
+          })
+        });
         
-        <div className="flex gap-2">
-          <Button 
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => {
-              setRoutePoints([]);
-              setIsRoutingMode(false);
-              toast.info("Route cleared");
-            }}
-          >
-            Clear Route
-          </Button>
-          <Button 
-            size="sm"
-            className="flex-1"
-            onClick={() => {
-              toast.success("Route saved!");
-              // Here you would implement route saving logic
-            }}
-          >
-            Save Route
-          </Button>
-        </div>
-      </div>
-    );
-  };
+        routeGroup.addLayer(distanceMarker);
+      }
+    }
+    
+    // Calculate total distance
+    const totalDistance = calculateRouteDistance(pointsForRoute);
+    
+    // Add a label with the total distance
+    if (totalDistance > 0) {
+      const totalDistanceMarker = window.L.marker(latLngs[Math.floor(latLngs.length/2)], {
+        icon: window.L.divIcon({
+          className: 'total-distance-label',
+          html: `
+            <div style="
+              padding: 4px 8px;
+              background-color: #10b981;
+              color: white;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: 500;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+              transform: translateY(-20px);
+            ">
+              Total: ${totalDistance.toFixed(1)} km
+            </div>
+          `,
+          iconSize: [80, 30],
+          iconAnchor: [40, 0]
+        })
+      });
+      
+      routeGroup.addLayer(totalDistanceMarker);
+    }
+    
+    // Add the route group to the map
+    routeGroup.addTo(map);
+    routeLineRef.current = routeGroup;
+    
+    // Fit map to show entire route
+// Fit map to show entire route
+const bounds = routePolyline.getBounds();
+map.fitBounds(bounds, { 
+  padding: [50, 50],
+  maxZoom: 15
+});
 
-  return (
-    <div className={`relative ${className}`}>
-      {/* Map container */}
-      <div 
-        ref={mapContainerRef} 
-        className="w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md"
-        style={{ minHeight: '400px', height: '500px' }}
-      />
+return routeGroup;
+}, []);
+
+// Calculate distance between two points (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+const R = 6371; // Earth radius in km
+const dLat = (lat2 - lat1) * Math.PI / 180;
+const dLon = (lon2 - lon1) * Math.PI / 180;
+const a = 
+  Math.sin(dLat/2) * Math.sin(dLat/2) +
+  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+  Math.sin(dLon/2) * Math.sin(dLon/2);
+const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+const distance = R * c;
+return distance;
+}
+
+// Update markers when plaques or selection changes
+useEffect(() => {
+if (mapInstanceRef.current && mapLoaded) {
+  addMapMarkers();
+}
+}, [mapLoaded, plaques, favorites, selectedPlaqueId, isRoutingMode, routePoints, addMapMarkers]);
+
+// Draw route when route points change
+useEffect(() => {
+if (mapInstanceRef.current && mapLoaded && routePoints.length >= 2 && isRoutingMode) {
+  drawRouteLine(routePoints);
+} else if (routeLineRef.current && mapInstanceRef.current) {
+  // Clear route line if routing mode is disabled or no points
+  mapInstanceRef.current.removeLayer(routeLineRef.current);
+  routeLineRef.current = null;
+}
+}, [mapLoaded, routePoints, isRoutingMode, drawRouteLine]);
+
+// Reset map function for development/testing
+const resetMap = useCallback(() => {
+console.log("Resetting map view");
+if (mapInstanceRef.current) {
+  mapInstanceRef.current.setView([51.505, -0.09], 13);
+}
+}, []);
+
+// Expose methods to the parent component through the ref
+React.useImperativeHandle(ref, () => ({
+drawRouteLine: (pointsForRoute) => {
+  return drawRouteLine(pointsForRoute);
+},
+
+clearRoute: () => {
+  if (routeLineRef.current && mapInstanceRef.current) {
+    mapInstanceRef.current.removeLayer(routeLineRef.current);
+    routeLineRef.current = null;
+  }
+},
+
+findUserLocation: () => {
+  findUserLocation();
+},
+
+fitToMarkers: () => {
+  if (!mapInstanceRef.current || !window.L) return;
+  
+  const validPlaques = plaques.filter(p => p.latitude && p.longitude);
+  
+  if (validPlaques.length > 0) {
+    try {
+      const latLngs = validPlaques.map(p => [
+        parseFloat(p.latitude), 
+        parseFloat(p.longitude)
+      ]);
       
-      {/* Map overlay for loading state */}
-      {!mapLoaded && (
-        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50 rounded-lg">
-          <div className="flex flex-col items-center">
-            <div className="h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-4 font-medium text-gray-600">Loading map...</p>
-          </div>
-        </div>
-      )}
+      const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
       
-      {/* Route planning indicator when active */}
-      {isRoutingMode && mapLoaded && (
-        <div className="absolute top-16 left-4 bg-green-100 text-green-800 px-3 py-1.5 rounded-md text-sm font-medium z-40 shadow-sm border border-green-200">
-          Route Planning Mode Active
-        </div>
-      )}
-      
-      {/* Search location button */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-        <Button 
-          variant="default" 
-          size="sm" 
-          className="h-9 shadow-md flex items-center gap-2 px-4 bg-white text-gray-700 border-0 hover:bg-gray-50"
-          onClick={() => setShowLocationSearch(true)}
-        >
-          <Search size={16} />
-          <span>Search location</span>
-          <MapPin size={16} className="text-gray-400" />
-        </Button>
-      </div>
-      
-      {/* Map controls with tooltips */}
-      <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
-        <div className="flex flex-col gap-2">
-          {/* Location Button */}
-          <div className="relative group">
-            <Button 
-              variant={userLocation ? "outline" : "default"}
-              size="sm" 
-              className={`h-10 w-10 p-0 ${isLoadingLocation ? 'bg-blue-50' : ''}`}
-              onClick={findUserLocation}
-              disabled={isLoadingLocation}
-            >
-              {isLoadingLocation ? (
-                <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-blue-600 animate-spin"></div>
-              ) : (
-                <Navigation size={18} className={userLocation ? 'text-blue-600' : ''} />
-              )}
-            </Button>
-            <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
-              Find my location
-            </div>
-          </div>
-          
-          {/* Filter Button */}
-          <div className="relative group">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-blue-50 border-blue-200' : ''}`}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter size={18} className={showFilters ? 'text-blue-600' : ''} />
-              {userLocation && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></span>
-              )}
-            </Button>
-            <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
-              Distance filter{!userLocation ? " (find location first)" : ""}
-            </div>
-          </div>
-          
-          {/* Route Button */}
-          <div className="relative group">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-50 border-green-200' : ''}`}
-              onClick={() => setIsRoutingMode(!isRoutingMode)}
-            >
-              <RouteIcon size={18} className={isRoutingMode ? 'text-green-600' : ''} />
-              {isRoutingMode && routePoints.length > 0 && (
-                <span className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center bg-green-500 rounded-full text-white text-xs">
-                  {routePoints.length}
-                </span>
-              )}
-            </Button>
-            <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
-              {isRoutingMode ? "Exit route planning" : "Plan a route"}
-            </div>
-          </div>
-          
-          {/* Reset Button */}
-          <div className="relative group">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-10 w-10 p-0"
-              onClick={resetMap}
-            >
-              <Map size={18} />
-            </Button>
-            <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
-              Reset map view
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Map attribution */}
-      <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
-        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors
+      if (bounds.isValid()) {
+        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+      }
+    } catch (e) {
+      console.error("Error fitting bounds:", e);
+    }
+  }
+}
+}));
+
+return (
+<div className={`relative ${className}`}>
+  {/* Map container */}
+  <div 
+    ref={mapContainerRef} 
+    className="w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md"
+    style={{ minHeight: '400px', height: '500px' }}
+  />
+  
+  {/* Map overlay for loading state */}
+  {!mapLoaded && (
+    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50 rounded-lg">
+      <div className="flex flex-col items-center">
+        <div className="h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 font-medium text-gray-600">Loading map...</p>
       </div>
     </div>
-  );
-};
+  )}
+  
+  {/* Route planning indicator when active */}
+  {isRoutingMode && mapLoaded && (
+    <div className="absolute top-16 left-4 bg-green-100 text-green-800 px-3 py-1.5 rounded-md text-sm font-medium z-40 shadow-sm border border-green-200">
+      Route Planning Mode Active
+    </div>
+  )}
+  
+  {/* Search location button */}
+  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+    <Button 
+      variant="default" 
+      size="sm" 
+      className="h-9 shadow-md flex items-center gap-2 px-4 bg-white text-gray-700 border-0 hover:bg-gray-50"
+      onClick={() => setShowLocationSearch(true)}
+    >
+      <Search size={16} />
+      <span>Search location</span>
+      <MapPin size={16} className="text-gray-400" />
+    </Button>
+  </div>
+  
+  {/* Map controls with tooltips */}
+  <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
+    <div className="flex flex-col gap-2">
+      {/* Location Button */}
+      <div className="relative group">
+        <Button 
+          variant={userLocation ? "outline" : "default"}
+          size="sm" 
+          className={`h-10 w-10 p-0 ${isLoadingLocation ? 'bg-blue-50' : ''}`}
+          onClick={findUserLocation}
+          disabled={isLoadingLocation}
+        >
+          {isLoadingLocation ? (
+            <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-blue-600 animate-spin"></div>
+          ) : (
+            <Navigation size={18} className={userLocation ? 'text-blue-600' : ''} />
+          )}
+        </Button>
+        <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
+          Find my location
+        </div>
+      </div>
+      
+      {/* Filter Button */}
+      <div className="relative group">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-blue-50 border-blue-200' : ''}`}
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <Filter size={18} className={showFilters ? 'text-blue-600' : ''} />
+          {userLocation && (
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></span>
+          )}
+        </Button>
+        <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
+          Distance filter{!userLocation ? " (find location first)" : ""}
+        </div>
+      </div>
+      
+      {/* Route Button */}
+      <div className="relative group">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-50 border-green-200' : ''}`}
+          onClick={() => onToggleRoutingMode && onToggleRoutingMode()}
+        >
+          <RouteIcon size={18} className={isRoutingMode ? 'text-green-600' : ''} />
+          {isRoutingMode && routePoints.length > 0 && (
+            <span className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center bg-green-500 rounded-full text-white text-xs">
+              {routePoints.length}
+            </span>
+          )}
+        </Button>
+        <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
+          {isRoutingMode ? "Exit route planning" : "Plan a route"}
+        </div>
+      </div>
+      
+      {/* Reset Button */}
+      <div className="relative group">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-10 w-10 p-0"
+          onClick={resetMap}
+        >
+          <Map size={18} />
+        </Button>
+        <div className="absolute right-full mr-2 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 hidden group-hover:block whitespace-nowrap">
+          Reset map view
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {/* Map attribution */}
+  <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
+    © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors
+  </div>
+</div>
+);
+});
 
 export default PlaqueMap;
