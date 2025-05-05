@@ -7,39 +7,25 @@ import RouteBuilder from '../RouteBuilder';
 
 type RoutePanelProps = {
   routePoints: Plaque[];
-  onClose: () => void;
-  onClearRoute: () => void;
   onRemovePoint: (plaque: Plaque) => void;
   onReorderPoints: (newPoints: Plaque[]) => void;
   onExportRoute: () => void;
   onSaveRoute: () => void;
+  onClose: () => void;
   onShowClearDialog: () => void;
-  className?: string;
 };
 
-/**
- * Panel for route building and management
- */
 const RoutePanel: React.FC<RoutePanelProps> = ({
   routePoints,
-  onClose,
   onRemovePoint,
   onReorderPoints,
   onExportRoute,
   onSaveRoute,
-  onShowClearDialog,
-  className = ''
+  onClose,
+  onShowClearDialog
 }) => {
-  const handleClose = () => {
-    if (routePoints.length > 0) {
-      onShowClearDialog();
-    } else {
-      onClose();
-    }
-  };
-
   return (
-    <div className={`absolute top-16 right-4 bottom-16 z-10 w-80 bg-white rounded-lg shadow-lg overflow-hidden ${className}`}>
+    <div className="absolute top-16 right-4 bottom-16 z-10 w-80 bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="p-4 border-b">
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-medium">Route Builder</h3>
@@ -47,7 +33,7 @@ const RoutePanel: React.FC<RoutePanelProps> = ({
             variant="ghost" 
             size="sm" 
             className="h-6 w-6 p-0"
-            onClick={handleClose}
+            onClick={onClose}
           >
             <X size={14} />
           </Button>

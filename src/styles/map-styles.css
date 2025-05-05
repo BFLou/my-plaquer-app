@@ -1,4 +1,4 @@
-/* Map Styles for Plaque Map Component */
+/* src/styles/map-styles.css */
 
 /* Essential map container styles */
 .leaflet-container {
@@ -43,139 +43,6 @@
 }
 
 /* Cluster marker styling */
-.marker-cluster {
-  background-color: rgba(49, 130, 206, 0.6);
-  border-radius: 50%;
-  width: 40px !important;
-  height: 40px !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  border: 3px solid #3b82f6;
-}
-
-.marker-cluster div {
-  background-color: rgba(255, 255, 255, 0.8);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: #3182ce;
-}
-
-/* Popup styling */
-.leaflet-popup-content-wrapper {
-  border-radius: 8px;
-  padding: 0;
-  overflow: hidden;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.leaflet-popup-content {
-  margin: 0;
-  padding: 0;
-  width: 220px !important;
-}
-
-.leaflet-popup-tip {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.plaque-popup {
-  min-width: 200px;
-  padding: 12px;
-}
-
-.view-details {
-  transition: background-color 0.2s;
-}
-
-.view-details:hover {
-  background-color: #3b82f6;
-}
-
-/* Map control styling */
-.leaflet-control-layers,
-.leaflet-control-zoom {
-  border-radius: 8px !important;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24) !important;
-}
-
-.leaflet-control-layers-toggle,
-.leaflet-control-zoom-in,
-.leaflet-control-zoom-out {
-  background-color: white !important;
-  color: #4b5563 !important;
-}
-
-.leaflet-control-layers-toggle:hover,
-.leaflet-control-zoom-in:hover,
-.leaflet-control-zoom-out:hover {
-  background-color: #f3f4f6 !important;
-}
-
-/* Filter panel transition */
-.filter-panel-transition {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-/* Custom colors for plaque markers */
-.plaque-blue {
-  background-color: #3b82f6;
-}
-
-.plaque-green {
-  background-color: #10b981;
-}
-
-.plaque-brown {
-  background-color: #b45309;
-}
-
-.plaque-black,
-.plaque-grey,
-.plaque-gray {
-  background-color: #4b5563;
-}
-
-/* Mobile optimizations */
-@media (max-width: 640px) {
-  .leaflet-control-zoom {
-    display: none;
-  }
-  
-  .leaflet-control-attribution {
-    font-size: 8px;
-  }
-  
-  .leaflet-control-container .leaflet-top.leaflet-right {
-    top: 60px; /* Make room for the mobile filter button */
-  }
-}
-
-.custom-marker {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: transparent !important;
-  border: none !important;
-  transition: transform 0.2s ease;
-}
-
-.custom-marker {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: transparent !important;
-  border: none !important;
-  transition: transform 0.2s ease;
-}
-
 .custom-cluster {
   display: flex !important;
   align-items: center !important;
@@ -193,61 +60,49 @@
   box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
 }
 
-.custom-cluster > div > div {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100% !important;
-  height: 100% !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
-}
-
-/* Map marker styles */
-.custom-marker {
-  background: transparent !important;
-  border: none !important;
-  transition: transform 0.2s ease;
-}
-
-.custom-marker:hover {
-  transform: scale(1.2);
-  z-index: 1000 !important;
-}
-
-.selected-marker {
-  transform: scale(1.2);
-  z-index: 1000 !important;
-  animation: markerPulse 1.5s infinite;
-}
-
-@keyframes markerPulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 /* Popup styles */
-.plaque-popup button {
-  cursor: pointer;
-}
-
-.plaque-popup-container .leaflet-popup-content-wrapper {
-  padding: 0;
+.leaflet-popup-content-wrapper {
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Map control styling */
+.leaflet-control-layers,
+.leaflet-control-zoom {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24) !important;
+}
+
+.leaflet-control-layers-toggle,
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  background-color: white !important;
+  color: #4b5563 !important;
 }
 
 /* Route planner styles */
 .leaflet-routing-container {
   display: none !important; /* Hide the default routing instructions */
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .leaflet-control-zoom {
+    display: none;
+  }
+  
+  .leaflet-control-attribution {
+    font-size: 8px;
+  }
 }

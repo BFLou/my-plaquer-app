@@ -37,7 +37,6 @@ import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
 import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 import ImprovedPlaqueMap from '../components/plaques/ImprovedPlaqueMap';
-import EnhancedPlaqueMap from '../components/plaques/EnhancedPlaqueMap';
 import RouteBuilder from '../components/plaques/RouteBuilder';
 import '../styles/map-styles.css'; // Make sure this is imported
 
@@ -746,14 +745,16 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
   <>
     <div className="flex h-[650px]">
       <div className="flex-grow">
-        <ImprovedPlaqueMap 
-          plaques={filteredPlaques}
-          onPlaqueClick={handlePlaqueClick}
-          favorites={favorites}
-          selectedPlaqueId={selectedPlaque?.id}
-          maintainView={maintainMapView}
-          className="rounded-xl overflow-hidden shadow-md h-full"
-        />
+      <ImprovedPlaqueMap 
+  plaques={filteredPlaques}
+  onPlaqueClick={handlePlaqueClick}
+  favorites={favorites}
+  selectedPlaqueId={selectedPlaque?.id}
+  maintainView={maintainMapView}
+  routePoints={routePoints} // Make sure this is passed
+  onRemovePoint={removePlaqueFromRoute} // Make sure this is connected
+  className="rounded-xl overflow-hidden shadow-md h-full"
+/>
       </div>
     </div>
     
