@@ -6,7 +6,16 @@ import RoutePanel from './controls/RoutePanel';
 import useMapInitialization from './hooks/useMapInitialization';
 import useMapMarkers from './hooks/useMapMarkers';
 import useMapOperations from './hooks/useMapOperations';
-import { AlertDialog } from '@/components/ui/alert-dialog';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type PlaqueMapProps = {
   plaques: Plaque[];
@@ -35,7 +44,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
   const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
 
   // Initialize map
-  const { mapInstance, mapLoaded } = useMapInitialization(mapContainerRef);
+  const { mapInstance, mapLoaded, mapError } = useMapInitialization(mapContainerRef);
   
   // Setup map markers
   const { markersMap } = useMapMarkers(
@@ -71,7 +80,7 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
   function addPlaqueToRoute(plaque: Plaque) {
     // Check if plaque is already in route
     if (routePoints.some(p => p.id === plaque.id)) {
-      // Already in route - show toast or notification
+      // Already in route - we could show a notification here
       return;
     }
     
@@ -151,8 +160,30 @@ const PlaqueMap: React.FC<PlaqueMapProps> = ({
         open={showClearRouteDialog} 
         onOpenChange={setShowClearRouteDialog}
       >
-        {/* AlertDialog contents... */}
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Route</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear your current route? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              clearRoute();
+              setIsRoutingMode(false);
+              setShowClearRouteDialog(false);
+            }}>
+              Clear Route
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Map attribution */}
+      <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
+        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors
+      </div>
     </div>
   );
 };

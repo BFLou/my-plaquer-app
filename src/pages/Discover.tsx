@@ -36,7 +36,7 @@ import Pagination from '@/components/plaques/Pagination';
 import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
 import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
-import ImprovedPlaqueMap from '../components/plaques/ImprovedPlaqueMap';
+import PlaqueMap from '../components/maps/PlaqueMap';
 import RouteBuilder from '../components/plaques/RouteBuilder';
 import '../styles/map-styles.css'; // Make sure this is imported
 
@@ -263,7 +263,7 @@ const Discover = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list'); // Default to map view
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState([]);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [maintainMapView, setMaintainMapView] = useState(false);
@@ -745,16 +745,12 @@ const drawRoute = (plaquesForRoute: Plaque[]) => {
   <>
     <div className="flex h-[650px]">
       <div className="flex-grow">
-      <ImprovedPlaqueMap 
-  plaques={filteredPlaques}
-  onPlaqueClick={handlePlaqueClick}
-  favorites={favorites}
-  selectedPlaqueId={selectedPlaque?.id}
-  maintainView={maintainMapView}
-  routePoints={routePoints} // Make sure this is passed
-  onRemovePoint={removePlaqueFromRoute} // Make sure this is connected
-  className="rounded-xl overflow-hidden shadow-md h-full"
-/>
+      <PlaqueMap
+        plaques={myPlaqueData}
+        onPlaqueClick={setSelectedPlaque}
+        favorites={favorites}
+        selectedPlaqueId={selectedPlaque?.id}
+      />
       </div>
     </div>
     
