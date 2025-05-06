@@ -1,3 +1,8 @@
+// ================= SOLUTION FOR BOTH ISSUES =================
+
+// 1. UPDATE useMapMarkers.ts TO FIX INITIALIZATION ERROR
+// ======================================================
+
 // src/components/maps/hooks/useMapMarkers.ts
 import { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
@@ -36,6 +41,39 @@ export const useMapMarkers = ({
   isDrawingRoute,
   setIsDrawingRoute
 }) => {
+  // Store previous marker state to prevent unnecessary clearing
+  const prevRouteRef = useRef(null);
+  
+  // Fit to bounds based on plaque markers - DEFINE THIS FIRST
+  const fitToMarkers = useCallback((plaquesToFit) => {
+    if (!mapInstance || !window.L) return;
+    
+    const validPlaques = plaquesToFit.filter(p => p.latitude && p.longitude);
+    
+    if (validPlaques.length > 0) {
+      try {
+        const latLngs = validPlaques.map(p => [
+          parseFloat(p.latitude), 
+          parseFloat(p.longitude)
+        ]);
+        
+        const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
+        
+        if (bounds.isValid()) {
+          mapInstance.fitBounds(bounds, { 
+            padding: [50, 50],
+            animate: true,
+            duration: 0.75  // Smoother animation
+          });
+        }
+      } catch (e) {
+        console.warn("Non-critical error fitting to markers:", e);
+        // Fallback to fixed view
+        mapInstance.setView([51.505, -0.09], 13);
+      }
+    }
+  }, [mapInstance]);
+  
   // Add markers to the map
   const addMapMarkers = useCallback(() => {
     if (!mapInstance || !window.L) {
@@ -48,17 +86,28 @@ export const useMapMarkers = ({
       return;
     }
     
-    // Clear existing markers
-    if (markersLayer) {
-      markersLayer.clearLayers();
-    }
+    // We'll use a smarter clearing approach to prevent flashing
+    // Check if route points are the same as last time
+    const routePointsChanged = JSON.stringify(routePoints) !== JSON.stringify(prevRouteRef.current);
+    prevRouteRef.current = [...routePoints];
     
-    if (clusterGroup) {
-      clusterGroup.clearLayers();
-    }
-    
-    if (routeMarkerGroup) {
-      routeMarkerGroup.clearLayers();
+    // Only clear layers if the route has actually changed
+    if (routePointsChanged) {
+      // Clear existing markers
+      if (markersLayer) {
+        markersLayer.clearLayers();
+      }
+      
+      if (clusterGroup) {
+        clusterGroup.clearLayers();
+      }
+      
+      if (routeMarkerGroup) {
+        routeMarkerGroup.clearLayers();
+      }
+    } else if (!selectedPlaqueId) {
+      // If nothing significant changed, skip full redraw
+      return;
     }
     
     console.log(`Adding ${plaques.length} markers to the map`);
@@ -104,7 +153,7 @@ export const useMapMarkers = ({
           } else if (routeIndex === routePoints.length - 1) {
             markerLabel = 'E';
             markerColor = '#ef4444'; // Red for end
-            markerClass = 'route-marker-end';
+            markerClass = 'route-marker-waypoint';
           } else {
             markerLabel = (routeIndex + 1).toString();
             markerColor = '#10b981'; // Green for waypoints
@@ -253,29 +302,30 @@ export const useMapMarkers = ({
           const popupContent = document.createElement('div');
           popupContent.className = 'plaque-popup';
           popupContent.innerHTML = `
-            <div class="max-w-xs">
-              <div class="font-medium text-sm">${plaque.title || 'Unnamed Plaque'}</div>
-              <div class="text-xs text-gray-600 mt-1">${plaque.location || plaque.address || ''}</div>
-              ${plaque.color ? `
-                <div class="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                  <div class="w-3 h-3 rounded-full" style="background-color: ${bgColor}"></div>
-                  <span>${plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} plaque</span>
-                </div>
-              ` : ''}
-              ${plaque.erected ? `<div class="text-xs text-gray-500 mt-1">Erected: ${plaque.erected}</div>` : ''}
-              ${plaque.visited ? `<div class="text-xs text-green-600 mt-1">✓ You've visited this plaque</div>` : ''}
-              <div class="flex gap-2 mt-3">
-                <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
-                  View Details
-                </button>
-                ${isRoutingMode ? `
-                  <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors">
-                    Add to Route
-                  </button>
-                ` : ''}
+          <div class="max-w-xs">
+            <div class="font-medium text-sm">${plaque.title || 'Unnamed Plaque'}</div>
+            <div class="text-xs text-gray-600 mt-1">${plaque.location || plaque.address || ''}</div>
+            ${plaque.color ? `
+              <div class="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                <div class="w-3 h-3 rounded-full" style="background-color: ${bgColor}"></div>
+                <span>${plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} plaque</span>
               </div>
+            ` : ''}
+            ${plaque.erected ? `<div class="text-xs text-gray-500 mt-1">Erected: ${plaque.erected}</div>` : ''}
+            ${plaque.visited ? `<div class="text-xs text-green-600 mt-1">✓ You've visited this plaque</div>` : ''}
+            <div class="flex gap-2 mt-3">
+              <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
+                View Details
+              </button>
+              ${isRoutingMode ? `
+                <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors">
+                  Add to Route
+                </button>
+              ` : ''}
             </div>
-          `;
+          </div>
+        `;
+        
           
           // Add event listeners
           setTimeout(() => {
@@ -346,8 +396,8 @@ export const useMapMarkers = ({
           mapInstance.setView([lat, lng], 15, { animate: true });
         }
       }
-    } else if (plaques.length > 0 && !maintainView) {
-      // Fit bounds to show all markers if no specific one is selected
+    } else if (plaques.length > 0 && !maintainView && !routePoints.length) {
+      // Only fit all markers if we're not in a route
       fitToMarkers(plaques);
     }
   }, [
@@ -367,32 +417,6 @@ export const useMapMarkers = ({
     routePoints,
     fitToMarkers
   ]);
-  
-  // Fit to bounds based on plaque markers
-  const fitToMarkers = useCallback((plaquesToFit) => {
-    if (!mapInstance || !window.L) return;
-    
-    const validPlaques = plaquesToFit.filter(p => p.latitude && p.longitude);
-    
-    if (validPlaques.length > 0) {
-      try {
-        const latLngs = validPlaques.map(p => [
-          parseFloat(p.latitude), 
-          parseFloat(p.longitude)
-        ]);
-        
-        const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
-        
-        if (bounds.isValid()) {
-          mapInstance.fitBounds(bounds, { padding: [50, 50] });
-        }
-      } catch (e) {
-        console.warn("Non-critical error fitting to markers:", e);
-        // Fallback to fixed view
-        mapInstance.setView([51.505, -0.09], 13);
-      }
-    }
-  }, [mapInstance]);
   
   // Draw a simplified route line with fallback for API errors
   const drawSimpleRoute = useCallback((pointsForRoute) => {
@@ -473,29 +497,47 @@ export const useMapMarkers = ({
         }).addTo(routeGroup);
       }
       
-      // Fit to route bounds
+      // Improved: Fit to route bounds with better zoom control
       try {
         const bounds = window.L.latLngBounds(validPoints);
         if (bounds.isValid()) {
-          mapInstance.fitBounds(bounds, { padding: [50, 50] });
+          // Store current map view for comparison
+          const currentCenter = mapInstance.getCenter();
+          const currentZoom = mapInstance.getZoom();
+          
+          // Check if we should adjust view
+          // Only fit bounds if this is first route draw or there's a significant change
+          const shouldAdjustView = !routeLineRef.current || 
+                                  pointsForRoute.length <= 3 || 
+                                  pointsForRoute.length >= 5;
+          
+          if (shouldAdjustView) {
+            // Use flyToBounds for smoother transition
+            mapInstance.flyToBounds(bounds, { 
+              padding: [50, 50],
+              duration: 0.75, // Shorter duration to be less disruptive
+              easeLinearity: 0.5 // More linear movement
+            });
+          }
         }
       } catch (error) {
         console.warn("Non-critical error fitting to route bounds:", error);
       }
       
-      // Add total distance summary
-      const totalDistance = calculateRouteDistance(pointsForRoute);
-      
       // Store reference and update state
       routeLineRef.current = routeGroup;
       
-      // Refresh the markers to ensure route markers show up correctly
+      // Refresh the markers with a delay to reduce flashing
       setTimeout(() => {
         addMapMarkers();
-        setIsDrawingRoute(false);
-      }, 100);
+        
+        // Reset drawing state flag after all operations complete
+        setTimeout(() => {
+          setIsDrawingRoute(false);
+        }, 150);
+      }, 200);
       
-      return { routeGroup, totalDistance };
+      return { routeGroup, totalDistance: calculateRouteDistance(pointsForRoute) };
     } catch (error) {
       console.error("Error drawing simple route:", error);
       setIsDrawingRoute(false);

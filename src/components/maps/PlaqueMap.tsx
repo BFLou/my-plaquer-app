@@ -93,7 +93,7 @@ const PlaqueMap = React.forwardRef(({
     favorites,
     selectedPlaqueId,
     onPlaqueClick,
-    isRoutingMode,
+    isRoutingMode, // Make sure this is included and passed correctly
     addPlaqueToRoute,
     removePlaqueFromRoute,
     routePoints,
@@ -195,24 +195,50 @@ const PlaqueMap = React.forwardRef(({
     }
     
     setIsDrawingRoute(true); // Set flag to prevent re-renders during update
+
+    
     
     // First, clear the existing route to prevent ghost lines
     if (routeLineRef.current && mapInstance) {
       mapInstance.removeLayer(routeLineRef.current);
       routeLineRef.current = null;
     }
+
+    const currentRoutePoints = [...routePoints];
+
+      // Find the index of the plaque to remove
+  const plaqueIndex = currentRoutePoints.findIndex(p => p.id === plaqueId);
+  if (plaqueIndex === -1) {
+    setIsDrawingRoute(false);
+    return;
+  }
+
+  const newRoutePoints = [
+    ...currentRoutePoints.slice(0, plaqueIndex),
+    ...currentRoutePoints.slice(plaqueIndex + 1)
+  ];
     
     // Update route points in the parent component
     removePlaqueFromRoute(plaqueId);
     
     // Reset the drawing flag after a delay
     setTimeout(() => {
-      setIsDrawingRoute(false);
-    }, 300);
-    
-    toast.info("Removed plaque from route");
-  }, [removePlaqueFromRoute, isDrawingRoute, mapInstance, routeLineRef]);
+      // Only redraw if we still have a valid route
+      if (newRoutePoints.length >= 2) {
+        drawSimpleRoute(newRoutePoints);
+      }
+      
+      // Reset the drawing flag with a delay
+      setTimeout(() => {
+        setIsDrawingRoute(false);
+      }, 300);
+    }, 100);
+
+  toast.info("Removed plaque from route");
+}, [removePlaqueFromRoute, isDrawingRoute, mapInstance, routeLineRef, routePoints, drawSimpleRoute]);
   
+
+
   // Toggle routing mode
   const handleToggleRoutingMode = useCallback(() => {
     const newRoutingMode = !isRoutingMode;
