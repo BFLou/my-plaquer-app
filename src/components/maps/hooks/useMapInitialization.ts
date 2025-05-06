@@ -1,28 +1,29 @@
 // src/components/maps/hooks/useMapInitialization.ts
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
-type MapOptions = {
-  center?: [number, number];
-  zoom?: number;
-  maxZoom?: number;
-  minZoom?: number;
-  disableAutomaticZoom?: boolean;
-};
-
-export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | null>, options: MapOptions = {}) => {
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+/**
+ * Custom hook for initializing and managing the Leaflet map
+ */
+export const useMapInitialization = () => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
   
-  // Load Leaflet scripts and styles
-  useEffect(() => {
+  const mapInstanceRef = useRef<any>(null);
+  const markersLayerRef = useRef<any>(null);
+  const clusterGroupRef = useRef<any>(null);
+  const routeMarkerGroupRef = useRef<any>(null);
+  const routeLineRef = useRef<any>(null);
+  
+  // Load Leaflet libraries
+  const loadLeafletScripts = useCallback(() => {
+    // Check if already loaded
     if (window.L) {
-      setIsScriptLoaded(true);
-      return;
+      console.log("Leaflet already loaded");
+      return true;
     }
-
+    
+    console.log("Loading Leaflet libraries...");
+    
     // Create and load Leaflet CSS
     const linkLeaflet = document.createElement('link');
     linkLeaflet.rel = 'stylesheet';
@@ -52,13 +53,13 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
       
       scriptCluster.onload = () => {
         console.log("Map plugins loaded successfully");
-        setIsScriptLoaded(true);
+        return true;
       };
       
       scriptCluster.onerror = (err) => {
         console.error("Error loading MarkerCluster:", err);
         setMapError("Failed to load map resources");
-        setIsScriptLoaded(true); // Still try to initialize the map without clustering
+        return false;
       };
       
       document.head.appendChild(scriptCluster);
@@ -67,11 +68,19 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
     scriptLeaflet.onerror = (err) => {
       console.error("Error loading Leaflet:", err);
       setMapError("Failed to load map resources");
+      return false;
     };
     
     document.head.appendChild(scriptLeaflet);
 
-    // Add styles for map and markers
+    // Add custom styles for map and markers
+    addMapStyles();
+    
+    return false; // Scripts are still loading
+  }, []);
+  
+  // Add custom styles for the map
+  const addMapStyles = () => {
     const style = document.createElement('style');
     style.innerHTML = `
       .leaflet-container {
@@ -186,155 +195,196 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
         stroke-width: 2 !important;
         stroke-dasharray: 4, 4 !important;
       }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      // Cleanup if component unmounts
-      document.head.removeChild(linkLeaflet);
-      document.head.removeChild(linkCluster);
-      document.head.removeChild(linkClusterDefault);
-      document.head.removeChild(scriptLeaflet);
-      if (document.querySelector('script[src*="leaflet.markercluster.js"]')) {
-        document.head.removeChild(document.querySelector('script[src*="leaflet.markercluster.js"]')!);
+      
+      /* Route marker styling */
+      .route-marker-container {
+        position: relative;
+        z-index: 1000 !important;
       }
-      document.head.removeChild(style);
-    };
-  }, []);
-
-  // Initialize map once scripts are loaded
-  useEffect(() => {
-    if (!isScriptLoaded || !mapRef.current || mapInstanceRef.current) return;
-
+      
+      .route-marker-diamond {
+        width: 28px;
+        height: 28px;
+        transform: rotate(45deg);
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 14px;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000 !important;
+        transition: transform 0.2s ease;
+      }
+      
+      .route-marker-diamond:hover {
+        transform: rotate(45deg) scale(1.1);
+      }
+      
+      .route-marker-content {
+        transform: rotate(-45deg);
+        color: white;
+        font-weight: bold;
+      }
+      
+      .route-marker-label {
+        position: absolute;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #333;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: bold;
+        white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      }
+      
+      /* Route distance labels */
+      .route-distance-label {
+        background-color: white !important;
+        border-radius: 12px !important;
+        padding: 3px 6px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        border: 1px solid #10b981 !important;
+        color: #10b981 !important;
+        font-weight: 500 !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+        z-index: 950 !important;
+      }
+    `;
+    
+    document.head.appendChild(style);
+  };
+  
+  // Initialize the map
+  const initializeMap = useCallback((mapContainer, setMapLoadedCallback = null) => {
+    if (!mapContainer || !window.L) {
+      console.error("Map container or Leaflet not available");
+      return;
+    }
+    
+    // Check if map is already initialized
+    if (mapInstanceRef.current) {
+      console.log("Map already initialized, skipping initialization");
+      if (setMapLoadedCallback) {
+        setMapLoadedCallback(true);
+      }
+      return;
+    }
+    
+    console.log("Initializing map...");
+    
     try {
-      console.log("Initializing map");
-      const defaultOptions = {
-        center: [51.505, -0.09], // London coordinates
+      // Create map instance
+      const map = window.L.map(mapContainer, {
+        center: [51.505, -0.09], // London as default
         zoom: 13,
         maxZoom: 18,
         minZoom: 4,
-        disableAutomaticZoom: false
-      };
-      
-      const mapOptions = { ...defaultOptions, ...options };
-      
-      // Initialize the map with zoomControl disabled to add it to custom position
-      const map = window.L.map(mapRef.current, {
-        center: mapOptions.center,
-        zoom: mapOptions.zoom,
-        maxZoom: mapOptions.maxZoom,
-        minZoom: mapOptions.minZoom,
-        zoomControl: false, // Disable default zoom control
-        zoomSnap: 0.5,
-        zoomDelta: 0.5,
-        wheelDebounceTime: 100,
-        wheelPxPerZoomLevel: 100,
-        bounceAtZoomLimits: false
+        zoomControl: false, // Disable default zoom control to add it to the topright
+        scrollWheelZoom: true,
+        doubleClickZoom: true
       });
       
-      // Add zoom control to the top-right with improved styling
+      mapInstanceRef.current = map;
+      
+      // Add zoom control in better position
       window.L.control.zoom({
-        position: 'topright',
-        zoomInTitle: 'Zoom in',
-        zoomOutTitle: 'Zoom out'
+        position: 'topright'
       }).addTo(map);
-
-      // Add tile layer - using more attractive Carto tiles
+      
+      // Add tile layer - Carto light map
       window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 20
       }).addTo(map);
-
-      // Add scale control with metric only
+      
+      // Create marker layer group
+      const markers = window.L.layerGroup().addTo(map);
+      markersLayerRef.current = markers;
+      
+      // Create a separate layer for route markers to prevent clustering
+      const routeMarkers = window.L.layerGroup().addTo(map);
+      routeMarkerGroupRef.current = routeMarkers;
+      
+      // Create cluster group if available
+      if (window.L.markerClusterGroup) {
+        const clusters = window.L.markerClusterGroup({
+          showCoverageOnHover: false,
+          maxClusterRadius: 50,
+          spiderfyOnMaxZoom: true,
+          disableClusteringAtZoom: 18,
+          animate: true,
+          zoomToBoundsOnClick: true,
+          iconCreateFunction: (cluster) => {
+            const count = cluster.getChildCount();
+            let size = 40;
+            
+            // Size based on count
+            if (count < 5) size = 40;
+            else if (count < 20) size = 44;
+            else if (count < 50) size = 48;
+            else size = 52;
+            
+            return window.L.divIcon({
+              html: `
+                <div class="custom-cluster">
+                  <div class="custom-cluster-inner">
+                    ${count}
+                  </div>
+                </div>
+              `,
+              className: 'custom-cluster-icon',
+              iconSize: [size, size],
+              iconAnchor: [size/2, size/2]
+            });
+          }
+        });
+        
+        map.addLayer(clusters);
+        clusterGroupRef.current = clusters;
+      }
+      
+      // Add scale control
       window.L.control.scale({
         imperial: false,
         position: 'bottomright',
         maxWidth: 150
       }).addTo(map);
       
-      // Prevent zoom on scroll unless shift key is pressed
-      map.scrollWheelZoom.disable();
-      
-      // Add event listener to enable zoom on scroll when shift key is pressed
-      document.addEventListener('keydown', function(e) {
-        if (e.shiftKey) {
-          map.scrollWheelZoom.enable();
-        }
-      });
-      
-      document.addEventListener('keyup', function(e) {
-        if (e.key === 'Shift') {
-          map.scrollWheelZoom.disable();
-        }
-      });
-      
-      // Enable touch zoom
-      map.touchZoom.enable();
-      
-      // Add a subtle shadow overlay to make the markers pop
-      const shadowOverlay = window.L.rectangle(
-        [[-90, -180], [90, 180]], 
-        { 
-          color: 'transparent',
-          fillColor: '#000', 
-          fillOpacity: 0.03,
-          interactive: false
-        }
-      ).addTo(map);
-      
-      // Add double-click to zoom
-      map.doubleClickZoom.enable();
-      
-      // Prevent automatic zooming if requested
-      if (mapOptions.disableAutomaticZoom) {
-        // Store original fitBounds method
-        const originalFitBounds = map.fitBounds;
-        
-        // Override fitBounds to do nothing unless explicitly called
-        map.fitBounds = function() {
-          // Only apply if a specific flag is set
-          if (map._allowFitBounds) {
-            return originalFitBounds.apply(this, arguments);
-          }
-          return this;
-        };
-        
-        // Method to allow fitBounds calls
-        map.allowFitBounds = function() {
-          map._allowFitBounds = true;
-          return this;
-        };
-        
-        // Method to disallow fitBounds calls
-        map.disallowFitBounds = function() {
-          map._allowFitBounds = false;
-          return this;
-        };
+      // Set map as loaded
+      setMapLoaded(true);
+      if (setMapLoadedCallback) {
+        setMapLoadedCallback(true);
       }
       
-      // Store map instance
-      mapInstanceRef.current = map;
-      setMapLoaded(true);
-      
-      // Add map loaded event
-      setTimeout(() => {
-        mapRef.current?.dispatchEvent(new CustomEvent('map:loaded', { 
-          detail: { map } 
-        }));
-      }, 100);
-    } catch (error: any) {
-      console.error("Map initialization error:", error);
+      console.log("Map initialized successfully");
+    } catch (error) {
+      console.error("Error initializing map:", error);
       setMapError(`Failed to initialize map: ${error.message}`);
     }
-  }, [isScriptLoaded, options]);
-
+  }, []);
+  
+  // Effect to load scripts when component mounts
+  useEffect(() => {
+    loadLeafletScripts();
+  }, [loadLeafletScripts]);
+  
   return {
     mapLoaded,
     mapError,
     mapInstance: mapInstanceRef.current,
-    markers: markersRef.current,
-    isScriptLoaded
+    markersLayer: markersLayerRef.current,
+    clusterGroup: clusterGroupRef.current,
+    routeMarkerGroup: routeMarkerGroupRef.current,
+    routeLineRef,
+    initializeMap
   };
 };
 
