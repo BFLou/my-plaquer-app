@@ -1,5 +1,5 @@
-// src/components/maps/hooks/useMapInitialization.ts
-import { useState, useRef, useCallback, useEffect } from 'react';
+// src/hooks/useMapInitialization.ts
+import { useState, useRef, useCallback } from 'react';
 
 /**
  * Custom hook for initializing and managing the Leaflet map
@@ -116,86 +116,6 @@ export const useMapInitialization = () => {
         background-color: white;
       }
       
-      /* Control styling */
-      .leaflet-control-zoom {
-        border: none !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-      }
-      
-      .leaflet-control-zoom-in, .leaflet-control-zoom-out {
-        border-radius: 0.25rem !important;
-        color: #4b5563 !important;
-        border: 1px solid #e5e7eb !important;
-      }
-      
-      .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
-        background-color: #f9fafb !important;
-        color: #1f2937 !important;
-      }
-      
-      /* Attribution styling */
-      .leaflet-control-attribution {
-        background-color: rgba(255, 255, 255, 0.8) !important;
-        padding: 0.25rem 0.5rem !important;
-        border-radius: 0.25rem !important;
-        font-size: 0.7rem !important;
-      }
-      
-      /* Customize cluster icons */
-      .marker-cluster {
-        background-color: rgba(59, 130, 246, 0.6) !important;
-        border-radius: 50% !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-      }
-      
-      .marker-cluster div {
-        background-color: rgba(59, 130, 246, 0.8) !important;
-        color: white !important;
-        font-weight: bold !important;
-      }
-      
-      /* Animation for marker drop */
-      @keyframes marker-drop {
-        0% {
-          transform: translateY(-20px);
-          opacity: 0;
-        }
-        60% {
-          transform: translateY(5px);
-          opacity: 1;
-        }
-        100% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      
-      /* Scale animations for markers and clusters */
-      @keyframes scale-in {
-        0% {
-          transform: scale(0.8);
-          opacity: 0;
-        }
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-      
-      /* Animating dash array for routes */
-      @keyframes dash {
-        to {
-          stroke-dashoffset: 1000;
-        }
-      }
-      
-      /* Modern spiderfy lines */
-      .leaflet-marker-icon-wrapper svg line {
-        stroke: #3b82f6 !important;
-        stroke-width: 2 !important;
-        stroke-dasharray: 4, 4 !important;
-      }
-      
       /* Route marker styling */
       .route-marker-container {
         position: relative;
@@ -256,6 +176,57 @@ export const useMapInitialization = () => {
         white-space: nowrap !important;
         z-index: 950 !important;
       }
+      
+      /* Animation for marker drop */
+      @keyframes marker-drop {
+        0% {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        60% {
+          transform: translateY(5px);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
+      /* Animating dash array for routes */
+      @keyframes dash {
+        to {
+          stroke-dashoffset: 1000;
+        }
+      }
+      
+      /* Route marker styling by position */
+      .route-marker-start .route-marker-diamond {
+        background-color: #3b82f6 !important; /* Blue */
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
+      }
+      
+      .route-marker-end .route-marker-diamond {
+        background-color: #ef4444 !important; /* Red */
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
+      }
+      
+      .route-marker-waypoint .route-marker-diamond {
+        background-color: #10b981 !important; /* Green */
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3) !important;
+      }
+      
+      .route-marker-start .route-marker-label {
+        background-color: #3b82f6 !important;
+      }
+      
+      .route-marker-end .route-marker-label {
+        background-color: #ef4444 !important;
+      }
+      
+      .route-marker-waypoint .route-marker-label {
+        background-color: #10b981 !important;
+      }
     `;
     
     document.head.appendChild(style);
@@ -263,8 +234,32 @@ export const useMapInitialization = () => {
   
   // Initialize the map
   const initializeMap = useCallback((mapContainer, setMapLoadedCallback = null) => {
-    if (!mapContainer || !window.L) {
-      console.error("Map container or Leaflet not available");
+    if (!mapContainer) {
+      console.error("Map container not available");
+      return;
+    }
+    
+    // Load Leaflet if not already loaded
+    if (!window.L) {
+      loadLeafletScripts();
+      
+      // Check for Leaflet load at intervals
+      const checkInterval = setInterval(() => {
+        if (window.L) {
+          clearInterval(checkInterval);
+          initializeMap(mapContainer, setMapLoadedCallback);
+        }
+      }, 100);
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!window.L) {
+          setMapError("Failed to load map resources");
+          console.error("Timed out waiting for Leaflet to load");
+        }
+      }, 10000);
+      
       return;
     }
     
@@ -298,7 +293,7 @@ export const useMapInitialization = () => {
         position: 'topright'
       }).addTo(map);
       
-      // Add tile layer - Carto light map
+      // Add tile layer - Carto light map (better for walking)
       window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
@@ -321,30 +316,7 @@ export const useMapInitialization = () => {
           spiderfyOnMaxZoom: true,
           disableClusteringAtZoom: 18,
           animate: true,
-          zoomToBoundsOnClick: true,
-          iconCreateFunction: (cluster) => {
-            const count = cluster.getChildCount();
-            let size = 40;
-            
-            // Size based on count
-            if (count < 5) size = 40;
-            else if (count < 20) size = 44;
-            else if (count < 50) size = 48;
-            else size = 52;
-            
-            return window.L.divIcon({
-              html: `
-                <div class="custom-cluster">
-                  <div class="custom-cluster-inner">
-                    ${count}
-                  </div>
-                </div>
-              `,
-              className: 'custom-cluster-icon',
-              iconSize: [size, size],
-              iconAnchor: [size/2, size/2]
-            });
-          }
+          zoomToBoundsOnClick: true
         });
         
         map.addLayer(clusters);
@@ -369,11 +341,6 @@ export const useMapInitialization = () => {
       console.error("Error initializing map:", error);
       setMapError(`Failed to initialize map: ${error.message}`);
     }
-  }, []);
-  
-  // Effect to load scripts when component mounts
-  useEffect(() => {
-    loadLeafletScripts();
   }, [loadLeafletScripts]);
   
   return {

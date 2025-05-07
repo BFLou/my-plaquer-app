@@ -1,4 +1,4 @@
-// src/components/maps/hooks/useMapOperations.ts
+// src/hooks/useMapOperations.ts
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -119,8 +119,63 @@ export const useMapOperations = ({
   // Reset map view
   const resetMap = useCallback(() => {
     if (mapInstance) {
-      mapInstance.setView([51.505, -0.09], 13);
+      mapInstance.setView([51.505, -0.09], 13, {
+        animate: true,
+        duration: 1
+      });
+      toast.info("Map view reset");
     }
+  }, [mapInstance]);
+  
+  // Change map style/theme
+  const changeMapTheme = useCallback((theme: string) => {
+    if (!mapInstance) return;
+    
+    // Remove current tile layer
+    mapInstance.eachLayer((layer) => {
+      if (layer instanceof window.L.TileLayer) {
+        mapInstance.removeLayer(layer);
+      }
+    });
+    
+    // Add new tile layer based on theme
+    switch (theme) {
+      case 'streets':
+        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 20
+        }).addTo(mapInstance);
+        break;
+      case 'satellite':
+        window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19
+        }).addTo(mapInstance);
+        break;
+      case 'terrain':
+        window.L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png', {
+          attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          subdomains: 'abcd',
+          maxZoom: 18
+        }).addTo(mapInstance);
+        break;
+      case 'walking':
+        // Special layer optimized for walking routes with path emphasis
+        window.L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', {
+          attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 22
+        }).addTo(mapInstance);
+        break;
+      default:
+        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 20
+        }).addTo(mapInstance);
+    }
+    
+    toast.success(`Map style changed to ${theme}`);
   }, [mapInstance]);
   
   // Fit to bounds based on plaque markers
@@ -132,14 +187,18 @@ export const useMapOperations = ({
     if (validPlaques.length > 0) {
       try {
         const latLngs = validPlaques.map(p => [
-          parseFloat(p.latitude), 
-          parseFloat(p.longitude)
+          parseFloat(p.latitude as unknown as string), 
+          parseFloat(p.longitude as unknown as string)
         ]);
         
         const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
         
         if (bounds.isValid()) {
-          mapInstance.fitBounds(bounds, { padding: [50, 50] });
+          mapInstance.fitBounds(bounds, { 
+            padding: [50, 50],
+            animate: true,
+            duration: 0.75
+          });
         }
       } catch (e) {
         console.warn("Non-critical error fitting to markers:", e);
@@ -149,10 +208,32 @@ export const useMapOperations = ({
     }
   }, [mapInstance]);
   
+  // Set map zoom level with animation
+  const setMapZoom = useCallback((zoom) => {
+    if (mapInstance) {
+      mapInstance.setZoom(zoom, {
+        animate: true
+      });
+    }
+  }, [mapInstance]);
+  
+  // Pan to specific coordinates
+  const panToLocation = useCallback((lat, lng, zoom = 15) => {
+    if (mapInstance) {
+      mapInstance.flyTo([lat, lng], zoom, {
+        animate: true,
+        duration: 1
+      });
+    }
+  }, [mapInstance]);
+  
   return {
     findUserLocation,
     resetMap,
-    fitToMarkers
+    fitToMarkers,
+    changeMapTheme,
+    setMapZoom,
+    panToLocation
   };
 };
 

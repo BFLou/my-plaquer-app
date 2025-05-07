@@ -3,16 +3,24 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Search, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+
+// Components
 import MapContainer from './containers/MapContainer';
 import MapControls from './controls/MapControls';
 import RoutePanel from './controls/RoutePanel';
 import FilterPanel from './controls/FilterPanel';
 import LocationSearchPanel from './controls/LocationSearchPanel';
 import AlertDialog from './dialogs/AlertDialog';
+
+// Hooks
 import useMapInitialization from './hooks/useMapInitialization';
-import { useMapMarkers } from './hooks/useMapMarkers';
+import useMapMarkers from './hooks/useMapMarkers';
 import useMapOperations from './hooks/useMapOperations';
-import { calculateRouteDistance } from './utils/routeUtils';
+import useRouteManagement from './hooks/useRouteManagement';
+import useMapEffects from './hooks/useMapEffects';
+
+// Utils
+import { calculateRouteDistance, calculateWalkingTime, formatDistance } from './utils/routeUtils';
 
 // Improved PlaqueMap component with reliable routing functionality
 const PlaqueMap = React.forwardRef(({
@@ -22,12 +30,12 @@ const PlaqueMap = React.forwardRef(({
   selectedPlaqueId = null,
   maintainView = false,
   className = '',
-  isRoutingMode = false,
-  setIsRoutingMode = () => {},
-  routePoints = [],
-  addPlaqueToRoute = () => {},
-  removePlaqueFromRoute = () => {},
-  clearRoute = () => {}
+  isRoutingMode: externalRoutingMode = false,
+  setIsRoutingMode: setExternalRoutingMode = () => {},
+  routePoints: externalRoutePoints = [],
+  addPlaqueToRoute: externalAddPlaqueToRoute = () => {},
+  removePlaqueFromRoute: externalRemovePlaqueFromRoute = () => {},
+  clearRoute: externalClearRoute = () => {}
 }, ref) => {
   const mapContainerRef = useRef(null);
   
@@ -40,7 +48,7 @@ const PlaqueMap = React.forwardRef(({
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [useImperial, setUseImperial] = useState(false);
   const [clearRouteDialog, setClearRouteDialog] = useState(false);
-  const [isDrawingRoute, setIsDrawingRoute] = useState(false);
+  const [mapMode, setMapMode] = useState('streets');
   
   // Initialize map
   const { 
@@ -53,7 +61,7 @@ const PlaqueMap = React.forwardRef(({
   } = useMapInitialization();
   
   // Format distance based on unit preference
-  const formatDistance = useCallback((distanceKm) => {
+  const formatDistanceWithUnits = useCallback((distanceKm) => {
     if (useImperial) {
       // Convert to miles (1 km = 0.621371 miles)
       const miles = distanceKm * 0.621371;
@@ -63,25 +71,61 @@ const PlaqueMap = React.forwardRef(({
     }
   }, [useImperial]);
   
-  // Calculate walking time based on distance
-  const calculateWalkingTime = useCallback((distanceKm) => {
-    if (distanceKm <= 0) return "0 min";
-    
-    const minutes = Math.round(distanceKm * 12); // 12 minutes per km
-    
-    if (minutes < 60) {
-      return `${minutes} min`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-    }
-  }, []);
+  // Initialize route management
+  const {
+    routePoints: internalRoutePoints,
+    isDrawingRoute,
+    isRoutingMode: internalRoutingMode,
+    setIsRoutingMode: setInternalRoutingMode,
+    addPointToRoute,
+    removePointFromRoute,
+    clearRoute: clearInternalRoute,
+    drawWalkingRoute,
+    optimizeRouteForWalking
+  } = useRouteManagement({
+    mapInstance,
+    routeMarkerGroup,
+    routeLineRef,
+    formatDistance: formatDistanceWithUnits,
+    calculateWalkingTime: (distance) => calculateWalkingTime(distance)
+  });
   
-  // Initialize markers and map operations
+  // Use external route state if provided, otherwise use internal
+  const routePoints = externalRoutePoints.length > 0 ? externalRoutePoints : internalRoutePoints;
+  const isRoutingMode = externalRoutingMode !== undefined ? externalRoutingMode : internalRoutingMode;
+  
+  const setIsRoutingMode = useCallback((value) => {
+    setInternalRoutingMode(value);
+    setExternalRoutingMode(value);
+  }, [setInternalRoutingMode, setExternalRoutingMode]);
+  
+  const addPlaqueToRoute = useCallback((plaque) => {
+    if (externalAddPlaqueToRoute) {
+      externalAddPlaqueToRoute(plaque);
+    } else {
+      addPointToRoute(plaque);
+    }
+  }, [externalAddPlaqueToRoute, addPointToRoute]);
+  
+  const removePlaqueFromRoute = useCallback((plaqueId) => {
+    if (externalRemovePlaqueFromRoute) {
+      externalRemovePlaqueFromRoute(plaqueId);
+    } else {
+      removePointFromRoute(plaqueId);
+    }
+  }, [externalRemovePlaqueFromRoute, removePointFromRoute]);
+  
+  const clearRoute = useCallback(() => {
+    if (externalClearRoute) {
+      externalClearRoute();
+    } else {
+      clearInternalRoute();
+    }
+  }, [externalClearRoute, clearInternalRoute]);
+  
+  // Initialize map markers
   const { 
     addMapMarkers,
-    drawSimpleRoute,
     fitToMarkers
   } = useMapMarkers({
     mapInstance,
@@ -93,15 +137,13 @@ const PlaqueMap = React.forwardRef(({
     favorites,
     selectedPlaqueId,
     onPlaqueClick,
-    isRoutingMode, // Make sure this is included and passed correctly
+    isRoutingMode,
     addPlaqueToRoute,
     removePlaqueFromRoute,
     routePoints,
     maintainView,
-    formatDistance,
-    calculateWalkingTime,
-    isDrawingRoute,
-    setIsDrawingRoute
+    formatDistance: formatDistanceWithUnits,
+    isDrawingRoute
   });
   
   // Map operations
@@ -114,12 +156,24 @@ const PlaqueMap = React.forwardRef(({
     setUserLocation
   });
   
+  // Map effects
+  const {
+    enhancePopupAnimations
+  } = useMapEffects(mapInstance);
+  
   // Load Leaflet and initialize map
   useEffect(() => {
     if (mapContainerRef.current) {
       initializeMap(mapContainerRef.current, setMapLoaded);
     }
   }, [initializeMap]);
+  
+  // Enhance popup animations when map is loaded
+  useEffect(() => {
+    if (mapLoaded && mapInstance) {
+      enhancePopupAnimations();
+    }
+  }, [mapLoaded, mapInstance, enhancePopupAnimations]);
   
   // Update markers when dependencies change
   useEffect(() => {
@@ -137,7 +191,7 @@ const PlaqueMap = React.forwardRef(({
       if (!isDrawingRoute) {
         // Add a slight delay to prevent race conditions
         const timer = setTimeout(() => {
-          drawSimpleRoute(routePoints);
+          drawWalkingRoute(routePoints);
         }, 100);
         return () => clearTimeout(timer);
       }
@@ -146,99 +200,19 @@ const PlaqueMap = React.forwardRef(({
       mapInstance.removeLayer(routeLineRef.current);
       routeLineRef.current = null;
     }
-  }, [mapLoaded, routePoints, isRoutingMode, drawSimpleRoute, isDrawingRoute, mapInstance, routeLineRef]);
+  }, [mapLoaded, routePoints, isRoutingMode, drawWalkingRoute, isDrawingRoute, mapInstance, routeLineRef]);
   
   // Handle unit preference change
   useEffect(() => {
     // Redraw route with new unit formatting
     if (routePoints.length >= 2 && routeLineRef.current && !isDrawingRoute) {
       const timer = setTimeout(() => {
-        drawSimpleRoute(routePoints);
+        drawWalkingRoute(routePoints);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [useImperial, drawSimpleRoute, routePoints, isDrawingRoute, routeLineRef]);
+  }, [useImperial, drawWalkingRoute, routePoints, isDrawingRoute, routeLineRef]);
   
-  // Handle clearing route
-  const handleClearRoute = useCallback(() => {
-    if (!mapInstance) {
-      console.log("Map not available for clearing route");
-      return;
-    }
-    
-    // Clear existing route line
-    if (routeLineRef.current) {
-      mapInstance.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
-    }
-    
-    // Reset route state in parent component
-    clearRoute();
-    
-    // Close dialog if open
-    setClearRouteDialog(false);
-    
-    // Refresh markers to reset their appearance
-    setTimeout(() => {
-      addMapMarkers();
-    }, 50);
-    
-    toast.success("Route cleared");
-  }, [clearRoute, addMapMarkers, mapInstance, routeLineRef]);
-  
-  // Fixed: Reliable plaque removal from route that doesn't cause flashing
-  const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
-    // Prevent removing if we're already in the middle of drawing a route
-    if (isDrawingRoute) {
-      toast.info("Please wait, route is being updated...");
-      return;
-    }
-    
-    setIsDrawingRoute(true); // Set flag to prevent re-renders during update
-
-    
-    
-    // First, clear the existing route to prevent ghost lines
-    if (routeLineRef.current && mapInstance) {
-      mapInstance.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
-    }
-
-    const currentRoutePoints = [...routePoints];
-
-      // Find the index of the plaque to remove
-  const plaqueIndex = currentRoutePoints.findIndex(p => p.id === plaqueId);
-  if (plaqueIndex === -1) {
-    setIsDrawingRoute(false);
-    return;
-  }
-
-  const newRoutePoints = [
-    ...currentRoutePoints.slice(0, plaqueIndex),
-    ...currentRoutePoints.slice(plaqueIndex + 1)
-  ];
-    
-    // Update route points in the parent component
-    removePlaqueFromRoute(plaqueId);
-    
-    // Reset the drawing flag after a delay
-    setTimeout(() => {
-      // Only redraw if we still have a valid route
-      if (newRoutePoints.length >= 2) {
-        drawSimpleRoute(newRoutePoints);
-      }
-      
-      // Reset the drawing flag with a delay
-      setTimeout(() => {
-        setIsDrawingRoute(false);
-      }, 300);
-    }, 100);
-
-  toast.info("Removed plaque from route");
-}, [removePlaqueFromRoute, isDrawingRoute, mapInstance, routeLineRef, routePoints, drawSimpleRoute]);
-  
-
-
   // Toggle routing mode
   const handleToggleRoutingMode = useCallback(() => {
     const newRoutingMode = !isRoutingMode;
@@ -246,7 +220,7 @@ const PlaqueMap = React.forwardRef(({
     if (newRoutingMode) {
       setIsRoutingMode(true);
       setShowRoutePanel(true);
-      toast.success("Route planning mode activated");
+      toast.success("Walking route planner activated");
     } else {
       // If we have a route and exiting routing mode
       if (routePoints.length > 0) {
@@ -263,11 +237,75 @@ const PlaqueMap = React.forwardRef(({
       }
     }
   }, [isRoutingMode, routePoints.length, setIsRoutingMode, mapInstance, routeLineRef]);
-
+  
+  // Handle clearing route
+  const handleClearRoute = useCallback(() => {
+    clearRoute();
+    setClearRouteDialog(false);
+  }, [clearRoute]);
+  
+  // Export route as GPX file
+  const handleExportRoute = useCallback(() => {
+    if (routePoints.length < 2) {
+      toast.error("Add at least 2 stops to export a route");
+      return;
+    }
+    
+    try {
+      // Create GPX format string
+      let gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Plaque Map">
+  <metadata>
+    <name>Walking Route</name>
+    <desc>Walking route with ${routePoints.length} historic plaques</desc>
+    <time>${new Date().toISOString()}</time>
+  </metadata>
+  <rte>
+    <name>Historic Plaque Walking Tour</name>`;
+      
+      // Add route points
+      routePoints.forEach((point, index) => {
+        if (!point.latitude || !point.longitude) return;
+        
+        const lat = parseFloat(point.latitude as unknown as string);
+        const lon = parseFloat(point.longitude as unknown as string);
+        
+        if (isNaN(lat) || isNaN(lon)) return;
+        
+        gpxContent += `
+    <rtept lat="${lat}" lon="${lon}">
+      <name>${point.title || `Stop ${index + 1}`}</name>
+      <desc>${point.description || ''}</desc>
+    </rtept>`;
+      });
+      
+      // Close GPX file
+      gpxContent += `
+  </rte>
+</gpx>`;
+      
+      // Create blob and download
+      const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'historic-plaques-route.gpx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Route exported as GPX file");
+    } catch (error) {
+      console.error("Error exporting route:", error);
+      toast.error("Failed to export route");
+    }
+  }, [routePoints]);
+  
   // Expose methods to parent component via ref
   React.useImperativeHandle(ref, () => ({
     drawRouteLine: (pointsForRoute) => {
-      return drawSimpleRoute(pointsForRoute);
+      return drawWalkingRoute(pointsForRoute);
     },
     
     clearRoute: () => {
@@ -280,6 +318,10 @@ const PlaqueMap = React.forwardRef(({
     
     fitToMarkers: () => {
       fitToMarkers(plaques);
+    },
+    
+    optimizeRoute: () => {
+      optimizeRouteForWalking();
     }
   }));
 
@@ -318,6 +360,8 @@ const PlaqueMap = React.forwardRef(({
         hasUserLocation={!!userLocation}
         routePointsCount={routePoints.length}
         resetMap={resetMap}
+        mapMode={mapMode}
+        setMapMode={setMapMode}
       />
       
       {/* Route Builder Panel */}
@@ -326,16 +370,16 @@ const PlaqueMap = React.forwardRef(({
           routePoints={routePoints}
           setShowRoutePanel={setShowRoutePanel}
           totalDistance={calculateRouteDistance(routePoints)}
-          formatDistance={formatDistance}
+          formatDistance={formatDistanceWithUnits}
           calculateWalkingTime={calculateWalkingTime}
           useImperial={useImperial}
           setUseImperial={setUseImperial}
-          handleRemovePlaqueFromRoute={handleRemovePlaqueFromRoute}
+          handleRemovePlaqueFromRoute={removePlaqueFromRoute}
           isDrawingRoute={isDrawingRoute}
           setClearRouteDialog={setClearRouteDialog}
           clearRoute={clearRoute}
-          drawSimpleRoute={drawSimpleRoute}
-          addPlaqueToRoute={addPlaqueToRoute}
+          optimizeRoute={optimizeRouteForWalking}
+          exportRoute={handleExportRoute}
         />
       )}
       
@@ -366,7 +410,7 @@ const PlaqueMap = React.forwardRef(({
         open={clearRouteDialog} 
         onOpenChange={setClearRouteDialog}
         title="Clear Route"
-        description="Are you sure you want to clear the current route? This action cannot be undone."
+        description="Are you sure you want to clear the current walking route? This action cannot be undone."
         cancelText="Cancel"
         confirmText="Clear Route"
         confirmVariant="destructive"

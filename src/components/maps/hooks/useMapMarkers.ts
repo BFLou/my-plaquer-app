@@ -1,24 +1,25 @@
-// ================= SOLUTION FOR BOTH ISSUES =================
-
-// 1. UPDATE useMapMarkers.ts TO FIX INITIALIZATION ERROR
-// ======================================================
-
-// src/components/maps/hooks/useMapMarkers.ts
+// src/hooks/useMapMarkers.ts
 import { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { Plaque } from '@/types/plaque';
 
-// Calculate distance between two points (Haversine formula)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distance = R * c;
-  return distance;
+interface UseMapMarkersProps {
+  mapInstance: any;
+  markersLayer: any;
+  clusterGroup: any;
+  routeMarkerGroup: any;
+  routeLineRef: any;
+  plaques: Plaque[];
+  favorites: number[];
+  selectedPlaqueId: number | null;
+  onPlaqueClick: (plaque: Plaque) => void;
+  isRoutingMode: boolean;
+  addPlaqueToRoute: (plaque: Plaque) => void;
+  removePlaqueFromRoute: (plaqueId: number) => void;
+  routePoints: Plaque[];
+  maintainView: boolean;
+  formatDistance: (distance: number) => string;
+  isDrawingRoute: boolean;
 }
 
 export const useMapMarkers = ({
@@ -27,25 +28,23 @@ export const useMapMarkers = ({
   clusterGroup,
   routeMarkerGroup,
   routeLineRef,
-  plaques = [],
-  favorites = [],
-  selectedPlaqueId = null,
-  onPlaqueClick = () => {},
-  isRoutingMode = false,
-  addPlaqueToRoute = () => {},
-  removePlaqueFromRoute = () => {},
-  routePoints = [],
-  maintainView = false,
+  plaques,
+  favorites,
+  selectedPlaqueId,
+  onPlaqueClick,
+  isRoutingMode,
+  addPlaqueToRoute,
+  removePlaqueFromRoute,
+  routePoints,
+  maintainView,
   formatDistance,
-  calculateWalkingTime,
-  isDrawingRoute,
-  setIsDrawingRoute
-}) => {
+  isDrawingRoute
+}: UseMapMarkersProps) => {
   // Store previous marker state to prevent unnecessary clearing
-  const prevRouteRef = useRef(null);
+  const prevRouteRef = useRef<string>('');
   
-  // Fit to bounds based on plaque markers - DEFINE THIS FIRST
-  const fitToMarkers = useCallback((plaquesToFit) => {
+  // Fit to bounds based on plaque markers
+  const fitToMarkers = useCallback((plaquesToFit: Plaque[]) => {
     if (!mapInstance || !window.L) return;
     
     const validPlaques = plaquesToFit.filter(p => p.latitude && p.longitude);
@@ -53,8 +52,8 @@ export const useMapMarkers = ({
     if (validPlaques.length > 0) {
       try {
         const latLngs = validPlaques.map(p => [
-          parseFloat(p.latitude), 
-          parseFloat(p.longitude)
+          parseFloat(p.latitude as unknown as string), 
+          parseFloat(p.longitude as unknown as string)
         ]);
         
         const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
@@ -88,8 +87,9 @@ export const useMapMarkers = ({
     
     // We'll use a smarter clearing approach to prevent flashing
     // Check if route points are the same as last time
-    const routePointsChanged = JSON.stringify(routePoints) !== JSON.stringify(prevRouteRef.current);
-    prevRouteRef.current = [...routePoints];
+    const routePointIds = routePoints.map(p => p.id).join(',');
+    const routePointsChanged = routePointIds !== prevRouteRef.current;
+    prevRouteRef.current = routePointIds;
     
     // Only clear layers if the route has actually changed
     if (routePointsChanged) {
@@ -118,8 +118,8 @@ export const useMapMarkers = ({
         // Skip plaques without coordinates
         if (!plaque.latitude || !plaque.longitude) return;
         
-        const lat = parseFloat(plaque.latitude);
-        const lng = parseFloat(plaque.longitude);
+        const lat = parseFloat(plaque.latitude as unknown as string);
+        const lng = parseFloat(plaque.longitude as unknown as string);
         
         if (isNaN(lat) || isNaN(lng)) return;
         
@@ -153,7 +153,7 @@ export const useMapMarkers = ({
           } else if (routeIndex === routePoints.length - 1) {
             markerLabel = 'E';
             markerColor = '#ef4444'; // Red for end
-            markerClass = 'route-marker-waypoint';
+            markerClass = 'route-marker-end';
           } else {
             markerLabel = (routeIndex + 1).toString();
             markerColor = '#10b981'; // Green for waypoints
@@ -191,16 +191,16 @@ export const useMapMarkers = ({
             <div class="max-w-xs">
               <div class="font-medium text-sm">${plaque.title || 'Unnamed Plaque'}</div>
               <div class="text-xs text-green-600 mt-1">• ${
-                routeIndex === 0 ? 'Start point' : 
-                routeIndex === routePoints.length - 1 ? 'End point' : 
+                routeIndex === 0 ? 'Starting point' : 
+                routeIndex === routePoints.length - 1 ? 'Final destination' : 
                 `Stop #${routeIndex + 1}`
-              } in route</div>
+              } in walking route</div>
               <div class="flex gap-2 mt-3">
                 <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
                   View Details
                 </button>
                 <button class="remove-from-route py-1.5 px-3 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 transition-colors">
-                  Remove from Route
+                  Remove
                 </button>
               </div>
             </div>
@@ -325,7 +325,6 @@ export const useMapMarkers = ({
             </div>
           </div>
         `;
-        
           
           // Add event listeners
           setTimeout(() => {
@@ -390,8 +389,8 @@ export const useMapMarkers = ({
     if (selectedPlaqueId && !maintainView) {
       const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
       if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
-        const lat = parseFloat(selectedPlaque.latitude);
-        const lng = parseFloat(selectedPlaque.longitude);
+        const lat = parseFloat(selectedPlaque.latitude as unknown as string);
+        const lng = parseFloat(selectedPlaque.longitude as unknown as string);
         if (!isNaN(lat) && !isNaN(lng)) {
           mapInstance.setView([lat, lng], 15, { animate: true });
         }
@@ -418,173 +417,10 @@ export const useMapMarkers = ({
     fitToMarkers
   ]);
   
-  // Draw a simplified route line with fallback for API errors
-  const drawSimpleRoute = useCallback((pointsForRoute) => {
-    if (!mapInstance || !window.L || pointsForRoute.length < 2) {
-      console.log("Cannot draw route: Map not loaded or insufficient points");
-      return null;
-    }
-    
-    // Set drawing state to prevent re-renders during operation
-    setIsDrawingRoute(true);
-    
-    try {
-      // Clear any existing route
-      if (routeLineRef.current) {
-        mapInstance.removeLayer(routeLineRef.current);
-        routeLineRef.current = null;
-      }
-      
-      // Filter valid points
-      const validPoints = pointsForRoute
-        .filter(p => p.latitude && p.longitude)
-        .map(p => [
-          parseFloat(p.latitude),
-          parseFloat(p.longitude)
-        ])
-        .filter(coords => !isNaN(coords[0]) && !isNaN(coords[1]));
-      
-      if (validPoints.length < 2) {
-        console.warn("Not enough valid points to draw route");
-        setIsDrawingRoute(false);
-        return null;
-      }
-      
-      // Create route group
-      const routeGroup = window.L.featureGroup().addTo(mapInstance);
-      
-      // Draw line segments between consecutive points
-      for (let i = 0; i < validPoints.length - 1; i++) {
-        const startPoint = validPoints[i];
-        const endPoint = validPoints[i + 1];
-        
-        // Draw route segment
-        const routeSegment = window.L.polyline([startPoint, endPoint], {
-          color: '#10b981', // green
-          weight: 5,
-          opacity: 0.8,
-          lineCap: 'round',
-          lineJoin: 'round',
-          dashArray: '10, 10',
-          className: 'animated-dash'
-        }).addTo(routeGroup);
-        
-        // Calculate segment distance
-        const segmentDistance = calculateDistance(
-          startPoint[0], 
-          startPoint[1], 
-          endPoint[0], 
-          endPoint[1]
-        );
-        
-        // Add distance label at midpoint
-        const midPoint = [
-          (startPoint[0] + endPoint[0]) / 2,
-          (startPoint[1] + endPoint[1]) / 2
-        ];
-        
-        window.L.marker(midPoint, {
-          icon: window.L.divIcon({
-            className: 'distance-label',
-            html: `
-              <div class="route-distance-label">
-                ${formatDistance(segmentDistance)}
-              </div>
-            `,
-            iconSize: [60, 20],
-            iconAnchor: [30, 10]
-          })
-        }).addTo(routeGroup);
-      }
-      
-      // Improved: Fit to route bounds with better zoom control
-      try {
-        const bounds = window.L.latLngBounds(validPoints);
-        if (bounds.isValid()) {
-          // Store current map view for comparison
-          const currentCenter = mapInstance.getCenter();
-          const currentZoom = mapInstance.getZoom();
-          
-          // Check if we should adjust view
-          // Only fit bounds if this is first route draw or there's a significant change
-          const shouldAdjustView = !routeLineRef.current || 
-                                  pointsForRoute.length <= 3 || 
-                                  pointsForRoute.length >= 5;
-          
-          if (shouldAdjustView) {
-            // Use flyToBounds for smoother transition
-            mapInstance.flyToBounds(bounds, { 
-              padding: [50, 50],
-              duration: 0.75, // Shorter duration to be less disruptive
-              easeLinearity: 0.5 // More linear movement
-            });
-          }
-        }
-      } catch (error) {
-        console.warn("Non-critical error fitting to route bounds:", error);
-      }
-      
-      // Store reference and update state
-      routeLineRef.current = routeGroup;
-      
-      // Refresh the markers with a delay to reduce flashing
-      setTimeout(() => {
-        addMapMarkers();
-        
-        // Reset drawing state flag after all operations complete
-        setTimeout(() => {
-          setIsDrawingRoute(false);
-        }, 150);
-      }, 200);
-      
-      return { routeGroup, totalDistance: calculateRouteDistance(pointsForRoute) };
-    } catch (error) {
-      console.error("Error drawing simple route:", error);
-      setIsDrawingRoute(false);
-      
-      // Ensure we don't leave hanging references
-      if (routeLineRef.current && mapInstance) {
-        mapInstance.removeLayer(routeLineRef.current);
-        routeLineRef.current = null;
-      }
-      
-      // Notify user of error
-      toast.error("Couldn't draw the complete route. Using simplified view.");
-      
-      return null;
-    }
-  }, [calculateDistance, formatDistance, addMapMarkers, mapInstance, setIsDrawingRoute, routeLineRef]);
-  
-  // Calculate total route distance
-  const calculateRouteDistance = (points) => {
-    if (!points || points.length < 2) return 0;
-    
-    let totalDistance = 0;
-    
-    for (let i = 0; i < points.length - 1; i++) {
-      const start = points[i];
-      const end = points[i + 1];
-      
-      if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
-      
-      const startLat = parseFloat(start.latitude);
-      const startLng = parseFloat(start.longitude);
-      const endLat = parseFloat(end.latitude);
-      const endLng = parseFloat(end.longitude);
-      
-      if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
-      
-      // Calculate direct distance (haversine formula)
-      totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
-    }
-    
-    return totalDistance;
-  };
-  
   return {
     addMapMarkers,
-    drawSimpleRoute,
-    fitToMarkers,
-    routeLineRef
+    fitToMarkers
   };
 };
+
+export default useMapMarkers;

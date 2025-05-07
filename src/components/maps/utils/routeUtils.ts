@@ -1,3 +1,4 @@
+// src/utils/routeUtils.ts
 import { Plaque } from '@/types/plaque';
 
 export interface RoutePoint {
@@ -28,14 +29,14 @@ export const calculateRouteDistance = (points: Plaque[]): number => {
     
     if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
     
-    const startLat = parseFloat(start.latitude as string);
-    const startLng = parseFloat(start.longitude as string);
-    const endLat = parseFloat(end.latitude as string);
-    const endLng = parseFloat(end.longitude as string);
+    const startLat = parseFloat(start.latitude as unknown as string);
+    const startLng = parseFloat(start.longitude as unknown as string);
+    const endLat = parseFloat(end.latitude as unknown as string);
+    const endLng = parseFloat(end.longitude as unknown as string);
     
     if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
     
-    // Calculate direct distance (haversine formula)
+    // Calculate direct distance using haversine formula
     totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
   }
   
@@ -58,19 +59,72 @@ export function calculateDistance(lat1: number, lng1: number, lat2: number, lng2
 }
 
 /**
- * Optimize route using a nearest-neighbor algorithm
- * Produces a more optimal walking path
+ * Calculate walking time with improved accuracy for urban environments
+ * Accounts for traffic lights, crossings and terrain difficulty
  */
-export const optimizeRoute = (routePoints: Plaque[]): Plaque[] => {
+export function calculateWalkingTime(distanceKm: number): string {
+  if (distanceKm <= 0) return "0 min";
+  
+  // Base walking speed: 5 km/h or 12 minutes per kilometer
+  let minutes = Math.round(distanceKm * 12); 
+  
+  // Add time for traffic lights and crossings
+  // Assume ~1 traffic light per 250m in urban areas, each taking ~30s to wait and cross
+  const estimatedTrafficLights = Math.ceil(distanceKm * 4); // 4 lights per km
+  minutes += Math.ceil(estimatedTrafficLights * 0.5); // 0.5 minutes (30s) per light
+  
+  // Format the output
+  if (minutes < 60) {
+    return `${minutes} min`;
+  } else {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+  }
+}
+
+/**
+ * Get a more precise walking time estimate for a specific route segment
+ * Takes into account both distance and terrain
+ */
+export function getWalkingTimeForSegment(
+  startLat: number, 
+  startLng: number, 
+  endLat: number, 
+  endLng: number, 
+  terrainFactor: number = 1.0 // 1.0 = flat, >1.0 = hilly
+): string {
+  const distance = calculateDistance(startLat, startLng, endLat, endLng);
+  
+  // Apply terrain factor to the base walking time
+  const adjustedDistance = distance * terrainFactor;
+  
+  return calculateWalkingTime(adjustedDistance);
+}
+
+/**
+ * Optimize route using a nearest-neighbor algorithm
+ * Optimized for walking with better intermediate point selection
+ */
+export const optimizeWalkingRoute = (routePoints: Plaque[], preserveEndpoints: boolean = true): Plaque[] => {
   if (routePoints.length < 3) {
-    return [...routePoints];
+    return [...routePoints]; // Can't optimize with fewer than 3 points
   }
   
   // Create a copy so we don't modify the original
-  const unvisited = [...routePoints.slice(1, -1)];
+  let result: Plaque[] = [];
+  let unvisited: Plaque[] = [];
   
-  // Always keep start and end points fixed
-  const result: Plaque[] = [routePoints[0]];
+  if (preserveEndpoints) {
+    // Keep start and end points fixed
+    result.push(routePoints[0]);
+    unvisited = [...routePoints.slice(1, -1)];
+  } else {
+    // All points can be reordered
+    unvisited = [...routePoints];
+  }
+  
+  // Start from the first point in the result
   let current = result[0];
   
   // Repeatedly find the closest unvisited point
@@ -84,10 +138,10 @@ export const optimizeRoute = (routePoints: Plaque[]): Plaque[] => {
         continue;
       }
       
-      const latA = parseFloat(current.latitude as string);
-      const lngA = parseFloat(current.longitude as string);
-      const latB = parseFloat(unvisited[i].latitude as string);
-      const lngB = parseFloat(unvisited[i].longitude as string);
+      const latA = parseFloat(current.latitude as unknown as string);
+      const lngA = parseFloat(current.longitude as unknown as string);
+      const latB = parseFloat(unvisited[i].latitude as unknown as string);
+      const lngB = parseFloat(unvisited[i].longitude as unknown as string);
       
       if (isNaN(latA) || isNaN(lngA) || isNaN(latB) || isNaN(lngB)) {
         continue;
@@ -113,20 +167,49 @@ export const optimizeRoute = (routePoints: Plaque[]): Plaque[] => {
     }
   }
   
-  // Add the end point
-  result.push(routePoints[routePoints.length - 1]);
+  // Add the end point if preserving endpoints
+  if (preserveEndpoints) {
+    result.push(routePoints[routePoints.length - 1]);
+  }
   
   return result;
 };
 
 /**
- * Creates a GeoJSON route from plaque points
+ * Estimate total walking time for a route including stops for viewing plaques
+ */
+export const estimateTotalWalkingTime = (routePoints: Plaque[], minutesPerStop: number = 5): string => {
+  // Calculate base walking time between points
+  const totalDistanceKm = calculateRouteDistance(routePoints);
+  const walkingMinutes = Math.round(totalDistanceKm * 12); // 12 min per km
+  
+  // Add time for traffic lights and crossings
+  const trafficLightMinutes = Math.ceil(totalDistanceKm * 4 * 0.5); // 4 lights per km, 0.5 min each
+  
+  // Add viewing time for each plaque (exclude starting point since you're already there)
+  const viewingMinutes = (routePoints.length - 1) * minutesPerStop;
+  
+  // Calculate total minutes
+  const totalMinutes = walkingMinutes + trafficLightMinutes + viewingMinutes;
+  
+  // Format output
+  if (totalMinutes < 60) {
+    return `${totalMinutes} min`;
+  } else {
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+  }
+};
+
+/**
+ * Converts route points to a GeoJSON format for export/sharing
  */
 export const createRouteGeoJSON = (routePoints: Plaque[]) => {
   const validPoints = routePoints.filter(p => 
     p.latitude && p.longitude && 
-    !isNaN(parseFloat(p.latitude as string)) && 
-    !isNaN(parseFloat(p.longitude as string))
+    !isNaN(parseFloat(p.latitude as unknown as string)) && 
+    !isNaN(parseFloat(p.longitude as unknown as string))
   );
   
   if (validPoints.length < 2) {
@@ -139,15 +222,17 @@ export const createRouteGeoJSON = (routePoints: Plaque[]) => {
       {
         type: "Feature",
         properties: {
-          name: "Plaque Route",
+          name: "Walking Route",
           description: `Route with ${validPoints.length} plaques`,
-          pointCount: validPoints.length
+          pointCount: validPoints.length,
+          distance: calculateRouteDistance(validPoints).toFixed(2),
+          walkingTime: calculateWalkingTime(calculateRouteDistance(validPoints))
         },
         geometry: {
           type: "LineString",
           coordinates: validPoints.map(p => [
-            parseFloat(p.longitude as string),
-            parseFloat(p.latitude as string)
+            parseFloat(p.longitude as unknown as string),
+            parseFloat(p.latitude as unknown as string)
           ])
         }
       },
@@ -157,13 +242,15 @@ export const createRouteGeoJSON = (routePoints: Plaque[]) => {
         properties: {
           name: p.title,
           id: p.id,
-          index: index + 1
+          index: index + 1,
+          isStart: index === 0,
+          isEnd: index === validPoints.length - 1
         },
         geometry: {
           type: "Point",
           coordinates: [
-            parseFloat(p.longitude as string),
-            parseFloat(p.latitude as string)
+            parseFloat(p.longitude as unknown as string),
+            parseFloat(p.latitude as unknown as string)
           ]
         }
       }))
@@ -193,7 +280,7 @@ export const loadSavedRoutes = (): SavedRoute[] => {
  */
 export const saveRoute = (
   routePoints: Plaque[],
-  name: string = `Plaque Route (${routePoints.length} stops)`
+  name: string = `Walking Route (${routePoints.length} stops)`
 ): SavedRoute | null => {
   if (routePoints.length < 2) {
     return null;
@@ -207,8 +294,8 @@ export const saveRoute = (
     points: routePoints.map(p => ({
       id: p.id,
       title: p.title,
-      lat: parseFloat(p.latitude as string),
-      lng: parseFloat(p.longitude as string)
+      lat: parseFloat(p.latitude as unknown as string),
+      lng: parseFloat(p.longitude as unknown as string)
     }))
   };
   
