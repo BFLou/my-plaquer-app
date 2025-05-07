@@ -233,115 +233,46 @@ export const useMapInitialization = () => {
   };
   
   // Initialize the map
-  const initializeMap = useCallback((mapContainer, setMapLoadedCallback = null) => {
-    if (!mapContainer) {
-      console.error("Map container not available");
-      return;
+// In useMapInitialization.ts
+const initializeMap = useCallback((mapContainer, setMapLoadedCallback = null) => {
+  if (!mapContainer) {
+    console.error("Map container not available");
+    return;
+  }
+  
+  // Add debug log to check container dimensions
+  console.log("Map container dimensions:", mapContainer.offsetWidth, mapContainer.offsetHeight);
+  
+  // Load Leaflet if not already loaded - keep your existing code here
+  // ...
+  
+  // When creating the map, ensure it has a clear height
+  try {
+    // Create map instance
+    const map = window.L.map(mapContainer, {
+      center: [51.505, -0.09], // London as default
+      zoom: 13,
+      maxZoom: 18,
+      minZoom: 4,
+      zoomControl: false, // Disable default zoom control
+      scrollWheelZoom: true,
+      doubleClickZoom: true
+    });
+    
+    // Immediately after map creation, check if it has a valid size
+    console.log("Map size:", map.getSize());
+    
+    // Force a refresh if size is 0
+    if (map.getSize().x === 0 || map.getSize().y === 0) {
+      setTimeout(() => map.invalidateSize(), 100);
     }
     
-    // Load Leaflet if not already loaded
-    if (!window.L) {
-      loadLeafletScripts();
-      
-      // Check for Leaflet load at intervals
-      const checkInterval = setInterval(() => {
-        if (window.L) {
-          clearInterval(checkInterval);
-          initializeMap(mapContainer, setMapLoadedCallback);
-        }
-      }, 100);
-      
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        if (!window.L) {
-          setMapError("Failed to load map resources");
-          console.error("Timed out waiting for Leaflet to load");
-        }
-      }, 10000);
-      
-      return;
-    }
-    
-    // Check if map is already initialized
-    if (mapInstanceRef.current) {
-      console.log("Map already initialized, skipping initialization");
-      if (setMapLoadedCallback) {
-        setMapLoadedCallback(true);
-      }
-      return;
-    }
-    
-    console.log("Initializing map...");
-    
-    try {
-      // Create map instance
-      const map = window.L.map(mapContainer, {
-        center: [51.505, -0.09], // London as default
-        zoom: 13,
-        maxZoom: 18,
-        minZoom: 4,
-        zoomControl: false, // Disable default zoom control to add it to the topright
-        scrollWheelZoom: true,
-        doubleClickZoom: true
-      });
-      
-      mapInstanceRef.current = map;
-      
-      // Add zoom control in better position
-      window.L.control.zoom({
-        position: 'topright'
-      }).addTo(map);
-      
-      // Add tile layer - Carto light map (better for walking)
-      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
-      }).addTo(map);
-      
-      // Create marker layer group
-      const markers = window.L.layerGroup().addTo(map);
-      markersLayerRef.current = markers;
-      
-      // Create a separate layer for route markers to prevent clustering
-      const routeMarkers = window.L.layerGroup().addTo(map);
-      routeMarkerGroupRef.current = routeMarkers;
-      
-      // Create cluster group if available
-      if (window.L.markerClusterGroup) {
-        const clusters = window.L.markerClusterGroup({
-          showCoverageOnHover: false,
-          maxClusterRadius: 50,
-          spiderfyOnMaxZoom: true,
-          disableClusteringAtZoom: 18,
-          animate: true,
-          zoomToBoundsOnClick: true
-        });
-        
-        map.addLayer(clusters);
-        clusterGroupRef.current = clusters;
-      }
-      
-      // Add scale control
-      window.L.control.scale({
-        imperial: false,
-        position: 'bottomright',
-        maxWidth: 150
-      }).addTo(map);
-      
-      // Set map as loaded
-      setMapLoaded(true);
-      if (setMapLoadedCallback) {
-        setMapLoadedCallback(true);
-      }
-      
-      console.log("Map initialized successfully");
-    } catch (error) {
-      console.error("Error initializing map:", error);
-      setMapError(`Failed to initialize map: ${error.message}`);
-    }
-  }, [loadLeafletScripts]);
+    // Continue with the rest of your initialization code
+    // ...
+  } catch (error) {
+    console.error("Error initializing map:", error);
+  }
+}, [loadLeafletScripts]);
   
   return {
     mapLoaded,

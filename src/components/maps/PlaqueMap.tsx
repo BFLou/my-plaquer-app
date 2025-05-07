@@ -174,6 +174,18 @@ const PlaqueMap = React.forwardRef(({
       enhancePopupAnimations();
     }
   }, [mapLoaded, mapInstance, enhancePopupAnimations]);
+
+  // In PlaqueMap.tsx - add after mapContainerRef declaration
+useEffect(() => {
+  // Debug logging
+  console.log(`PlaqueMap rendering with ${plaques.length} plaques`);
+  console.log('Map container ref:', mapContainerRef.current);
+  
+  // Log first plaque to inspect its structure
+  if (plaques.length > 0) {
+    console.log('Sample plaque data:', plaques[0]);
+  }
+}, [plaques]);
   
   // Update markers when dependencies change
   useEffect(() => {

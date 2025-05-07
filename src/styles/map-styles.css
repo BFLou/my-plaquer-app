@@ -777,3 +777,20 @@
   z-index: 9999 !important;
   position: relative;
 }
+
+.map-container {
+  height: 500px;
+  width: 100%;
+  min-height: 400px;
+}
+
+/* Fix marker icon styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Ensure popup content is visible */
+.leaflet-popup-content {
+  min-width: 200px;
+}
