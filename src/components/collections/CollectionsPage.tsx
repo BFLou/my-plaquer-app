@@ -15,11 +15,9 @@ import {
   PageContainer,
   CollectionCard,
   CollectionListItem,
-  CollectionCreator,
   EmptyState,
   ActionBar,
   CollectionsHeader,
-  CollectionsDashboard,
   type Collection as CollectionType,
   type NewCollection,
   type ViewMode

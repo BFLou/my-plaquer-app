@@ -7,7 +7,6 @@ import {
   CollectionsFilterBar,
   CollectionsGrid,
   CollectionsList,
-  CollectionCreator,
   ActionBar,
   EmptyState,
   type ViewMode
@@ -348,12 +347,7 @@ const Collections = () => {
       </div>
       
       {/* Modals and Dialogs */}
-      <CollectionCreator
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSave={handleSaveCollection}
-      />
-      
+    
       <CollectionDeleteDialog
         isOpen={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}

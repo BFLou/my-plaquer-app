@@ -1,11 +1,11 @@
 import React from 'react';
-import { MapPin, Search, X } from 'lucide-react';
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetFooter, 
-  SheetHeader, 
-  SheetTitle 
+import { MapPin, Search } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ export const AddPlaquesSheet: React.FC<AddPlaquesSheetProps> = ({
         <SheetHeader>
           <SheetTitle>Add Plaques to Collection</SheetTitle>
         </SheetHeader>
-        
+
         <div className="py-4">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -42,11 +42,11 @@ export const AddPlaquesSheet: React.FC<AddPlaquesSheetProps> = ({
               className="pl-9"
             />
           </div>
-          
+
           <div className="space-y-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-2">
             {availablePlaques.length > 0 ? (
               availablePlaques.map(plaque => (
-                <div 
+                <div
                   key={plaque.id}
                   className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50"
                   onClick={() => onAddPlaque(plaque.id)}
@@ -69,7 +69,7 @@ export const AddPlaquesSheet: React.FC<AddPlaquesSheetProps> = ({
             )}
           </div>
         </div>
-        
+
         <SheetFooter>
           <div className="flex justify-between items-center w-full">
             <div className="text-sm text-gray-600">
@@ -111,14 +111,14 @@ export const RemovePlaquesSheet: React.FC<RemovePlaquesSheetProps> = ({
         <SheetHeader>
           <SheetTitle>Remove Plaques</SheetTitle>
         </SheetHeader>
-        
+
         <div className="py-6">
           <p className="mb-4">
-            Are you sure you want to remove {selectedCount} plaque{selectedCount !== 1 ? 's' : ''} from this collection? 
+            Are you sure you want to remove {selectedCount} plaque{selectedCount !== 1 ? 's' : ''} from this collection?
             This action won't delete the plaques from the system, only from this collection.
           </p>
         </div>
-        
+
         <SheetFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -131,5 +131,3 @@ export const RemovePlaquesSheet: React.FC<RemovePlaquesSheetProps> = ({
     </Sheet>
   );
 };
-
-export { AddPlaquesSheet, RemovePlaquesSheet };
