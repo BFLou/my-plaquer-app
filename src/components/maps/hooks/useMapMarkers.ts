@@ -223,7 +223,11 @@ export const useMapMarkers = ({
     if (!mapInstance || !window.L || !routeMarkerGroup) return;
     
     // Clear existing route markers
-    routeMarkerGroup.clearLayers();
+    try {
+      routeMarkerGroup.clearLayers();
+    } catch (error) {
+      console.warn("Error clearing route markers:", error);
+    }
     
     // Add new route markers
     routePoints.forEach((point, index) => {
@@ -347,26 +351,47 @@ export const useMapMarkers = ({
     console.log(`Adding ${plaques.length} markers to the map`);
     
     try {
-      // Clear existing layers if they exist
+      // Check if layers exist before clearing
       if (markersLayer) {
-        markersLayer.clearLayers();
+        try {
+          markersLayer.clearLayers();
+        } catch (error) {
+          console.warn("Error clearing markers layer:", error);
+        }
+      } else {
+        console.warn("markersLayer is null");
       }
       
       if (clusterGroup) {
-        clusterGroup.clearLayers();
+        try {
+          clusterGroup.clearLayers();
+        } catch (error) {
+          console.warn("Error clearing cluster group:", error);
+        }
+      } else {
+        console.warn("clusterGroup is null");
       }
+      
+      // Create a temporary feature group if cluster group isn't available
+      const targetLayer = clusterGroup || window.L.featureGroup().addTo(mapInstance);
       
       // Create markers for all plaques
       plaques.forEach(plaque => {
         const marker = createPlaqueMarker(plaque);
-        if (marker) {
-          // Add to cluster group for better performance
-          clusterGroup.addLayer(marker);
+        if (marker && targetLayer) {
+          try {
+            // Add to target layer
+            targetLayer.addLayer(marker);
+          } catch (error) {
+            console.warn(`Error adding marker for plaque ${plaque.id}:`, error);
+            // Try adding directly to map as fallback
+            marker.addTo(mapInstance);
+          }
         }
       });
       
       // Add route markers if in routing mode
-      if (isRoutingMode && routePoints.length > 0) {
+      if (isRoutingMode && routePoints.length > 0 && routeMarkerGroup) {
         addRouteMarkers();
       }
       
@@ -376,7 +401,11 @@ export const useMapMarkers = ({
       }
     } catch (error) {
       console.error("Error adding map markers:", error);
-      toast.error("Error displaying plaques on the map");
+      
+      // Only show toast for errors that might affect user experience
+      if (plaques.length > 0 && (!markersLayer || !clusterGroup)) {
+        toast.error("Error displaying plaques on the map");
+      }
     }
   }, [
     mapInstance, 
@@ -388,7 +417,8 @@ export const useMapMarkers = ({
     routePoints, 
     addRouteMarkers, 
     maintainView, 
-    fitToMarkers
+    fitToMarkers,
+    routeMarkerGroup
   ]);
   
   return {

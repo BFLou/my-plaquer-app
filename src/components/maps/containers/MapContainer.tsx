@@ -1,5 +1,5 @@
 // src/components/maps/containers/MapContainer.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface MapContainerProps {
   mapLoaded: boolean;
@@ -12,6 +12,80 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
   isDrawingRoute,
   isRoutingMode
 }, ref) => {
+  // Add styles that might be needed for Leaflet
+  useEffect(() => {
+    // Check if Leaflet-specific styles are needed
+    if (!document.getElementById('leaflet-custom-map-styles')) {
+      const style = document.createElement('style');
+      style.id = 'leaflet-custom-map-styles';
+      style.innerHTML = `
+        /* Ensure map container is properly styled */
+        .map-container {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          min-height: 400px;
+        }
+        
+        /* Make sure popups appear correctly */
+        .leaflet-popup-content-wrapper {
+          border-radius: 0.5rem !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+        }
+        
+        .leaflet-popup-content {
+          margin: 0 !important;
+          width: auto !important;
+          min-width: 200px;
+        }
+        
+        /* Z-index fixes */
+        .leaflet-map-pane {
+          z-index: 1 !important;
+        }
+        
+        .leaflet-tile-pane {
+          z-index: 2 !important;
+        }
+        
+        .leaflet-overlay-pane {
+          z-index: 3 !important;
+        }
+        
+        .leaflet-shadow-pane {
+          z-index: 4 !important;
+        }
+        
+        .leaflet-marker-pane {
+          z-index: 5 !important;
+        }
+        
+        .leaflet-tooltip-pane {
+          z-index: 6 !important;
+        }
+        
+        .leaflet-popup-pane {
+          z-index: 7 !important;
+        }
+        
+        /* Make sure route markers are always on top */
+        .leaflet-marker-icon.route-marker {
+          z-index: 1000 !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    return () => {
+      // Clean up when component unmounts
+      const styleElement = document.getElementById('leaflet-custom-map-styles');
+      if (styleElement) {
+        styleElement.remove();
+      }
+    };
+  }, []);
+  
   return (
     <>
       {/* Map container */}

@@ -138,10 +138,16 @@ export const useMapInitialization = () => {
     });
   }, [addMapStyles]);
   
-  // Cleanup function
+  // Thorough cleanup function to prevent Leaflet container issues
   const cleanup = useCallback(() => {
     if (mapInstanceRef.current) {
       try {
+        // Remove all layers first
+        mapInstanceRef.current.eachLayer(layer => {
+          mapInstanceRef.current.removeLayer(layer);
+        });
+        
+        // Then remove the map
         mapInstanceRef.current.remove();
       } catch (e) {
         console.warn("Error cleaning up map:", e);
@@ -154,6 +160,8 @@ export const useMapInitialization = () => {
     clusterGroupRef.current = null;
     routeMarkerGroupRef.current = null;
     routeLineRef.current = null;
+    
+    // Explicitly set hasInitialized to false
     hasInitializedRef.current = false;
     
     // Clear any Leaflet-specific properties on the container
@@ -167,43 +175,26 @@ export const useMapInitialization = () => {
     setMapLoaded(false);
   }, []);
   
-  // Initialize map
+  // Initialize map with proper error handling and container cleanup
   const initializeMap = useCallback(async (container, onMapLoaded) => {
     if (!container) {
       console.error("No container provided for map");
+      if (onMapLoaded) onMapLoaded(false);
       return null;
     }
     
-    // Check if we already have an initialized map
-    if (mapInstanceRef.current && hasInitializedRef.current) {
-      console.log("Map already initialized, reusing existing instance");
-      if (onMapLoaded) onMapLoaded(true);
-      setMapLoaded(true);
-      
-      // Force map to fit container size after a short delay
-      setTimeout(() => {
-        if (mapInstanceRef.current) {
-          console.log("Forcing map resize");
-          mapInstanceRef.current.invalidateSize(true);
-        }
-      }, 100);
-      
-      return mapInstanceRef.current;
-    }
-    
-    // Check container dimensions
+    // Log container dimensions to help debug
     console.log("Container dimensions:", container.offsetWidth, container.offsetHeight);
     
-    // Clean up any existing map and clear any _leaflet_id properties
+    // Clean up any existing map instance first
     cleanup();
     
-    // Check explicitly for _leaflet_id on the container
+    // Double-check for any lingering _leaflet_id properties
     if (container._leaflet_id) {
-      console.warn("Container still has _leaflet_id property, removing it");
       delete container._leaflet_id;
     }
     
-    // Load leaflet if not loaded
+    // Make sure Leaflet is loaded
     const leafletLoaded = await loadLeaflet();
     if (!leafletLoaded) {
       setMapError("Failed to load map libraries");
@@ -252,8 +243,14 @@ export const useMapInitialization = () => {
       
       // Force a resize after a delay to ensure proper rendering
       setTimeout(() => {
-        map.invalidateSize(true);
-        console.log("Forced map resize");
+        if (map && !map._isDestroyed) {
+          try {
+            map.invalidateSize(true);
+            console.log("Forced map resize");
+          } catch (e) {
+            console.warn("Error during map resize:", e);
+          }
+        }
       }, 100);
       
       // Set loaded state
@@ -261,7 +258,7 @@ export const useMapInitialization = () => {
       hasInitializedRef.current = true;
       if (onMapLoaded) onMapLoaded(true);
       
-      // Verify map is interactive by adding debug handlers
+      // Add some debug event handlers
       map.on('click', function(e) {
         console.log("Map clicked at:", e.latlng);
       });
@@ -277,63 +274,37 @@ export const useMapInitialization = () => {
       return map;
     } catch (error) {
       console.error("Error initializing map:", error);
+      setMapError(`Failed to initialize map: ${error.message}`);
       
-      // Special handling for "already initialized" error
+      // If the container already has a map, it's likely in a stale state
+      // We'll try a more aggressive cleanup and retry initialization
       if (error.message && error.message.includes("already initialized")) {
-        console.warn("Container already has a map. Attempting recovery...");
-        
-        // Try to recover existing map instance if possible
         try {
-          if (container._leaflet_id) {
-            // This is a hack to get the existing map instance
-            const existingMap = window.L.maps[container._leaflet_id];
-            if (existingMap) {
-              console.log("Successfully recovered existing map instance");
-              
-              // Store references
-              mapInstanceRef.current = existingMap;
-              setMapLoaded(true);
-              hasInitializedRef.current = true;
-              if (onMapLoaded) onMapLoaded(true);
-              
-              // Force resize
-              setTimeout(() => {
-                existingMap.invalidateSize(true);
-              }, 100);
-              
-              return existingMap;
-            }
+          // Create a brand new container element to replace the old one
+          if (container.parentNode) {
+            const parent = container.parentNode;
+            const newContainer = document.createElement('div');
+            newContainer.className = container.className;
+            newContainer.style.cssText = container.style.cssText;
+            parent.replaceChild(newContainer, container);
+            
+            // Try to initialize with the new container after a short delay
+            setTimeout(() => {
+              initializeMap(newContainer, onMapLoaded);
+            }, 100);
+            return null;
           }
         } catch (recoveryError) {
-          console.error("Error during map recovery:", recoveryError);
-        }
-        
-        // If recovery failed, try hard cleanup and re-initialization
-        cleanup();
-        
-        // Final fallback: force remove and recreate the container
-        if (container.parentNode) {
-          const parent = container.parentNode;
-          const newContainer = container.cloneNode(false);
-          parent.replaceChild(newContainer, container);
-          
-          // Try initialization with clean container after a short delay
-          setTimeout(() => {
-            initializeMap(newContainer, onMapLoaded);
-          }, 100);
-          
-          return null;
+          console.error("Recovery failed:", recoveryError);
         }
       }
       
-      // Report error for other cases
-      setMapError(`Failed to initialize map: ${error.message}`);
       if (onMapLoaded) onMapLoaded(false);
       return null;
     }
   }, [cleanup, loadLeaflet]);
 
-  // Cleanup on unmount
+  // Clean up on unmount to prevent memory leaks
   useEffect(() => {
     return cleanup;
   }, [cleanup]);

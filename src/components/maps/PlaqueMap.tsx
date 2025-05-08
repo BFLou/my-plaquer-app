@@ -54,10 +54,13 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
   removePlaqueFromRoute: externalRemovePlaqueFromRoute = () => {},
   clearRoute: externalClearRoute = () => {}
 }, ref) => {
+  // Use a ref for the map container to prevent re-initialization
   const mapContainerRef = useRef(null);
   
+  // Map initialization state
+  const [mapInitialized, setMapInitialized] = useState(false);
+  
   // State variables
-  const [mapLoaded, setMapLoaded] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
@@ -78,9 +81,9 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     }
   }, [useImperial]);
   
-  // Initialize map
+  // Initialize map with proper error handling
   const { 
-    mapLoaded: mapLibraryLoaded,
+    mapLoaded,
     mapInstance,
     markersLayer,
     clusterGroup,
@@ -143,7 +146,7 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     }
   }, [externalClearRoute, clearInternalRoute, externalRoutePoints]);
   
-  // Initialize map markers
+  // Initialize map markers ONLY after map is loaded
   const { 
     addMapMarkers,
     fitToMarkers
@@ -182,20 +185,31 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     enhancePopupAnimations
   } = useMapEffects(mapInstance);
   
-  // Load Leaflet and initialize map
+  // Initialize map once and only once
   useEffect(() => {
-    if (mapContainerRef.current) {
+    // Only initialize if we have a container ref and haven't initialized yet
+    if (mapContainerRef.current && !mapInitialized) {
       const initMap = async () => {
-        await initializeMap(mapContainerRef.current, setMapLoaded);
+        try {
+          await initializeMap(mapContainerRef.current, (success) => {
+            setMapInitialized(success);
+          });
+        } catch (error) {
+          console.error("Map initialization failed:", error);
+          // Add a toast notification to inform the user
+          toast.error("Map loading failed. Please refresh the page.");
+        }
       };
+      
       initMap();
     }
     
+    // Cleanup function to properly dispose of the map
     return () => {
-      // Cleanup map instance when component unmounts
       cleanup();
+      setMapInitialized(false);
     };
-  }, [initializeMap, cleanup]);
+  }, [initializeMap, cleanup]); // Depend only on these functions
   
   // Enhance popup animations when map is loaded
   useEffect(() => {
@@ -204,23 +218,46 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     }
   }, [mapLoaded, mapInstance, enhancePopupAnimations]);
 
-  // Debug logging
+  // Debug logging - limit to reduce console spam
   useEffect(() => {
     console.log(`PlaqueMap rendering with ${plaques.length} plaques`);
     console.log('Map container ref:', mapContainerRef.current);
     
-    // Log first plaque to inspect its structure
+    // Log first plaque to inspect its structure if available
     if (plaques.length > 0) {
       console.log('Sample plaque data:', plaques[0]);
     }
   }, [plaques]);
   
-  // Update markers when dependencies change
+  // Update markers when dependencies change and map is ready
   useEffect(() => {
-    if (mapInstance && mapLoaded && !isDrawingRoute) {
-      addMapMarkers();
+    if (mapInstance && mapLoaded && !isDrawingRoute && markersLayer && clusterGroup) {
+      // Delay marker addition slightly to ensure map is fully initialized
+      const timer = setTimeout(() => {
+        try {
+          addMapMarkers();
+        } catch (error) {
+          console.error("Error adding markers:", error);
+          // Avoid toast spam - only show error if really needed
+          // toast.error("Error displaying map markers");
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [mapLoaded, plaques, favorites, selectedPlaqueId, isRoutingMode, routePoints, addMapMarkers, isDrawingRoute, mapInstance]);
+  }, [
+    mapLoaded, 
+    mapInstance, 
+    markersLayer, 
+    clusterGroup, 
+    plaques, 
+    favorites, 
+    selectedPlaqueId, 
+    isRoutingMode, 
+    routePoints, 
+    addMapMarkers, 
+    isDrawingRoute
+  ]);
   
   // Change map style when mapMode changes
   useEffect(() => {
@@ -244,8 +281,12 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
       return () => clearTimeout(timer);
     } else if (routeLineRef.current) {
       // Clear route line if no points
-      mapInstance.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
+      try {
+        mapInstance.removeLayer(routeLineRef.current);
+        routeLineRef.current = null;
+      } catch (error) {
+        console.warn("Error clearing route:", error);
+      }
     }
   }, [routePoints, mapInstance, mapLoaded, isRoutingMode, isDrawingRoute, drawWalkingRoute, routeLineRef]);
   
@@ -281,8 +322,12 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
         
         // Clear any route lines
         if (routeLineRef.current && mapInstance) {
-          mapInstance.removeLayer(routeLineRef.current);
-          routeLineRef.current = null;
+          try {
+            mapInstance.removeLayer(routeLineRef.current);
+            routeLineRef.current = null;
+          } catch (error) {
+            console.warn("Error clearing route:", error);
+          }
         }
       }
     }
@@ -471,6 +516,7 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
         cancelText="Cancel"
         confirmText="Clear Route"
         confirmVariant="destructive"
+        // src/components/maps/PlaqueMap.tsx (continued)
         onConfirm={handleClearRoute}
       />
       
