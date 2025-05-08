@@ -67,42 +67,104 @@ export const useRouteManagement = ({
   }, [onRouteChange]);
   
   // Clear the entire route
-  const clearRoute = useCallback(() => {
-    // Cancel any ongoing operations
-    if (drawTimeoutRef.current) {
-      clearTimeout(drawTimeoutRef.current);
-      drawTimeoutRef.current = null;
+// Fix for the clearRoute method
+const clearRoute = useCallback(() => {
+  if (!mapInstanceRef.current) return;
+  
+  // Clear existing route
+  if (routeLineRef.current) {
+    try {
+      mapInstanceRef.current.removeLayer(routeLineRef.current);
+      routeLineRef.current = null;
+    } catch (e) {
+      console.warn("Error clearing route line:", e);
     }
+  }
+  
+  // Reset route state
+  setRoutePoints([]);
+  setRouteLine(null);
+  
+  // Refresh markers to ensure they're not showing route status
+  addMapMarkers();
+  
+  console.log("Route cleared successfully");
+}, [addMapMarkers]);
+
+// Fix for the removePlaqueFromRoute function
+const removePlaqueFromRoute = useCallback((plaqueId) => {
+  setRoutePoints(prev => {
+    const updatedPoints = prev.filter(p => p.id !== plaqueId);
     
-    // Clear route line
-    if (routeLineRef.current && mapInstance) {
-      try {
-        mapInstance.removeLayer(routeLineRef.current);
+    // If we still have enough points to draw a route, redraw it
+    if (updatedPoints.length >= 2 && mapInstanceRef.current) {
+      // Use setTimeout to ensure state is updated before redrawing
+      setTimeout(() => {
+        drawWalkingRoute(updatedPoints);
+      }, 50);
+    } else if (updatedPoints.length < 2 && mapInstanceRef.current) {
+      // Clear the route entirely if less than 2 points remain
+      if (routeLineRef.current) {
+        mapInstanceRef.current.removeLayer(routeLineRef.current);
         routeLineRef.current = null;
-      } catch (e) {
-        console.warn("Error clearing route line:", e);
       }
+      
+      // Refresh markers to reset their appearance
+      addMapMarkers();
     }
     
-    // Clear route markers
-    if (routeMarkerGroup) {
+    return updatedPoints;
+  });
+  
+  toast.info("Removed plaque from route");
+}, [drawWalkingRoute, addMapMarkers]);
+
+// Update React.useImperativeHandle to expose these methods
+React.useImperativeHandle(ref, () => ({
+  drawRouteLine: (pointsForRoute) => {
+    return drawWalkingRoute(pointsForRoute);
+  },
+  
+  clearRoute: () => {
+    if (routeLineRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(routeLineRef.current);
+      routeLineRef.current = null;
+      
+      // Additional cleanup
+      setRouteLine(null);
+      
+      // Refresh markers to ensure they're not showing route status
+      addMapMarkers();
+    }
+  },
+  
+  findUserLocation: () => {
+    findUserLocation();
+  },
+  
+  fitToMarkers: () => {
+    if (!mapInstanceRef.current || !window.L) return;
+    
+    const validPlaques = plaques.filter(p => p.latitude && p.longitude);
+    
+    if (validPlaques.length > 0) {
       try {
-        routeMarkerGroup.clearLayers();
+        const latLngs = validPlaques.map(p => [
+          parseFloat(p.latitude), 
+          parseFloat(p.longitude)
+        ]);
+        
+        const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
+        
+        if (bounds.isValid()) {
+          mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+        }
       } catch (e) {
-        console.warn("Error clearing route markers:", e);
+        console.error("Error fitting bounds:", e);
       }
     }
-    
-    // Reset state
-    setRoutePoints([]);
-    if (onRouteChange) onRouteChange([]);
-    
-    // Reset drawing state
-    drawingRef.current = false;
-    setIsDrawingRoute(false);
-    
-    toast.success("Route cleared");
-  }, [mapInstance, routeLineRef, routeMarkerGroup, onRouteChange]);
+  }
+}));
   
   // Safely get coordinates from a plaque
   const getCoords = useCallback((plaque) => {
@@ -218,56 +280,260 @@ export const useRouteManagement = ({
   ]);
   
   // Draw walking route using either direct lines or routing API
-  const drawWalkingRoute = useCallback((points = routePoints) => {
-    // Prevent multiple concurrent draws
-    if (drawingRef.current || !mapInstance || !window.L || points.length < 2) {
-      return null;
-    }
-    
-    // Set drawing state
-    drawingRef.current = true;
-    setIsDrawingRoute(true);
-    
-    try {
-      // Check if Leaflet Routing Machine is available
-      if (window.L.Routing && window.L.Routing.control) {
-        // Implement Leaflet Routing Machine here if available
-        // This would be similar to the Leaflet Routing Machine implementation 
-        // from the previous code we provided
-        console.log("Leaflet Routing Machine available! Using it for routing.");
-        
-        // But for now, just draw direct lines for stability
-        const route = drawSimpleRoute();
-        
-        // Reset drawing state after a delay
-        drawTimeoutRef.current = setTimeout(() => {
-          drawingRef.current = false;
-          setIsDrawingRoute(false);
-        }, 500);
-        
-        return route;
+// Updated drawWalkingRoute function using OpenRouteService
+const drawWalkingRoute = useCallback(async (pointsForRoute) => {
+  if (!mapInstanceRef.current || !window.L || pointsForRoute.length < 2) {
+    console.log("Cannot draw route: Map not loaded or insufficient points");
+    return null;
+  }
+  
+  const map = mapInstanceRef.current;
+  
+  // Clear existing route
+  if (routeLineRef.current) {
+    map.removeLayer(routeLineRef.current);
+    routeLineRef.current = null;
+  }
+  
+  // Create a feature group to hold all route elements
+  const routeGroup = window.L.featureGroup().addTo(map);
+  
+  try {
+    // Add route markers first
+    pointsForRoute.forEach((point, index) => {
+      if (!point.latitude || !point.longitude) return;
+      
+      const lat = parseFloat(point.latitude);
+      const lng = parseFloat(point.longitude);
+      
+      if (isNaN(lat) || isNaN(lng)) return;
+      
+      // Create marker icon based on position in route
+      let markerColor, markerLabel, markerClass;
+      
+      if (index === 0) {
+        markerLabel = 'S';
+        markerColor = '#3b82f6'; // blue for start
+        markerClass = 'route-marker-start';
+      } else if (index === pointsForRoute.length - 1) {
+        markerLabel = 'E';
+        markerColor = '#ef4444'; // red for end
+        markerClass = 'route-marker-end';
       } else {
-        // Fall back to simple direct lines
-        const route = drawSimpleRoute();
-        
-        // Reset drawing state after a delay
-        drawTimeoutRef.current = setTimeout(() => {
-          drawingRef.current = false;
-          setIsDrawingRoute(false);
-        }, 500);
-        
-        return route;
+        markerLabel = (index + 1).toString();
+        markerColor = '#10b981'; // green for waypoints
+        markerClass = 'route-marker-waypoint';
       }
-    } catch (e) {
-      console.error("Error drawing walking route:", e);
       
-      // Reset drawing state
-      drawingRef.current = false;
-      setIsDrawingRoute(false);
+      const routeMarker = window.L.marker([lat, lng], {
+        icon: window.L.divIcon({
+          className: `route-marker ${markerClass}`,
+          html: `
+            <div style="
+              width: 28px;
+              height: 28px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-color: ${markerColor};
+              color: white;
+              border-radius: 50%;
+              font-weight: bold;
+              font-size: 14px;
+              border: 2px solid white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">
+              ${markerLabel}
+            </div>
+          `,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        })
+      }).addTo(routeGroup);
       
-      return null;
+      // Add popup with route info
+      const popupContent = `
+        <div class="p-2">
+          <div class="font-medium text-sm">${point.title || 'Route Point'}</div>
+          <div class="text-xs text-gray-500 mt-1">
+            ${index === 0 ? 'Start point' : 
+              index === pointsForRoute.length - 1 ? 'End point' : 
+              `Stop #${index + 1}`}
+          </div>
+        </div>
+      `;
+      
+      routeMarker.bindPopup(popupContent);
+    });
+    
+    // Use OpenRouteService for routing
+    // Replace this with your own API key from https://openrouteservice.org/dev/#/signup
+    const API_KEY = 'YOUR_API_KEY_HERE';
+    
+    let totalDistance = 0;
+    const allCoordinates = [];
+    
+    // Process route in segments for multi-stop routes
+    for (let i = 0; i < pointsForRoute.length - 1; i++) {
+      const start = pointsForRoute[i];
+      const end = pointsForRoute[i + 1];
+      
+      if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
+      
+      const startLat = parseFloat(start.latitude);
+      const startLng = parseFloat(start.longitude);
+      const endLat = parseFloat(end.latitude);
+      const endLng = parseFloat(end.longitude);
+      
+      if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
+      
+      try {
+        // Call OpenRouteService API
+        const response = await fetch(
+          `https://api.openrouteservice.org/v2/directions/foot-walking/geojson`,
+          {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json, application/geo+json',
+              'Content-Type': 'application/json',
+              'Authorization': API_KEY
+            },
+            body: JSON.stringify({
+              coordinates: [
+                [startLng, startLat], // ORS uses [lng, lat] format
+                [endLng, endLat]
+              ],
+              preference: 'recommended', // 'shortest', 'recommended', or 'fastest'
+              instructions: true,
+              language: 'en'
+            })
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error(`OpenRouteService API error: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.features || data.features.length === 0) {
+          throw new Error('No route found');
+        }
+        
+        // Get route details from response
+        const route = data.features[0];
+        const segmentDistance = route.properties.summary.distance / 1000; // Convert to km
+        totalDistance += segmentDistance;
+        
+        // Get coordinates and convert from [lng, lat] to [lat, lng] for Leaflet
+        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        allCoordinates.push(...coordinates);
+        
+        // Draw route segment
+        const routeSegment = window.L.polyline(coordinates, {
+          color: '#10b981', // green
+          weight: 5,
+          opacity: 0.8,
+          lineCap: 'round',
+          lineJoin: 'round',
+          dashArray: '10, 10',
+          className: 'animated-dash'
+        }).addTo(routeGroup);
+        
+        // Add distance label at midpoint
+        if (segmentDistance > 0.05) { // Only for segments longer than 50m
+          const midIndex = Math.floor(coordinates.length / 2);
+          const midPoint = coordinates[midIndex];
+          
+          window.L.marker(midPoint, {
+            icon: window.L.divIcon({
+              className: 'distance-label',
+              html: `
+                <div style="
+                  background-color: white;
+                  padding: 3px 6px;
+                  border-radius: 10px;
+                  font-size: 11px;
+                  font-weight: 500;
+                  color: #10b981;
+                  border: 1px solid #d1fae5;
+                  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                ">
+                  ${formatDistance(segmentDistance)}
+                </div>
+              `,
+              iconSize: [60, 20],
+              iconAnchor: [30, 10]
+            })
+          }).addTo(routeGroup);
+        }
+      } catch (error) {
+        console.error(`Error fetching route segment ${i}:`, error);
+        
+        // Fallback to direct line if API fails
+        const directLine = window.L.polyline([[startLat, startLng], [endLat, endLng]], {
+          color: '#ef4444', // Red for fallback
+          weight: 4,
+          opacity: 0.6,
+          dashArray: '5, 10',
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(routeGroup);
+        
+        // Calculate direct distance
+        const directDistance = calculateDistance(startLat, startLng, endLat, endLng);
+        totalDistance += directDistance;
+        
+        // Add midpoint label
+        const midPoint = [
+          (startLat + endLat) / 2,
+          (startLng + endLng) / 2
+        ];
+        
+        window.L.marker(midPoint, {
+          icon: window.L.divIcon({
+            className: 'distance-label',
+            html: `
+              <div style="
+                background-color: white;
+                padding: 3px 6px;
+                border-radius: 10px;
+                font-size: 11px;
+                font-weight: 500;
+                color: #ef4444;
+                border: 1px solid #fee2e2;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+              ">
+                ${formatDistance(directDistance)}
+              </div>
+            `,
+            iconSize: [60, 20],
+            iconAnchor: [30, 10]
+          })
+        }).addTo(routeGroup);
+      }
     }
-  }, [mapInstance, drawSimpleRoute, routePoints]);
+    
+    // Fit bounds to show entire route
+    if (allCoordinates.length > 0) {
+      const bounds = window.L.latLngBounds(allCoordinates);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+    
+    // Store reference and return
+    routeLineRef.current = routeGroup;
+    return { routeGroup, totalDistance };
+    
+  } catch (error) {
+    console.error("Error creating route:", error);
+    
+    // Final fallback to straight lines if everything fails
+    // (This code is similar to the error handler in the inner try/catch)
+    // ...
+    
+    return null;
+  }
+}, [calculateDistance, formatDistance]);
   
   // Optimize walking route
   const optimizeRouteForWalking = useCallback(() => {

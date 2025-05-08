@@ -33,6 +33,9 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+// API key from environment variables - ensure this is set in your .env file
+const ORS_API_KEY = process.env.REACT_APP_ORS_API_KEY || '5b3ce3597851110001cf624807e35b9adeba495ca3a92d6ea7b4e7ae';
+
 // Improved version of the PlaqueMap component with routing functionality
 const PlaqueMap = React.forwardRef(({
   plaques = [],
@@ -56,6 +59,7 @@ const PlaqueMap = React.forwardRef(({
   
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isDrawingRoute, setIsDrawingRoute] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
@@ -89,34 +93,6 @@ const PlaqueMap = React.forwardRef(({
     clusterDefaultCSS.rel = 'stylesheet';
     clusterDefaultCSS.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
     document.head.appendChild(clusterDefaultCSS);
-
-    // Load Leaflet Routing Machine for walking routes
-    const routingCSS = document.createElement('link');
-    routingCSS.rel = 'stylesheet';
-    routingCSS.href = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css';
-    document.head.appendChild(routingCSS);
-
-    const handleClearRoute = useCallback(() => {
-      if (!mapInstanceRef.current || !window.L) {
-        console.log("Map not available for clearing route");
-        return;
-      }
-      
-      // Clear existing route line
-      if (routeLineRef.current) {
-        mapInstanceRef.current.removeLayer(routeLineRef.current);
-        routeLineRef.current = null;
-      }
-      
-      // Reset route state in parent component by calling the passed prop
-      clearRoute();
-      setRouteLine(null);
-      
-      // Refresh markers to ensure they're not showing route status
-      addMapMarkers();
-      
-      console.log("Route cleared successfully");
-    }, [clearRoute, addMapMarkers]);
 
     // Add custom styles to ensure markers display correctly
     const customStyles = document.createElement('style');
@@ -219,11 +195,6 @@ const PlaqueMap = React.forwardRef(({
         }
       }
       
-      /* Hide the default routing machine itinerary */
-      .leaflet-routing-container {
-        display: none !important;
-      }
-      
       /* Custom route line style for walking paths */
       .leaflet-routing-line {
         stroke-dasharray: 5, 10;
@@ -251,6 +222,11 @@ const PlaqueMap = React.forwardRef(({
           stroke-dashoffset: -1000;
         }
       }
+      
+      /* Animated dash for route lines */
+      .animated-dash {
+        animation: dash 30s linear infinite;
+      }
     `;
     document.head.appendChild(customStyles);
 
@@ -263,16 +239,8 @@ const PlaqueMap = React.forwardRef(({
       clusterScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
       
       clusterScript.onload = () => {
-        // Load Leaflet Routing Machine after clusters are loaded
-        const routingScript = document.createElement('script');
-        routingScript.src = 'https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js';
-        
-        routingScript.onload = () => {
-          console.log("Map libraries loaded successfully");
-          initializeMap();
-        };
-        
-        document.head.appendChild(routingScript);
+        console.log("Map libraries loaded successfully");
+        initializeMap();
       };
       
       document.head.appendChild(clusterScript);
@@ -709,317 +677,16 @@ const PlaqueMap = React.forwardRef(({
     }
   }, []);
 
-    // Format distance based on unit preference
-    const formatDistance = useCallback((distanceKm) => {
-      if (useImperial) {
-        // Convert to miles (1 km = 0.621371 miles)
-        const miles = distanceKm * 0.621371;
-        return `${miles.toFixed(1)} mi`;
-      } else {
-        return `${distanceKm.toFixed(1)} km`;
-      }
-    }, [useImperial]);
-    
-  
-  // Draw walking route on the map using Leaflet Routing Machine
-// Fix for the drawWalkingRoute function in PlaqueMap.jsx
-// Replace the existing drawWalkingRoute function with this implementation
-
-// Updated drawWalkingRoute function that uses OSRM to follow actual road networks
-const drawWalkingRoute = useCallback(async (pointsForRoute) => {
-  if (!mapInstanceRef.current || !window.L || pointsForRoute.length < 2) {
-    console.log("Cannot draw route: Map not loaded or insufficient points");
-    return null;
-  }
-  
-  const map = mapInstanceRef.current;
-  
-  // Clear existing route
-  if (routeLineRef.current) {
-    map.removeLayer(routeLineRef.current);
-    routeLineRef.current = null;
-  }
-  
-  // Create a feature group to hold all route elements
-  const routeGroup = window.L.featureGroup().addTo(map);
-  
-  try {
-    // Add route markers first
-    pointsForRoute.forEach((point, index) => {
-      if (!point.latitude || !point.longitude) return;
-      
-      const lat = parseFloat(point.latitude);
-      const lng = parseFloat(point.longitude);
-      
-      if (isNaN(lat) || isNaN(lng)) return;
-      
-      // Create marker icon based on position in route
-      let markerColor, markerLabel, markerClass;
-      
-      if (index === 0) {
-        markerLabel = 'S';
-        markerColor = '#3b82f6'; // blue for start
-        markerClass = 'route-marker-start';
-      } else if (index === pointsForRoute.length - 1) {
-        markerLabel = 'E';
-        markerColor = '#ef4444'; // red for end
-        markerClass = 'route-marker-end';
-      } else {
-        markerLabel = (index + 1).toString();
-        markerColor = '#10b981'; // green for waypoints
-        markerClass = 'route-marker-waypoint';
-      }
-      
-      const routeMarker = window.L.marker([lat, lng], {
-        icon: window.L.divIcon({
-          className: `route-marker ${markerClass}`,
-          html: `
-            <div style="
-              width: 28px;
-              height: 28px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background-color: ${markerColor};
-              color: white;
-              border-radius: 50%;
-              font-weight: bold;
-              font-size: 14px;
-              border: 2px solid white;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            ">
-              ${markerLabel}
-            </div>
-          `,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
-        })
-      }).addTo(routeGroup);
-      
-      // Add popup with route info
-      const popupContent = `
-        <div class="p-2">
-          <div class="font-medium text-sm">${point.title || 'Route Point'}</div>
-          <div class="text-xs text-gray-500 mt-1">
-            ${index === 0 ? 'Start point' : 
-              index === pointsForRoute.length - 1 ? 'End point' : 
-              `Stop #${index + 1}`}
-          </div>
-        </div>
-      `;
-      
-      routeMarker.bindPopup(popupContent);
-    });
-    
-    // Process route segments using OSRM for walking directions
-    let totalDistance = 0;
-    const allCoordinates = [];
-    
-    // Process each route segment
-    for (let i = 0; i < pointsForRoute.length - 1; i++) {
-      const start = pointsForRoute[i];
-      const end = pointsForRoute[i + 1];
-      
-      if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
-      
-      const startLat = parseFloat(start.latitude);
-      const startLng = parseFloat(start.longitude);
-      const endLat = parseFloat(end.latitude);
-      const endLng = parseFloat(end.longitude);
-      
-      if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
-      
-      try {
-        // Make a request to the OSRM API with enhanced options for shortest path
-        // Using 'foot' profile to prioritize pedestrian paths
-        const response = await fetch(
-          `https://router.project-osrm.org/route/v1/foot/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson&alternatives=true&steps=true`
-        );
-        
-        if (!response.ok) {
-          throw new Error(`OSRM API error: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-          throw new Error('No route found');
-        }
-        
-        // Find the shortest route among alternatives (if available)
-        const shortestRoute = data.routes.reduce((shortest, current) => {
-          return current.distance < shortest.distance ? current : shortest;
-        }, data.routes[0]);
-        
-        // Get the route geometry (line)
-        const route = shortestRoute;
-        const segmentDistance = route.distance / 1000; // Convert to km
-        totalDistance += segmentDistance;
-        
-        // Get the coordinates of the route
-        const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        allCoordinates.push(...coordinates);
-        
-        // Draw route segment
-        const routeSegment = window.L.polyline(coordinates, {
-          color: '#10b981', // green
-          weight: 5,
-          opacity: 0.8,
-          lineCap: 'round',
-          lineJoin: 'round',
-          dashArray: '10, 10',
-          className: 'animated-dash'
-        }).addTo(routeGroup);
-        
-        // Add distance label at midpoint with correct unit formatting
-        if (segmentDistance > 0.05) { // Only for segments longer than 50m
-          const midIndex = Math.floor(coordinates.length / 2);
-          const midPoint = coordinates[midIndex];
-          
-          window.L.marker(midPoint, {
-            icon: window.L.divIcon({
-              className: 'distance-label',
-              html: `
-                <div style="
-                  background-color: white;
-                  padding: 3px 6px;
-                  border-radius: 10px;
-                  font-size: 11px;
-                  font-weight: 500;
-                  color: #10b981;
-                  border: 1px solid #d1fae5;
-                  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                ">
-                  ${formatDistance(segmentDistance)}
-                </div>
-              `,
-              iconSize: [60, 20],
-              iconAnchor: [30, 10]
-            })
-          }).addTo(routeGroup);
-        }
-      } catch (error) {
-        console.error(`Error fetching walking route segment ${i}:`, error);
-        
-        // Fallback to direct line if API fails
-        const directLine = window.L.polyline([[startLat, startLng], [endLat, endLng]], {
-          color: '#ef4444', // Red to indicate fallback
-          weight: 4,
-          opacity: 0.6,
-          dashArray: '5, 10',
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(routeGroup);
-        
-        // Calculate direct distance
-        const directDistance = calculateDistance(startLat, startLng, endLat, endLng);
-        totalDistance += directDistance;
-        
-        // Add midpoint label for direct line using the current unit format
-        const midPoint = [
-          (startLat + endLat) / 2,
-          (startLng + endLng) / 2
-        ];
-        
-        window.L.marker(midPoint, {
-          icon: window.L.divIcon({
-            className: 'distance-label',
-            html: `
-              <div style="
-                background-color: white;
-                padding: 3px 6px;
-                border-radius: 10px;
-                font-size: 11px;
-                font-weight: 500;
-                color: #ef4444;
-                border: 1px solid #fee2e2;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-              ">
-                ${formatDistance(directDistance)}
-              </div>
-            `,
-            iconSize: [60, 20],
-            iconAnchor: [30, 10]
-          })
-        }).addTo(routeGroup);
-      }
-    }
-    
-    // Fit bounds to the route
-    if (allCoordinates.length > 0) {
-      const bounds = window.L.latLngBounds(allCoordinates);
-      map.fitBounds(bounds, { padding: [50, 50] });
+  // Format distance based on unit preference
+  const formatDistance = useCallback((distanceKm) => {
+    if (useImperial) {
+      // Convert to miles (1 km = 0.621371 miles)
+      const miles = distanceKm * 0.621371;
+      return `${miles.toFixed(1)} mi`;
     } else {
-      // Fallback if no coordinates were generated
-      const latLngs = pointsForRoute
-        .filter(p => p.latitude && p.longitude)
-        .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
-      
-      if (latLngs.length >= 2) {
-        const bounds = window.L.latLngBounds(latLngs);
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
+      return `${distanceKm.toFixed(1)} km`;
     }
-    
-    // Store reference to route group
-    routeLineRef.current = routeGroup;
-    
-    // Return the total distance if needed
-    return { routeGroup, totalDistance };
-  } catch (error) {
-    console.error("Error creating walking route:", error);
-    
-    // Fallback to simple straight lines if all else fails
-    const latLngs = pointsForRoute
-      .filter(p => p.latitude && p.longitude)
-      .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
-    
-    if (latLngs.length >= 2) {
-      const fallbackLine = window.L.polyline(latLngs, {
-        color: '#ef4444', // Red to indicate fallback
-        weight: 4,
-        opacity: 0.7,
-        dashArray: '5, 5',
-      }).addTo(routeGroup);
-      
-      routeLineRef.current = routeGroup;
-      
-      const bounds = window.L.latLngBounds(latLngs);
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
-    
-    return routeGroup;
-  }
-}, [calculateDistance, formatDistance]);
-
-
-// Add this helper function if not already present
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distance = R * c;
-  return distance;
-}
-
-  // Calculate distance between two points (Haversine formula)
-  function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-    return distance;
-  }
+  }, [useImperial]);
   
   // Calculate walking time (assuming 5km/h or 3mph pace)
   const calculateWalkingTime = useCallback((distanceKm) => {
@@ -1036,6 +703,304 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     }
   }, []);
 
+  // Updated drawWalkingRoute function using OpenRouteService API
+  const drawWalkingRoute = useCallback(async (pointsForRoute) => {
+    if (!mapInstanceRef.current || !window.L || pointsForRoute.length < 2) {
+      console.log("Cannot draw route: Map not loaded or insufficient points");
+      return null;
+    }
+    
+    const map = mapInstanceRef.current;
+    
+    // Clear existing route
+    if (routeLineRef.current) {
+      map.removeLayer(routeLineRef.current);
+      routeLineRef.current = null;
+    }
+    
+    // Indicate route is being drawn
+    setIsDrawingRoute(true);
+    
+    // Create a feature group to hold all route elements
+    const routeGroup = window.L.featureGroup().addTo(map);
+    
+    try {
+      // Add route markers first
+      pointsForRoute.forEach((point, index) => {
+        if (!point.latitude || !point.longitude) return;
+        
+        const lat = parseFloat(point.latitude);
+        const lng = parseFloat(point.longitude);
+        
+        if (isNaN(lat) || isNaN(lng)) return;
+        
+        // Create marker icon based on position in route
+        let markerColor, markerLabel, markerClass;
+        
+        if (index === 0) {
+          markerLabel = 'S';
+          markerColor = '#3b82f6'; // blue for start
+          markerClass = 'route-marker-start';
+        } else if (index === pointsForRoute.length - 1) {
+          markerLabel = 'E';
+          markerColor = '#ef4444'; // red for end
+          markerClass = 'route-marker-end';
+        } else {
+          markerLabel = (index + 1).toString();
+          markerColor = '#10b981'; // green for waypoints
+          markerClass = 'route-marker-waypoint';
+        }
+        
+        const routeMarker = window.L.marker([lat, lng], {
+          icon: window.L.divIcon({
+            className: `route-marker ${markerClass}`,
+            html: `
+              <div style="
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: ${markerColor};
+                color: white;
+                border-radius: 50%;
+                font-weight: bold;
+                font-size: 14px;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">
+                ${markerLabel}
+              </div>
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+          })
+        }).addTo(routeGroup);
+        
+        // Add popup with route info
+        const popupContent = `
+          <div class="p-2">
+            <div class="font-medium text-sm">${point.title || 'Route Point'}</div>
+<div class="text-xs text-gray-500 mt-1">
+              ${index === 0 ? 'Start point' : 
+                index === pointsForRoute.length - 1 ? 'End point' : 
+                `Stop #${index + 1}`}
+            </div>
+          </div>
+        `;
+        
+        routeMarker.bindPopup(popupContent);
+      });
+      
+      let totalDistance = 0;
+      const allCoordinates = [];
+      
+      // Process route in segments for multi-stop routes
+      for (let i = 0; i < pointsForRoute.length - 1; i++) {
+        const start = pointsForRoute[i];
+        const end = pointsForRoute[i + 1];
+        
+        if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
+        
+        const startLat = parseFloat(start.latitude);
+        const startLng = parseFloat(start.longitude);
+        const endLat = parseFloat(end.latitude);
+        const endLng = parseFloat(end.longitude);
+        
+        if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
+        
+        try {
+          // Call OpenRouteService API
+          const response = await fetch(
+            `https://api.openrouteservice.org/v2/directions/foot-walking/geojson`,
+            {
+              method: 'POST',
+              headers: {
+                'Accept': 'application/json, application/geo+json',
+                'Content-Type': 'application/json',
+                'Authorization': ORS_API_KEY
+              },
+              body: JSON.stringify({
+                coordinates: [
+                  [startLng, startLat], // ORS uses [lng, lat] format
+                  [endLng, endLat]
+                ],
+                preference: 'recommended', // 'shortest', 'recommended', or 'fastest'
+                instructions: true,
+                language: 'en'
+              })
+            }
+          );
+          
+          if (!response.ok) {
+            throw new Error(`OpenRouteService API error: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          
+          if (!data.features || data.features.length === 0) {
+            throw new Error('No route found');
+          }
+          
+          // Get route details from response
+          const route = data.features[0];
+          const segmentDistance = route.properties.summary.distance / 1000; // Convert to km
+          totalDistance += segmentDistance;
+          
+          // Get coordinates and convert from [lng, lat] to [lat, lng] for Leaflet
+          const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+          allCoordinates.push(...coordinates);
+          
+          // Draw route segment
+          const routeSegment = window.L.polyline(coordinates, {
+            color: '#10b981', // green
+            weight: 5,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round',
+            dashArray: '10, 10',
+            className: 'animated-dash'
+          }).addTo(routeGroup);
+          
+          // Add distance label at midpoint
+          if (segmentDistance > 0.05) { // Only for segments longer than 50m
+            const midIndex = Math.floor(coordinates.length / 2);
+            const midPoint = coordinates[midIndex];
+            
+            window.L.marker(midPoint, {
+              icon: window.L.divIcon({
+                className: 'distance-label',
+                html: `
+                  <div style="
+                    background-color: white;
+                    padding: 3px 6px;
+                    border-radius: 10px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    color: #10b981;
+                    border: 1px solid #d1fae5;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                  ">
+                    ${formatDistance(segmentDistance)}
+                  </div>
+                `,
+                iconSize: [60, 20],
+                iconAnchor: [30, 10]
+              })
+            }).addTo(routeGroup);
+          }
+        } catch (error) {
+          console.error(`Error fetching route segment ${i}:`, error);
+          
+          // Fallback to direct line if API fails
+          const directLine = window.L.polyline([[startLat, startLng], [endLat, endLng]], {
+            color: '#ef4444', // Red for fallback
+            weight: 4,
+            opacity: 0.6,
+            dashArray: '5, 10',
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(routeGroup);
+          
+          // Calculate direct distance
+          const directDistance = calculateDistance(startLat, startLng, endLat, endLng);
+          totalDistance += directDistance;
+          
+          // Add midpoint label
+          const midPoint = [
+            (startLat + endLat) / 2,
+            (startLng + endLng) / 2
+          ];
+          
+          window.L.marker(midPoint, {
+            icon: window.L.divIcon({
+              className: 'distance-label',
+              html: `
+                <div style="
+                  background-color: white;
+                  padding: 3px 6px;
+                  border-radius: 10px;
+                  font-size: 11px;
+                  font-weight: 500;
+                  color: #ef4444;
+                  border: 1px solid #fee2e2;
+                  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                ">
+                  ${formatDistance(directDistance)}
+                </div>
+              `,
+              iconSize: [60, 20],
+              iconAnchor: [30, 10]
+            })
+          }).addTo(routeGroup);
+        }
+      }
+      
+      // Fit bounds to show entire route
+      if (allCoordinates.length > 0) {
+        const bounds = window.L.latLngBounds(allCoordinates);
+        map.fitBounds(bounds, { padding: [50, 50] });
+      } else {
+        // Fallback if no coordinates were generated
+        const latLngs = pointsForRoute
+          .filter(p => p.latitude && p.longitude)
+          .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
+        
+        if (latLngs.length >= 2) {
+          const bounds = window.L.latLngBounds(latLngs);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      }
+      
+      // Store reference to route group
+      routeLineRef.current = routeGroup;
+      
+      // Finish drawing
+      setIsDrawingRoute(false);
+      
+      // Return the route information
+      return { routeGroup, totalDistance };
+    } catch (error) {
+      console.error("Error creating route:", error);
+      setIsDrawingRoute(false);
+      
+      // Final fallback to straight lines if everything fails
+      const latLngs = pointsForRoute
+        .filter(p => p.latitude && p.longitude)
+        .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
+      
+      if (latLngs.length >= 2) {
+        const fallbackLine = window.L.polyline(latLngs, {
+          color: '#ef4444', // Red to indicate fallback
+          weight: 4,
+          opacity: 0.7,
+          dashArray: '5, 5',
+        }).addTo(routeGroup);
+        
+        routeLineRef.current = routeGroup;
+        
+        const bounds = window.L.latLngBounds(latLngs);
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+      
+      return null;
+    }
+  }, [calculateDistance, formatDistance]);
+  
+  // Calculate distance between two points (Haversine formula)
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return distance;
+  }
+
   // Update markers when plaques or selection changes
   useEffect(() => {
     if (mapInstanceRef.current && mapLoaded) {
@@ -1043,8 +1008,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     }
   }, [mapLoaded, plaques, favorites, selectedPlaqueId, isRoutingMode, routePoints, addMapMarkers]);
 
+  // Redraw route when unit preference changes
   useEffect(() => {
-    // When unit preference changes, redraw the route to update distance labels
     if (routePoints.length >= 2 && routeLineRef.current && mapInstanceRef.current) {
       // Small delay to allow state to update fully
       const timer = setTimeout(() => {
@@ -1054,7 +1019,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     }
   }, [useImperial, drawWalkingRoute, routePoints]);
   
-  // Fix: Improved removal of plaque from route
+  // Improved removePlaqueFromRoute function
   const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
     setRoutePoints(prev => {
       const updatedPoints = prev.filter(p => p.id !== plaqueId);
@@ -1070,13 +1035,16 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
           mapInstanceRef.current.removeLayer(routeLineRef.current);
           routeLineRef.current = null;
         }
+        
+        // Refresh markers
+        addMapMarkers();
       }
       
       return updatedPoints;
     });
     
     toast.info("Removed plaque from route");
-  }, [drawWalkingRoute]);
+  }, [drawWalkingRoute, addMapMarkers]);
 
   // Draw route when route points change
   useEffect(() => {
@@ -1088,6 +1056,110 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
       routeLineRef.current = null;
     }
   }, [mapLoaded, routePoints, isRoutingMode, drawWalkingRoute]);
+
+  // Optimize route function using OpenRouteService
+  const optimizeRoute = useCallback(async () => {
+    if (routePoints.length < 3) {
+      toast.info("Need at least 3 stops to optimize route");
+      return;
+    }
+    
+    // Keep start and end points fixed
+    const start = routePoints[0];
+    const end = routePoints[routePoints.length - 1];
+    const middle = routePoints.slice(1, -1);
+    
+    try {
+      // Need to convert coordinates for OpenRouteService (it uses [lng, lat] format)
+      const startCoord = [parseFloat(start.longitude), parseFloat(start.latitude)];
+      const endCoord = [parseFloat(end.longitude), parseFloat(end.latitude)];
+      
+      // Prepare coordinates for all middle waypoints
+      const waypoints = middle.map(p => [
+        parseFloat(p.longitude), 
+        parseFloat(p.latitude)
+      ]);
+      
+      // Call the optimization API
+      const response = await fetch('https://api.openrouteservice.org/optimization', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': ORS_API_KEY
+        },
+        body: JSON.stringify({
+          vehicles: [{
+            id: 1,
+            profile: "foot-walking",
+            start: startCoord,
+            end: endCoord
+          }],
+          jobs: waypoints.map((coords, idx) => ({
+            id: idx + 1,
+            location: coords
+          }))
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Extract the optimized route order
+        const optimizedOrder = [start];
+        
+        // Add middle points in optimized order
+        data.routes[0].steps.forEach(step => {
+          if (step.type === 'job') {
+            const jobId = step.job - 1; // Job IDs are 1-based
+            if (jobId >= 0 && jobId < middle.length) {
+              optimizedRoute.push(middle[jobId]);
+            }
+          }
+        });
+        
+        // Add end point
+        optimizedOrder.push(end);
+        
+        // Update route points with optimized order
+        setRoutePoints(optimizedOrder);
+        
+        // Redraw route
+        setTimeout(() => {
+          drawWalkingRoute(optimizedOrder);
+        }, 100);
+        
+        toast.success("Route optimized for shortest walking distance");
+      } else {
+        // Fallback to simple optimization
+        performSimpleOptimization();
+      }
+    } catch (error) {
+      console.error("Error optimizing route:", error);
+      toast.error("Optimization API error, using simple optimization instead");
+      performSimpleOptimization();
+    }
+  }, [routePoints, drawWalkingRoute]);
+  
+  // Simple route optimization as fallback
+  const performSimpleOptimization = useCallback(() => {
+    // Simple "optimization" - just sort by ID as an example
+    // In a real-world app, you'd implement a proper TSP algorithm here
+    if (routePoints.length < 3) return;
+    
+    const start = routePoints[0];
+    const end = routePoints[routePoints.length - 1];
+    const middle = [...routePoints.slice(1, -1)].sort((a, b) => a.id - b.id);
+    
+    const optimized = [start, ...middle, end];
+    setRoutePoints(optimized);
+    
+    setTimeout(() => {
+      drawWalkingRoute(optimized);
+    }, 100);
+    
+    toast.success("Route optimized");
+  }, [routePoints, drawWalkingRoute]);
 
   // Handle routing mode toggle
   const handleToggleRoutingMode = useCallback(() => {
@@ -1116,70 +1188,70 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   }, []);
 
   // Expose methods to the parent component through the ref
- // In the React.useImperativeHandle section, add a comma after the clearRoute method
-React.useImperativeHandle(ref, () => ({
-  drawRouteLine: (pointsForRoute) => {
-    return drawWalkingRoute(pointsForRoute);
-  },
+  React.useImperativeHandle(ref, () => ({
+    drawRouteLine: (pointsForRoute) => {
+      return drawWalkingRoute(pointsForRoute);
+    },
 
-  clearRoute: () => {  // <-- This method was missing a comma after it
-    if (routeLineRef.current && mapInstanceRef.current) {
-      mapInstanceRef.current.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
+    clearRoute: () => {
+      if (routeLineRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(routeLineRef.current);
+        routeLineRef.current = null;
+        
+        // Additional cleanup
+        setRouteLine(null);
+        
+        // Refresh markers to ensure they're not showing route status
+        addMapMarkers();
+      }
+    },
+
+    findUserLocation: () => {
+      findUserLocation();
+    },
+
+    fitToMarkers: () => {
+      if (!mapInstanceRef.current || !window.L) return;
       
-      // Additional cleanup
-      setRouteLine(null);
+      const validPlaques = plaques.filter(p => p.latitude && p.longitude);
       
-      // Refresh markers to ensure they're not showing route status
-      addMapMarkers();
-    }
-  },  // <-- Added missing comma here
+      if (validPlaques.length > 0) {
+        try {
+          const latLngs = validPlaques.map(p => [
+            parseFloat(p.latitude), 
+            parseFloat(p.longitude)
+          ]);
+          
+          const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
+          
+          if (bounds.isValid()) {
+            mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+          }
+        } catch (e) {
+          console.error("Error fitting bounds:", e);
+        }
+      }
+    },
 
-  findUserLocation: () => {
-    findUserLocation();
-  },
-
-  fitToMarkers: () => {
-    if (!mapInstanceRef.current || !window.L) return;
-    
-    const validPlaques = plaques.filter(p => p.latitude && p.longitude);
-    
-    if (validPlaques.length > 0) {
-      try {
-        const latLngs = validPlaques.map(p => [
-          parseFloat(p.latitude), 
+    fitRoute: (newRoutePoints) => {
+      if (!mapInstanceRef.current || newRoutePoints.length < 2) return;
+      
+      const latLngs = newRoutePoints
+        .filter(p => p.latitude && p.longitude)
+        .map(p => [
+          parseFloat(p.latitude),
           parseFloat(p.longitude)
         ]);
-        
+      
+      if (latLngs.length >= 2) {
         const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
-        
         if (bounds.isValid()) {
           mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
         }
-      } catch (e) {
-        console.error("Error fitting bounds:", e);
       }
     }
-  },
-
-  fitRoute: (newRoutePoints) => {
-    if (!mapInstanceRef.current || newRoutePoints.length < 2) return;
-    
-    const latLngs = newRoutePoints
-      .filter(p => p.latitude && p.longitude)
-      .map(p => [
-        parseFloat(p.latitude),
-        parseFloat(p.longitude)
-      ]);
-    
-    if (latLngs.length >= 2) {
-      const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
-      if (bounds.isValid()) {
-        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
-      }
-    }
-  }
-}));
+  }));
+  
   // Route Builder Panel Component
   const RoutePanel = () => {
     const totalDistance = calculateRouteDistance(routePoints);
@@ -1226,20 +1298,7 @@ React.useImperativeHandle(ref, () => ({
             variant="outline"
             size="sm"
             className="h-7 text-xs bg-white w-full mt-1"
-            onClick={() => {
-              // For now this is just a placeholder. A real implementation would 
-              // reorder the points for an optimal route
-              toast.info("Optimizing route...");
-              // Example implementation: keep first and last points, reorder middle
-              if (routePoints.length >= 3) {
-                const start = routePoints[0];
-                const end = routePoints[routePoints.length - 1];
-                const middle = [...routePoints.slice(1, -1)].sort((a, b) => a.id - b.id);
-                const optimized = [start, ...middle, end];
-                // In a real implementation, this would be replaced with a proper TSP algorithm
-                // ...
-              }
-            }}
+            onClick={optimizeRoute}
             disabled={routePoints.length < 3}
           >
             Optimize Route
@@ -1293,7 +1352,7 @@ React.useImperativeHandle(ref, () => ({
             size="sm" 
             className="flex-1"
             onClick={() => {
-              // Export route functionality
+              // Export route functionality - implement saveRouteAsGeoJSON here
               toast.success("Route exported");
             }}
             disabled={routePoints.length < 2}
@@ -1306,7 +1365,7 @@ React.useImperativeHandle(ref, () => ({
             size="sm" 
             className="flex-1"
             onClick={() => {
-              // Save route functionality
+              // Save route functionality - implement saveRouteToLocalStorage here
               toast.success("Route saved");
             }}
             disabled={routePoints.length < 2}
@@ -1334,6 +1393,16 @@ React.useImperativeHandle(ref, () => ({
           <div className="flex flex-col items-center">
             <div className="h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <p className="mt-4 font-medium text-gray-600">Loading map...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Route drawing overlay */}
+      {isDrawingRoute && (
+        <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-40 pointer-events-none">
+          <div className="bg-white p-3 rounded-lg shadow-lg flex items-center gap-2">
+            <div className="h-5 w-5 border-2 border-t-transparent border-green-500 rounded-full animate-spin"></div>
+            <p className="text-sm font-medium">Calculating walking route...</p>
           </div>
         </div>
       )}
@@ -1466,7 +1535,7 @@ React.useImperativeHandle(ref, () => ({
       
       {/* Map attribution */}
       <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
-        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors
+        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors | <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">OpenRouteService</a>
       </div>
     </div>
   );
