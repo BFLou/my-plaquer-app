@@ -185,31 +185,43 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     enhancePopupAnimations
   } = useMapEffects(mapInstance);
   
-  // Initialize map once and only once
+  // Initialize map once and only once with improved error handling
   useEffect(() => {
     // Only initialize if we have a container ref and haven't initialized yet
     if (mapContainerRef.current && !mapInitialized) {
+      let isMounted = true; // Track component mount state
+      
       const initMap = async () => {
         try {
+          // Wait for next tick to ensure DOM is ready
+          await new Promise(resolve => setTimeout(resolve, 10));
+          
+          if (!isMounted) return; // Don't proceed if component unmounted
+          
+          // Initialize map with a callback to track success
           await initializeMap(mapContainerRef.current, (success) => {
-            setMapInitialized(success);
+            if (isMounted) {
+              setMapInitialized(success);
+            }
           });
         } catch (error) {
           console.error("Map initialization failed:", error);
           // Add a toast notification to inform the user
-          toast.error("Map loading failed. Please refresh the page.");
+          toast.error("Map loading failed. Please try again.");
         }
       };
       
+      // Start initialization
       initMap();
+      
+      // Cleanup function to track component unmounting
+      return () => {
+        isMounted = false;
+        cleanup();
+        setMapInitialized(false);
+      };
     }
-    
-    // Cleanup function to properly dispose of the map
-    return () => {
-      cleanup();
-      setMapInitialized(false);
-    };
-  }, [initializeMap, cleanup]); // Depend only on these functions
+  }, [initializeMap, cleanup, mapInitialized]); // Depend only on these functions
   
   // Enhance popup animations when map is loaded
   useEffect(() => {
@@ -229,27 +241,38 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     }
   }, [plaques]);
   
-  // Update markers when dependencies change and map is ready
+  // Update markers when dependencies change with improved error handling
   useEffect(() => {
-    if (mapInstance && mapLoaded && !isDrawingRoute && markersLayer && clusterGroup) {
-      // Delay marker addition slightly to ensure map is fully initialized
+    // Only proceed if map is fully initialized and loaded
+    if (mapInstance && mapLoaded && !isDrawingRoute) {
+      // Use a reference to track if this effect is still relevant
+      let effectActive = true;
+      
+      // Delay marker addition to ensure map is fully ready
       const timer = setTimeout(() => {
+        // Check if effect is still relevant
+        if (!effectActive) return;
+        
         try {
-          addMapMarkers();
+          // Check if all required objects exist
+          if (mapInstance && markersLayer) {
+            addMapMarkers();
+          }
         } catch (error) {
           console.error("Error adding markers:", error);
-          // Avoid toast spam - only show error if really needed
-          // toast.error("Error displaying map markers");
         }
-      }, 100);
+      }, 300); // Longer delay for more stability
       
-      return () => clearTimeout(timer);
+      // Cleanup function
+      return () => {
+        effectActive = false;
+        clearTimeout(timer);
+      };
     }
   }, [
     mapLoaded, 
     mapInstance, 
     markersLayer, 
-    clusterGroup, 
     plaques, 
     favorites, 
     selectedPlaqueId, 
@@ -266,20 +289,32 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
     }
   }, [mapMode, mapInstance, mapLoaded, changeMapTheme]);
   
-  // Draw route when route points change
+  // Draw route when route points change with improved error handling
   useEffect(() => {
     if (!mapInstance || !mapLoaded || !isRoutingMode) return;
     
     // Don't automatically draw routes when toggling routing mode
     // This prevents the map from zooming out when enabling route builder
     if (routePoints.length >= 2 && !isDrawingRoute) {
+      // Create a reference to track if this effect is still relevant
+      let effectActive = true;
+      
       // Use a stable timeout to prevent race conditions
       const timer = setTimeout(() => {
-        drawWalkingRoute(routePoints);
+        if (!effectActive) return;
+        
+        try {
+          drawWalkingRoute(routePoints);
+        } catch (error) {
+          console.error("Error drawing route:", error);
+        }
       }, 300);
       
-      return () => clearTimeout(timer);
-    } else if (routeLineRef.current) {
+      return () => {
+        effectActive = false; 
+        clearTimeout(timer);
+      };
+    } else if (routeLineRef.current && mapInstance) {
       // Clear route line if no points
       try {
         mapInstance.removeLayer(routeLineRef.current);
@@ -293,13 +328,25 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
   // Handle unit preference change
   useEffect(() => {
     // Redraw route with new unit formatting
-    if (routePoints.length >= 2 && routeLineRef.current && !isDrawingRoute) {
+    if (routePoints.length >= 2 && routeLineRef.current && !isDrawingRoute && mapInstance) {
+      let effectActive = true;
+      
       const timer = setTimeout(() => {
-        drawWalkingRoute(routePoints);
+        if (!effectActive) return;
+        
+        try {
+          drawWalkingRoute(routePoints);
+        } catch (error) {
+          console.error("Error redrawing route:", error);
+        }
       }, 100);
-      return () => clearTimeout(timer);
+      
+      return () => {
+        effectActive = false;
+        clearTimeout(timer);
+      };
     }
-  }, [useImperial, drawWalkingRoute, routePoints, isDrawingRoute, routeLineRef]);
+  }, [useImperial, drawWalkingRoute, routePoints, isDrawingRoute, routeLineRef, mapInstance]);
   
   // Toggle routing mode
   const handleToggleRoutingMode = useCallback(() => {
@@ -516,7 +563,6 @@ const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
         cancelText="Cancel"
         confirmText="Clear Route"
         confirmVariant="destructive"
-        // src/components/maps/PlaqueMap.tsx (continued)
         onConfirm={handleClearRoute}
       />
       

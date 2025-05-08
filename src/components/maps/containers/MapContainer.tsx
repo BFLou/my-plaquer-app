@@ -12,6 +12,10 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
   isDrawingRoute,
   isRoutingMode
 }, ref) => {
+  // Generate a unique ID for this container instance
+  // This helps React understand it's a new element on re-renders
+  const uniqueId = React.useRef(`map-container-${Math.random().toString(36).substring(2, 9)}`);
+  
   // Add styles that might be needed for Leaflet
   useEffect(() => {
     // Check if Leaflet-specific styles are needed
@@ -73,26 +77,32 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
         .leaflet-marker-icon.route-marker {
           z-index: 1000 !important;
         }
+        
+        /* Prevent _leaflet_pos errors */
+        .leaflet-map-wrapper {
+          position: relative;
+          width: 100%;
+          height: 100%;
+        }
       `;
       document.head.appendChild(style);
     }
     
     return () => {
-      // Clean up when component unmounts
-      const styleElement = document.getElementById('leaflet-custom-map-styles');
-      if (styleElement) {
-        styleElement.remove();
-      }
+      // We don't remove the styles on unmount because other map instances
+      // might still need them - they'll be cleaned up when the app closes
     };
   }, []);
   
   return (
     <>
-      {/* Map container */}
+      {/* Map container with unique key to help React tracking */}
       <div 
         ref={ref} 
+        key={uniqueId.current}
         className="w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md map-container"
         style={{ minHeight: '400px', height: '500px' }}
+        data-testid="map-container"
       />
       
       {/* Map overlay for loading state */}

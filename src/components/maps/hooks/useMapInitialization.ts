@@ -11,6 +11,7 @@ export const useMapInitialization = () => {
   const routeMarkerGroupRef = useRef(null);
   const routeLineRef = useRef(null);
   const hasInitializedRef = useRef(false);
+  const initTimeoutRef = useRef(null);
   
   // Add custom styles for the map
   const addMapStyles = useCallback(() => {
@@ -140,19 +141,34 @@ export const useMapInitialization = () => {
   
   // Thorough cleanup function to prevent Leaflet container issues
   const cleanup = useCallback(() => {
+    // Clear any pending timeouts
+    if (initTimeoutRef.current) {
+      clearTimeout(initTimeoutRef.current);
+      initTimeoutRef.current = null;
+    }
+
     if (mapInstanceRef.current) {
       try {
-        // Remove all layers first
-        mapInstanceRef.current.eachLayer(layer => {
-          mapInstanceRef.current.removeLayer(layer);
-        });
+        // Remove all layers first - defensive coding to prevent memory leaks
+        try {
+          mapInstanceRef.current.eachLayer(layer => {
+            mapInstanceRef.current.removeLayer(layer);
+          });
+        } catch (e) {
+          console.warn("Error removing map layers:", e);
+        }
         
-        // Then remove the map
-        mapInstanceRef.current.remove();
+        // Then properly remove the map
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          console.warn("Error removing map:", e);
+        }
+        
+        mapInstanceRef.current = null;
       } catch (e) {
         console.warn("Error cleaning up map:", e);
       }
-      mapInstanceRef.current = null;
     }
     
     // Reset all refs
@@ -164,17 +180,9 @@ export const useMapInitialization = () => {
     // Explicitly set hasInitialized to false
     hasInitializedRef.current = false;
     
-    // Clear any Leaflet-specific properties on the container
-    const containers = document.querySelectorAll('.map-container');
-    containers.forEach(container => {
-      if (container._leaflet_id) {
-        delete container._leaflet_id;
-      }
-    });
-    
     setMapLoaded(false);
   }, []);
-  
+
   // Initialize map with proper error handling and container cleanup
   const initializeMap = useCallback(async (container, onMapLoaded) => {
     if (!container) {
@@ -186,12 +194,12 @@ export const useMapInitialization = () => {
     // Log container dimensions to help debug
     console.log("Container dimensions:", container.offsetWidth, container.offsetHeight);
     
-    // Clean up any existing map instance first
+    // Ensure any previous map is properly cleaned up
     cleanup();
     
-    // Double-check for any lingering _leaflet_id properties
-    if (container._leaflet_id) {
-      delete container._leaflet_id;
+    // Ensure the container is empty
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
     }
     
     // Make sure Leaflet is loaded
@@ -203,101 +211,103 @@ export const useMapInitialization = () => {
     }
     
     try {
-      // Create map instance with all interactions enabled
-      const map = window.L.map(container, {
-        center: [51.505, -0.09], // London as default
-        zoom: 13,
-        maxZoom: 18,
-        minZoom: 5,
-        // Explicitly enable all interaction options
-        dragging: true,
-        touchZoom: true,
-        doubleClickZoom: true,
-        scrollWheelZoom: true,
-        boxZoom: true,
-        keyboard: true,
-        tap: true,
-        attributionControl: true,
-        zoomControl: false // We'll add custom zoom control
-      });
+      // Create a wrapper div that will hold the map
+      // This allows us to reset the container without affecting the React ref
+      const mapWrapper = document.createElement('div');
+      mapWrapper.style.width = '100%';
+      mapWrapper.style.height = '100%';
+      mapWrapper.className = 'leaflet-map-wrapper';
+      container.appendChild(mapWrapper);
       
-      // Add tile layer
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-      }).addTo(map);
-      
-      // Create layer groups
-      const markersLayer = window.L.layerGroup().addTo(map);
-      const routeMarkerGroup = window.L.layerGroup().addTo(map);
-      
-      // Store references
-      mapInstanceRef.current = map;
-      markersLayerRef.current = markersLayer;
-      routeMarkerGroupRef.current = routeMarkerGroup;
-      
-      // Add custom zoom control in better position
-      window.L.control.zoom({
-        position: 'bottomright'
-      }).addTo(map);
-      
-      // Force a resize after a delay to ensure proper rendering
+      // CRITICAL: Wait for next frame to ensure DOM is updated
+      // This helps prevent the '_leaflet_pos' error
       setTimeout(() => {
-        if (map && !map._isDestroyed) {
-          try {
-            map.invalidateSize(true);
-            console.log("Forced map resize");
-          } catch (e) {
-            console.warn("Error during map resize:", e);
-          }
+        try {
+          // Create map instance with all interactions enabled
+          const map = window.L.map(mapWrapper, {
+            center: [51.505, -0.09], // London as default
+            zoom: 13,
+            maxZoom: 18,
+            minZoom: 5,
+            // Explicitly enable all interaction options
+            dragging: true,
+            touchZoom: true,
+            doubleClickZoom: true,
+            scrollWheelZoom: true,
+            boxZoom: true,
+            keyboard: true,
+            tap: true,
+            attributionControl: true,
+            zoomControl: false // We'll add custom zoom control
+          });
+          
+          // Add tile layer
+          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+          }).addTo(map);
+          
+          // Create layer groups
+          const markersLayer = window.L.layerGroup().addTo(map);
+          const routeMarkerGroup = window.L.layerGroup().addTo(map);
+          
+          // Store references
+          mapInstanceRef.current = map;
+          markersLayerRef.current = markersLayer;
+          routeMarkerGroupRef.current = routeMarkerGroup;
+          
+          // Add custom zoom control in better position
+          window.L.control.zoom({
+            position: 'bottomright'
+          }).addTo(map);
+          
+          // Set loaded state
+          setMapLoaded(true);
+          hasInitializedRef.current = true;
+          if (onMapLoaded) onMapLoaded(true);
+          
+          // Force a resize after a delay to ensure proper rendering
+          // Use a safer approach to invalidateSize that won't trigger the _leaflet_pos error
+          initTimeoutRef.current = setTimeout(() => {
+            if (map && !map._isDestroyed) {
+              // Check if the map container is still properly attached to DOM
+              if (map._container && map._container.parentNode) {
+                try {
+                  map.invalidateSize({ animate: false, pan: false });
+                  console.log("Forced map resize");
+                } catch (e) {
+                  console.warn("Error during map resize:", e);
+                }
+              }
+            }
+          }, 300); // Increased timeout for more reliability
+          
+          // Add some debug event handlers
+          map.on('click', function(e) {
+            console.log("Map clicked at:", e.latlng);
+          });
+          
+          map.on('moveend', function() {
+            console.log("Map moved to center:", map.getCenter());
+          });
+          
+          map.on('zoomend', function() {
+            console.log("Map zoomed to level:", map.getZoom());
+          });
+          
+          return map;
+        } catch (error) {
+          console.error("Error initializing map in setTimeout:", error);
+          setMapError(`Failed to initialize map: ${error.message}`);
+          if (onMapLoaded) onMapLoaded(false);
+          return null;
         }
-      }, 100);
+      }, 50); // Small timeout to ensure DOM is ready
       
-      // Set loaded state
-      setMapLoaded(true);
-      hasInitializedRef.current = true;
-      if (onMapLoaded) onMapLoaded(true);
-      
-      // Add some debug event handlers
-      map.on('click', function(e) {
-        console.log("Map clicked at:", e.latlng);
-      });
-      
-      map.on('moveend', function() {
-        console.log("Map moved to center:", map.getCenter());
-      });
-      
-      map.on('zoomend', function() {
-        console.log("Map zoomed to level:", map.getZoom());
-      });
-      
-      return map;
+      return null; // Initial return is null, real map returned in setTimeout
     } catch (error) {
       console.error("Error initializing map:", error);
       setMapError(`Failed to initialize map: ${error.message}`);
-      
-      // If the container already has a map, it's likely in a stale state
-      // We'll try a more aggressive cleanup and retry initialization
-      if (error.message && error.message.includes("already initialized")) {
-        try {
-          // Create a brand new container element to replace the old one
-          if (container.parentNode) {
-            const parent = container.parentNode;
-            const newContainer = document.createElement('div');
-            newContainer.className = container.className;
-            newContainer.style.cssText = container.style.cssText;
-            parent.replaceChild(newContainer, container);
-            
-            // Try to initialize with the new container after a short delay
-            setTimeout(() => {
-              initializeMap(newContainer, onMapLoaded);
-            }, 100);
-            return null;
-          }
-        } catch (recoveryError) {
-          console.error("Recovery failed:", recoveryError);
-        }
-      }
       
       if (onMapLoaded) onMapLoaded(false);
       return null;
