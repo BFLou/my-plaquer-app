@@ -1,4 +1,4 @@
-// src/components/maps/containers/MapContainer.tsx
+// src/components/maps/containers/MapContainer.tsx - with fixes
 import React, { useEffect } from 'react';
 
 interface MapContainerProps {
@@ -17,8 +17,20 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
   isRoutingMode
 }, ref) => {
   // Generate a unique ID for this container instance
-  // This helps React understand it's a new element on re-renders
   const uniqueId = React.useRef(`map-container-${Math.random().toString(36).substring(2, 9)}`);
+  
+  // Fix for Leaflet initialization issues
+  useEffect(() => {
+    // Ensure the map container is fully mounted before Leaflet tries to access it
+    const containerElement = ref as React.RefObject<HTMLDivElement>;
+    if (containerElement.current) {
+      // Force a small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        // Dispatch a window resize event to ensure map recalculates dimensions
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
+    }
+  }, [ref]);
   
   // Add styles that might be needed for Leaflet
   useEffect(() => {
@@ -29,10 +41,11 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
       style.innerHTML = `
         /* Ensure map container is properly styled */
         .map-container {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          min-height: 400px;
+          position: relative !important;
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 400px !important;
+          overflow: hidden !important;
         }
         
         /* Make sure popups appear correctly */
@@ -48,13 +61,13 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
           min-width: 200px;
         }
         
-        /* Z-index fixes */
+        /* Critical Z-index fixes */
         .leaflet-map-pane {
-          z-index: 1 !important;
+          z-index: 2 !important;
         }
         
         .leaflet-tile-pane {
-          z-index: 2 !important;
+          z-index: 1 !important;
         }
         
         .leaflet-overlay-pane {
@@ -159,11 +172,17 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
           to { opacity: 1; transform: translate(-50%, 0); }
         }
         
-        /* Prevent _leaflet_pos errors */
-        .leaflet-map-wrapper {
+        /* Critical fix for _leaflet_pos errors */
+        .leaflet-container {
           position: relative;
           width: 100%;
           height: 100%;
+        }
+        
+        .leaflet-pane {
+          position: absolute;
+          left: 0;
+          top: 0;
         }
       `;
       document.head.appendChild(style);
@@ -181,8 +200,13 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
       <div 
         ref={ref} 
         key={uniqueId.current}
+        id={uniqueId.current}
         className="w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md map-container"
-        style={{ minHeight: '400px', height: '500px' }}
+        style={{ 
+          minHeight: '400px', 
+          height: '500px',
+          position: 'relative' // Critical for Leaflet positioning
+        }}
         data-testid="map-container"
       />
       

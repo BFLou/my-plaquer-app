@@ -18,8 +18,10 @@ import useMapOperations from './hooks/useMapOperations';
 import useRouteManagement from './hooks/useRouteManagement';
 
 // API key - use environment variable with fallback
-const ORS_API_KEY = process.env.REACT_APP_ORS_API_KEY;
-
+// Safely access environment variables or fallback to default API key
+const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_ORS_API_KEY) 
+  ? process.env.REACT_APP_ORS_API_KEY 
+  : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
 /**
  * PlaqueMap Component
  * A comprehensive map component for displaying plaques with routing functionality
