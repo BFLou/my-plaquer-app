@@ -1,5 +1,6 @@
+// src/components/collections/CollectionFilterSheet.tsx
 import React, { useState } from 'react';
-import { CheckIcon, BadgeCheck, FilterX } from 'lucide-react';
+import { FilterX, BadgeCheck } from 'lucide-react';
 import { 
   Sheet, 
   SheetContent, 
@@ -27,13 +28,13 @@ type CollectionFilterSheetProps = {
   onResetFilters: () => void;
 };
 
-const CollectionFilterSheet = ({
+export const CollectionFilterSheet: React.FC<CollectionFilterSheetProps> = ({
   isOpen,
   onClose,
   activeFilters,
   onApplyFilters,
   onResetFilters
-}: CollectionFilterSheetProps) => {
+}) => {
   // Filter options
   const typeFilters: FilterOption[] = [
     { id: 'Literary', label: 'Literary & Authors' },

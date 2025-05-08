@@ -1,6 +1,8 @@
+// src/components/collections/CollectionListItem.tsx
 import React from 'react';
 import { MoreHorizontal, Edit, Trash, Copy, Share2, Star, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
 import { type Collection } from './CollectionCard';
 
@@ -18,7 +20,7 @@ type CollectionListItemProps = {
   onDelete?: (id: number) => void;
 };
 
-export const CollectionListItem = ({
+export const CollectionListItem: React.FC<CollectionListItemProps> = ({
   collection,
   isSelected = false,
   showMenu = true,
@@ -30,7 +32,7 @@ export const CollectionListItem = ({
   onShare,
   onToggleFavorite,
   onDelete,
-}: CollectionListItemProps) => {
+}) => {
   
   const handleClick = (e: React.MouseEvent) => {
     if (onToggleSelect) {
@@ -63,9 +65,19 @@ export const CollectionListItem = ({
         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-2xl ${collection.color}`}>
           {collection.icon}
         </div>
-        <div>
-          <h2 className="text-lg font-semibold">{collection.name}</h2>
-          <div className="text-sm text-gray-500">{collection.plaques} plaques • Updated {collection.updated}</div>
+        <div className="flex-grow min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold truncate">{collection.name}</h2>
+            {collection.isPublic && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 text-xs">
+                Public
+              </Badge>
+            )}
+            {collection.isFavorite && (
+              <Star size={16} className="fill-amber-500 text-amber-500 flex-shrink-0" />
+            )}
+          </div>
+          <div className="text-sm text-gray-500 truncate">{collection.plaques} plaques • Updated {collection.updated}</div>
         </div>
       </Link>
       
@@ -115,7 +127,8 @@ export const CollectionListItem = ({
             className="flex items-center gap-2 p-3 w-full justify-start text-left"
             onClick={(e) => handleMenuItemClick(e, onToggleFavorite)}
           >
-            <Star size={16} /> {collection.isFavorite ? 'Unpin' : 'Pin'}
+            <Star size={16} className={collection.isFavorite ? 'fill-amber-500 text-amber-500' : ''} /> 
+            {collection.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
           </Button>
           <Button 
             variant="ghost" 

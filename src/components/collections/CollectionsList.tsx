@@ -1,6 +1,7 @@
+// src/components/collections/CollectionsList.tsx
 import React from 'react';
-import { CollectionListItem } from '@/components';
-import type { Collection } from '@/types/collection';
+import { Collection } from '@/types/collection';
+import { CollectionListItem } from './CollectionListItem';
 
 type CollectionsListProps = {
   collections: Collection[];
@@ -11,11 +12,12 @@ type CollectionsListProps = {
   onEdit: (id: number) => void;
   onDuplicate: (id: number) => void;
   onShare: (id: number) => void;
+  onToggleFavorite: (id: number) => void;
   onDelete: (id: number) => void;
   getUpdatedText: (timestamp: string) => string;
 };
 
-const CollectionsList = ({
+export const CollectionsList: React.FC<CollectionsListProps> = ({
   collections,
   selectedCollections,
   menuOpenId,
@@ -24,9 +26,10 @@ const CollectionsList = ({
   onEdit,
   onDuplicate,
   onShare,
+  onToggleFavorite,
   onDelete,
   getUpdatedText
-}: CollectionsListProps) => {
+}) => {
   return (
     <div className="flex flex-col gap-4">
       {collections.map((collection) => {
@@ -38,7 +41,8 @@ const CollectionsList = ({
           ...collection,
           updated: updatedText,
           plaques: collection.plaques.length, // Convert array to count for display
-          isFavorite: collection.is_favorite
+          isFavorite: collection.is_favorite,
+          isPublic: collection.is_public
         };
         
         return (
@@ -52,6 +56,7 @@ const CollectionsList = ({
             onEdit={onEdit}
             onDuplicate={onDuplicate}
             onShare={onShare}
+            onToggleFavorite={onToggleFavorite}
             onDelete={onDelete}
           />
         );

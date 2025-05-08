@@ -1,6 +1,7 @@
+// src/components/collections/CollectionsGrid.tsx
 import React from 'react';
-import { CollectionCard } from '@/components';
-import type { Collection } from '@/types/collection';
+import { Collection } from '@/types/collection';
+import { CollectionCard } from './CollectionCard';
 
 type CollectionsGridProps = {
   collections: Collection[];
@@ -11,11 +12,12 @@ type CollectionsGridProps = {
   onEdit: (id: number) => void;
   onDuplicate: (id: number) => void;
   onShare: (id: number) => void;
+  onToggleFavorite: (id: number) => void;
   onDelete: (id: number) => void;
   getUpdatedText: (timestamp: string) => string;
 };
 
-const CollectionsGrid = ({
+export const CollectionsGrid: React.FC<CollectionsGridProps> = ({
   collections,
   selectedCollections,
   menuOpenId,
@@ -24,9 +26,10 @@ const CollectionsGrid = ({
   onEdit,
   onDuplicate,
   onShare,
+  onToggleFavorite,
   onDelete,
   getUpdatedText
-}: CollectionsGridProps) => {
+}) => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {collections.map((collection) => {
@@ -38,7 +41,8 @@ const CollectionsGrid = ({
           ...collection,
           updated: updatedText,
           plaques: collection.plaques.length, // Convert array to count for display
-          isFavorite: collection.is_favorite
+          isFavorite: collection.is_favorite,
+          isPublic: collection.is_public
         };
         
         return (
@@ -52,6 +56,7 @@ const CollectionsGrid = ({
             onEdit={onEdit}
             onDuplicate={onDuplicate}
             onShare={onShare}
+            onToggleFavorite={onToggleFavorite}
             onDelete={onDelete}
           />
         );

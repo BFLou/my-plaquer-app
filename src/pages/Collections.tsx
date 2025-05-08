@@ -1,29 +1,20 @@
+// src/pages/Collections.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import { 
   CollectionsHeader,
-  CollectionsDashboard,
   CollectionsFilterBar,
-  CollectionsList,
   CollectionsGrid,
+  CollectionsList,
   CollectionCreator,
   ActionBar,
   EmptyState,
   type ViewMode
 } from '@/components';
-import { FolderPlus } from 'lucide-react';
-import { toast } from 'sonner';
+import { CollectionDeleteDialog } from '@/components/collections/CollectionDeleteDialog';
+import { FolderPlus, Trash } from 'lucide-react';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import userData from '../data/user_data.json';
 import type { Collection, NewCollection } from '@/types/collection';
 
@@ -82,10 +73,12 @@ const Collections = () => {
     
     const newUrl = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     navigate(newUrl, { replace: true });
-  }, [viewMode, searchQuery, sortOption, activeFilters]);
+  }, [viewMode, searchQuery, sortOption, activeFilters, navigate, location.pathname]);
   
   // Filter collections based on current filters
-  const getFilteredCollections = () => {
+  const filteredCollections = getFilteredCollections();
+  
+  function getFilteredCollections() {
     let filtered = collections;
     
     // Match search query
@@ -106,8 +99,24 @@ const Collections = () => {
       filtered = filtered.filter(collection => collection.is_public);
     }
     
+    // Apply type filters (Literary, Music, etc.)
+    const typeFilters = activeFilters.filter(f => !['Favorites', 'Public'].includes(f));
+    if (typeFilters.length > 0) {
+      filtered = filtered.filter(collection => {
+        // Check if collection type matches any of the filter types
+        return typeFilters.some(filter => 
+          collection.name.toLowerCase().includes(filter.toLowerCase()) || 
+          (collection.description && collection.description.toLowerCase().includes(filter.toLowerCase()))
+        );
+      });
+    }
+    
     // Sort collections based on selected option
-    filtered.sort((a, b) => {
+    return sortCollections(filtered);
+  }
+  
+  function sortCollections(filtered: Collection[]) {
+    return [...filtered].sort((a, b) => {
       if (sortOption === 'newest') {
         return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
       }
@@ -122,13 +131,9 @@ const Collections = () => {
       }
       return 0;
     });
-    
-    return filtered;
-  };
+  }
   
-  const filteredCollections = getFilteredCollections();
-  
-  // Format the "updated X ago" text
+  // Format the "updated X ago" text for display
   const getUpdatedText = (timestamp: string): string => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -270,7 +275,7 @@ const Collections = () => {
   const totalCollections = collections.length;
   const totalPlaques = collections.reduce((sum, c) => sum + c.plaques.length, 0);
   const favoritedCollections = collections.filter(c => c.is_favorite).length;
-  
+
   return (
     <PageContainer activePage="collections">
       {/* Header */}
@@ -280,16 +285,6 @@ const Collections = () => {
         favoritedCollections={favoritedCollections}
         onCreateCollection={handleCreateCollection}
       />
-      
-      {/* Dashboard section */}
-      <div className="container mx-auto px-4 mb-6">
-        <CollectionsDashboard 
-          collections={collections}
-          onCreateCollection={handleCreateCollection}
-          onViewAllFavorites={() => setActiveFilters([...activeFilters, 'Favorites'])}
-          onOpenFilters={() => setFilterModalOpen(true)}
-        />
-      </div>
       
       {/* Collection Controls */}
       <CollectionsFilterBar
@@ -327,6 +322,7 @@ const Collections = () => {
                 onEdit={handleEdit}
                 onDuplicate={handleDuplicate}
                 onShare={handleShare}
+                onToggleFavorite={handleToggleFavorite}
                 onDelete={handleDelete}
                 getUpdatedText={getUpdatedText}
               />
@@ -342,6 +338,7 @@ const Collections = () => {
                 onEdit={handleEdit}
                 onDuplicate={handleDuplicate}
                 onShare={handleShare}
+                onToggleFavorite={handleToggleFavorite}
                 onDelete={handleDelete}
                 getUpdatedText={getUpdatedText}
               />
@@ -350,34 +347,19 @@ const Collections = () => {
         )}
       </div>
       
-      {/* Collection Creator Modal */}
+      {/* Modals and Dialogs */}
       <CollectionCreator
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSave={handleSaveCollection}
       />
       
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Collections</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {selectedCollections.length} collection{selectedCollections.length === 1 ? '' : 's'}? 
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmBulkDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CollectionDeleteDialog
+        isOpen={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmBulkDelete}
+        count={selectedCollections.length}
+      />
       
       {/* Action Bar (appears when collections are selected) */}
       {selectedCollections.length > 0 && (
@@ -389,6 +371,7 @@ const Collections = () => {
             {
               label: "Delete",
               variant: "destructive",
+              icon: <Trash size={16} />,
               onClick: handleBulkDelete
             }
           ]}

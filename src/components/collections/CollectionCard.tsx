@@ -1,3 +1,4 @@
+// src/components/collections/CollectionCard.tsx
 import React from 'react';
 import { MoreHorizontal, Edit, Trash, Copy, Share2, Star, CheckCircle, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ type CollectionCardProps = {
   onDelete?: (id: number) => void;
 };
 
-export const CollectionCard = ({
+export const CollectionCard: React.FC<CollectionCardProps> = ({
   collection,
   isSelected = false,
   showMenu = true,
@@ -42,7 +43,7 @@ export const CollectionCard = ({
   onShare,
   onToggleFavorite,
   onDelete,
-}: CollectionCardProps) => {
+}) => {
   
   const handleClick = (e: React.MouseEvent) => {
     if (onToggleSelect) {
