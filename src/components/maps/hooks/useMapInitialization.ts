@@ -1,27 +1,78 @@
-// src/hooks/useMapInitialization.ts
-import { useState, useRef, useCallback, useEffect } from 'react';
+// src/components/maps/hooks/useMapInitialization.ts
+import { useState, useEffect, useRef } from 'react';
 
-export const useMapInitialization = () => {
+type MapOptions = {
+  center?: [number, number];
+  zoom?: number;
+  maxZoom?: number;
+  minZoom?: number;
+  disableAutomaticZoom?: boolean;
+};
+
+export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | null>, options: MapOptions = {}) => {
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [mapError, setMapError] = useState(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
   
-  const mapInstanceRef = useRef(null);
-  const markersLayerRef = useRef(null);
-  const clusterGroupRef = useRef(null);
-  const routeMarkerGroupRef = useRef(null);
-  const routeLineRef = useRef(null);
-  const hasInitializedRef = useRef(false);
-  const initTimeoutRef = useRef(null);
-  
-  // Add custom styles for the map
-  const addMapStyles = useCallback(() => {
-    // Check if styles are already added
-    if (document.getElementById('leaflet-custom-styles')) {
+  // Load Leaflet scripts and styles
+  useEffect(() => {
+    if (window.L) {
+      setIsScriptLoaded(true);
       return;
     }
+
+    // Create and load Leaflet CSS
+    const linkLeaflet = document.createElement('link');
+    linkLeaflet.rel = 'stylesheet';
+    linkLeaflet.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(linkLeaflet);
+
+    // Create and load MarkerCluster CSS
+    const linkCluster = document.createElement('link');
+    linkCluster.rel = 'stylesheet';
+    linkCluster.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
+    document.head.appendChild(linkCluster);
+
+    const linkClusterDefault = document.createElement('link');
+    linkClusterDefault.rel = 'stylesheet';
+    linkClusterDefault.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
+    document.head.appendChild(linkClusterDefault);
+
+    // Load Leaflet JS
+    const scriptLeaflet = document.createElement('script');
+    scriptLeaflet.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    scriptLeaflet.async = true;
+    scriptLeaflet.onload = () => {
+      // Load MarkerCluster JS after Leaflet is loaded
+      const scriptCluster = document.createElement('script');
+      scriptCluster.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+      scriptCluster.async = true;
+      
+      scriptCluster.onload = () => {
+        console.log("Map plugins loaded successfully");
+        setIsScriptLoaded(true);
+      };
+      
+      scriptCluster.onerror = (err) => {
+        console.error("Error loading MarkerCluster:", err);
+        setMapError("Failed to load map resources");
+        setIsScriptLoaded(true); // Still try to initialize the map without clustering
+      };
+      
+      document.head.appendChild(scriptCluster);
+    };
     
+    scriptLeaflet.onerror = (err) => {
+      console.error("Error loading Leaflet:", err);
+      setMapError("Failed to load map resources");
+    };
+    
+    document.head.appendChild(scriptLeaflet);
+
+    // Add styles for map and markers
     const style = document.createElement('style');
-    style.id = 'leaflet-custom-styles';
     style.innerHTML = `
       .leaflet-container {
         width: 100%;
@@ -40,295 +91,250 @@ export const useMapInitialization = () => {
         z-index: 1000 !important;
       }
       
-      /* Route marker styling */
-      .route-marker-container {
-        position: relative;
-        z-index: 1000 !important;
+      /* Popup styling */
+      .leaflet-popup-content-wrapper {
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
       }
       
-      .route-marker-diamond {
-        width: 28px;
-        height: 28px;
-        transform: rotate(45deg);
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 14px;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000 !important;
-        transition: transform 0.2s ease;
+      .leaflet-popup-content {
+        margin: 0;
+        padding: 0;
       }
       
-      .route-marker-diamond:hover {
-        transform: rotate(45deg) scale(1.1);
+      .leaflet-popup-tip {
+        background-color: white;
       }
       
-      .route-marker-content {
-        transform: rotate(-45deg);
-        color: white;
-        font-weight: bold;
-      }
-      
-      .route-marker-label {
-        position: absolute;
-        top: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #333;
-        color: white;
-        padding: 2px 6px;
-        border-radius: 10px;
-        font-size: 10px;
-        font-weight: bold;
-        white-space: nowrap;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      }
-      
-      /* Route distance labels */
-      .route-distance-label {
-        background-color: white !important;
-        border-radius: 12px !important;
-        padding: 3px 6px !important;
+      /* Control styling */
+      .leaflet-control-zoom {
+        border: none !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-        border: 1px solid #10b981 !important;
-        color: #10b981 !important;
-        font-weight: 500 !important;
-        font-size: 11px !important;
-        white-space: nowrap !important;
-        z-index: 950 !important;
+      }
+      
+      .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+        border-radius: 0.25rem !important;
+        color: #4b5563 !important;
+        border: 1px solid #e5e7eb !important;
+      }
+      
+      .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+        background-color: #f9fafb !important;
+        color: #1f2937 !important;
+      }
+      
+      /* Attribution styling */
+      .leaflet-control-attribution {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        padding: 0.25rem 0.5rem !important;
+        border-radius: 0.25rem !important;
+        font-size: 0.7rem !important;
+      }
+      
+      /* Customize cluster icons */
+      .marker-cluster {
+        background-color: rgba(59, 130, 246, 0.6) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+      }
+      
+      .marker-cluster div {
+        background-color: rgba(59, 130, 246, 0.8) !important;
+        color: white !important;
+        font-weight: bold !important;
+      }
+      
+      /* Animation for marker drop */
+      @keyframes marker-drop {
+        0% {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        60% {
+          transform: translateY(5px);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
+      /* Scale animations for markers and clusters */
+      @keyframes scale-in {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      
+      /* Animating dash array for routes */
+      @keyframes dash {
+        to {
+          stroke-dashoffset: 1000;
+        }
+      }
+      
+      /* Modern spiderfy lines */
+      .leaflet-marker-icon-wrapper svg line {
+        stroke: #3b82f6 !important;
+        stroke-width: 2 !important;
+        stroke-dasharray: 4, 4 !important;
       }
     `;
-    
     document.head.appendChild(style);
+
+    return () => {
+      // Cleanup if component unmounts
+      document.head.removeChild(linkLeaflet);
+      document.head.removeChild(linkCluster);
+      document.head.removeChild(linkClusterDefault);
+      document.head.removeChild(scriptLeaflet);
+      if (document.querySelector('script[src*="leaflet.markercluster.js"]')) {
+        document.head.removeChild(document.querySelector('script[src*="leaflet.markercluster.js"]')!);
+      }
+      document.head.removeChild(style);
+    };
   }, []);
 
-  // Load Leaflet and dependencies
-  const loadLeaflet = useCallback(() => {
-    return new Promise((resolve) => {
-      // Check if already loaded
-      if (window.L) {
-        console.log("Leaflet already loaded");
-        resolve(true);
-        return;
-      }
-      
-      console.log("Loading Leaflet...");
-      
-      // Add CSS
-      const leafletCss = document.createElement('link');
-      leafletCss.rel = 'stylesheet';
-      leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(leafletCss);
-      
-      // Add script
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => {
-        // Add styles
-        addMapStyles();
-        resolve(true);
-      };
-      script.onerror = () => {
-        console.error("Failed to load Leaflet");
-        resolve(false);
-      };
-      document.head.appendChild(script);
-    });
-  }, [addMapStyles]);
-  
-  // Thorough cleanup function to prevent Leaflet container issues
-  const cleanup = useCallback(() => {
-    // Clear any pending timeouts
-    if (initTimeoutRef.current) {
-      clearTimeout(initTimeoutRef.current);
-      initTimeoutRef.current = null;
-    }
-
-    if (mapInstanceRef.current) {
-      try {
-        // Remove all layers first - defensive coding to prevent memory leaks
-        try {
-          mapInstanceRef.current.eachLayer(layer => {
-            mapInstanceRef.current.removeLayer(layer);
-          });
-        } catch (e) {
-          console.warn("Error removing map layers:", e);
-        }
-        
-        // Then properly remove the map
-        try {
-          mapInstanceRef.current.remove();
-        } catch (e) {
-          console.warn("Error removing map:", e);
-        }
-        
-        mapInstanceRef.current = null;
-      } catch (e) {
-        console.warn("Error cleaning up map:", e);
-      }
-    }
-    
-    // Reset all refs
-    markersLayerRef.current = null;
-    clusterGroupRef.current = null;
-    routeMarkerGroupRef.current = null;
-    routeLineRef.current = null;
-    
-    // Explicitly set hasInitialized to false
-    hasInitializedRef.current = false;
-    
-    setMapLoaded(false);
-  }, []);
-
-  // Initialize map with proper error handling and container cleanup
-  const initializeMap = useCallback(async (container, onMapLoaded) => {
-    if (!container) {
-      console.error("No container provided for map");
-      if (onMapLoaded) onMapLoaded(false);
-      return null;
-    }
-    
-    // Log container dimensions to help debug
-    console.log("Container dimensions:", container.offsetWidth, container.offsetHeight);
-    
-    // Ensure any previous map is properly cleaned up
-    cleanup();
-    
-    // Ensure the container is empty
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
-    }
-    
-    // Make sure Leaflet is loaded
-    const leafletLoaded = await loadLeaflet();
-    if (!leafletLoaded) {
-      setMapError("Failed to load map libraries");
-      if (onMapLoaded) onMapLoaded(false);
-      return null;
-    }
-    
-    try {
-      // Create a wrapper div that will hold the map
-      // This allows us to reset the container without affecting the React ref
-      const mapWrapper = document.createElement('div');
-      mapWrapper.style.width = '100%';
-      mapWrapper.style.height = '100%';
-      mapWrapper.className = 'leaflet-map-wrapper';
-      container.appendChild(mapWrapper);
-      
-      // CRITICAL: Wait for next frame to ensure DOM is updated
-      // This helps prevent the '_leaflet_pos' error
-      setTimeout(() => {
-        try {
-          // Create map instance with all interactions enabled
-          const map = window.L.map(mapWrapper, {
-            center: [51.505, -0.09], // London as default
-            zoom: 13,
-            maxZoom: 18,
-            minZoom: 5,
-            // Explicitly enable all interaction options
-            dragging: true,
-            touchZoom: true,
-            doubleClickZoom: true,
-            scrollWheelZoom: true,
-            boxZoom: true,
-            keyboard: true,
-            tap: true,
-            attributionControl: true,
-            zoomControl: false // We'll add custom zoom control
-          });
-          
-          // Add tile layer
-          window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-          }).addTo(map);
-          
-          // Create layer groups
-          const markersLayer = window.L.layerGroup().addTo(map);
-          const routeMarkerGroup = window.L.layerGroup().addTo(map);
-          
-          // Store references
-          mapInstanceRef.current = map;
-          markersLayerRef.current = markersLayer;
-          routeMarkerGroupRef.current = routeMarkerGroup;
-          
-          // Add custom zoom control in better position
-          window.L.control.zoom({
-            position: 'bottomright'
-          }).addTo(map);
-          
-          // Set loaded state
-          setMapLoaded(true);
-          hasInitializedRef.current = true;
-          if (onMapLoaded) onMapLoaded(true);
-          
-          // Force a resize after a delay to ensure proper rendering
-          // Use a safer approach to invalidateSize that won't trigger the _leaflet_pos error
-          initTimeoutRef.current = setTimeout(() => {
-            if (map && !map._isDestroyed) {
-              // Check if the map container is still properly attached to DOM
-              if (map._container && map._container.parentNode) {
-                try {
-                  map.invalidateSize({ animate: false, pan: false });
-                  console.log("Forced map resize");
-                } catch (e) {
-                  console.warn("Error during map resize:", e);
-                }
-              }
-            }
-          }, 300); // Increased timeout for more reliability
-          
-          // Add some debug event handlers
-          map.on('click', function(e) {
-            console.log("Map clicked at:", e.latlng);
-          });
-          
-          map.on('moveend', function() {
-            console.log("Map moved to center:", map.getCenter());
-          });
-          
-          map.on('zoomend', function() {
-            console.log("Map zoomed to level:", map.getZoom());
-          });
-          
-          return map;
-        } catch (error) {
-          console.error("Error initializing map in setTimeout:", error);
-          setMapError(`Failed to initialize map: ${error.message}`);
-          if (onMapLoaded) onMapLoaded(false);
-          return null;
-        }
-      }, 50); // Small timeout to ensure DOM is ready
-      
-      return null; // Initial return is null, real map returned in setTimeout
-    } catch (error) {
-      console.error("Error initializing map:", error);
-      setMapError(`Failed to initialize map: ${error.message}`);
-      
-      if (onMapLoaded) onMapLoaded(false);
-      return null;
-    }
-  }, [cleanup, loadLeaflet]);
-
-  // Clean up on unmount to prevent memory leaks
+  // Initialize map once scripts are loaded
   useEffect(() => {
-    return cleanup;
-  }, [cleanup]);
-  
+    if (!isScriptLoaded || !mapRef.current || mapInstanceRef.current) return;
+
+    try {
+      console.log("Initializing map");
+      const defaultOptions = {
+        center: [51.505, -0.09], // London coordinates
+        zoom: 13,
+        maxZoom: 18,
+        minZoom: 4,
+        disableAutomaticZoom: false
+      };
+      
+      const mapOptions = { ...defaultOptions, ...options };
+      
+      // Initialize the map with zoomControl disabled to add it to custom position
+      const map = window.L.map(mapRef.current, {
+        center: mapOptions.center,
+        zoom: mapOptions.zoom,
+        maxZoom: mapOptions.maxZoom,
+        minZoom: mapOptions.minZoom,
+        zoomControl: false, // Disable default zoom control
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        wheelDebounceTime: 100,
+        wheelPxPerZoomLevel: 100,
+        bounceAtZoomLimits: false
+      });
+      
+      // Add zoom control to the top-right with improved styling
+      window.L.control.zoom({
+        position: 'topright',
+        zoomInTitle: 'Zoom in',
+        zoomOutTitle: 'Zoom out'
+      }).addTo(map);
+
+      // Add tile layer - using more attractive Carto tiles
+      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(map);
+
+      // Add scale control with metric only
+      window.L.control.scale({
+        imperial: false,
+        position: 'bottomright',
+        maxWidth: 150
+      }).addTo(map);
+      
+      // Prevent zoom on scroll unless shift key is pressed
+      map.scrollWheelZoom.disable();
+      
+      // Add event listener to enable zoom on scroll when shift key is pressed
+      document.addEventListener('keydown', function(e) {
+        if (e.shiftKey) {
+          map.scrollWheelZoom.enable();
+        }
+      });
+      
+      document.addEventListener('keyup', function(e) {
+        if (e.key === 'Shift') {
+          map.scrollWheelZoom.disable();
+        }
+      });
+      
+      // Enable touch zoom
+      map.touchZoom.enable();
+      
+      // Add a subtle shadow overlay to make the markers pop
+      const shadowOverlay = window.L.rectangle(
+        [[-90, -180], [90, 180]], 
+        { 
+          color: 'transparent',
+          fillColor: '#000', 
+          fillOpacity: 0.03,
+          interactive: false
+        }
+      ).addTo(map);
+      
+      // Add double-click to zoom
+      map.doubleClickZoom.enable();
+      
+      // Prevent automatic zooming if requested
+      if (mapOptions.disableAutomaticZoom) {
+        // Store original fitBounds method
+        const originalFitBounds = map.fitBounds;
+        
+        // Override fitBounds to do nothing unless explicitly called
+        map.fitBounds = function() {
+          // Only apply if a specific flag is set
+          if (map._allowFitBounds) {
+            return originalFitBounds.apply(this, arguments);
+          }
+          return this;
+        };
+        
+        // Method to allow fitBounds calls
+        map.allowFitBounds = function() {
+          map._allowFitBounds = true;
+          return this;
+        };
+        
+        // Method to disallow fitBounds calls
+        map.disallowFitBounds = function() {
+          map._allowFitBounds = false;
+          return this;
+        };
+      }
+      
+      // Store map instance
+      mapInstanceRef.current = map;
+      setMapLoaded(true);
+      
+      // Add map loaded event
+      setTimeout(() => {
+        mapRef.current?.dispatchEvent(new CustomEvent('map:loaded', { 
+          detail: { map } 
+        }));
+      }, 100);
+    } catch (error: any) {
+      console.error("Map initialization error:", error);
+      setMapError(`Failed to initialize map: ${error.message}`);
+    }
+  }, [isScriptLoaded, options]);
+
   return {
     mapLoaded,
     mapError,
     mapInstance: mapInstanceRef.current,
-    markersLayer: markersLayerRef.current,
-    clusterGroup: clusterGroupRef.current,
-    routeMarkerGroup: routeMarkerGroupRef.current,
-    routeLineRef,
-    initializeMap,
-    cleanup
+    markers: markersRef.current,
+    isScriptLoaded
   };
 };
 

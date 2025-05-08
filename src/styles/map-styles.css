@@ -28,450 +28,6 @@
 
 /* Custom marker styling */
 .plaque-marker {
-  transform-origin: bottom center;
-  transition: transform 0.2s ease;
-}
-
-.plaque-marker-selected {
-  z-index: 1000 !important;
-}
-
-.plaque-marker-circle {
-  transition: all 0.2s ease;
-}
-
-/* Route marker specific styles */
-.route-marker-container {
-  position: relative;
-  z-index: 1000 !important;
-}
-
-.route-marker-diamond {
-  width: 28px;
-  height: 28px;
-  transform: rotate(45deg);
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 14px;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000 !important;
-  transition: transform 0.2s ease;
-}
-
-.route-marker-diamond:hover {
-  transform: rotate(45deg) scale(1.1);
-}
-
-.route-marker-content {
-  transform: rotate(-45deg);
-  color: white;
-  font-weight: bold;
-}
-
-.route-marker-label {
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: bold;
-  white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
-/* Route distance labels */
-.route-distance-label {
-  background-color: white !important;
-  border-radius: 12px !important;
-  padding: 3px 6px !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-  border: 1px solid #10b981 !important;
-  color: #10b981 !important;
-  font-weight: 500 !important;
-  font-size: 11px !important;
-  white-space: nowrap !important;
-  z-index: 950 !important;
-}
-
-/* User location styling */
-.user-location-pulse-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.user-location-pulse {
-  position: absolute;
-  top: -14px;
-  left: -14px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background-color: rgba(59, 130, 246, 0.3);
-  animation: pulse 1.5s infinite;
-}
-
-.user-location-dot {
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: #3b82f6;
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
-}
-
-/* Pulse animation for markers */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  70% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0;
-  }
-}
-
-/* Route line animation */
-@keyframes dash {
-  to {
-    stroke-dashoffset: -1000;
-  }
-}
-
-.animated-dash {
-  animation: dash 30s linear infinite;
-}
-
-/* Marker animations */
-.route-point {
-  animation: slide-in 0.3s ease-out forwards;
-}
-
-@keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Route planning indicator */
-.route-planning-indicator {
-  position: absolute;
-  background-color: rgba(16, 185, 129, 0.9);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 900 !important;
-}
-
-/* Route panel container */
-.route-panel-container {
-  position: absolute;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 950 !important;
-}
-
-/* Custom cluster styling */
-.custom-cluster {
-  width: 100%;
-  height: 100%;
-  background-color: white;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-}
-
-.custom-cluster-inner {
-  width: calc(100% - 4px);
-  height: calc(100% - 4px);
-  border-radius: 50%;
-  background-color: #3b82f6;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.custom-cluster-icon {
-  background: transparent !important;
-  border: none !important;
-}
-
-/* Popup styling */
-.plaque-popup-container {
-  z-index: 999 !important;
-}
-
-.plaque-popup {
-  padding: 1rem;
-}
-
-/* Ensure popups appear correctly */
-.leaflet-popup-content-wrapper {
-  border-radius: 0.5rem !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-.leaflet-popup-content {
-  margin: 0 !important;
-  width: auto !important;
-  min-width: 200px;
-}
-
-/* Route markers colors */
-.route-marker-start .route-marker-diamond {
-  background-color: #3b82f6 !important; /* Blue */
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
-}
-
-.route-marker-end .route-marker-diamond {
-  background-color: #ef4444 !important; /* Red */
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
-}
-
-.route-marker-waypoint .route-marker-diamond {
-  background-color: #10b981 !important; /* Green */
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3) !important;
-}
-
-.route-marker-start .route-marker-label {
-  background-color: #3b82f6 !important;
-}
-
-.route-marker-end .route-marker-label {
-  background-color: #ef4444 !important;
-}
-
-.route-marker-waypoint .route-marker-label {
-  background-color: #10b981 !important;
-}
-
-/* Fix z-index for all map elements to prevent flashing */
-.leaflet-map-pane {
-  z-index: 100 !important;
-}
-
-.leaflet-tile-pane {
-  z-index: 200 !important;
-}
-
-.leaflet-overlay-pane {
-  z-index: 400 !important;
-}
-
-.leaflet-shadow-pane {
-  z-index: 500 !important;
-}
-
-.leaflet-marker-pane {
-  z-index: 600 !important;
-}
-
-.leaflet-tooltip-pane {
-  z-index: 650 !important;
-}
-
-.leaflet-popup-pane {
-  z-index: 700 !important;
-}
-
-.leaflet-control-container {
-  z-index: 800 !important;
-}
-
-/* Make sure route markers are always on top */
-.leaflet-marker-icon.route-marker {
-  z-index: 1000 !important;
-}
-
-/* SVG tooltip */
-.tooltip-box {
-  fill: rgba(0, 0, 0, 0.8);
-  rx: 4;
-  ry: 4;
-}
-
-.tooltip-text {
-  fill: white;
-  font-size: 12px;
-  text-anchor: middle;
-  dominant-baseline: middle;
-}
-
-/* Alert dialog styles */
-.alert-dialog-overlay {
-  z-index: 9999 !important;
-}
-
-.alert-dialog-content {
-  z-index: 10000 !important;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .map-controls {
-    top: auto;
-    bottom: 1rem;
-    right: 1rem;
-  }
-  
-  .route-panel-container {
-    width: 90% !important;
-    left: 5% !important;
-    transform: none !important;
-  }
-}/* Route line animation */
-@keyframes dash {
-  to {
-    stroke-dashoffset: -1000;
-  }
-}
-
-.animated-dash {
-  animation: dash 30s linear infinite;
-}
-
-/* Enhanced route marker styles */
-.route-marker-start {
-  background: #3b82f6 !important; /* Blue */
-  border: 2px solid white !important;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
-}
-
-.route-marker-end {
-  background: #ef4444 !important; /* Red */
-  border: 2px solid white !important;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
-}
-
-.route-marker-waypoint {
-  background: #10b981 !important; /* Green */
-  border: 2px solid white !important;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3) !important;
-}
-
-/* Diamond-shaped route markers */
-.route-marker-container {
-  border-radius: 4px !important;
-  transform: rotate(45deg) !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-  z-index: 1000 !important;
-}
-
-.route-marker-content {
-  transform: rotate(-45deg) !important;
-  font-weight: bold !important;
-}
-
-.route-marker-diamond {
-  transform: rotate(45deg) !important;
-  border-radius: 4px !important;
-  z-index: 1000 !important;
-}
-
-/* Route distance labels */
-.route-distance-label {
-  background-color: white !important;
-  border-radius: 12px !important;
-  padding: 3px 6px !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-  border: 1px solid #10b981 !important;
-  color: #10b981 !important;
-  font-weight: 500 !important;
-  font-size: 11px !important;
-  white-space: nowrap !important;
-  z-index: 950 !important;
-}
-
-/* Total distance badge */
-.total-distance-badge {
-  z-index: 960 !important;
-  white-space: nowrap !important;
-  pointer-events: none !important;
-}
-
-/* Make sure polylines are properly styled */
-.leaflet-overlay-pane svg path {
-  stroke-linecap: round !important;
-  stroke-linejoin: round !important;
-  pointer-events: visibleStroke !important;
-}
-
-/* Route line highlight on hover */
-.leaflet-overlay-pane svg path:hover {
-  stroke-opacity: 1 !important;
-  stroke-width: 6px !important;
-  transition: stroke-width 0.2s, stroke-opacity 0.2s !important;
-}
-
-/* Fix for z-index issues with route markers */
-.leaflet-marker-pane .route-marker {
-  z-index: 1000 !important;
-}
-
-/* Ensure route markers appear above other markers */
-.leaflet-marker-icon.route-marker {
-  z-index: 1000 !important;
-}/* src/styles/map-styles.css */
-
-/* General map container styling */
-.map-container {
-  position: relative;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease;
-  z-index: 1; /* Base level for map */
-}
-
-.map-container:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Map controls styling */
-.map-controls {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1000;
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  padding: 0.5rem;
-}
-
-/* Custom marker styling */
-.plaque-marker {
   animation: marker-drop 0.5s ease-out forwards;
   transform-origin: bottom center;
 }
@@ -778,19 +334,72 @@
   position: relative;
 }
 
-.map-container {
-  height: 500px;
-  width: 100%;
-  min-height: 400px;
+/* src/styles/map-styles.css */
+/* Add these styles to your existing map-styles.css file */
+
+/* Route line animation */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
 }
 
-/* Fix marker icon styles */
-.custom-marker {
+.animated-dash {
+  animation: dash 30s linear infinite;
+}
+
+/* Route marker styles */
+.route-marker-start {
+  background: #3b82f6 !important;
+  border: 2px solid white !important;
+}
+
+.route-marker-end {
+  background: #ef4444 !important;
+  border: 2px solid white !important;
+}
+
+.route-marker-waypoint {
+  background: #10b981 !important;
+  border: 2px solid white !important;
+}
+
+/* Ensure polylines are visible with proper z-index */
+.leaflet-overlay-pane {
+  z-index: 450 !important;
+}
+
+/* Make route lines more prominent */
+.leaflet-overlay-pane svg path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: visibleStroke;
+}
+
+/* Make sure markers remain on top of route lines */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+/* Make sure popup appears above everything */
+.leaflet-popup-pane {
+  z-index: 700 !important;
+}
+
+/* Distance label styling */
+.distance-label {
   background: transparent !important;
   border: none !important;
 }
 
-/* Ensure popup content is visible */
-.leaflet-popup-content {
-  min-width: 200px;
+/* Additional hover effects for better UX */
+.route-marker:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s;
+}
+
+/* Fix for Safari route rendering issues */
+.leaflet-safari .leaflet-tile-container {
+  width: 100% !important;
+  height: 100% !important;
 }

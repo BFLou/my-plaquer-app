@@ -1,11 +1,11 @@
 // src/components/maps/controls/MapControls.tsx
 import React from 'react';
-import { Navigation, Filter, Route as RouteIcon, Map, Compass, Layers, Share } from 'lucide-react';
+import { Navigation, Filter, Route as RouteIcon, Map, X, Circle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-interface MapControlsProps {
+type MapControlsProps = {
   isLoadingLocation: boolean;
   showFilters: boolean;
   setShowFilters: (show: boolean) => void;
@@ -14,12 +14,7 @@ interface MapControlsProps {
   findUserLocation: () => void;
   hasUserLocation: boolean;
   routePointsCount: number;
-  resetMap: () => void;
-  mapMode?: string;
-  setMapMode?: (mode: string) => void;
-  showShare?: boolean;
-  onShare?: () => void;
-}
+};
 
 const MapControls: React.FC<MapControlsProps> = ({
   isLoadingLocation,
@@ -29,18 +24,12 @@ const MapControls: React.FC<MapControlsProps> = ({
   toggleRoutingMode,
   findUserLocation,
   hasUserLocation,
-  routePointsCount,
-  resetMap,
-  mapMode = 'streets',
-  setMapMode,
-  showShare = false,
-  onShare
+  routePointsCount
 }) => {
   return (
     <TooltipProvider>
-      <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2 map-controls">
-        <div className="flex flex-col gap-2">
-          {/* Location Button */}
+<div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
+<div className="flex flex-col gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -62,7 +51,6 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* Filter Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -70,6 +58,7 @@ const MapControls: React.FC<MapControlsProps> = ({
                 size="sm" 
                 className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-blue-50 border-blue-200' : ''}`}
                 onClick={() => setShowFilters(!showFilters)}
+                disabled={!hasUserLocation}
               >
                 <Filter size={18} className={showFilters ? 'text-blue-600' : ''} />
                 {hasUserLocation && (
@@ -82,99 +71,44 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* Route Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
-                variant={isRoutingMode ? "default" : "outline"}
+                variant="outline" 
                 size="sm" 
-                className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-600 text-white' : ''}`}
+                className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-50 border-green-200' : ''}`}
                 onClick={toggleRoutingMode}
               >
-                <RouteIcon size={18} />
+                <RouteIcon size={18} className={isRoutingMode ? 'text-green-600' : ''} />
                 {isRoutingMode && routePointsCount > 0 && (
-                  <span className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center bg-green-500 rounded-full text-white text-xs">
+                  <Badge 
+                    variant="default" 
+                    className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center bg-green-500"
+                  >
                     {routePointsCount}
-                  </span>
+                  </Badge>
                 )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left">
-              <p>{isRoutingMode ? "Exit route planning" : "Plan a walking route"}</p>
+              <p>{isRoutingMode ? "Exit route planning" : "Plan a route"}</p>
             </TooltipContent>
           </Tooltip>
           
-          {/* Map Style Selector (if provided) */}
-          {setMapMode && (
-            <Tooltip>
-              <DropdownMenu>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-10 w-10 p-0"
-                    >
-                      <Layers size={18} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    onClick={() => setMapMode('streets')}
-                    className={mapMode === 'streets' ? 'bg-blue-50' : ''}
-                  >
-                    Streets
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setMapMode('satellite')}
-                    className={mapMode === 'satellite' ? 'bg-blue-50' : ''}
-                  >
-                    Satellite
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setMapMode('terrain')}
-                    className={mapMode === 'terrain' ? 'bg-blue-50' : ''}
-                  >
-                    Terrain
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-                <TooltipContent side="left">
-                  <p>Change map style</p>
-                </TooltipContent>
-              </DropdownMenu>
-            </Tooltip>
-          )}
-          
-          {/* Share Button (if enabled) */}
-          {showShare && onShare && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-10 w-10 p-0"
-                  onClick={onShare}
-                >
-                  <Share size={18} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>Share this map view</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          
-          {/* Reset/Compass Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="h-10 w-10 p-0"
-                onClick={resetMap}
+                onClick={() => {
+                  if (window.L && window.L.map) {
+                    // Reset map view to show all markers
+                    window.location.reload();
+                  }
+                }}
               >
-                <Compass size={18} />
+                <Map size={18} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left">

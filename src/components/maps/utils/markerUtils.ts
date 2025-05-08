@@ -1,4 +1,6 @@
-// src/utils/markerUtils.ts
+// src/components/maps/utils/markerUtils.ts
+// This replaces your existing markerUtils.ts file
+
 import { Plaque } from '@/types/plaque';
 
 /**
@@ -56,101 +58,30 @@ export const createPlaqueIcon = (
 };
 
 /**
- * Creates a route marker with diamond shape for better visibility
- */
-export const createRouteMarker = (
-  L: any,
-  plaque: Plaque,
-  index: number,
-  totalPoints: number
-) => {
-  // Determine marker style based on position in route
-  let markerLabel, markerColor, markerClass;
-  
-  if (index === 0) {
-    markerLabel = 'S';
-    markerColor = '#3b82f6'; // Blue for start
-    markerClass = 'route-marker-start';
-  } else if (index === totalPoints - 1) {
-    markerLabel = 'E';
-    markerColor = '#ef4444'; // Red for end
-    markerClass = 'route-marker-end';
-  } else {
-    markerLabel = (index + 1).toString();
-    markerColor = '#10b981'; // Green for waypoints
-    markerClass = 'route-marker-waypoint';
-  }
-  
-  // Create diamond-shaped route marker
-  return L.divIcon({
-    className: `route-marker ${markerClass}`,
-    html: `
-      <div class="route-marker-container">
-        <div class="route-marker-diamond" style="background-color: ${markerColor};">
-          <div class="route-marker-content">${markerLabel}</div>
-        </div>
-        <div class="route-marker-label">${
-          index === 0 ? 'Start' : 
-            index === totalPoints - 1 ? 'End' : 
-            `Stop ${index + 1}`
-        }</div>
-      </div>
-    `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
-};
-
-/**
- * Creates a route distance marker for displaying segment information
- */
-export const createDistanceMarker = (
-  L: any,
-  distance: number,
-  walkingTime: string,
-  formatDistance: (distance: number) => string
-) => {
-  return L.divIcon({
-    className: 'distance-label',
-    html: `
-      <div class="route-distance-label">
-        ${formatDistance(distance)} · ${walkingTime}
-      </div>
-    `,
-    iconSize: [80, 20],
-    iconAnchor: [40, 10]
-  });
-};
-
-/**
  * Creates popup content for a plaque marker with improved styling
  */
 export const createPlaquePopup = (
   plaque: Plaque,
   onPlaqueClick: (plaque: Plaque) => void,
   isRoutingMode: boolean = false,
-  onAddToRoute?: (plaque: Plaque) => void
+  onAddToRoute: ((plaque: Plaque) => void) | null = null
 ) => {
   const popupContent = document.createElement('div');
   popupContent.className = 'plaque-popup p-3';
   
   // Create popup HTML with improved styling and conditional routing button
   popupContent.innerHTML = `
-    <div class="max-w-xs">
-      <div class="font-medium text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
-      <div class="text-xs text-gray-600 mb-2">${plaque.location || plaque.address || ''}</div>
-      ${plaque.erected ? `<div class="text-xs text-gray-500 mb-2">Erected: ${plaque.erected}</div>` : ''}
-      ${plaque.visited ? `<div class="text-xs text-green-600 mb-2">✓ You've visited this plaque</div>` : ''}
-      <div class="flex gap-2">
-        <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
-          View Details
+    <div class="font-semibold text-sm mb-2">${plaque.title || 'Unnamed Plaque'}</div>
+    <div class="text-xs text-gray-600 mb-3">${plaque.location || plaque.address || ''}</div>
+    <div class="flex gap-2">
+      <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">
+        View Details
+      </button>
+      ${isRoutingMode ? `
+        <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
+          Add to Route
         </button>
-        ${isRoutingMode ? `
-          <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors">
-            Add to Route
-          </button>
-        ` : ''}
-      </div>
+      ` : ''}
     </div>
   `;
   
@@ -175,94 +106,17 @@ export const createPlaquePopup = (
 };
 
 /**
- * Creates popup content for a route marker
+ * Calculate distance between two points using Haversine formula
  */
-export const createRoutePopup = (
-  plaque: Plaque,
-  index: number,
-  totalPoints: number,
-  onPlaqueClick: (plaque: Plaque) => void,
-  onRemoveFromRoute: (plaqueId: number) => void
-) => {
-  const popupContent = document.createElement('div');
-  popupContent.className = 'plaque-popup';
-  
-  // Create type label based on position
-  let typeLabel = '';
-  if (index === 0) typeLabel = 'Starting point';
-  else if (index === totalPoints - 1) typeLabel = 'Final destination';
-  else typeLabel = `Stop #${index + 1}`;
-  
-  popupContent.innerHTML = `
-    <div class="max-w-xs">
-      <div class="font-medium text-sm">${plaque.title || 'Unnamed Plaque'}</div>
-      <div class="text-xs text-green-600 mt-1">• ${typeLabel} in walking route</div>
-      <div class="flex gap-2 mt-3">
-        <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
-          View Details
-        </button>
-        <button class="remove-from-route py-1.5 px-3 bg-red-500 text-white text-xs rounded-full hover:bg-red-600 transition-colors">
-          Remove
-        </button>
-      </div>
-    </div>
-  `;
-  
-  // Add event listeners
-  setTimeout(() => {
-    const detailButton = popupContent.querySelector('.view-details');
-    if (detailButton) {
-      detailButton.addEventListener('click', () => {
-        onPlaqueClick(plaque);
-      });
-    }
-    
-    const removeButton = popupContent.querySelector('.remove-from-route');
-    if (removeButton) {
-      removeButton.addEventListener('click', () => {
-        onRemoveFromRoute(plaque.id);
-      });
-    }
-  }, 0);
-  
-  return popupContent;
-};
-
-/**
- * Create directional arrow for route segments
- */
-export const createDirectionalArrow = (L: any, startPoint: number[], endPoint: number[]) => {
-  // Calculate the midpoint of the segment
-  const midX = (startPoint[0] + endPoint[0]) / 2;
-  const midY = (startPoint[1] + endPoint[1]) / 2;
-  
-  // Calculate the direction vector
-  const dx = endPoint[0] - startPoint[0];
-  const dy = endPoint[1] - startPoint[1];
-  
-  // Normalize the direction vector
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const unitX = dx / length;
-  const unitY = dy / length;
-  
-  // Calculate perpendicular vector
-  const perpX = -unitY;
-  const perpY = unitX;
-  
-  // Arrow size (adjust based on map zoom)
-  const arrowSize = 0.0002;
-  
-  // Calculate arrow points
-  const arrowPoints = [
-    [midX - unitX * arrowSize * 2 + perpX * arrowSize, midY - unitY * arrowSize * 2 + perpY * arrowSize],
-    [midX, midY],
-    [midX - unitX * arrowSize * 2 - perpX * arrowSize, midY - unitY * arrowSize * 2 - perpY * arrowSize]
-  ];
-  
-  // Create arrow polyline
-  return L.polyline(arrowPoints, {
-    color: '#10b981',
-    weight: 3,
-    opacity: 0.9
-  });
+export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c;
+  return distance;
 };

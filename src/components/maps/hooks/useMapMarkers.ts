@@ -1,432 +1,429 @@
-// src/hooks/useMapMarkers.ts
-import { useCallback, useRef } from 'react';
-import { toast } from 'sonner';
+// src/components/maps/hooks/useMapMarkers.ts
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 
-interface UseMapMarkersProps {
-  mapInstance: any;
-  markersLayer: any;
-  clusterGroup: any;
-  routeMarkerGroup: any;
-  routeLineRef: any;
-  plaques: Plaque[];
-  favorites: number[];
-  selectedPlaqueId: number | null;
-  onPlaqueClick: (plaque: Plaque) => void;
-  isRoutingMode: boolean;
-  addPlaqueToRoute: (plaque: Plaque) => void;
-  removePlaqueFromRoute: (plaqueId: number) => void;
-  routePoints: Plaque[];
-  maintainView: boolean;
-  formatDistance: (distance: number) => string;
-  isDrawingRoute: boolean;
-}
-
-export const useMapMarkers = ({
-  mapInstance,
-  markersLayer,
-  clusterGroup,
-  routeMarkerGroup,
-  routeLineRef,
-  plaques,
-  favorites,
-  selectedPlaqueId,
-  onPlaqueClick,
-  isRoutingMode,
-  addPlaqueToRoute,
-  removePlaqueFromRoute,
-  routePoints,
-  maintainView,
-  formatDistance,
-  isDrawingRoute
-}: UseMapMarkersProps) => {
-  // Store previous marker state to prevent unnecessary clearing
-  const prevRouteRef = useRef<string>('');
+export default function useMapMarkers(
+  mapInstance: any,
+  plaques: Plaque[],
+  favorites: number[],
+  selectedPlaqueId: number | null | undefined,
+  isRoutingMode: boolean,
+  onPlaqueClick: (plaque: Plaque) => void,
+  addPlaqueToRoute: (plaque: Plaque) => void,
+  maintainView: boolean = false
+) {
+  const [markersMap, setMarkersMap] = useState<Map<number, any>>(new Map());
+  const clusterGroupRef = useRef<any>(null);
+  const markersLayerRef = useRef<any>(null);
+  const lastViewStateRef = useRef<any>(null);
   
-  // Fit to bounds based on plaque markers
-  const fitToMarkers = useCallback((plaquesToFit: Plaque[] = []) => {
-    if (!mapInstance || !window.L) return;
+  // Create and style popup content for a plaque
+  const createPlaquePopup = useCallback((
+    plaque: Plaque, 
+    isFavorite: boolean,
+    isRouting: boolean
+  ) => {
+    // Create DOM element for popup
+    const popupContent = document.createElement('div');
+    popupContent.className = 'plaque-popup p-3';
     
-    const validPlaques = plaquesToFit.filter(p => 
-      p.latitude && p.longitude && 
-      !isNaN(parseFloat(String(p.latitude))) && 
-      !isNaN(parseFloat(String(p.longitude)))
-    );
+    // Truncate inscription if too long
+    const inscription = plaque.inscription 
+      ? plaque.inscription.length > 100 
+        ? plaque.inscription.substring(0, 100) + '...' 
+        : plaque.inscription
+      : '';
     
-    if (validPlaques.length > 0) {
-      try {
-        const latLngs = validPlaques.map(p => {
-          const lat = typeof p.latitude === 'string' ? 
-            parseFloat(p.latitude) : p.latitude;
-          const lng = typeof p.longitude === 'string' ? 
-            parseFloat(p.longitude) : p.longitude;
-          return window.L.latLng(lat, lng);
+    // Prepare color display (if available)
+    const plaqueColor = plaque.color?.toLowerCase() || 'blue';
+    const colorDisplay = `
+      <div class="flex items-center gap-1 text-xs text-gray-500 mt-1">
+        <div class="w-3 h-3 rounded-full" style="background-color: ${
+          plaqueColor === 'blue' ? '#3b82f6' : 
+          plaqueColor === 'green' ? '#10b981' : 
+          plaqueColor === 'brown' ? '#b45309' : 
+          plaqueColor === 'black' ? '#1f2937' : 
+          plaqueColor === 'grey' || plaqueColor === 'gray' ? '#4b5563' : 
+          '#3b82f6'
+        }"></div>
+        <span>${plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} plaque</span>
+      </div>
+    `;
+    
+    // Create popup HTML with improved styling
+    popupContent.innerHTML = `
+      <div class="max-w-xs">
+        <div class="font-medium text-sm">${plaque.title || 'Unnamed Plaque'}</div>
+        <div class="text-xs text-gray-600 mt-1">${plaque.location || plaque.address || ''}</div>
+        ${plaque.color ? colorDisplay : ''}
+        ${plaque.erected ? `<div class="text-xs text-gray-500 mt-1">Erected: ${plaque.erected}</div>` : ''}
+        ${plaque.visited ? `<div class="text-xs text-green-600 mt-1">✓ You've visited this plaque</div>` : ''}
+        ${inscription ? `
+          <div class="text-xs text-gray-600 mt-2 italic">${inscription}</div>
+        ` : ''}
+        <div class="flex gap-2 mt-3">
+          <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded-full flex-grow hover:bg-blue-600 transition-colors">
+            View Details
+          </button>
+          ${isRouting ? `
+            <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition-colors">
+              Add to Route
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    
+    // Add event listeners
+    setTimeout(() => {
+      const detailButton = popupContent.querySelector('.view-details');
+      if (detailButton) {
+        detailButton.addEventListener('click', () => {
+          onPlaqueClick(plaque);
         });
-        
-        const bounds = window.L.latLngBounds(latLngs);
-        
-        if (bounds.isValid()) {
-          mapInstance.fitBounds(bounds, { 
-            padding: [50, 50],
-            animate: true,
-            duration: 0.75  // Smoother animation
-          });
-        }
-      } catch (e) {
-        console.warn("Non-critical error fitting to markers:", e);
-        // Fallback to fixed view
-        mapInstance.setView([51.505, -0.09], 13);
       }
-    } else {
-      // Default view if no valid plaques
-      mapInstance.setView([51.505, -0.09], 13);
-    }
-  }, [mapInstance]);
-  
-  // Create a plaque marker
-  const createPlaqueMarker = useCallback((plaque: Plaque) => {
-    if (!window.L || !mapInstance) return null;
+      
+      const routeButton = popupContent.querySelector('.add-to-route');
+      if (routeButton) {
+        routeButton.addEventListener('click', () => {
+          addPlaqueToRoute(plaque);
+        });
+      }
+    }, 0);
     
-    try {
-      // Ensure coordinates are valid numbers
-      if (!plaque.latitude || !plaque.longitude) {
-        return null;
-      }
-      
-      const lat = typeof plaque.latitude === 'string' ? 
-        parseFloat(plaque.latitude) : plaque.latitude;
-      const lng = typeof plaque.longitude === 'string' ? 
-        parseFloat(plaque.longitude) : plaque.longitude;
-      
-      if (isNaN(lat) || isNaN(lng)) {
-        return null;
-      }
-      
-      // Get plaque color for marker
-      const colorMap: Record<string, string> = {
-        'blue': '#3b82f6',
-        'green': '#10b981',
-        'brown': '#b45309',
-        'black': '#1f2937',
-        'grey': '#4b5563',
-        'gray': '#4b5563'
-      };
-      
-      const color = colorMap[(plaque.color?.toLowerCase() || 'blue')] || '#3b82f6';
-      const isFavorite = favorites.includes(plaque.id);
-      const isSelected = selectedPlaqueId === plaque.id;
-      
-      // Create custom icon HTML
-      const iconHtml = `
-        <div class="flex items-center justify-center ${isSelected ? 'scale-125' : ''}">
-          <div class="bg-white rounded-full p-1 shadow-md ${isFavorite ? 'ring-2 ring-amber-500' : ''}">
+    return popupContent;
+  }, [onPlaqueClick, addPlaqueToRoute]);
+  
+  // Create a marker icon for a plaque
+  const createPlaqueIcon = useCallback((
+    L: any,
+    plaque: Plaque,
+    isFavorite: boolean,
+    isSelected: boolean
+  ) => {
+    // Get plaque color with fallback to blue
+    const plaqueColor = (plaque.color?.toLowerCase() || 'blue');
+    
+    // Color mapping for different plaque types
+    const bgColor = {
+      'blue': '#3b82f6',
+      'green': '#10b981',
+      'brown': '#b45309',
+      'black': '#1f2937',
+      'grey': '#4b5563',
+      'gray': '#4b5563'
+    }[plaqueColor] || '#3b82f6';
+    
+    // Determine size based on state
+    let size = isSelected ? 42 : 36;
+    
+    // Create HTML for the marker
+    const html = `
+      <div class="plaque-marker ${isSelected ? 'plaque-marker-selected' : ''}">
+        <div class="marker-container" style="${isSelected ? 'transform: scale(1.2);' : ''} transition: transform 0.2s ease;">
+          <div style="
+            width: ${size}px;
+            height: ${size}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: ${isFavorite ? '2px solid #f59e0b' : '2px solid white'};
+            padding: 2px;
+          ">
             <div style="
-              background-color: ${color}; 
-              width: 24px; 
-              height: 24px;
+              width: 100%;
+              height: 100%;
               border-radius: 50%;
+              background-color: ${bgColor};
               display: flex;
               align-items: center;
               justify-content: center;
               color: white;
             ">
-              ${plaque.visited ? 
-                '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : 
-                '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
+              ${plaque.visited 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' 
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
               }
             </div>
           </div>
-        </div>
-      `;
-      
-      // Create marker with custom icon
-      const icon = window.L.divIcon({
-        className: `custom-marker ${isSelected ? 'selected-marker' : ''}`,
-        html: iconHtml,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-      });
-      
-      const marker = window.L.marker([lat, lng], { 
-        icon: icon,
-        riseOnHover: true,
-        title: plaque.title || 'Plaque'
-      });
-      
-      // Create popup content
-      const popupContent = document.createElement('div');
-      popupContent.className = 'plaque-popup p-2';
-      
-      // Create popup HTML with conditional routing button
-      popupContent.innerHTML = `
-        <div class="font-semibold text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
-        <div class="text-xs text-gray-600 mb-2 truncate">${plaque.location || plaque.address || ''}</div>
-        <div class="flex gap-2">
-          <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">View Details</button>
-          ${isRoutingMode ? `
-            <button class="add-to-route py-1 px-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
-              Add to Route
-            </button>
+          ${isSelected ? `
+            <div style="
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: ${size}px;
+              height: ${size}px;
+              border-radius: 50%;
+              background-color: rgba(59, 130, 246, 0.3);
+              animation: pulse 1.5s infinite;
+              z-index: -1;
+            "></div>
           ` : ''}
         </div>
+      </div>
+    `;
+    
+    // Add CSS animation for pulse effect
+    if (!document.getElementById('plaque-marker-styles')) {
+      const style = document.createElement('style');
+      style.id = 'plaque-marker-styles';
+      style.innerHTML = `
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.8; }
+          70% { transform: scale(1.5); opacity: 0; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+        .plaque-marker {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .plaque-marker-selected {
+          z-index: 1000 !important;
+        }
       `;
-      
-      // Create popup with specified options
-      const popup = window.L.popup({
-        closeButton: true,
-        autoClose: true,
-        className: 'plaque-popup-container',
-        offset: [0, -14] // Adjust offset to position the popup better
-      }).setContent(popupContent);
-      
-      // Bind popup to marker
-      marker.bindPopup(popup);
-      
-      // Add click handlers after a small delay to ensure DOM is ready
-      setTimeout(() => {
-        // Add event listeners for popup buttons
-        const detailButton = popupContent.querySelector('.view-details');
-        if (detailButton) {
-          detailButton.addEventListener('click', () => {
-            if (onPlaqueClick) onPlaqueClick(plaque);
-            marker.closePopup();
+      document.head.appendChild(style);
+    }
+    
+    return L.divIcon({
+      className: 'custom-marker',
+      html,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+  }, []);
+  
+  // Initialize cluster group 
+  useEffect(() => {
+    if (!mapInstance || !window.L) return;
+    
+    const L = window.L;
+    
+    // Create markers layer group
+    const markersLayer = L.layerGroup();
+    markersLayer.addTo(mapInstance);
+    markersLayerRef.current = markersLayer;
+    
+    // Create cluster group if MarkerClusterGroup is available
+    if (L.markerClusterGroup) {
+      const clusterGroup = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 50,
+        zoomToBoundsOnClick: true,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 18,
+        animate: true,
+        spiderfyDistanceMultiplier: 1.5,
+        iconCreateFunction: function(cluster: any) {
+          const count = cluster.getChildCount();
+          let size;
+          
+          // Size based on count
+          if (count < 5) size = 40;
+          else if (count < 20) size = 44;
+          else if (count < 50) size = 48;
+          else size = 52;
+          
+          // Create custom icon for clusters
+          return L.divIcon({
+            html: `
+              <div style="
+                width: ${size}px;
+                height: ${size}px;
+                background-color: white;
+                border-radius: 50%;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+              ">
+                <div style="
+                  width: calc(100% - 4px);
+                  height: calc(100% - 4px);
+                  border-radius: 50%;
+                  background-color: #3b82f6;
+                  color: white;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 14px;
+                ">
+                  ${count}
+                </div>
+              </div>
+            `,
+            className: 'custom-cluster',
+            iconSize: [size, size],
+            iconAnchor: [size/2, size/2]
           });
         }
-        
-        const routeButton = popupContent.querySelector('.add-to-route');
-        if (routeButton && addPlaqueToRoute) {
-          routeButton.addEventListener('click', () => {
-            addPlaqueToRoute(plaque);
-            marker.closePopup();
-          });
-        }
-      }, 10);
-      
-      // Add click handler for the marker itself
-      marker.on('click', () => {
-        // Only handle direct marker clicks when not in routing mode
-        if (!isRoutingMode) {
-          onPlaqueClick(plaque);
-        }
-        // For routing mode, let the popup buttons handle it
       });
       
-      return marker;
-    } catch (error) {
-      console.error(`Error creating marker for plaque ${plaque.id}:`, error);
-      return null;
-    }
-  }, [mapInstance, favorites, selectedPlaqueId, onPlaqueClick, isRoutingMode, addPlaqueToRoute]);
-  
-  // Add route markers for the walking route
-  const addRouteMarkers = useCallback(() => {
-    if (!mapInstance || !window.L || !routeMarkerGroup) return;
-    
-    // Clear existing route markers
-    try {
-      routeMarkerGroup.clearLayers();
-    } catch (error) {
-      console.warn("Error clearing route markers:", error);
-    }
-    
-    // Add new route markers
-    routePoints.forEach((point, index) => {
-      try {
-        if (!point.latitude || !point.longitude) return;
+      // Add custom behavior to clusters
+      clusterGroup.on('clusterclick', function(e: any) {
+        // Get current zoom level
+        const currentZoom = mapInstance.getZoom();
+        const maxZoom = mapInstance.getMaxZoom();
         
-        const lat = typeof point.latitude === 'string' ? 
-          parseFloat(point.latitude) : point.latitude;
-        const lng = typeof point.longitude === 'string' ? 
-          parseFloat(point.longitude) : point.longitude;
+        // If we're at max zoom or cluster is small, spiderfy instead of zooming
+        if (currentZoom >= maxZoom - 1 || e.layer.getAllChildMarkers().length < 6) {
+          e.layer.spiderfy();
+          return false; // Prevent default zoom
+        }
+      });
+      
+      mapInstance.addLayer(clusterGroup);
+      clusterGroupRef.current = clusterGroup;
+    }
+    
+    return () => {
+      // Cleanup
+      if (markersLayerRef.current) {
+        mapInstance.removeLayer(markersLayerRef.current);
+      }
+      
+      if (clusterGroupRef.current) {
+        mapInstance.removeLayer(clusterGroupRef.current);
+      }
+    };
+  }, [mapInstance]);
+  
+  // Function to redraw all markers
+  const redrawMarkers = useCallback(() => {
+    if (!mapInstance || !window.L) return;
+    
+    // Create markers for all plaques
+    const L = window.L;
+    const cluster = clusterGroupRef.current;
+    const markersLayer = markersLayerRef.current;
+    
+    // Clear existing markers
+    if (cluster) {
+      cluster.clearLayers();
+    }
+    
+    if (markersLayer) {
+      markersLayer.clearLayers();
+    }
+    
+    const newMarkersMap = new Map();
+    
+    // Add markers for each plaque with valid coordinates
+    plaques.forEach(plaque => {
+      if (!plaque.latitude || !plaque.longitude) return;
+      
+      try {
+        const lat = parseFloat(plaque.latitude as unknown as string);
+        const lng = parseFloat(plaque.longitude as unknown as string);
         
         if (isNaN(lat) || isNaN(lng)) return;
         
-        // Determine marker style based on position
-        let markerLabel, markerColor, markerClass;
-        
-        if (index === 0) {
-          markerLabel = 'S';
-          markerColor = '#3b82f6'; // Blue for start
-          markerClass = 'route-marker-start';
-        } else if (index === routePoints.length - 1) {
-          markerLabel = 'E';
-          markerColor = '#ef4444'; // Red for end
-          markerClass = 'route-marker-end';
-        } else {
-          markerLabel = (index + 1).toString();
-          markerColor = '#10b981'; // Green for waypoints
-          markerClass = 'route-marker-waypoint';
-        }
-        
-        // Create route marker with diamond shape
-        const routeMarker = window.L.marker([lat, lng], {
-          icon: window.L.divIcon({
-            className: `route-marker ${markerClass}`,
-            html: `
-              <div class="route-marker-container">
-                <div class="route-marker-diamond" style="background-color: ${markerColor};">
-                  <div class="route-marker-content">${markerLabel}</div>
-                </div>
-                <div class="route-marker-label">${
-                  index === 0 ? 'Start' : 
-                    index === routePoints.length - 1 ? 'End' : 
-                    `Stop ${index + 1}`
-                }</div>
-              </div>
-            `,
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-          }),
-          zIndexOffset: 1000,
-          riseOnHover: true
+        // Create marker with custom icon
+        const marker = L.marker([lat, lng], {
+          icon: createPlaqueIcon(
+            L, 
+            plaque, 
+            favorites.includes(plaque.id), 
+            plaque.id === selectedPlaqueId
+          )
         });
         
-        // Create popup for route marker
-        const popupContent = document.createElement('div');
-        popupContent.className = 'route-popup p-2';
+        // Create popup content
+        const popupContent = createPlaquePopup(
+          plaque,
+          favorites.includes(plaque.id),
+          isRoutingMode
+        );
         
-        // Create popup HTML
-        popupContent.innerHTML = `
-          <div class="font-semibold text-sm">${point.title || 'Stop ' + (index + 1)}</div>
-          <div class="text-xs text-green-600 mt-1">
-            • ${index === 0 ? 'Starting point' : 
-                index === routePoints.length - 1 ? 'Final destination' : 
-                `Stop #${index + 1}`
-              } in walking route
-          </div>
-          <div class="flex gap-2 mt-2">
-            <button class="view-details py-1 px-2 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">
-              View Details
-            </button>
-            <button class="remove-from-route py-1 px-2 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors">
-              Remove
-            </button>
-          </div>
-        `;
-        
-        // Create and bind popup
-        const popup = window.L.popup({
+        // Configure popup options
+        const popupOptions = {
           closeButton: true,
-          className: 'route-popup-container',
-          offset: [0, -25]
-        }).setContent(popupContent);
+          autoClose: true,
+          className: 'plaque-popup-container',
+          maxWidth: 300,
+          minWidth: 200,
+          offset: [0, -20]
+        };
         
-        routeMarker.bindPopup(popup);
+        // Bind popup
+        marker.bindPopup(popupContent, popupOptions);
         
-        // Add click handlers
-        setTimeout(() => {
-          const detailButton = popupContent.querySelector('.view-details');
-          if (detailButton) {
-            detailButton.addEventListener('click', () => {
-              if (onPlaqueClick) onPlaqueClick(point);
-              routeMarker.closePopup();
-            });
+        // Add click handler
+        marker.on('click', () => {
+          // If in routing mode and popup is open, don't trigger the main click handler
+          if (isRoutingMode && marker.isPopupOpen()) {
+            return;
           }
           
-          const removeButton = popupContent.querySelector('.remove-from-route');
-          if (removeButton) {
-            removeButton.addEventListener('click', () => {
-              removePlaqueFromRoute(point.id);
-              routeMarker.closePopup();
-            });
-          }
-        }, 10);
+          // Open popup
+          marker.openPopup();
+        });
         
-        // Add marker to group
-        routeMarker.addTo(routeMarkerGroup);
+        // Store marker reference
+        newMarkersMap.set(plaque.id, marker);
         
+        // Add to cluster or markers layer
+        if (cluster) {
+          cluster.addLayer(marker);
+        } else if (markersLayer) {
+          markersLayer.addLayer(marker);
+        }
       } catch (error) {
-        console.error(`Error creating route marker for point ${index}:`, error);
+        console.error(`Error creating marker for plaque ${plaque.id}:`, error);
       }
     });
-  }, [mapInstance, routeMarkerGroup, routePoints, onPlaqueClick, removePlaqueFromRoute]);
-  
-  // Add markers to the map
-  const addMapMarkers = useCallback(() => {
-    if (!mapInstance || !window.L) {
-      console.log("Map or Leaflet not available for adding markers");
-      return;
-    }
     
-    console.log(`Adding ${plaques.length} markers to the map`);
+    // Update markers map
+    setMarkersMap(newMarkersMap);
     
-    try {
-      // Check if layers exist before clearing
-      if (markersLayer) {
-        try {
-          markersLayer.clearLayers();
-        } catch (error) {
-          console.warn("Error clearing markers layer:", error);
-        }
-      } else {
-        console.warn("markersLayer is null");
-      }
-      
-      if (clusterGroup) {
-        try {
-          clusterGroup.clearLayers();
-        } catch (error) {
-          console.warn("Error clearing cluster group:", error);
-        }
-      } else {
-        console.warn("clusterGroup is null");
-      }
-      
-      // Create a temporary feature group if cluster group isn't available
-      const targetLayer = clusterGroup || window.L.featureGroup().addTo(mapInstance);
-      
-      // Create markers for all plaques
-      plaques.forEach(plaque => {
-        const marker = createPlaqueMarker(plaque);
-        if (marker && targetLayer) {
-          try {
-            // Add to target layer
-            targetLayer.addLayer(marker);
-          } catch (error) {
-            console.warn(`Error adding marker for plaque ${plaque.id}:`, error);
-            // Try adding directly to map as fallback
-            marker.addTo(mapInstance);
-          }
-        }
-      });
-      
-      // Add route markers if in routing mode
-      if (isRoutingMode && routePoints.length > 0 && routeMarkerGroup) {
-        addRouteMarkers();
-      }
-      
-      // Fit map to markers if not maintaining view and not in a route
-      if (plaques.length > 0 && !maintainView && !routePoints.length) {
-        fitToMarkers(plaques);
-      }
-    } catch (error) {
-      console.error("Error adding map markers:", error);
-      
-      // Only show toast for errors that might affect user experience
-      if (plaques.length > 0 && (!markersLayer || !clusterGroup)) {
-        toast.error("Error displaying plaques on the map");
+    // If selection changed, update the view
+    if (selectedPlaqueId && !maintainView) {
+      const selectedMarker = newMarkersMap.get(selectedPlaqueId);
+      if (selectedMarker) {
+        // Save current view state
+        lastViewStateRef.current = {
+          center: mapInstance.getCenter(),
+          zoom: mapInstance.getZoom()
+        };
+        
+        // Pan to selected marker
+        mapInstance.panTo(selectedMarker.getLatLng(), {
+          animate: true,
+          duration: 0.5
+        });
       }
     }
   }, [
     mapInstance, 
-    markersLayer, 
-    clusterGroup, 
     plaques, 
-    createPlaqueMarker, 
+    favorites, 
+    selectedPlaqueId, 
     isRoutingMode, 
-    routePoints, 
-    addRouteMarkers, 
     maintainView, 
-    fitToMarkers,
-    routeMarkerGroup
+    createPlaqueIcon,
+    createPlaquePopup
   ]);
   
-  return {
-    addMapMarkers,
-    fitToMarkers,
-    createPlaqueMarker,
-    addRouteMarkers
+  // Update markers when data changes
+  useEffect(() => {
+    redrawMarkers();
+  }, [
+    mapInstance, 
+    plaques, 
+    favorites, 
+    selectedPlaqueId, 
+    isRoutingMode, 
+    maintainView,
+    redrawMarkers
+  ]);
+  
+  return { 
+    markersMap,
+    redrawMarkers
   };
-};
-
-export default useMapMarkers;
+}

@@ -1,4 +1,3 @@
-// src/utils/routeUtils.ts
 import { Plaque } from '@/types/plaque';
 
 export interface RoutePoint {
@@ -29,18 +28,14 @@ export const calculateRouteDistance = (points: Plaque[]): number => {
     
     if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
     
-    const startLat = typeof start.latitude === 'string' ? 
-      parseFloat(start.latitude) : start.latitude as number;
-    const startLng = typeof start.longitude === 'string' ? 
-      parseFloat(start.longitude) : start.longitude as number;
-    const endLat = typeof end.latitude === 'string' ? 
-      parseFloat(end.latitude) : end.latitude as number;
-    const endLng = typeof end.longitude === 'string' ? 
-      parseFloat(end.longitude) : end.longitude as number;
+    const startLat = parseFloat(start.latitude as string);
+    const startLng = parseFloat(start.longitude as string);
+    const endLat = parseFloat(end.latitude as string);
+    const endLng = parseFloat(end.longitude as string);
     
     if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
     
-    // Calculate direct distance using haversine formula
+    // Calculate direct distance (haversine formula)
     totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
   }
   
@@ -63,93 +58,19 @@ export function calculateDistance(lat1: number, lng1: number, lat2: number, lng2
 }
 
 /**
- * Format distance with proper units
- */
-export function formatDistance(distance: number, useImperial: boolean = false): string {
-  if (useImperial) {
-    // Convert to miles (1 km = 0.621371 miles)
-    const miles = distance * 0.621371;
-    return `${miles.toFixed(1)} mi`;
-  } else {
-    return `${distance.toFixed(1)} km`;
-  }
-}
-
-/**
- * Calculate walking time with improved accuracy for urban environments
- * Accounts for traffic lights, crossings and terrain difficulty
- */
-export function calculateWalkingTime(distanceKm: number): string {
-  if (distanceKm <= 0) return "0 min";
-  
-  // Base walking speed: 5 km/h or 12 minutes per kilometer
-  let minutes = Math.round(distanceKm * 12); 
-  
-  // Add time for traffic lights and crossings
-  // Assume ~1 traffic light per 250m in urban areas, each taking ~30s to wait and cross
-  const estimatedTrafficLights = Math.ceil(distanceKm * 4); // 4 lights per km
-  minutes += Math.ceil(estimatedTrafficLights * 0.5); // 0.5 minutes (30s) per light
-  
-  // Format the output
-  if (minutes < 60) {
-    return `${minutes} min`;
-  } else {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-  }
-}
-
-/**
- * Estimate total walking time for a route including stops for viewing plaques
- */
-export const estimateTotalWalkingTime = (routePoints: Plaque[], minutesPerStop: number = 5): string => {
-  // Calculate base walking time between points
-  const totalDistanceKm = calculateRouteDistance(routePoints);
-  const walkingMinutes = Math.round(totalDistanceKm * 12); // 12 min per km
-  
-  // Add time for traffic lights and crossings
-  const trafficLightMinutes = Math.ceil(totalDistanceKm * 4 * 0.5); // 4 lights per km, 0.5 min each
-  
-  // Add viewing time for each plaque (exclude starting point since you're already there)
-  const viewingMinutes = (routePoints.length - 1) * minutesPerStop;
-  
-  // Calculate total minutes
-  const totalMinutes = walkingMinutes + trafficLightMinutes + viewingMinutes;
-  
-  // Format output
-  if (totalMinutes < 60) {
-    return `${totalMinutes} min`;
-  } else {
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-  }
-};
-
-/**
  * Optimize route using a nearest-neighbor algorithm
- * Optimized for walking with better intermediate point selection
+ * Produces a more optimal walking path
  */
-export const optimizeWalkingRoute = (routePoints: Plaque[], preserveEndpoints: boolean = true): Plaque[] => {
+export const optimizeRoute = (routePoints: Plaque[]): Plaque[] => {
   if (routePoints.length < 3) {
-    return [...routePoints]; // Can't optimize with fewer than 3 points
+    return [...routePoints];
   }
   
   // Create a copy so we don't modify the original
-  let result: Plaque[] = [];
-  let unvisited: Plaque[] = [];
+  const unvisited = [...routePoints.slice(1, -1)];
   
-  if (preserveEndpoints) {
-    // Keep start and end points fixed
-    result.push(routePoints[0]);
-    unvisited = [...routePoints.slice(1, -1)];
-  } else {
-    // All points can be reordered
-    unvisited = [...routePoints];
-  }
-  
-  // Start from the first point in the result
+  // Always keep start and end points fixed
+  const result: Plaque[] = [routePoints[0]];
   let current = result[0];
   
   // Repeatedly find the closest unvisited point
@@ -163,14 +84,10 @@ export const optimizeWalkingRoute = (routePoints: Plaque[], preserveEndpoints: b
         continue;
       }
       
-      const latA = typeof current.latitude === 'string' ? 
-        parseFloat(current.latitude) : current.latitude as number;
-      const lngA = typeof current.longitude === 'string' ? 
-        parseFloat(current.longitude) : current.longitude as number;
-      const latB = typeof unvisited[i].latitude === 'string' ? 
-        parseFloat(unvisited[i].latitude) : unvisited[i].latitude as number;
-      const lngB = typeof unvisited[i].longitude === 'string' ? 
-        parseFloat(unvisited[i].longitude) : unvisited[i].longitude as number;
+      const latA = parseFloat(current.latitude as string);
+      const lngA = parseFloat(current.longitude as string);
+      const latB = parseFloat(unvisited[i].latitude as string);
+      const lngB = parseFloat(unvisited[i].longitude as string);
       
       if (isNaN(latA) || isNaN(lngA) || isNaN(latB) || isNaN(lngB)) {
         continue;
@@ -196,12 +113,62 @@ export const optimizeWalkingRoute = (routePoints: Plaque[], preserveEndpoints: b
     }
   }
   
-  // Add the end point if preserving endpoints
-  if (preserveEndpoints) {
-    result.push(routePoints[routePoints.length - 1]);
-  }
+  // Add the end point
+  result.push(routePoints[routePoints.length - 1]);
   
   return result;
+};
+
+/**
+ * Creates a GeoJSON route from plaque points
+ */
+export const createRouteGeoJSON = (routePoints: Plaque[]) => {
+  const validPoints = routePoints.filter(p => 
+    p.latitude && p.longitude && 
+    !isNaN(parseFloat(p.latitude as string)) && 
+    !isNaN(parseFloat(p.longitude as string))
+  );
+  
+  if (validPoints.length < 2) {
+    return null;
+  }
+  
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {
+          name: "Plaque Route",
+          description: `Route with ${validPoints.length} plaques`,
+          pointCount: validPoints.length
+        },
+        geometry: {
+          type: "LineString",
+          coordinates: validPoints.map(p => [
+            parseFloat(p.longitude as string),
+            parseFloat(p.latitude as string)
+          ])
+        }
+      },
+      // Add individual points as separate features
+      ...validPoints.map((p, index) => ({
+        type: "Feature",
+        properties: {
+          name: p.title,
+          id: p.id,
+          index: index + 1
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [
+            parseFloat(p.longitude as string),
+            parseFloat(p.latitude as string)
+          ]
+        }
+      }))
+    ]
+  };
 };
 
 /**
@@ -226,7 +193,7 @@ export const loadSavedRoutes = (): SavedRoute[] => {
  */
 export const saveRoute = (
   routePoints: Plaque[],
-  name: string = `Walking Route (${routePoints.length} stops)`
+  name: string = `Plaque Route (${routePoints.length} stops)`
 ): SavedRoute | null => {
   if (routePoints.length < 2) {
     return null;
@@ -240,8 +207,8 @@ export const saveRoute = (
     points: routePoints.map(p => ({
       id: p.id,
       title: p.title,
-      lat: typeof p.latitude === 'string' ? parseFloat(p.latitude) : p.latitude as number,
-      lng: typeof p.longitude === 'string' ? parseFloat(p.longitude) : p.longitude as number
+      lat: parseFloat(p.latitude as string),
+      lng: parseFloat(p.longitude as string)
     }))
   };
   
