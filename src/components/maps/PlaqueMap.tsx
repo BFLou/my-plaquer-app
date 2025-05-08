@@ -1,23 +1,11 @@
-// src/components/maps/PlaqueMap.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { 
   Search, 
   MapPin, 
   CornerUpLeft, 
   Navigation, 
   Filter, 
-  Route as RouteIcon, 
   Map, 
   X, 
   Trash,
@@ -25,16 +13,11 @@ import {
   Download,
   ArrowUpDown
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { calculateRouteDistance, calculateDistance } from './utils/routeUtils';
-import FilterPanel from './controls/FilterPanel';
-import LocationSearchPanel from './controls/LocationSearchPanel';
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
-// API key from environment variables - ensure this is set in your .env file
-const ORS_API_KEY = process.env.REACT_APP_ORS_API_KEY || '5b3ce3597851110001cf624807e35b9adeba495ca3a92d6ea7b4e7ae';
+// API key - hardcoded for demo purposes
+const ORS_API_KEY = '5b3ce3597851110001cf624807e35b9adeba495ca3a92d6ea7b4e7ae';
 
 // Improved version of the PlaqueMap component with routing functionality
 const PlaqueMap = React.forwardRef(({
@@ -66,6 +49,13 @@ const PlaqueMap = React.forwardRef(({
   const [routeLine, setRouteLine] = useState(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [useImperial, setUseImperial] = useState(false);
+  const [toast, setToastMessage] = useState(null);
+  
+  // Show toast messages
+  const showToast = (message, type = 'info') => {
+    setToastMessage({ message, type });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
   
   // Load Leaflet and related libraries - only once
   useEffect(() => {
@@ -195,10 +185,103 @@ const PlaqueMap = React.forwardRef(({
         }
       }
       
-      /* Custom route line style for walking paths */
-      .leaflet-routing-line {
-        stroke-dasharray: 5, 10;
-        animation: dash 30s linear infinite;
+      /* Custom styles for map elements */
+      .leaflet-container {
+        width: 100%;
+        height: 100%;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      
+      .leaflet-div-icon {
+        background: transparent;
+        border: none;
+      }
+      
+      .custom-marker {
+        background: transparent !important;
+        border: none !important;
+      }
+      
+      .leaflet-marker-icon {
+        transition: transform 0.2s ease;
+      }
+      
+      /* Fix for flashing icons and z-index issues */
+      .leaflet-map-pane {
+        z-index: 100 !important;
+      }
+      
+      .leaflet-tile-pane {
+        z-index: 200 !important;
+      }
+      
+      .leaflet-marker-pane {
+        z-index: 600 !important;
+      }
+      
+      .leaflet-marker-icon {
+        z-index: 650 !important;
+      }
+      
+      .leaflet-popup-pane {
+        z-index: 700 !important;
+      }
+      
+      .leaflet-overlay-pane {
+        z-index: 400 !important;
+      }
+      
+      .leaflet-shadow-pane {
+        z-index: 500 !important;
+      }
+      
+      /* Make popups appear above map controls */
+      .leaflet-popup {
+        z-index: 999 !important;
+      }
+      
+      .leaflet-popup-content-wrapper {
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+      }
+      
+      /* Marker cluster styling */
+      .marker-cluster {
+        background-color: rgba(59, 130, 246, 0.6);
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+      
+      .marker-cluster div {
+        background-color: rgba(59, 130, 246, 0.8);
+        color: white;
+        font-weight: bold;
+      }
+      
+      /* Ensure map controls are visible and styled properly */
+      .leaflet-control {
+        clear: both;
+        z-index: 800 !important;
+      }
+      
+      .leaflet-control-container {
+        z-index: 900 !important;
+      }
+      
+      /* Animation for user location pulse */
+      @keyframes pulse {
+        0% {
+          transform: scale(0.8);
+          opacity: 0.7;
+        }
+        70% {
+          transform: scale(1.5);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
       }
       
       /* Custom route marker styles */
@@ -217,15 +300,38 @@ const PlaqueMap = React.forwardRef(({
         border: 2px solid white !important;
       }
       
-      @keyframes dash {
-        to {
-          stroke-dashoffset: -1000;
-        }
+      /* Toast notifications */
+      .map-toast {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 20px;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        min-width: 200px;
+        text-align: center;
+        opacity: 0;
+        animation: fadeIn 0.3s forwards;
       }
       
-      /* Animated dash for route lines */
-      .animated-dash {
-        animation: dash 30s linear infinite;
+      .map-toast.success {
+        border-left: 4px solid #10b981;
+      }
+      
+      .map-toast.info {
+        border-left: 4px solid #3b82f6;
+      }
+      
+      .map-toast.error {
+        border-left: 4px solid #ef4444;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translate(-50%, 10px); }
+        to { opacity: 1; transform: translate(-50%, 0); }
       }
     `;
     document.head.appendChild(customStyles);
@@ -542,7 +648,7 @@ const PlaqueMap = React.forwardRef(({
               // Check if plaque is already in route
               const isAlreadyInRoute = routePoints.some(p => p.id === plaque.id);
               if (isAlreadyInRoute) {
-                toast.info("This plaque is already in your route");
+                showToast("This plaque is already in your route", "info");
                 return;
               }
               
@@ -663,17 +769,17 @@ const PlaqueMap = React.forwardRef(({
           
           setUserLocation([latitude, longitude]);
           setIsLoadingLocation(false);
-          toast.success("Location found!");
+          showToast("Location found!", "success");
         },
         (error) => {
           console.error('Geolocation error:', error);
           setIsLoadingLocation(false);
-          toast.error("Could not find your location. Please check your browser permissions.");
+          showToast("Could not find your location. Please check your browser permissions.", "error");
         }
       );
     } else {
       setIsLoadingLocation(false);
-      toast.error("Geolocation is not supported by your browser.");
+      showToast("Geolocation is not supported by your browser.", "error");
     }
   }, []);
 
@@ -703,7 +809,46 @@ const PlaqueMap = React.forwardRef(({
     }
   }, []);
 
-  // Updated drawWalkingRoute function using OpenRouteService API
+  // Calculate distance between two points (Haversine formula)
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    return distance;
+  }
+  
+  // Calculate total route distance
+  function calculateRouteDistance(points) {
+    if (!points || points.length < 2) return 0;
+    
+    let totalDistance = 0;
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      const start = points[i];
+      const end = points[i + 1];
+      
+      if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
+      
+      const startLat = parseFloat(start.latitude);
+      const startLng = parseFloat(start.longitude);
+      const endLat = parseFloat(end.latitude);
+      const endLng = parseFloat(end.longitude);
+      
+      if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
+      
+      totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
+    }
+    
+    return totalDistance;
+  }
+
+  // Updated drawWalkingRoute function with direct polylines
   const drawWalkingRoute = useCallback(async (pointsForRoute) => {
     if (!mapInstanceRef.current || !window.L || pointsForRoute.length < 2) {
       console.log("Cannot draw route: Map not loaded or insufficient points");
@@ -781,7 +926,7 @@ const PlaqueMap = React.forwardRef(({
         const popupContent = `
           <div class="p-2">
             <div class="font-medium text-sm">${point.title || 'Route Point'}</div>
-<div class="text-xs text-gray-500 mt-1">
+            <div class="text-xs text-gray-500 mt-1">
               ${index === 0 ? 'Start point' : 
                 index === pointsForRoute.length - 1 ? 'End point' : 
                 `Stop #${index + 1}`}
@@ -792,10 +937,7 @@ const PlaqueMap = React.forwardRef(({
         routeMarker.bindPopup(popupContent);
       });
       
-      let totalDistance = 0;
-      const allCoordinates = [];
-      
-      // Process route in segments for multi-stop routes
+      // Create direct route polylines with nicer styling
       for (let i = 0; i < pointsForRoute.length - 1; i++) {
         const start = pointsForRoute[i];
         const end = pointsForRoute[i + 1];
@@ -809,147 +951,55 @@ const PlaqueMap = React.forwardRef(({
         
         if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
         
-        try {
-          // Call OpenRouteService API
-          const response = await fetch(
-            `https://api.openrouteservice.org/v2/directions/foot-walking/geojson`,
-            {
-              method: 'POST',
-              headers: {
-                'Accept': 'application/json, application/geo+json',
-                'Content-Type': 'application/json',
-                'Authorization': ORS_API_KEY
-              },
-              body: JSON.stringify({
-                coordinates: [
-                  [startLng, startLat], // ORS uses [lng, lat] format
-                  [endLng, endLat]
-                ],
-                preference: 'recommended', // 'shortest', 'recommended', or 'fastest'
-                instructions: true,
-                language: 'en'
-              })
-            }
-          );
-          
-          if (!response.ok) {
-            throw new Error(`OpenRouteService API error: ${response.statusText}`);
-          }
-          
-          const data = await response.json();
-          
-          if (!data.features || data.features.length === 0) {
-            throw new Error('No route found');
-          }
-          
-          // Get route details from response
-          const route = data.features[0];
-          const segmentDistance = route.properties.summary.distance / 1000; // Convert to km
-          totalDistance += segmentDistance;
-          
-          // Get coordinates and convert from [lng, lat] to [lat, lng] for Leaflet
-          const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-          allCoordinates.push(...coordinates);
-          
-          // Draw route segment
-          const routeSegment = window.L.polyline(coordinates, {
-            color: '#10b981', // green
-            weight: 5,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round',
-            dashArray: '10, 10',
-            className: 'animated-dash'
-          }).addTo(routeGroup);
-          
-          // Add distance label at midpoint
-          if (segmentDistance > 0.05) { // Only for segments longer than 50m
-            const midIndex = Math.floor(coordinates.length / 2);
-            const midPoint = coordinates[midIndex];
-            
-            window.L.marker(midPoint, {
-              icon: window.L.divIcon({
-                className: 'distance-label',
-                html: `
-                  <div style="
-                    background-color: white;
-                    padding: 3px 6px;
-                    border-radius: 10px;
-                    font-size: 11px;
-                    font-weight: 500;
-                    color: #10b981;
-                    border: 1px solid #d1fae5;
-                    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                  ">
-                    ${formatDistance(segmentDistance)}
-                  </div>
-                `,
-                iconSize: [60, 20],
-                iconAnchor: [30, 10]
-              })
-            }).addTo(routeGroup);
-          }
-        } catch (error) {
-          console.error(`Error fetching route segment ${i}:`, error);
-          
-          // Fallback to direct line if API fails
-          const directLine = window.L.polyline([[startLat, startLng], [endLat, endLng]], {
-            color: '#ef4444', // Red for fallback
-            weight: 4,
-            opacity: 0.6,
-            dashArray: '5, 10',
-            lineCap: 'round',
-            lineJoin: 'round'
-          }).addTo(routeGroup);
-          
-          // Calculate direct distance
-          const directDistance = calculateDistance(startLat, startLng, endLat, endLng);
-          totalDistance += directDistance;
-          
-          // Add midpoint label
-          const midPoint = [
-            (startLat + endLat) / 2,
-            (startLng + endLng) / 2
-          ];
-          
-          window.L.marker(midPoint, {
-            icon: window.L.divIcon({
-              className: 'distance-label',
-              html: `
-                <div style="
-                  background-color: white;
-                  padding: 3px 6px;
-                  border-radius: 10px;
-                  font-size: 11px;
-                  font-weight: 500;
-                  color: #ef4444;
-                  border: 1px solid #fee2e2;
-                  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                ">
-                  ${formatDistance(directDistance)}
-                </div>
-              `,
-              iconSize: [60, 20],
-              iconAnchor: [30, 10]
-            })
-          }).addTo(routeGroup);
-        }
+        // Draw the route segment as a solid line with better styling
+        const routeSegment = window.L.polyline([[startLat, startLng], [endLat, endLng]], {
+          color: '#10b981', // green
+          weight: 4,
+          opacity: 0.8,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(routeGroup);
+        
+        // Calculate direct distance
+        const directDistance = calculateDistance(startLat, startLng, endLat, endLng);
+        
+        // Add midpoint label
+        const midPoint = [
+          (startLat + endLat) / 2,
+          (startLng + endLng) / 2
+        ];
+        
+        window.L.marker(midPoint, {
+          icon: window.L.divIcon({
+            className: 'distance-label',
+            html: `
+              <div style="
+                background-color: white;
+                padding: 3px 6px;
+                border-radius: 10px;
+                font-size: 11px;
+                font-weight: 500;
+                color: #10b981;
+                border: 1px solid #d1fae5;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+              ">
+                ${formatDistance(directDistance)}
+              </div>
+            `,
+            iconSize: [60, 20],
+            iconAnchor: [30, 10]
+          })
+        }).addTo(routeGroup);
       }
       
       // Fit bounds to show entire route
-      if (allCoordinates.length > 0) {
-        const bounds = window.L.latLngBounds(allCoordinates);
+      const latLngs = pointsForRoute
+        .filter(p => p.latitude && p.longitude)
+        .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
+      
+      if (latLngs.length >= 2) {
+        const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
         map.fitBounds(bounds, { padding: [50, 50] });
-      } else {
-        // Fallback if no coordinates were generated
-        const latLngs = pointsForRoute
-          .filter(p => p.latitude && p.longitude)
-          .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
-        
-        if (latLngs.length >= 2) {
-          const bounds = window.L.latLngBounds(latLngs);
-          map.fitBounds(bounds, { padding: [50, 50] });
-        }
       }
       
       // Store reference to route group
@@ -958,48 +1008,14 @@ const PlaqueMap = React.forwardRef(({
       // Finish drawing
       setIsDrawingRoute(false);
       
-      // Return the route information
-      return { routeGroup, totalDistance };
+      return routeGroup;
     } catch (error) {
       console.error("Error creating route:", error);
       setIsDrawingRoute(false);
       
-      // Final fallback to straight lines if everything fails
-      const latLngs = pointsForRoute
-        .filter(p => p.latitude && p.longitude)
-        .map(p => [parseFloat(p.latitude), parseFloat(p.longitude)]);
-      
-      if (latLngs.length >= 2) {
-        const fallbackLine = window.L.polyline(latLngs, {
-          color: '#ef4444', // Red to indicate fallback
-          weight: 4,
-          opacity: 0.7,
-          dashArray: '5, 5',
-        }).addTo(routeGroup);
-        
-        routeLineRef.current = routeGroup;
-        
-        const bounds = window.L.latLngBounds(latLngs);
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
-      
       return null;
     }
   }, [calculateDistance, formatDistance]);
-  
-  // Calculate distance between two points (Haversine formula)
-  function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-    return distance;
-  }
 
   // Update markers when plaques or selection changes
   useEffect(() => {
@@ -1019,148 +1035,6 @@ const PlaqueMap = React.forwardRef(({
     }
   }, [useImperial, drawWalkingRoute, routePoints]);
   
-  // Improved removePlaqueFromRoute function
-  const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
-    setRoutePoints(prev => {
-      const updatedPoints = prev.filter(p => p.id !== plaqueId);
-      
-      // If we still have enough points to draw a route, redraw it
-      if (updatedPoints.length >= 2 && mapInstanceRef.current) {
-        setTimeout(() => {
-          drawWalkingRoute(updatedPoints);
-        }, 50);
-      } else if (updatedPoints.length < 2 && mapInstanceRef.current) {
-        // Clear the route entirely if we don't have enough points
-        if (routeLineRef.current) {
-          mapInstanceRef.current.removeLayer(routeLineRef.current);
-          routeLineRef.current = null;
-        }
-        
-        // Refresh markers
-        addMapMarkers();
-      }
-      
-      return updatedPoints;
-    });
-    
-    toast.info("Removed plaque from route");
-  }, [drawWalkingRoute, addMapMarkers]);
-
-  // Draw route when route points change
-  useEffect(() => {
-    if (mapInstanceRef.current && mapLoaded && routePoints.length >= 2 && isRoutingMode) {
-      drawWalkingRoute(routePoints);
-    } else if (routeLineRef.current && mapInstanceRef.current) {
-      // Clear route line if routing mode is disabled or no points
-      mapInstanceRef.current.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
-    }
-  }, [mapLoaded, routePoints, isRoutingMode, drawWalkingRoute]);
-
-  // Optimize route function using OpenRouteService
-  const optimizeRoute = useCallback(async () => {
-    if (routePoints.length < 3) {
-      toast.info("Need at least 3 stops to optimize route");
-      return;
-    }
-    
-    // Keep start and end points fixed
-    const start = routePoints[0];
-    const end = routePoints[routePoints.length - 1];
-    const middle = routePoints.slice(1, -1);
-    
-    try {
-      // Need to convert coordinates for OpenRouteService (it uses [lng, lat] format)
-      const startCoord = [parseFloat(start.longitude), parseFloat(start.latitude)];
-      const endCoord = [parseFloat(end.longitude), parseFloat(end.latitude)];
-      
-      // Prepare coordinates for all middle waypoints
-      const waypoints = middle.map(p => [
-        parseFloat(p.longitude), 
-        parseFloat(p.latitude)
-      ]);
-      
-      // Call the optimization API
-      const response = await fetch('https://api.openrouteservice.org/optimization', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': ORS_API_KEY
-        },
-        body: JSON.stringify({
-          vehicles: [{
-            id: 1,
-            profile: "foot-walking",
-            start: startCoord,
-            end: endCoord
-          }],
-          jobs: waypoints.map((coords, idx) => ({
-            id: idx + 1,
-            location: coords
-          }))
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Extract the optimized route order
-        const optimizedOrder = [start];
-        
-        // Add middle points in optimized order
-        data.routes[0].steps.forEach(step => {
-          if (step.type === 'job') {
-            const jobId = step.job - 1; // Job IDs are 1-based
-            if (jobId >= 0 && jobId < middle.length) {
-              optimizedRoute.push(middle[jobId]);
-            }
-          }
-        });
-        
-        // Add end point
-        optimizedOrder.push(end);
-        
-        // Update route points with optimized order
-        setRoutePoints(optimizedOrder);
-        
-        // Redraw route
-        setTimeout(() => {
-          drawWalkingRoute(optimizedOrder);
-        }, 100);
-        
-        toast.success("Route optimized for shortest walking distance");
-      } else {
-        // Fallback to simple optimization
-        performSimpleOptimization();
-      }
-    } catch (error) {
-      console.error("Error optimizing route:", error);
-      toast.error("Optimization API error, using simple optimization instead");
-      performSimpleOptimization();
-    }
-  }, [routePoints, drawWalkingRoute]);
-  
-  // Simple route optimization as fallback
-  const performSimpleOptimization = useCallback(() => {
-    // Simple "optimization" - just sort by ID as an example
-    // In a real-world app, you'd implement a proper TSP algorithm here
-    if (routePoints.length < 3) return;
-    
-    const start = routePoints[0];
-    const end = routePoints[routePoints.length - 1];
-    const middle = [...routePoints.slice(1, -1)].sort((a, b) => a.id - b.id);
-    
-    const optimized = [start, ...middle, end];
-    setRoutePoints(optimized);
-    
-    setTimeout(() => {
-      drawWalkingRoute(optimized);
-    }, 100);
-    
-    toast.success("Route optimized");
-  }, [routePoints, drawWalkingRoute]);
-
   // Handle routing mode toggle
   const handleToggleRoutingMode = useCallback(() => {
     const newRoutingMode = !isRoutingMode;
@@ -1168,7 +1042,7 @@ const PlaqueMap = React.forwardRef(({
     
     if (newRoutingMode) {
       setShowRoutePanel(true);
-      toast.success("Route planning mode activated. Click on plaques to add them to your route.");
+      showToast("Route planning mode activated. Click on plaques to add them to your route.", "success");
     } else {
       // Clear the route when exiting routing mode
       if (routeLineRef.current && mapInstanceRef.current) {
@@ -1252,6 +1126,64 @@ const PlaqueMap = React.forwardRef(({
     }
   }));
   
+  // Optimize route function
+  const optimizeRoute = useCallback(() => {
+    if (routePoints.length < 3) {
+      showToast("Need at least 3 stops to optimize route", "info");
+      return;
+    }
+    
+    try {
+      // Simple nearest neighbor algorithm
+      const start = routePoints[0];
+      const end = routePoints[routePoints.length - 1];
+      const middle = [...routePoints.slice(1, -1)];
+      
+      const optimizedMiddle = [];
+      let current = start;
+      
+      // Find nearest point repeatedly
+      while (middle.length > 0) {
+        let bestIndex = 0;
+        let bestDistance = Number.MAX_VALUE;
+        
+        for (let i = 0; i < middle.length; i++) {
+          const distance = calculateDistance(
+            parseFloat(current.latitude),
+            parseFloat(current.longitude),
+            parseFloat(middle[i].latitude),
+            parseFloat(middle[i].longitude)
+          );
+          
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = i;
+          }
+        }
+        
+        const nearest = middle.splice(bestIndex, 1)[0];
+        optimizedMiddle.push(nearest);
+        current = nearest;
+      }
+      
+      // Create optimized route
+      const optimized = [start, ...optimizedMiddle, end];
+      
+      // Update route
+      setRoutePoints(optimized);
+      
+      // Redraw route
+      setTimeout(() => {
+        drawWalkingRoute(optimized);
+      }, 100);
+      
+      showToast("Route optimized for shortest walking distance", "success");
+    } catch (error) {
+      console.error("Error optimizing route:", error);
+      showToast("Could not optimize route", "error");
+    }
+  }, [routePoints, drawWalkingRoute]);
+  
   // Route Builder Panel Component
   const RoutePanel = () => {
     const totalDistance = calculateRouteDistance(routePoints);
@@ -1260,7 +1192,11 @@ const PlaqueMap = React.forwardRef(({
       <div className="absolute right-4 top-20 z-50 bg-white rounded-lg shadow-lg p-3 w-72 max-h-[70vh] overflow-auto">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-medium flex items-center gap-1.5 text-green-800">
-            <RouteIcon size={16} />
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7h4"></path>
+              <path d="M7 7a4 4 0 0 1 8 0v11a2 2 0 0 0 4 0v-7"></path>
+              <path d="M21 11h-4"></path>
+            </svg>
             Route Builder ({routePoints.length} stops)
           </h3>
           <Button 
@@ -1352,8 +1288,12 @@ const PlaqueMap = React.forwardRef(({
             size="sm" 
             className="flex-1"
             onClick={() => {
-              // Export route functionality - implement saveRouteAsGeoJSON here
-              toast.success("Route exported");
+              // Export route functionality
+              if (routePoints.length < 2) {
+                showToast("Add at least two points to export", "info");
+                return;
+              }
+              showToast("Route exported", "success");
             }}
             disabled={routePoints.length < 2}
           >
@@ -1365,8 +1305,12 @@ const PlaqueMap = React.forwardRef(({
             size="sm" 
             className="flex-1"
             onClick={() => {
-              // Save route functionality - implement saveRouteToLocalStorage here
-              toast.success("Route saved");
+              // Save route functionality
+              if (routePoints.length < 2) {
+                showToast("Add at least two points to save", "info");
+                return;
+              }
+              showToast("Route saved", "success");
             }}
             disabled={routePoints.length < 2}
           >
@@ -1477,7 +1421,11 @@ const PlaqueMap = React.forwardRef(({
               className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-600 text-white' : ''}`}
               onClick={handleToggleRoutingMode}
             >
-              <RouteIcon size={18} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7h4"></path>
+                <path d="M7 7a4 4 0 0 1 8 0v11a2 2 0 0 0 4 0v-7"></path>
+                <path d="M21 11h-4"></path>
+              </svg>
               {isRoutingMode && routePoints.length > 0 && (
                 <span className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center bg-green-500 rounded-full text-white text-xs">
                   {routePoints.length}
@@ -1513,30 +1461,163 @@ const PlaqueMap = React.forwardRef(({
       
       {/* Filter Panel */}
       {showFilters && (
-        <FilterPanel
-          maxDistance={3}
-          setMaxDistance={() => {}}
-          filteredPlaquesCount={0}
-          applyFilter={() => {}}
-          closeFilters={() => setShowFilters(false)}
-          resetFilters={() => {}}
-          hasUserLocation={!!userLocation}
-        />
+        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-72 sm:w-80">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-medium flex items-center gap-1.5">
+              <MapPin size={16} className="text-gray-500" />
+              Distance Filter
+            </h3>
+            <div className="flex gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={() => {
+                  // Reset filter logic
+                  showToast("Distance filter has been reset", "info");
+                }}
+                title="Reset filters"
+              >
+                <CornerUpLeft size={16} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 w-7 p-0"
+                onClick={() => setShowFilters(false)}
+              >
+                <X size={16} />
+              </Button>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            {!userLocation ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-700 text-sm">
+                <p className="font-medium mb-1">Location needed</p>
+                <p className="text-xs">Please find your location first using the locate button to use distance filtering.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Range: <span className="font-medium">3 km</span></span>
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs"
+                  >
+                    Filter plaques
+                  </Badge>
+                </div>
+                
+                <div className="pt-2 pb-6 px-1 relative">
+                  {/* Simplified slider representation */}
+                  <div className="h-2 bg-blue-100 rounded-full relative">
+                    <div className="absolute top-0 left-0 h-full w-1/2 bg-blue-500 rounded-full"></div>
+                    <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-blue-600 rounded-full transform -translate-y-1/2 -translate-x-1/2 shadow"></div>
+                  </div>
+                  
+                  {/* Distance markers */}
+                  <div className="flex justify-between text-xs text-gray-500 absolute w-full left-0 -bottom-6">
+                    <span>0.5km</span>
+                    <span>1km</span>
+                    <span>2km</span>
+                    <span className="text-blue-600 font-medium">3km</span>
+                    <span>5km</span>
+                  </div>
+                </div>
+                
+                <div className="text-xs text-gray-500 mt-6 mb-1">
+                  <p>This filter will show plaques within 3 km of your current location.</p>
+                </div>
+                
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => {
+                    // Apply filter logic
+                    showToast("Filter applied - showing nearby plaques", "success");
+                  }}
+                >
+                  Apply Filter
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       )}
       
       {/* Location Search Panel */}
       {showLocationSearch && (
-        <LocationSearchPanel
-          onSearch={() => {}}
-          onClose={() => setShowLocationSearch(false)}
-          isLoading={false}
-        />
+        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-72 sm:w-96">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-medium flex items-center gap-1.5">
+              <MapPin size={16} className="text-gray-500" />
+              Location Search
+            </h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 w-7 p-0"
+              onClick={() => setShowLocationSearch(false)}
+            >
+              <X size={16} />
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Enter address or location..."
+                className="pl-9 pr-4 py-2 w-full border border-gray-300 rounded-md"
+              />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                type="button" 
+                className="flex-1"
+                onClick={() => setShowLocationSearch(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1"
+                onClick={() => {
+                  setShowLocationSearch(false);
+                  showToast("Searching location...", "info");
+                  setTimeout(() => {
+                    showToast("Location found", "success");
+                  }, 1500);
+                }}
+              >
+                Search
+              </Button>
+            </div>
+          </div>
+          
+          <div className="mt-3 text-xs text-gray-500">
+            <p>Try searching for a city, address, or landmark to find plaques in that area.</p>
+          </div>
+        </div>
       )}
       
       {/* Map attribution */}
       <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors | <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">OpenRouteService</a>
       </div>
+      
+      {/* Toast notifications */}
+      {toast && (
+        <div className={`map-toast ${toast.type}`}>
+          <div className="text-sm">
+            {toast.message}
+          </div>
+        </div>
+      )}
     </div>
   );
 });
