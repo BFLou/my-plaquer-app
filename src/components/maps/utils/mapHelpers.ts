@@ -1,3 +1,4 @@
+// src/components/maps/utils/mapHelpers.ts
 import { Plaque } from '@/types/plaque';
 
 /**
@@ -26,25 +27,6 @@ export const hasValidCoords = (plaque: Plaque): boolean => {
 };
 
 /**
- * Filter plaques by distance from a center point
- */
-export const filterPlaquesByDistance = (
-  plaques: Plaque[],
-  center: [number, number],
-  radiusKm: number
-): Plaque[] => {
-  return plaques.filter(plaque => {
-    const coords = coordsToLatLng(plaque);
-    if (!coords) {
-      return false;
-    }
-    
-    const distance = calculateDistance(center[0], center[1], coords[0], coords[1]);
-    return distance <= radiusKm;
-  });
-};
-
-/**
  * Get map bounds for a collection of plaques
  */
 export const getPlaquesBounds = (plaques: Plaque[]): [[number, number], [number, number]] | null => {
@@ -68,6 +50,48 @@ export const getPlaquesBounds = (plaques: Plaque[]): [[number, number], [number,
   });
   
   return [[minLat, minLng], [maxLat, maxLng]];
+};
+
+/**
+ * Create Leaflet LatLngBounds from array of plaques
+ */
+export const createBoundsFromPlaques = (plaques: Plaque[], L: any): any | null => {
+  const validPlaques = plaques.filter(hasValidCoords);
+  
+  if (validPlaques.length === 0 || !L) {
+    return null;
+  }
+  
+  const latLngs = validPlaques.map(plaque => {
+    const coords = coordsToLatLng(plaque)!;
+    return L.latLng(coords[0], coords[1]);
+  });
+  
+  return L.latLngBounds(latLngs);
+};
+
+/**
+ * Show a toast notification on the map
+ */
+export const showMapToast = (
+  message: string, 
+  type: 'success' | 'info' | 'error' = 'info', 
+  duration: number = 3000
+): void => {
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = `map-toast ${type}`;
+  toast.innerHTML = `<div class="text-sm">${message}</div>`;
+  
+  // Add to document
+  document.body.appendChild(toast);
+  
+  // Remove after duration
+  setTimeout(() => {
+    if (toast.parentNode) {
+      document.body.removeChild(toast);
+    }
+  }, duration);
 };
 
 /**
@@ -119,63 +143,144 @@ export const getPlaqueColor = (plaque: Plaque): string => {
 };
 
 /**
- * Generate a marker size based on plaque properties
- * For example, make more significant plaques slightly larger
+ * Load Leaflet and related libraries asynchronously
  */
-export const getPlaqueMarkerSize = (plaque: Plaque): number => {
-  // Base size
-  let size = 30;
-  
-  // Adjust for visited status
-  if (plaque.visited) {
-    size += 2;
+export const loadLeafletLibraries = async (): Promise<boolean> => {
+  // Skip if already loaded
+  if (window.L) return true;
+
+  try {
+    // Load CSS
+    await Promise.all([
+      loadCSS('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
+      loadCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'),
+      loadCSS('https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css')
+    ]);
+    
+    // Load JavaScript
+    await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+    await loadScript('https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js');
+    
+    return true;
+  } catch (error) {
+    console.error('Error loading Leaflet libraries:', error);
+    return false;
   }
-  
-  // Could adjust for other properties like importance
-  
-  return size;
 };
 
 /**
- * Calculate distance between two points using Haversine formula
+ * Helper to load CSS
  */
-export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371; // Earth radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distance = R * c;
-  return distance;
-};
-
-/**
- * Calculate approximate walking time between two points in minutes
- * Assumes average walking speed of 5 km/h
- */
-export const calculateWalkingTime = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const distance = calculateDistance(lat1, lon1, lat2, lon2);
-  // 5 km/h = 12 minutes per kilometer
-  return Math.round(distance * 12);
-};
-
-/**
- * Create Leaflet LatLngBounds from array of plaques
- */
-export const createBoundsFromPlaques = (plaques: Plaque[], L: any): any | null => {
-  const validPlaques = plaques.filter(hasValidCoords);
-  
-  if (validPlaques.length === 0 || !L) {
-    return null;
-  }
-  
-  const latLngs = validPlaques.map(plaque => {
-    const coords = coordsToLatLng(plaque)!;
-    return L.latLng(coords[0], coords[1]);
+const loadCSS = (url: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    
+    link.onload = () => resolve();
+    link.onerror = () => reject(new Error(`Failed to load CSS: ${url}`));
+    
+    document.head.appendChild(link);
   });
+};
+
+/**
+ * Helper to load JavaScript
+ */
+const loadScript = (url: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+    
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * Add custom map styles to document
+ */
+export const addMapCustomStyles = (): void => {
+  if (document.getElementById('leaflet-custom-map-styles')) return;
   
-  return L.latLngBounds(latLngs);
+  const style = document.createElement('style');
+  style.id = 'leaflet-custom-map-styles';
+  style.innerHTML = `
+    /* Custom marker styles */
+    .custom-marker {
+      background: transparent !important;
+      border: none !important;
+      transition: transform 0.2s;
+    }
+    
+    .custom-marker:hover {
+      z-index: 1000 !important;
+    }
+    
+    /* Route animations */
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -1000;
+      }
+    }
+    
+    .animated-dash {
+      animation: dash 30s linear infinite;
+    }
+    
+    /* Pulse animation */
+    @keyframes pulse {
+      0% {
+        transform: scale(0.8);
+        opacity: 0.7;
+      }
+      70% {
+        transform: scale(1.5);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(0.8);
+        opacity: 0;
+      }
+    }
+    
+    /* Toast notifications */
+    .map-toast {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      border-radius: 8px;
+      background-color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      min-width: 200px;
+      text-align: center;
+      opacity: 0;
+      animation: fadeIn 0.3s forwards;
+    }
+    
+    .map-toast.success {
+      border-left: 4px solid #10b981;
+    }
+    
+    .map-toast.info {
+      border-left: 4px solid #3b82f6;
+    }
+    
+    .map-toast.error {
+      border-left: 4px solid #ef4444;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, 10px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+  `;
+  
+  document.head.appendChild(style);
 };

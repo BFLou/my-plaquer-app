@@ -1,11 +1,21 @@
 // src/components/maps/controls/MapControls.tsx
 import React from 'react';
-import { Navigation, Filter, Route as RouteIcon, Map, X, Circle } from 'lucide-react';
+import { 
+  Navigation, 
+  Filter, 
+  Route as RouteIcon, 
+  Map
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from "@/components/ui/tooltip";
 
-type MapControlsProps = {
+interface MapControlsProps {
   isLoadingLocation: boolean;
   showFilters: boolean;
   setShowFilters: (show: boolean) => void;
@@ -14,8 +24,13 @@ type MapControlsProps = {
   findUserLocation: () => void;
   hasUserLocation: boolean;
   routePointsCount: number;
-};
+  resetMap: () => void;
+}
 
+/**
+ * MapControls Component
+ * Provides control buttons for the map (location, filter, route, etc.)
+ */
 const MapControls: React.FC<MapControlsProps> = ({
   isLoadingLocation,
   showFilters,
@@ -24,12 +39,14 @@ const MapControls: React.FC<MapControlsProps> = ({
   toggleRoutingMode,
   findUserLocation,
   hasUserLocation,
-  routePointsCount
+  routePointsCount,
+  resetMap
 }) => {
   return (
     <TooltipProvider>
-<div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
-<div className="flex flex-col gap-2">
+      <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
+        <div className="flex flex-col gap-2">
+          {/* Location Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -51,6 +68,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
+          {/* Filter Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -71,15 +89,16 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
+          {/* Route Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
-                variant="outline" 
+                variant={isRoutingMode ? "default" : "outline"}
                 size="sm" 
-                className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-50 border-green-200' : ''}`}
+                className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-600 text-white' : ''}`}
                 onClick={toggleRoutingMode}
               >
-                <RouteIcon size={18} className={isRoutingMode ? 'text-green-600' : ''} />
+                <RouteIcon size={18} />
                 {isRoutingMode && routePointsCount > 0 && (
                   <Badge 
                     variant="default" 
@@ -95,18 +114,14 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
+          {/* Reset Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="h-10 w-10 p-0"
-                onClick={() => {
-                  if (window.L && window.L.map) {
-                    // Reset map view to show all markers
-                    window.location.reload();
-                  }
-                }}
+                onClick={resetMap}
               >
                 <Map size={18} />
               </Button>

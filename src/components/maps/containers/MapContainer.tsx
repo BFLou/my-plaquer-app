@@ -7,6 +7,10 @@ interface MapContainerProps {
   isRoutingMode: boolean;
 }
 
+/**
+ * MapContainer Component
+ * Handles the actual map DOM element and loading/processing states
+ */
 const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
   mapLoaded,
   isDrawingRoute,
@@ -76,6 +80,83 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
         /* Make sure route markers are always on top */
         .leaflet-marker-icon.route-marker {
           z-index: 1000 !important;
+        }
+        
+        /* Animation for user location pulse */
+        @keyframes pulse {
+          0% {
+            transform: scale(0.8);
+            opacity: 0.7;
+          }
+          70% {
+            transform: scale(1.5);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(0.8);
+            opacity: 0;
+          }
+        }
+        
+        /* Route marker styles */
+        .route-marker-start {
+          background: #3b82f6 !important;
+          border: 2px solid white !important;
+        }
+        
+        .route-marker-end {
+          background: #ef4444 !important;
+          border: 2px solid white !important;
+        }
+        
+        .route-marker-waypoint {
+          background: #10b981 !important;
+          border: 2px solid white !important;
+        }
+        
+        /* Route line animation */
+        @keyframes dash {
+          to {
+            stroke-dashoffset: -1000;
+          }
+        }
+        
+        .animated-dash {
+          animation: dash 30s linear infinite;
+        }
+        
+        /* Toast notifications */
+        .map-toast {
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 10px 20px;
+          border-radius: 8px;
+          background-color: white;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          z-index: 1000;
+          min-width: 200px;
+          text-align: center;
+          opacity: 0;
+          animation: fadeIn 0.3s forwards;
+        }
+        
+        .map-toast.success {
+          border-left: 4px solid #10b981;
+        }
+        
+        .map-toast.info {
+          border-left: 4px solid #3b82f6;
+        }
+        
+        .map-toast.error {
+          border-left: 4px solid #ef4444;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translate(-50%, 10px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
         }
         
         /* Prevent _leaflet_pos errors */

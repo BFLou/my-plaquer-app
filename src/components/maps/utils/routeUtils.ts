@@ -1,3 +1,4 @@
+// src/components/maps/utils/routeUtils.ts
 import { Plaque } from '@/types/plaque';
 
 export interface RoutePoint {
@@ -15,9 +16,37 @@ export interface SavedRoute {
 }
 
 /**
+ * Calculate distance between two points using Haversine formula
+ */
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/**
+ * Format distance based on unit preference
+ */
+export function formatDistance(distanceKm: number, useImperial = false): string {
+  if (useImperial) {
+    // Convert to miles (1 km = 0.621371 miles)
+    const miles = distanceKm * 0.621371;
+    return `${miles.toFixed(1)} mi`;
+  } else {
+    return `${distanceKm.toFixed(1)} km`;
+  }
+}
+
+/**
  * Calculate the total distance of a route in kilometers
  */
-export const calculateRouteDistance = (points: Plaque[]): number => {
+export function calculateRouteDistance(points: Plaque[]): number {
   if (!points || points.length < 2) return 0;
   
   let totalDistance = 0;
@@ -35,65 +64,69 @@ export const calculateRouteDistance = (points: Plaque[]): number => {
     
     if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
     
-    // Calculate direct distance (haversine formula)
     totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
   }
   
   return totalDistance;
-};
+}
 
 /**
- * Calculate distance between two points using Haversine formula
+ * Calculate approximate walking time (assuming 5km/h or 3mph pace)
  */
-export function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lng2 - lng1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+export function calculateWalkingTime(distanceKm: number, useImperial = false): string {
+  if (distanceKm <= 0) return "0 min";
+  
+  // Walking speeds differ slightly between km and miles
+  const minutes = useImperial 
+    ? Math.round(distanceKm * 0.621371 * 20) // 20 minutes per mile
+    : Math.round(distanceKm * 12); // 12 minutes per km
+  
+  if (minutes < 60) {
+    return `${minutes} min`;
+  } else {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+  }
 }
 
 /**
  * Optimize route using a nearest-neighbor algorithm
- * Produces a more optimal walking path
+ * Keeps start and end points fixed, optimizes middle points
  */
-export const optimizeRoute = (routePoints: Plaque[]): Plaque[] => {
+export function optimizeRoute(routePoints: Plaque[]): Plaque[] {
   if (routePoints.length < 3) {
     return [...routePoints];
   }
   
-  // Create a copy so we don't modify the original
-  const unvisited = [...routePoints.slice(1, -1)];
+  // Keep first and last points fixed
+  const start = routePoints[0];
+  const end = routePoints[routePoints.length - 1];
+  const middle = [...routePoints.slice(1, -1)];
   
-  // Always keep start and end points fixed
-  const result: Plaque[] = [routePoints[0]];
-  let current = result[0];
+  const optimized = [start];
+  let current = start;
   
-  // Repeatedly find the closest unvisited point
-  while (unvisited.length > 0) {
-    let bestIndex = -1;
+  // Find nearest unvisited point
+  while (middle.length > 0) {
+    let bestIndex = 0;
     let bestDistance = Infinity;
     
-    // Find the closest unvisited point
-    for (let i = 0; i < unvisited.length; i++) {
-      if (!current.latitude || !current.longitude || !unvisited[i].latitude || !unvisited[i].longitude) {
+    for (let i = 0; i < middle.length; i++) {
+      if (!current.latitude || !current.longitude || !middle[i].latitude || !middle[i].longitude) {
         continue;
       }
       
-      const latA = parseFloat(current.latitude as string);
-      const lngA = parseFloat(current.longitude as string);
-      const latB = parseFloat(unvisited[i].latitude as string);
-      const lngB = parseFloat(unvisited[i].longitude as string);
+      const startLat = parseFloat(current.latitude as string);
+      const startLng = parseFloat(current.longitude as string);
+      const endLat = parseFloat(middle[i].latitude as string);
+      const endLng = parseFloat(middle[i].longitude as string);
       
-      if (isNaN(latA) || isNaN(lngA) || isNaN(latB) || isNaN(lngB)) {
+      if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) {
         continue;
       }
       
-      const distance = calculateDistance(latA, lngA, latB, lngB);
+      const distance = calculateDistance(startLat, startLng, endLat, endLng);
       
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -101,28 +134,22 @@ export const optimizeRoute = (routePoints: Plaque[]): Plaque[] => {
       }
     }
     
-    // Add the closest point to the result
-    if (bestIndex !== -1) {
-      const nextPoint = unvisited.splice(bestIndex, 1)[0];
-      result.push(nextPoint);
-      current = nextPoint;
-    } else {
-      // If we couldn't find a valid next point, just add the rest in order
-      result.push(...unvisited);
-      break;
-    }
+    // Get nearest point and add to optimized route
+    const nearest = middle.splice(bestIndex, 1)[0];
+    optimized.push(nearest);
+    current = nearest;
   }
   
-  // Add the end point
-  result.push(routePoints[routePoints.length - 1]);
+  // Add end point
+  optimized.push(end);
   
-  return result;
-};
+  return optimized;
+}
 
 /**
  * Creates a GeoJSON route from plaque points
  */
-export const createRouteGeoJSON = (routePoints: Plaque[]) => {
+export function createRouteGeoJSON(routePoints: Plaque[]) {
   const validPoints = routePoints.filter(p => 
     p.latitude && p.longitude && 
     !isNaN(parseFloat(p.latitude as string)) && 
@@ -141,7 +168,8 @@ export const createRouteGeoJSON = (routePoints: Plaque[]) => {
         properties: {
           name: "Plaque Route",
           description: `Route with ${validPoints.length} plaques`,
-          pointCount: validPoints.length
+          pointCount: validPoints.length,
+          distance: calculateRouteDistance(validPoints)
         },
         geometry: {
           type: "LineString",
@@ -169,12 +197,12 @@ export const createRouteGeoJSON = (routePoints: Plaque[]) => {
       }))
     ]
   };
-};
+}
 
 /**
  * Load saved routes from localStorage
  */
-export const loadSavedRoutes = (): SavedRoute[] => {
+export function loadSavedRoutes(): SavedRoute[] {
   try {
     const routes = localStorage.getItem('plaqueRoutes');
     if (!routes) {
@@ -186,15 +214,15 @@ export const loadSavedRoutes = (): SavedRoute[] => {
     console.error("Error loading saved routes:", error);
     return [];
   }
-};
+}
 
 /**
  * Save a route to localStorage
  */
-export const saveRoute = (
+export function saveRoute(
   routePoints: Plaque[],
   name: string = `Plaque Route (${routePoints.length} stops)`
-): SavedRoute | null => {
+): SavedRoute | null {
   if (routePoints.length < 2) {
     return null;
   }
@@ -222,4 +250,4 @@ export const saveRoute = (
   localStorage.setItem('plaqueRoutes', JSON.stringify(savedRoutes));
   
   return route;
-};
+}

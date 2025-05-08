@@ -1,20 +1,26 @@
 // src/components/maps/hooks/useMapInitialization.ts
 import { useState, useEffect, useRef } from 'react';
 
-type MapOptions = {
+interface MapOptions {
   center?: [number, number];
   zoom?: number;
   maxZoom?: number;
   minZoom?: number;
   disableAutomaticZoom?: boolean;
-};
+}
 
-export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | null>, options: MapOptions = {}) => {
+/**
+ * Custom hook for initializing the Leaflet map
+ * Handles loading scripts, styles, and setting up the map instance
+ */
+export const useMapInitialization = (
+  mapRef: React.RefObject<HTMLDivElement | null>, 
+  options: MapOptions = {}
+) => {
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
   
   // Load Leaflet scripts and styles
   useEffect(() => {
@@ -71,135 +77,7 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
     
     document.head.appendChild(scriptLeaflet);
 
-    // Add styles for map and markers
-    const style = document.createElement('style');
-    style.innerHTML = `
-      .leaflet-container {
-        width: 100%;
-        height: 100%;
-        font-family: ui-sans-serif, system-ui, sans-serif;
-      }
-      
-      /* Custom marker styles */
-      .custom-marker {
-        background: transparent !important;
-        border: none !important;
-        transition: all 0.3s ease;
-      }
-      
-      .custom-marker:hover {
-        z-index: 1000 !important;
-      }
-      
-      /* Popup styling */
-      .leaflet-popup-content-wrapper {
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        overflow: hidden;
-      }
-      
-      .leaflet-popup-content {
-        margin: 0;
-        padding: 0;
-      }
-      
-      .leaflet-popup-tip {
-        background-color: white;
-      }
-      
-      /* Control styling */
-      .leaflet-control-zoom {
-        border: none !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-      }
-      
-      .leaflet-control-zoom-in, .leaflet-control-zoom-out {
-        border-radius: 0.25rem !important;
-        color: #4b5563 !important;
-        border: 1px solid #e5e7eb !important;
-      }
-      
-      .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
-        background-color: #f9fafb !important;
-        color: #1f2937 !important;
-      }
-      
-      /* Attribution styling */
-      .leaflet-control-attribution {
-        background-color: rgba(255, 255, 255, 0.8) !important;
-        padding: 0.25rem 0.5rem !important;
-        border-radius: 0.25rem !important;
-        font-size: 0.7rem !important;
-      }
-      
-      /* Customize cluster icons */
-      .marker-cluster {
-        background-color: rgba(59, 130, 246, 0.6) !important;
-        border-radius: 50% !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-      }
-      
-      .marker-cluster div {
-        background-color: rgba(59, 130, 246, 0.8) !important;
-        color: white !important;
-        font-weight: bold !important;
-      }
-      
-      /* Animation for marker drop */
-      @keyframes marker-drop {
-        0% {
-          transform: translateY(-20px);
-          opacity: 0;
-        }
-        60% {
-          transform: translateY(5px);
-          opacity: 1;
-        }
-        100% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      
-      /* Scale animations for markers and clusters */
-      @keyframes scale-in {
-        0% {
-          transform: scale(0.8);
-          opacity: 0;
-        }
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-      
-      /* Animating dash array for routes */
-      @keyframes dash {
-        to {
-          stroke-dashoffset: 1000;
-        }
-      }
-      
-      /* Modern spiderfy lines */
-      .leaflet-marker-icon-wrapper svg line {
-        stroke: #3b82f6 !important;
-        stroke-width: 2 !important;
-        stroke-dasharray: 4, 4 !important;
-      }
-    `;
-    document.head.appendChild(style);
-
-    return () => {
-      // Cleanup if component unmounts
-      document.head.removeChild(linkLeaflet);
-      document.head.removeChild(linkCluster);
-      document.head.removeChild(linkClusterDefault);
-      document.head.removeChild(scriptLeaflet);
-      if (document.querySelector('script[src*="leaflet.markercluster.js"]')) {
-        document.head.removeChild(document.querySelector('script[src*="leaflet.markercluster.js"]')!);
-      }
-      document.head.removeChild(style);
-    };
+    // No cleanup to ensure scripts remain loaded
   }, []);
 
   // Initialize map once scripts are loaded
@@ -257,31 +135,23 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
       map.scrollWheelZoom.disable();
       
       // Add event listener to enable zoom on scroll when shift key is pressed
-      document.addEventListener('keydown', function(e) {
+      const enableZoom = (e) => {
         if (e.shiftKey) {
           map.scrollWheelZoom.enable();
         }
-      });
+      };
       
-      document.addEventListener('keyup', function(e) {
+      const disableZoom = (e) => {
         if (e.key === 'Shift') {
           map.scrollWheelZoom.disable();
         }
-      });
+      };
+      
+      document.addEventListener('keydown', enableZoom);
+      document.addEventListener('keyup', disableZoom);
       
       // Enable touch zoom
       map.touchZoom.enable();
-      
-      // Add a subtle shadow overlay to make the markers pop
-      const shadowOverlay = window.L.rectangle(
-        [[-90, -180], [90, 180]], 
-        { 
-          color: 'transparent',
-          fillColor: '#000', 
-          fillOpacity: 0.03,
-          interactive: false
-        }
-      ).addTo(map);
       
       // Add double-click to zoom
       map.doubleClickZoom.enable();
@@ -323,6 +193,18 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
           detail: { map } 
         }));
       }, 100);
+      
+      // Clean up event listeners on unmount
+      return () => {
+        document.removeEventListener('keydown', enableZoom);
+        document.removeEventListener('keyup', disableZoom);
+        
+        // Clean up map instance if component unmounts
+        if (map) {
+          map.remove();
+          mapInstanceRef.current = null;
+        }
+      };
     } catch (error: any) {
       console.error("Map initialization error:", error);
       setMapError(`Failed to initialize map: ${error.message}`);
@@ -333,7 +215,6 @@ export const useMapInitialization = (mapRef: React.RefObject<HTMLDivElement | nu
     mapLoaded,
     mapError,
     mapInstance: mapInstanceRef.current,
-    markers: markersRef.current,
     isScriptLoaded
   };
 };

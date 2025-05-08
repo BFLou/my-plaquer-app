@@ -4,12 +4,16 @@ import { X, Search, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type LocationSearchPanelProps = {
+interface LocationSearchPanelProps {
   onSearch: (address: string) => void;
   onClose: () => void;
   isLoading: boolean;
-};
+}
 
+/**
+ * LocationSearchPanel Component
+ * Provides location search functionality for the map
+ */
 const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
   onSearch,
   onClose,

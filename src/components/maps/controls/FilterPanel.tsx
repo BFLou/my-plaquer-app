@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 
-type FilterPanelProps = {
+interface FilterPanelProps {
   maxDistance: number;
   setMaxDistance: (distance: number) => void;
   filteredPlaquesCount: number;
@@ -13,8 +13,12 @@ type FilterPanelProps = {
   closeFilters: () => void;
   resetFilters: () => void;
   hasUserLocation: boolean;
-};
+}
 
+/**
+ * FilterPanel Component
+ * Provides distance-based filtering for plaques
+ */
 const FilterPanel: React.FC<FilterPanelProps> = ({
   maxDistance, 
   setMaxDistance, 
