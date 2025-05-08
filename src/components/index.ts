@@ -23,6 +23,14 @@ export { CollectionListItem } from './collections/CollectionListItem';
 export { CollectionCreator } from './collections/CollectionCreator';
 export type { NewCollection } from './collections/CollectionCreator';
 export { CollectionStats } from './collections/CollectionStats';
+export { default as CollectionsPage } from './collections/CollectionsPage';
+export { default as CollectionsHeader } from './collections/CollectionsHeader';
+export { default as CollectionsDashboard } from './collections/CollectionsDashboard';
+export { default as CollectionsFilterBar } from './collections/CollectionsFilterBar';
+export { default as CollectionsList } from './collections/CollectionsList';
+export { default as CollectionsGrid } from './collections/CollectionsGrid';
+export { default as CollectionFilterSheet } from './collections/CollectionFilterSheet';
+export { default as CollectionsSortDropdown } from './collections/CollectionsSortDropdown';
 
 // Common components
 export { EmptyState } from './common/EmptyState';

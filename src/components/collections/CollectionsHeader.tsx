@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Star, List, BookMarked } from 'lucide-react';
+import { MapPin, Star, List, BookMarked, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 type CollectionsHeaderProps = {
