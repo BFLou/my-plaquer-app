@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   List, 
@@ -6,10 +6,12 @@ import {
   MapIcon, 
   Trash, 
   Search, 
-  AlertCircle, 
   Filter,
-  Sparkles,
-  BookMarked
+  Star,
+  FolderPlus,
+  BookMarked,
+  Eye,
+  Users
 } from 'lucide-react';
 import {
   PageContainer,
@@ -39,101 +41,12 @@ import {
 } from "@/components/ui/sheet";
 import userData from '../data/user_data.json';
 
-// Simplified Filter Sheet Component
-const SimpleFilterSheet = ({
-  isOpen,
-  onClose,
-  onApply,
-  onReset,
-  
-  types,
-  selectedTypes,
-  onTypesChange,
-  
-  plaqueCounts,
-  selectedPlaqueCounts,
-  onPlaqueCountsChange,
-  
-  className = ''
-}) => {
-  const handleSheetChange = (open) => {
-    if (!open) {
-      onClose();
-    }
-  };
-
-  // Count total active filters
-  const activeFiltersCount = 
-    selectedTypes.length + 
-    selectedPlaqueCounts.length;
-
-  return (
-    <Sheet open={isOpen} onOpenChange={handleSheetChange}>
-      <SheetContent side="left" className={`w-full sm:max-w-md ${className}`}>
-        <SheetHeader>
-          <div className="flex items-center justify-between">
-            <SheetTitle>Filter Collections</SheetTitle>
-            {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="font-normal">
-                {activeFiltersCount} active
-              </Badge>
-            )}
-          </div>
-          <SheetDescription>Refine your collections view</SheetDescription>
-        </SheetHeader>
-        
-        <div className="grid gap-6 py-6">
-          <div className="space-y-4">
-            <h3 className="text-base font-medium">Collection Type</h3>
-            <MultiSelectFilter
-              options={types}
-              selected={selectedTypes}
-              onChange={onTypesChange}
-              placeholder="All collection types"
-              searchPlaceholder="Search collection types..."
-              displayBadges={true}
-            />
-          </div>
-          
-          <div className="space-y-4">
-            <h3 className="text-base font-medium">Number of Plaques</h3>
-            <MultiSelectFilter
-              options={plaqueCounts}
-              selected={selectedPlaqueCounts}
-              onChange={onPlaqueCountsChange}
-              placeholder="Any amount"
-              searchPlaceholder="Search plaque counts..."
-              displayBadges={true}
-            />
-          </div>
-        </div>
-        
-        <SheetFooter className="flex flex-row gap-2 sm:justify-between">
-          <Button 
-            variant="outline" 
-            onClick={onReset}
-            className="flex-1"
-          >
-            Reset All
-          </Button>
-          <Button 
-            onClick={onApply}
-            className="flex-1"
-          >
-            Apply Filters
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
-  );
-};
-
 const Collections = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   
-  // Get collections directly from user_data.json
+  // State
   const [collections, setCollections] = useState(userData.collections);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortOption, setSortOption] = useState('newest');
@@ -143,7 +56,7 @@ const Collections = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   
-  // Simplified filter states
+  // Filter states
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedPlaqueCounts, setSelectedPlaqueCounts] = useState<string[]>([]);
   
@@ -151,7 +64,6 @@ const Collections = () => {
   const typeOptions = [
     { label: 'Literary', value: 'literary' },
     { label: 'Music', value: 'music' },
-    { label: 'Family', value: 'family' },
     { label: 'Historical', value: 'historical' },
     { label: 'Women', value: 'women' },
     { label: 'Local', value: 'local' },
@@ -159,11 +71,11 @@ const Collections = () => {
   
   const plaqueCountOptions = [
     { label: 'Small (1-3)', value: 'small' },
-    { label: 'Medium (4-6)', value: 'medium' },
-    { label: 'Large (7+)', value: 'large' },
+    { label: 'Medium (4-10)', value: 'medium' },
+    { label: 'Large (10+)', value: 'large' },
   ];
   
-  // Initialize state from URL params on first load
+  // Initialize state from URL params
   useEffect(() => {
     const view = searchParams.get('view');
     if (view && (view === 'grid' || view === 'list' || view === 'map')) {
@@ -178,17 +90,6 @@ const Collections = () => {
     const sort = searchParams.get('sort');
     if (sort) {
       setSortOption(sort);
-    }
-
-    // Get user's default preferences if available
-    if (userData.user.preferences) {
-      if (userData.user.preferences.default_view && !view) {
-        setViewMode(userData.user.preferences.default_view as ViewMode);
-      }
-      
-      if (userData.user.preferences.default_sort && !sort) {
-        setSortOption(userData.user.preferences.default_sort);
-      }
     }
   }, []);
   
@@ -218,34 +119,26 @@ const Collections = () => {
     
     const newUrl = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
     navigate(newUrl, { replace: true });
-  }, [
-    viewMode, 
-    searchQuery, 
-    sortOption, 
-    selectedTypes, 
-    selectedPlaqueCounts
-  ]);
+  }, [viewMode, searchQuery, sortOption, selectedTypes, selectedPlaqueCounts]);
   
-  // Filter collections based on the current filters
+  // Filter collections based on current filters
   const filteredCollections = collections.filter(collection => {
     // Match search query
     const matchesSearch = collection.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         (collection.description && collection.description.toLowerCase().includes(searchQuery.toLowerCase()));
+                        (collection.description && collection.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
     // Filter by type based on collection name/description
     const matchesType = selectedTypes.length === 0 || 
-                       (selectedTypes.includes('literary') && (collection.name.includes('Literary') || collection.description.includes('authors'))) ||
-                       (selectedTypes.includes('music') && (collection.name.includes('Music') || collection.description.includes('musicians'))) ||
-                       (selectedTypes.includes('family') && (collection.name.includes('Family'))) ||
-                       (selectedTypes.includes('women') && (collection.name.includes('Women'))) ||
-                       (selectedTypes.includes('local') && (collection.name.includes('Local')));
+                      selectedTypes.some(type => 
+                        collection.name.toLowerCase().includes(type) || 
+                        (collection.description && collection.description.toLowerCase().includes(type)));
     
     // Match plaque counts
     const plaqueCount = collection.plaques.length;
     const matchesPlaqueCounts = selectedPlaqueCounts.length === 0 || 
                               (selectedPlaqueCounts.includes('small') && plaqueCount >= 1 && plaqueCount <= 3) ||
-                              (selectedPlaqueCounts.includes('medium') && plaqueCount >= 4 && plaqueCount <= 6) ||
-                              (selectedPlaqueCounts.includes('large') && plaqueCount >= 7);
+                              (selectedPlaqueCounts.includes('medium') && plaqueCount >= 4 && plaqueCount <= 10) ||
+                              (selectedPlaqueCounts.includes('large') && plaqueCount > 10);
     
     return matchesSearch && matchesType && matchesPlaqueCounts;
   });
@@ -253,11 +146,9 @@ const Collections = () => {
   // Sort collections based on selected option
   const sortedCollections = [...filteredCollections].sort((a, b) => {
     if (sortOption === 'newest') {
-      // Sort by update timestamp
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     }
     if (sortOption === 'oldest') {
-      // Sort by creation timestamp
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     }
     if (sortOption === 'most_plaques') {
@@ -290,7 +181,7 @@ const Collections = () => {
     }
   };
   
-  // Handlers
+  // Event handlers
   const toggleSelect = (id: number) => {
     setSelectedCollections(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -302,10 +193,8 @@ const Collections = () => {
   };
   
   const handleEdit = (id: number) => {
-    toast({
-      title: "Edit Collection",
+    toast.success("Edit Collection", {
       description: `Editing collection ${id}`,
-      duration: 2000,
     });
   };
   
@@ -323,29 +212,40 @@ const Collections = () => {
       };
       setCollections([...collections, newCollection]);
       
-      toast({
-        title: "Collection Duplicated",
+      toast.success("Collection Duplicated", {
         description: `Created a copy of "${collection.name}"`,
-        duration: 2000,
       });
     }
   };
   
   const handleShare = (id: number) => {
-    toast({
-      title: "Share Collection",
+    toast.info("Share Collection", {
       description: "Sharing functionality would be implemented here",
-      duration: 2000,
     });
+  };
+  
+  const handleToggleFavorite = (id: number) => {
+    setCollections(prev => prev.map(collection => 
+      collection.id === id 
+        ? { ...collection, is_favorite: !collection.is_favorite }
+        : collection
+    ));
+    
+    const collection = collections.find(c => c.id === id);
+    if (collection) {
+      toast.success(collection.is_favorite 
+        ? "Removed from favorites" 
+        : "Added to favorites", {
+        description: `Collection "${collection.name}" ${collection.is_favorite ? 'removed from' : 'added to'} favorites`,
+      });
+    }
   };
   
   const handleDelete = (id: number) => {
     setCollections(prev => prev.filter(collection => collection.id !== id));
     
-    toast({
-      title: "Collection Deleted",
+    toast.success("Collection Deleted", {
       description: "The collection has been deleted",
-      duration: 2000,
     });
   };
   
@@ -366,20 +266,16 @@ const Collections = () => {
     setCollections([createdCollection, ...collections]);
     setCreateModalOpen(false);
     
-    toast({
-      title: "Collection Created",
+    toast.success("Collection Created", {
       description: `"${newCollection.name}" has been created`,
-      duration: 2000,
     });
   };
   
   const handleBulkDelete = () => {
     setCollections(prev => prev.filter(collection => !selectedCollections.includes(collection.id)));
     
-    toast({
-      title: "Collections Deleted",
+    toast.success("Collections Deleted", {
       description: `${selectedCollections.length} collections have been deleted`,
-      duration: 2000,
     });
     setSelectedCollections([]);
   };
@@ -411,75 +307,86 @@ const Collections = () => {
   const totalCollections = collections.length;
   const totalPlaques = collections.reduce((sum, c) => sum + c.plaques.length, 0);
   const favoritedCollections = collections.filter(c => c.is_favorite).length;
+  const publicCollections = collections.filter(c => c.is_public).length;
   
   return (
     <PageContainer activePage="collections">
-      <main className="container mx-auto px-4 py-8">
-        {/* Improved Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-8">
-          <div className="flex justify-between items-center">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2 text-white">My Collections</h1>
-              <p className="text-blue-50">Curate your own plaque discoveries around London</p>
+              <h1 className="text-3xl font-bold mb-2">My Collections</h1>
+              <p className="text-blue-100">Organize your plaque discoveries with custom collections</p>
+            </div>
+            <Button
+              onClick={handleCreateCollection}
+              className="bg-white text-blue-700 hover:bg-blue-50"
+            >
+              <Plus size={16} className="mr-2" /> New Collection
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Stats Cards */}
+      <div className="bg-gray-50 border-b">
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-xl shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-gray-500 mb-1 text-sm font-medium">Total</div>
+                  <div className="text-2xl font-bold">{totalCollections}</div>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <BookMarked size={18} className="text-blue-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-5 rounded-xl shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-gray-500 mb-1 text-sm font-medium">Plaques</div>
+                  <div className="text-2xl font-bold">{totalPlaques}</div>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <MapIcon size={18} className="text-blue-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-5 rounded-xl shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-gray-500 mb-1 text-sm font-medium">Favorites</div>
+                  <div className="text-2xl font-bold">{favoritedCollections}</div>
+                </div>
+                <div className="p-3 bg-amber-100 rounded-lg">
+                  <Star size={18} className="text-amber-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-5 rounded-xl shadow-sm">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-gray-500 mb-1 text-sm font-medium">Public</div>
+                  <div className="text-2xl font-bold">{publicCollections}</div>
+                </div>
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Eye size={18} className="text-green-600" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        
-        {/* Stylish Stats Section */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-blue-500 p-5 rounded-xl shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-blue-100 mb-1 text-sm font-medium">Collections</div>
-                <div className="text-3xl font-bold text-white">{totalCollections}</div>
-              </div>
-              <div className="p-3 bg-blue-600 rounded-lg">
-                <BookMarked size={24} className="text-white" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-blue-600 p-5 rounded-xl shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-blue-100 mb-1 text-sm font-medium">Total Plaques</div>
-                <div className="text-3xl font-bold text-white">{totalPlaques}</div>
-              </div>
-              <div className="p-3 bg-blue-700 rounded-lg">
-                <MapIcon size={24} className="text-white" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-amber-500 p-5 rounded-xl shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-amber-100 mb-1 text-sm font-medium">Favorites</div>
-                <div className="text-3xl font-bold text-white">{favoritedCollections}</div>
-              </div>
-              <div className="p-3 bg-amber-600 rounded-lg">
-                <Sparkles size={24} className="text-white" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-blue-700 p-5 rounded-xl shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-blue-100 mb-1 text-sm font-medium">Create New</div>
-                <Button 
-                  onClick={handleCreateCollection} 
-                  className="bg-white hover:bg-gray-100 text-blue-700 mt-2"
-                >
-                  <Plus size={16} className="mr-1" /> New Collection
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Controls */}
-        <div className="sticky top-[61px] bg-white z-10 border-y border-gray-100 py-3 mb-6">
+      </div>
+      
+      {/* Collection Controls */}
+      <div className="sticky top-16 z-10 bg-white border-b py-4">
+        <div className="container mx-auto px-4">
           <div className="flex flex-wrap justify-between items-center gap-4">
             <div className="flex flex-wrap gap-2 items-center">
               {/* Filter button with badge */}
@@ -564,101 +471,166 @@ const Collections = () => {
             </div>
           </div>
         </div>
-        
-        {/* Collections List */}
-        <div id="collections-list">
-          {sortedCollections.length === 0 ? (
-            <EmptyState
-              icon={List}
-              title="No Collections Found"
-              description={activeFilters.length > 0 
-                ? "Try adjusting your filters or search criteria" 
-                : "Start organizing your plaque discoveries by creating your first collection"
-              }
-              actionLabel={activeFilters.length > 0 ? "Reset Filters" : "Create Your First Collection"}
-              onAction={activeFilters.length > 0 ? resetFilters : handleCreateCollection}
-            />
-          ) : (
-            <>
-              {viewMode === 'grid' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedCollections.map((collection) => {
-                    // Format the "updated X ago" text
-                    const updatedText = getUpdatedText(collection.updated_at);
-                    
-                    // Create a collection object compatible with the component
-                    const collectionData = {
-                      ...collection,
-                      updated: updatedText,
-                      plaques: collection.plaques.length, // Convert array to count for display
-                      isFavorite: collection.is_favorite
-                    };
-                    
-                    return (
-                      <CollectionCard 
-                        key={collection.id}
-                        collection={collectionData}
-                        isSelected={selectedCollections.includes(collection.id)}
-                        menuOpenId={menuOpenId}
-                        onToggleSelect={toggleSelect}
-                        onMenuOpen={handleMenuOpen}
-                        onEdit={handleEdit}
-                        onDuplicate={handleDuplicate}
-                        onShare={handleShare}
-                        onDelete={handleDelete}
-                      />
-                    );
-                  })}
-                </div>
+      </div>
+      
+      {/* Collections List */}
+      <div className="container mx-auto px-4 py-6">
+        {sortedCollections.length === 0 ? (
+          <EmptyState
+            icon={FolderPlus}
+            title="No Collections Found"
+            description={activeFilters.length > 0 
+              ? "Try adjusting your filters or search criteria" 
+              : "Start organizing your plaque discoveries by creating your first collection"
+            }
+            actionLabel={activeFilters.length > 0 ? "Reset Filters" : "Create Your First Collection"}
+            onAction={activeFilters.length > 0 ? resetFilters : handleCreateCollection}
+          />
+        ) : (
+          <>
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedCollections.map((collection) => {
+                  // Format the "updated X ago" text
+                  const updatedText = getUpdatedText(collection.updated_at);
+                  
+                  // Create a collection object compatible with the component
+                  const collectionData = {
+                    ...collection,
+                    updated: updatedText,
+                    plaques: collection.plaques.length, // Convert array to count for display
+                    isFavorite: collection.is_favorite
+                  };
+                  
+                  return (
+                    <CollectionCard 
+                      key={collection.id}
+                      collection={collectionData}
+                      isSelected={selectedCollections.includes(collection.id)}
+                      menuOpenId={menuOpenId}
+                      onToggleSelect={toggleSelect}
+                      onMenuOpen={handleMenuOpen}
+                      onEdit={handleEdit}
+                      onDuplicate={handleDuplicate}
+                      onShare={handleShare}
+                      onToggleFavorite={() => handleToggleFavorite(collection.id)}
+                      onDelete={handleDelete}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            
+            {viewMode === 'list' && (
+              <div className="flex flex-col gap-4">
+                {sortedCollections.map((collection) => {
+                  // Format the "updated X ago" text
+                  const updatedText = getUpdatedText(collection.updated_at);
+                  
+                  // Create a collection object compatible with the component
+                  const collectionData = {
+                    ...collection,
+                    updated: updatedText,
+                    plaques: collection.plaques.length, // Convert array to count for display
+                    isFavorite: collection.is_favorite
+                  };
+                  
+                  return (
+                    <CollectionListItem 
+                      key={collection.id}
+                      collection={collectionData}
+                      isSelected={selectedCollections.includes(collection.id)}
+                      menuOpenId={menuOpenId}
+                      onToggleSelect={toggleSelect}
+                      onMenuOpen={handleMenuOpen}
+                      onEdit={handleEdit}
+                      onDuplicate={handleDuplicate}
+                      onShare={handleShare}
+                      onToggleFavorite={() => handleToggleFavorite(collection.id)}
+                      onDelete={handleDelete}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            
+            {viewMode === 'map' && (
+              <div className="bg-gray-50 rounded-xl p-8 h-80 flex flex-col items-center justify-center text-center">
+                <MapIcon size={48} className="text-gray-400 mb-4" />
+                <h3 className="text-xl font-medium text-gray-700 mb-2">Map View Coming Soon</h3>
+                <p className="text-gray-500 mb-4">Visualize your collections geographically</p>
+                <Button variant="outline">Get Notified When Ready</Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      
+      {/* Filter Sheet */}
+      <Sheet open={filterModalOpen} onOpenChange={setFilterModalOpen}>
+        <SheetContent side="left" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <div className="flex items-center justify-between">
+              <SheetTitle>Filter Collections</SheetTitle>
+              {activeFilters.length > 0 && (
+                <Badge variant="secondary" className="font-normal">
+                  {activeFilters.length} active
+                </Badge>
               )}
-              
-              {viewMode === 'list' && (
-                <div className="flex flex-col gap-4">
-                  {sortedCollections.map((collection) => {
-                    // Format the "updated X ago" text
-                    const updatedText = getUpdatedText(collection.updated_at);
-                    
-                    // Create a collection object compatible with the component
-                    const collectionData = {
-                      ...collection,
-                      updated: updatedText,
-                      plaques: collection.plaques.length, // Convert array to count for display
-                      isFavorite: collection.is_favorite
-                    };
-                    
-                    return (
-                      <CollectionListItem 
-                        key={collection.id}
-                        collection={collectionData}
-                        isSelected={selectedCollections.includes(collection.id)}
-                        menuOpenId={menuOpenId}
-                        onToggleSelect={toggleSelect}
-                        onMenuOpen={handleMenuOpen}
-                        onEdit={handleEdit}
-                        onDuplicate={handleDuplicate}
-                        onShare={handleShare}
-                        onDelete={handleDelete}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              
-              {viewMode === 'map' && (
-                <div className="bg-gray-50 rounded-xl p-8 h-80 flex flex-col items-center justify-center text-center">
-                  <MapIcon size={48} className="text-gray-400 mb-4" />
-                  <h3 className="text-xl font-medium text-gray-700 mb-2">Map View Coming Soon</h3>
-                  <p className="text-gray-500 mb-4">Visualize your collections geographically</p>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <AlertCircle size={16} />
-                    Get Notified When Ready
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </main>
+            </div>
+            <SheetDescription>Refine your collections view</SheetDescription>
+          </SheetHeader>
+          
+          <div className="grid gap-6 py-6">
+            <div className="space-y-4">
+              <h3 className="text-base font-medium">Collection Type</h3>
+              <MultiSelectFilter
+                options={typeOptions}
+                selected={selectedTypes}
+                onChange={setSelectedTypes}
+                placeholder="All collection types"
+                searchPlaceholder="Search collection types..."
+                displayBadges={true}
+              />
+            </div>
+            
+            <div className="space-y-4">
+              <h3 className="text-base font-medium">Number of Plaques</h3>
+              <MultiSelectFilter
+                options={plaqueCountOptions}
+                selected={selectedPlaqueCounts}
+                onChange={setSelectedPlaqueCounts}
+                placeholder="Any amount"
+                searchPlaceholder="Search plaque counts..."
+                displayBadges={true}
+              />
+            </div>
+          </div>
+          
+          <SheetFooter className="flex flex-row gap-2 sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={resetFilters}
+              className="flex-1"
+            >
+              Reset All
+            </Button>
+            <Button 
+              onClick={applyFilters}
+              className="flex-1"
+            >
+              Apply Filters
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      
+      {/* Create Collection Modal */}
+      <CollectionCreator
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSave={handleSaveCollection}
+      />
       
       {/* Action Bar (appears when collections are selected) */}
       <ActionBar
@@ -673,29 +645,6 @@ const Collections = () => {
             onClick: handleBulkDelete
           }
         ]}
-      />
-      
-      {/* Simplified Filter Sheet */}
-      <SimpleFilterSheet
-        isOpen={filterModalOpen}
-        onClose={() => setFilterModalOpen(false)}
-        onApply={applyFilters}
-        onReset={resetFilters}
-        
-        types={typeOptions}
-        selectedTypes={selectedTypes}
-        onTypesChange={setSelectedTypes}
-        
-        plaqueCounts={plaqueCountOptions}
-        selectedPlaqueCounts={selectedPlaqueCounts}
-        onPlaqueCountsChange={setSelectedPlaqueCounts}
-      />
-      
-      {/* Create Collection Modal */}
-      <CollectionCreator
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSave={handleSaveCollection}
       />
     </PageContainer>
   );
