@@ -29,10 +29,14 @@ export const calculateRouteDistance = (points: Plaque[]): number => {
     
     if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
     
-    const startLat = parseFloat(start.latitude as unknown as string);
-    const startLng = parseFloat(start.longitude as unknown as string);
-    const endLat = parseFloat(end.latitude as unknown as string);
-    const endLng = parseFloat(end.longitude as unknown as string);
+    const startLat = typeof start.latitude === 'string' ? 
+      parseFloat(start.latitude) : start.latitude as number;
+    const startLng = typeof start.longitude === 'string' ? 
+      parseFloat(start.longitude) : start.longitude as number;
+    const endLat = typeof end.latitude === 'string' ? 
+      parseFloat(end.latitude) : end.latitude as number;
+    const endLng = typeof end.longitude === 'string' ? 
+      parseFloat(end.longitude) : end.longitude as number;
     
     if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
     
@@ -56,6 +60,19 @@ export function calculateDistance(lat1: number, lng1: number, lat2: number, lng2
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
+}
+
+/**
+ * Format distance with proper units
+ */
+export function formatDistance(distance: number, useImperial: boolean = false): string {
+  if (useImperial) {
+    // Convert to miles (1 km = 0.621371 miles)
+    const miles = distance * 0.621371;
+    return `${miles.toFixed(1)} mi`;
+  } else {
+    return `${distance.toFixed(1)} km`;
+  }
 }
 
 /**
@@ -84,23 +101,31 @@ export function calculateWalkingTime(distanceKm: number): string {
 }
 
 /**
- * Get a more precise walking time estimate for a specific route segment
- * Takes into account both distance and terrain
+ * Estimate total walking time for a route including stops for viewing plaques
  */
-export function getWalkingTimeForSegment(
-  startLat: number, 
-  startLng: number, 
-  endLat: number, 
-  endLng: number, 
-  terrainFactor: number = 1.0 // 1.0 = flat, >1.0 = hilly
-): string {
-  const distance = calculateDistance(startLat, startLng, endLat, endLng);
+export const estimateTotalWalkingTime = (routePoints: Plaque[], minutesPerStop: number = 5): string => {
+  // Calculate base walking time between points
+  const totalDistanceKm = calculateRouteDistance(routePoints);
+  const walkingMinutes = Math.round(totalDistanceKm * 12); // 12 min per km
   
-  // Apply terrain factor to the base walking time
-  const adjustedDistance = distance * terrainFactor;
+  // Add time for traffic lights and crossings
+  const trafficLightMinutes = Math.ceil(totalDistanceKm * 4 * 0.5); // 4 lights per km, 0.5 min each
   
-  return calculateWalkingTime(adjustedDistance);
-}
+  // Add viewing time for each plaque (exclude starting point since you're already there)
+  const viewingMinutes = (routePoints.length - 1) * minutesPerStop;
+  
+  // Calculate total minutes
+  const totalMinutes = walkingMinutes + trafficLightMinutes + viewingMinutes;
+  
+  // Format output
+  if (totalMinutes < 60) {
+    return `${totalMinutes} min`;
+  } else {
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+  }
+};
 
 /**
  * Optimize route using a nearest-neighbor algorithm
@@ -138,10 +163,14 @@ export const optimizeWalkingRoute = (routePoints: Plaque[], preserveEndpoints: b
         continue;
       }
       
-      const latA = parseFloat(current.latitude as unknown as string);
-      const lngA = parseFloat(current.longitude as unknown as string);
-      const latB = parseFloat(unvisited[i].latitude as unknown as string);
-      const lngB = parseFloat(unvisited[i].longitude as unknown as string);
+      const latA = typeof current.latitude === 'string' ? 
+        parseFloat(current.latitude) : current.latitude as number;
+      const lngA = typeof current.longitude === 'string' ? 
+        parseFloat(current.longitude) : current.longitude as number;
+      const latB = typeof unvisited[i].latitude === 'string' ? 
+        parseFloat(unvisited[i].latitude) : unvisited[i].latitude as number;
+      const lngB = typeof unvisited[i].longitude === 'string' ? 
+        parseFloat(unvisited[i].longitude) : unvisited[i].longitude as number;
       
       if (isNaN(latA) || isNaN(lngA) || isNaN(latB) || isNaN(lngB)) {
         continue;
@@ -173,89 +202,6 @@ export const optimizeWalkingRoute = (routePoints: Plaque[], preserveEndpoints: b
   }
   
   return result;
-};
-
-/**
- * Estimate total walking time for a route including stops for viewing plaques
- */
-export const estimateTotalWalkingTime = (routePoints: Plaque[], minutesPerStop: number = 5): string => {
-  // Calculate base walking time between points
-  const totalDistanceKm = calculateRouteDistance(routePoints);
-  const walkingMinutes = Math.round(totalDistanceKm * 12); // 12 min per km
-  
-  // Add time for traffic lights and crossings
-  const trafficLightMinutes = Math.ceil(totalDistanceKm * 4 * 0.5); // 4 lights per km, 0.5 min each
-  
-  // Add viewing time for each plaque (exclude starting point since you're already there)
-  const viewingMinutes = (routePoints.length - 1) * minutesPerStop;
-  
-  // Calculate total minutes
-  const totalMinutes = walkingMinutes + trafficLightMinutes + viewingMinutes;
-  
-  // Format output
-  if (totalMinutes < 60) {
-    return `${totalMinutes} min`;
-  } else {
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-  }
-};
-
-/**
- * Converts route points to a GeoJSON format for export/sharing
- */
-export const createRouteGeoJSON = (routePoints: Plaque[]) => {
-  const validPoints = routePoints.filter(p => 
-    p.latitude && p.longitude && 
-    !isNaN(parseFloat(p.latitude as unknown as string)) && 
-    !isNaN(parseFloat(p.longitude as unknown as string))
-  );
-  
-  if (validPoints.length < 2) {
-    return null;
-  }
-  
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: {
-          name: "Walking Route",
-          description: `Route with ${validPoints.length} plaques`,
-          pointCount: validPoints.length,
-          distance: calculateRouteDistance(validPoints).toFixed(2),
-          walkingTime: calculateWalkingTime(calculateRouteDistance(validPoints))
-        },
-        geometry: {
-          type: "LineString",
-          coordinates: validPoints.map(p => [
-            parseFloat(p.longitude as unknown as string),
-            parseFloat(p.latitude as unknown as string)
-          ])
-        }
-      },
-      // Add individual points as separate features
-      ...validPoints.map((p, index) => ({
-        type: "Feature",
-        properties: {
-          name: p.title,
-          id: p.id,
-          index: index + 1,
-          isStart: index === 0,
-          isEnd: index === validPoints.length - 1
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [
-            parseFloat(p.longitude as unknown as string),
-            parseFloat(p.latitude as unknown as string)
-          ]
-        }
-      }))
-    ]
-  };
 };
 
 /**
@@ -294,8 +240,8 @@ export const saveRoute = (
     points: routePoints.map(p => ({
       id: p.id,
       title: p.title,
-      lat: parseFloat(p.latitude as unknown as string),
-      lng: parseFloat(p.longitude as unknown as string)
+      lat: typeof p.latitude === 'string' ? parseFloat(p.latitude) : p.latitude as number,
+      lng: typeof p.longitude === 'string' ? parseFloat(p.longitude) : p.longitude as number
     }))
   };
   

@@ -27,28 +27,38 @@ export const useMapOperations = ({
           // Add user location marker
           const L = window.L;
           
+          // Clear any existing user location markers
+          mapInstance.eachLayer(layer => {
+            if (layer.options && layer.options.className === 'user-location-marker') {
+              mapInstance.removeLayer(layer);
+            }
+          });
+          
           // Create pulse effect style
-          const pulseStyle = document.createElement('style');
-          pulseStyle.innerHTML = `
-            .user-location-pulse {
-              animation: pulse 1.5s infinite;
-            }
-            @keyframes pulse {
-              0% {
-                transform: scale(0.8);
-                opacity: 0.7;
+          if (!document.getElementById('user-location-pulse-style')) {
+            const pulseStyle = document.createElement('style');
+            pulseStyle.id = 'user-location-pulse-style';
+            pulseStyle.innerHTML = `
+              .user-location-pulse {
+                animation: pulse 1.5s infinite;
               }
-              70% {
-                transform: scale(1.5);
-                opacity: 0;
+              @keyframes pulse {
+                0% {
+                  transform: scale(0.8);
+                  opacity: 0.7;
+                }
+                70% {
+                  transform: scale(1.5);
+                  opacity: 0;
+                }
+                100% {
+                  transform: scale(0.8);
+                  opacity: 0;
+                }
               }
-              100% {
-                transform: scale(0.8);
-                opacity: 0;
-              }
-            }
-          `;
-          document.head.appendChild(pulseStyle);
+            `;
+            document.head.appendChild(pulseStyle);
+          }
           
           // Create fancy user location marker with pulse effect
           const newUserMarker = L.divIcon({
@@ -128,8 +138,8 @@ export const useMapOperations = ({
   }, [mapInstance]);
   
   // Change map style/theme
-  const changeMapTheme = useCallback((theme: string) => {
-    if (!mapInstance) return;
+  const changeMapTheme = useCallback((theme) => {
+    if (!mapInstance || !window.L) return;
     
     // Remove current tile layer
     mapInstance.eachLayer((layer) => {
@@ -141,10 +151,9 @@ export const useMapOperations = ({
     // Add new tile layer based on theme
     switch (theme) {
       case 'streets':
-        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: 'abcd',
-          maxZoom: 20
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19
         }).addTo(mapInstance);
         break;
       case 'satellite':
@@ -162,20 +171,17 @@ export const useMapOperations = ({
         break;
       case 'walking':
         // Special layer optimized for walking routes with path emphasis
-        window.L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', {
-          attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          maxZoom: 22
+        window.L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a>',
+          maxZoom: 19
         }).addTo(mapInstance);
         break;
       default:
-        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: 'abcd',
-          maxZoom: 20
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19
         }).addTo(mapInstance);
     }
-    
-    toast.success(`Map style changed to ${theme}`);
   }, [mapInstance]);
   
   // Fit to bounds based on plaque markers
@@ -186,15 +192,18 @@ export const useMapOperations = ({
     
     if (validPlaques.length > 0) {
       try {
-        const latLngs = validPlaques.map(p => [
-          parseFloat(p.latitude as unknown as string), 
-          parseFloat(p.longitude as unknown as string)
-        ]);
+        const latLngs = validPlaques.map(p => {
+          const lat = typeof p.latitude === 'string' ? 
+            parseFloat(p.latitude) : p.latitude;
+          const lng = typeof p.longitude === 'string' ? 
+            parseFloat(p.longitude) : p.longitude;
+          return window.L.latLng(lat, lng);
+        });
         
-        const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
+        const bounds = window.L.latLngBounds(latLngs);
         
         if (bounds.isValid()) {
-          mapInstance.fitBounds(bounds, { 
+          mapInstance.flyToBounds(bounds, { 
             padding: [50, 50],
             animate: true,
             duration: 0.75

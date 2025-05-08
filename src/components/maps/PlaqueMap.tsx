@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Search, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Plaque } from '@/types/plaque';
 
 // Components
 import MapContainer from './containers/MapContainer';
@@ -20,10 +21,26 @@ import useRouteManagement from './hooks/useRouteManagement';
 import useMapEffects from './hooks/useMapEffects';
 
 // Utils
-import { calculateRouteDistance, calculateWalkingTime, formatDistance } from './utils/routeUtils';
+import { calculateRouteDistance, calculateWalkingTime } from './utils/routeUtils';
+
+// Interface for PlaqueMap props
+interface PlaqueMapProps {
+  plaques?: Plaque[];
+  onPlaqueClick?: (plaque: Plaque) => void;
+  favorites?: number[];
+  selectedPlaqueId?: number | null;
+  maintainView?: boolean;
+  className?: string;
+  isRoutingMode?: boolean;
+  setIsRoutingMode?: (value: boolean) => void;
+  routePoints?: Plaque[];
+  addPlaqueToRoute?: (plaque: Plaque) => void;
+  removePlaqueFromRoute?: (plaqueId: number) => void;
+  clearRoute?: () => void;
+}
 
 // Improved PlaqueMap component with reliable routing functionality
-const PlaqueMap = React.forwardRef(({
+const PlaqueMap = React.forwardRef<any, PlaqueMapProps>(({
   plaques = [],
   onPlaqueClick = () => {},
   favorites = [],
@@ -50,16 +67,6 @@ const PlaqueMap = React.forwardRef(({
   const [clearRouteDialog, setClearRouteDialog] = useState(false);
   const [mapMode, setMapMode] = useState('streets');
   
-  // Initialize map
-  const { 
-    mapInstance,
-    markersLayer,
-    clusterGroup,
-    routeMarkerGroup,
-    routeLineRef,
-    initializeMap 
-  } = useMapInitialization();
-  
   // Format distance based on unit preference
   const formatDistanceWithUnits = useCallback((distanceKm) => {
     if (useImperial) {
@@ -71,6 +78,18 @@ const PlaqueMap = React.forwardRef(({
     }
   }, [useImperial]);
   
+  // Initialize map
+  const { 
+    mapLoaded: mapLibraryLoaded,
+    mapInstance,
+    markersLayer,
+    clusterGroup,
+    routeMarkerGroup,
+    routeLineRef,
+    initializeMap,
+    cleanup 
+  } = useMapInitialization();
+  
   // Initialize route management
   const {
     routePoints: internalRoutePoints,
@@ -81,7 +100,8 @@ const PlaqueMap = React.forwardRef(({
     removePointFromRoute,
     clearRoute: clearInternalRoute,
     drawWalkingRoute,
-    optimizeRouteForWalking
+    optimizeRouteForWalking,
+    calculateRouteDistance: calcRouteDistance
   } = useRouteManagement({
     mapInstance,
     routeMarkerGroup,
@@ -100,28 +120,28 @@ const PlaqueMap = React.forwardRef(({
   }, [setInternalRoutingMode, setExternalRoutingMode]);
   
   const addPlaqueToRoute = useCallback((plaque) => {
-    if (externalAddPlaqueToRoute) {
+    if (externalAddPlaqueToRoute && externalRoutePoints.length > 0) {
       externalAddPlaqueToRoute(plaque);
     } else {
       addPointToRoute(plaque);
     }
-  }, [externalAddPlaqueToRoute, addPointToRoute]);
+  }, [externalAddPlaqueToRoute, addPointToRoute, externalRoutePoints]);
   
   const removePlaqueFromRoute = useCallback((plaqueId) => {
-    if (externalRemovePlaqueFromRoute) {
+    if (externalRemovePlaqueFromRoute && externalRoutePoints.length > 0) {
       externalRemovePlaqueFromRoute(plaqueId);
     } else {
       removePointFromRoute(plaqueId);
     }
-  }, [externalRemovePlaqueFromRoute, removePointFromRoute]);
+  }, [externalRemovePlaqueFromRoute, removePointFromRoute, externalRoutePoints]);
   
   const clearRoute = useCallback(() => {
-    if (externalClearRoute) {
+    if (externalClearRoute && externalRoutePoints.length > 0) {
       externalClearRoute();
     } else {
       clearInternalRoute();
     }
-  }, [externalClearRoute, clearInternalRoute]);
+  }, [externalClearRoute, clearInternalRoute, externalRoutePoints]);
   
   // Initialize map markers
   const { 
@@ -149,7 +169,8 @@ const PlaqueMap = React.forwardRef(({
   // Map operations
   const {
     findUserLocation,
-    resetMap
+    resetMap,
+    changeMapTheme
   } = useMapOperations({
     mapInstance,
     setIsLoadingLocation,
@@ -164,9 +185,17 @@ const PlaqueMap = React.forwardRef(({
   // Load Leaflet and initialize map
   useEffect(() => {
     if (mapContainerRef.current) {
-      initializeMap(mapContainerRef.current, setMapLoaded);
+      const initMap = async () => {
+        await initializeMap(mapContainerRef.current, setMapLoaded);
+      };
+      initMap();
     }
-  }, [initializeMap]);
+    
+    return () => {
+      // Cleanup map instance when component unmounts
+      cleanup();
+    };
+  }, [initializeMap, cleanup]);
   
   // Enhance popup animations when map is loaded
   useEffect(() => {
@@ -175,17 +204,16 @@ const PlaqueMap = React.forwardRef(({
     }
   }, [mapLoaded, mapInstance, enhancePopupAnimations]);
 
-  // In PlaqueMap.tsx - add after mapContainerRef declaration
-useEffect(() => {
   // Debug logging
-  console.log(`PlaqueMap rendering with ${plaques.length} plaques`);
-  console.log('Map container ref:', mapContainerRef.current);
-  
-  // Log first plaque to inspect its structure
-  if (plaques.length > 0) {
-    console.log('Sample plaque data:', plaques[0]);
-  }
-}, [plaques]);
+  useEffect(() => {
+    console.log(`PlaqueMap rendering with ${plaques.length} plaques`);
+    console.log('Map container ref:', mapContainerRef.current);
+    
+    // Log first plaque to inspect its structure
+    if (plaques.length > 0) {
+      console.log('Sample plaque data:', plaques[0]);
+    }
+  }, [plaques]);
   
   // Update markers when dependencies change
   useEffect(() => {
@@ -194,25 +222,32 @@ useEffect(() => {
     }
   }, [mapLoaded, plaques, favorites, selectedPlaqueId, isRoutingMode, routePoints, addMapMarkers, isDrawingRoute, mapInstance]);
   
+  // Change map style when mapMode changes
+  useEffect(() => {
+    if (mapInstance && mapLoaded && mapMode) {
+      changeMapTheme(mapMode);
+    }
+  }, [mapMode, mapInstance, mapLoaded, changeMapTheme]);
+  
   // Draw route when route points change
   useEffect(() => {
     if (!mapInstance || !mapLoaded || !isRoutingMode) return;
     
-    if (routePoints.length >= 2) {
-      // Don't try to draw a route if we're already drawing one
-      if (!isDrawingRoute) {
-        // Add a slight delay to prevent race conditions
-        const timer = setTimeout(() => {
-          drawWalkingRoute(routePoints);
-        }, 100);
-        return () => clearTimeout(timer);
-      }
+    // Don't automatically draw routes when toggling routing mode
+    // This prevents the map from zooming out when enabling route builder
+    if (routePoints.length >= 2 && !isDrawingRoute) {
+      // Use a stable timeout to prevent race conditions
+      const timer = setTimeout(() => {
+        drawWalkingRoute(routePoints);
+      }, 300);
+      
+      return () => clearTimeout(timer);
     } else if (routeLineRef.current) {
       // Clear route line if no points
       mapInstance.removeLayer(routeLineRef.current);
       routeLineRef.current = null;
     }
-  }, [mapLoaded, routePoints, isRoutingMode, drawWalkingRoute, isDrawingRoute, mapInstance, routeLineRef]);
+  }, [routePoints, mapInstance, mapLoaded, isRoutingMode, isDrawingRoute, drawWalkingRoute, routeLineRef]);
   
   // Handle unit preference change
   useEffect(() => {
@@ -233,6 +268,9 @@ useEffect(() => {
       setIsRoutingMode(true);
       setShowRoutePanel(true);
       toast.success("Walking route planner activated");
+      
+      // Don't adjust the map view when entering routing mode
+      // This fixes the "zooms out to beginning" issue
     } else {
       // If we have a route and exiting routing mode
       if (routePoints.length > 0) {
@@ -254,7 +292,12 @@ useEffect(() => {
   const handleClearRoute = useCallback(() => {
     clearRoute();
     setClearRouteDialog(false);
-  }, [clearRoute]);
+    
+    // Exit routing mode if dialog was triggered by toggle
+    if (!isRoutingMode) {
+      setShowRoutePanel(false);
+    }
+  }, [clearRoute, isRoutingMode]);
   
   // Export route as GPX file
   const handleExportRoute = useCallback(() => {
@@ -279,13 +322,15 @@ useEffect(() => {
       routePoints.forEach((point, index) => {
         if (!point.latitude || !point.longitude) return;
         
-        const lat = parseFloat(point.latitude as unknown as string);
-        const lon = parseFloat(point.longitude as unknown as string);
+        const lat = typeof point.latitude === 'string' ? 
+          parseFloat(point.latitude) : point.latitude;
+        const lng = typeof point.longitude === 'string' ? 
+          parseFloat(point.longitude) : point.longitude;
         
-        if (isNaN(lat) || isNaN(lon)) return;
+        if (isNaN(lat) || isNaN(lng)) return;
         
         gpxContent += `
-    <rtept lat="${lat}" lon="${lon}">
+    <rtept lat="${lat}" lon="${lng}">
       <name>${point.title || `Stop ${index + 1}`}</name>
       <desc>${point.description || ''}</desc>
     </rtept>`;
@@ -381,7 +426,7 @@ useEffect(() => {
         <RoutePanel 
           routePoints={routePoints}
           setShowRoutePanel={setShowRoutePanel}
-          totalDistance={calculateRouteDistance(routePoints)}
+          totalDistance={calcRouteDistance(routePoints)}
           formatDistance={formatDistanceWithUnits}
           calculateWalkingTime={calculateWalkingTime}
           useImperial={useImperial}
