@@ -1,5 +1,5 @@
-// CollectionDetailPage.jsx - Collection detail view
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Star, Pencil, Share2, MoreHorizontal, 
   Plus, Search, LayoutGrid, List, MapPin, Filter,
@@ -47,138 +47,164 @@ import { PlaqueListItem } from '@/components/plaques/PlaqueListItem';
 import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ViewToggle } from '@/components/common/ViewToggle';
-import { SearchableFilterBar } from '@/components/common/SearchableFilterBar';
 import { ActionBar } from '@/components/common/ActionBar';
 
-// Sample collection and plaques for demo purposes
-const sampleCollection = {
-  id: 1,
-  name: "Travel Destinations",
-  description: "Places I want to visit in 2025",
-  icon: "🌴",
-  color: "bg-green-500",
-  is_favorite: true,
-  plaques: 12,
-  updated_at: "2024-05-01T14:30:00Z",
-  is_public: true
-};
+// Data
+import userData from '../data/user_data.json';
 
-const samplePlaques = [
+// Sample plaques data - this would typically come from an API
+// In a real app, we'd fetch all plaques and filter to show only the ones not in the collection
+const allPlaques = [
   {
-    id: 1,
-    title: "Tokyo, Japan",
-    location: "Shibuya, Tokyo",
-    address: "1-1-1 Shibuya, Tokyo",
+    id: 485,
+    title: "Sam Selvon",
+    location: "Brixton, London",
     color: "blue",
-    profession: "Tourist Destination",
-    inscription: "Tokyo, the capital of Japan, is known for its modern and traditional aspects.",
+    profession: "Writer",
+    inscription: "Sam Selvon (1923-1994), novelist, lived here 1950-1968.",
     visited: true,
-    image: "/api/placeholder/400/300",
-    erected: "2022",
-    latitude: 35.6762,
-    longitude: 139.6503
+    image: "/api/placeholder/400/300"
   },
   {
-    id: 2,
-    title: "Santorini, Greece",
-    location: "Thira, Greece",
-    address: "Santorini Island, Greece",
+    id: 1115,
+    title: "Voltaire",
+    location: "Covent Garden, London",
     color: "blue",
-    profession: "Tourist Destination",
-    inscription: "Famous for its stunning sunsets, white-washed buildings, and blue domes.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    erected: "2021",
-    latitude: 36.3932,
-    longitude: 25.4615
-  },
-  {
-    id: 3,
-    title: "New Zealand",
-    location: "Wellington, New Zealand",
-    address: "Wellington, New Zealand",
-    color: "green",
-    profession: "Tourist Destination",
-    inscription: "Known for its stunning landscapes, adventure tourism, and being the filming location for Lord of the Rings.",
-    visited: false,
-    image: "/api/placeholder/400/300",
-    erected: "2023",
-    latitude: -41.2924,
-    longitude: 174.7787
-  },
-  {
-    id: 4,
-    title: "Iceland",
-    location: "Reykjavik, Iceland",
-    address: "Reykjavik, Iceland",
-    color: "blue",
-    profession: "Tourist Destination",
-    inscription: "Iceland is known for its stunning landscapes including volcanoes, geysers, hot springs, lava fields, and massive glaciers.",
+    profession: "Writer",
+    inscription: "Voltaire (1694-1778) stayed here during his visits to London.",
     visited: true,
-    image: "/api/placeholder/400/300",
-    erected: "2021",
-    latitude: 64.1466,
-    longitude: -21.9426
+    image: "/api/placeholder/400/300"
   },
   {
-    id: 5,
-    title: "Bali, Indonesia",
-    location: "Denpasar, Bali",
-    address: "Denpasar, Bali, Indonesia",
-    color: "green",
-    profession: "Tourist Destination",
-    inscription: "Known for its forested volcanic mountains, iconic rice paddies, beaches, and coral reefs.",
+    id: 1120,
+    title: "P.G. Wodehouse",
+    location: "Mayfair, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "P.G. Wodehouse (1881-1975), humorist and creator of Jeeves, lived here.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10011,
+    title: "Ealing Studios",
+    location: "Ealing, London",
+    color: "blue",
+    profession: "Film Studio",
+    inscription: "The oldest continuously working film studio in the world.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10014,
+    title: "A.A. Milne",
+    location: "Chelsea, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "A.A. Milne (1882-1956), creator of Winnie-the-Pooh, lived here.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10007,
+    title: "Arthur Haynes",
+    location: "Ealing, London",
+    color: "blue",
+    profession: "Comedian",
+    inscription: "Arthur Haynes (1914-1966), comedian, lived here.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10090,
+    title: "Ada Lovelace",
+    location: "Marylebone, London",
+    color: "blue",
+    profession: "Mathematician",
+    inscription: "Ada Lovelace (1815-1852), mathematician and computing pioneer, lived here.",
     visited: false,
-    image: "/api/placeholder/400/300",
-    erected: "2022",
-    latitude: -8.4095,
-    longitude: 115.1889
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10027,
+    title: "Literary London",
+    location: "Southwark, London",
+    color: "blue",
+    profession: "Historic Site",
+    inscription: "A historic literary landmark in London.",
+    visited: false,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10019,
+    title: "Literary Icon",
+    location: "Westminster, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "A notable literary figure who made significant contributions.",
+    visited: false,
+    image: "/api/placeholder/400/300"
   }
 ];
 
 const CollectionDetailPage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const collectionId = parseInt(id);
+  
   // State
-  const [collection, setCollection] = useState(sampleCollection);
-  const [plaques, setPlaques] = useState(samplePlaques);
+  const [allCollections, setAllCollections] = useState(userData.collections || []);
+  const [collection, setCollection] = useState(null);
+  const [collectionPlaques, setCollectionPlaques] = useState([]);
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('recently_added');
   const [selectedPlaques, setSelectedPlaques] = useState([]);
   const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [editNameMode, setEditNameMode] = useState(false);
-  const [editNameValue, setEditNameValue] = useState(sampleCollection.name);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [editFormOpen, setEditFormOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [removePlaquesOpen, setRemovePlaquesOpen] = useState(false);
   const [addPlaquesOpen, setAddPlaquesOpen] = useState(false);
   const [activeTag, setActiveTag] = useState('all');
-  const [favorites, setFavorites] = useState([1, 4]); // IDs of favorited plaques
-  
-  // For add plaques sheet
-  const [availablePlaques, setAvailablePlaques] = useState([
-    {
-      id: 6,
-      title: "Barcelona, Spain",
-      location: "Barcelona, Spain",
-      color: "blue",
-      image: "/api/placeholder/400/300"
-    },
-    {
-      id: 7,
-      title: "Buenos Aires, Argentina",
-      location: "Buenos Aires, Argentina",
-      color: "green",
-      image: "/api/placeholder/400/300"
-    }
-  ]);
+  const [favorites, setFavorites] = useState([]); // IDs of favorited plaques
+  const [availablePlaques, setAvailablePlaques] = useState([]);
   const [selectedAvailablePlaques, setSelectedAvailablePlaques] = useState([]);
   
+  // Load collection data
+  useEffect(() => {
+    const foundCollection = allCollections.find(c => c.id === collectionId);
+    
+    if (foundCollection) {
+      setCollection(foundCollection);
+      setEditNameValue(foundCollection.name);
+      
+      // Get plaques for this collection
+      const plaqueIds = foundCollection.plaques || [];
+      const plaques = allPlaques.filter(plaque => plaqueIds.includes(plaque.id));
+      setCollectionPlaques(plaques);
+      
+      // Get available plaques (ones not in this collection)
+      const available = allPlaques.filter(plaque => !plaqueIds.includes(plaque.id));
+      setAvailablePlaques(available);
+      
+      // Set initial favorites based on user data - using visits as a proxy for favorites
+      const visitedPlaqueIds = userData.visited_plaques.map(visit => visit.plaque_id);
+      setFavorites(visitedPlaqueIds);
+    } else {
+      // Handle collection not found
+      navigate('/collections');
+    }
+  }, [collectionId, allCollections, navigate]);
+  
   // Get all unique tags from plaques
-  const allTags = ['all', ...new Set(plaques.flatMap(plaque => 
+  const allTags = ['all', ...new Set(collectionPlaques.flatMap(plaque => 
     plaque.profession ? [plaque.profession] : []
   ))];
   
   // Filter plaques based on search query and active tag
-  const filteredPlaques = plaques
+  const filteredPlaques = collectionPlaques
     .filter(plaque => {
       // Match search query
       const matchesSearch = searchQuery === '' || 
@@ -243,9 +269,7 @@ const CollectionDetailPage = () => {
   
   // Back to collections
   const handleBackToCollections = () => {
-    console.log("Navigate back to collections");
-    // In a real app, use router
-    // router.push('/collections');
+    navigate('/collections');
   };
   
   // Edit collection name
@@ -256,9 +280,15 @@ const CollectionDetailPage = () => {
   // Save edited name
   const handleSaveName = () => {
     if (editNameValue.trim()) {
-      setCollection({ ...collection, name: editNameValue });
+      const updatedCollection = { ...collection, name: editNameValue };
+      setCollection(updatedCollection);
+      
+      // Update collections list
+      setAllCollections(prev => prev.map(c => 
+        c.id === collectionId ? updatedCollection : c
+      ));
+      
       setEditNameMode(false);
-      console.log(`Updated collection name to: ${editNameValue}`);
     }
   };
   
@@ -270,14 +300,24 @@ const CollectionDetailPage = () => {
   
   // Toggle favorite
   const handleToggleFavorite = () => {
-    setCollection({ ...collection, is_favorite: !collection.is_favorite });
-    console.log(`${collection.is_favorite ? 'Removed from' : 'Added to'} favorites`);
+    const updatedCollection = { ...collection, is_favorite: !collection.is_favorite };
+    setCollection(updatedCollection);
+    
+    // Update collections list
+    setAllCollections(prev => prev.map(c => 
+      c.id === collectionId ? updatedCollection : c
+    ));
   };
   
   // Toggle public/private
   const handleTogglePublic = () => {
-    setCollection({ ...collection, is_public: !collection.is_public });
-    console.log(`Collection is now ${collection.is_public ? 'private' : 'public'}`);
+    const updatedCollection = { ...collection, is_public: !collection.is_public };
+    setCollection(updatedCollection);
+    
+    // Update collections list
+    setAllCollections(prev => prev.map(c => 
+      c.id === collectionId ? updatedCollection : c
+    ));
   };
   
   // View plaque details
@@ -292,54 +332,139 @@ const CollectionDetailPage = () => {
         ? prev.filter(id => id !== plaqueId) 
         : [...prev, plaqueId]
     );
-    
-    console.log(`${favorites.includes(plaqueId) ? 'Removed from' : 'Added to'} favorites: Plaque ${plaqueId}`);
   };
   
   // Mark plaque as visited
   const handleMarkVisited = (plaqueId) => {
-    setPlaques(prev => prev.map(plaque => 
+    setCollectionPlaques(prev => prev.map(plaque => 
       plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
     ));
+  };
+  
+  // Handle edit with form
+  const handleEditCollection = (data) => {
+    const updatedCollection = {
+      ...collection,
+      name: data.name,
+      description: data.description || '',
+      icon: data.icon,
+      color: data.color,
+      is_public: !!data.isPublic,
+      updated_at: new Date().toISOString()
+    };
     
-    console.log(`Marked plaque ${plaqueId} as visited`);
+    setCollection(updatedCollection);
+    
+    // Update collections list
+    setAllCollections(prev => prev.map(c => 
+      c.id === collectionId ? updatedCollection : c
+    ));
+    
+    setEditFormOpen(false);
   };
   
   // Add plaques to collection
   const handleAddPlaques = () => {
     // Add selected available plaques to this collection
     if (selectedAvailablePlaques.length > 0) {
+      // Filter plaques to add
       const plaquesToAdd = availablePlaques.filter(p => selectedAvailablePlaques.includes(p.id));
-      setPlaques([...plaques, ...plaquesToAdd]);
+      
+      // Update collection plaques
+      setCollectionPlaques(prev => [...prev, ...plaquesToAdd]);
+      
+      // Update available plaques
       setAvailablePlaques(prev => prev.filter(p => !selectedAvailablePlaques.includes(p.id)));
+      
+      // Update collection in state
+      const updatedPlaqueIds = [...collection.plaques, ...selectedAvailablePlaques];
+      const updatedCollection = {
+        ...collection,
+        plaques: updatedPlaqueIds,
+        updated_at: new Date().toISOString()
+      };
+      
+      setCollection(updatedCollection);
+      
+      // Update all collections
+      setAllCollections(prev => prev.map(c => 
+        c.id === collectionId ? updatedCollection : c
+      ));
+      
+      // Reset selection
       setSelectedAvailablePlaques([]);
       setAddPlaquesOpen(false);
-      
-      console.log(`Added ${plaquesToAdd.length} plaques to collection`);
     }
   };
   
   // Remove plaques from collection
   const handleRemovePlaques = () => {
     if (selectedPlaques.length > 0) {
-      const plaquesToRemove = plaques.filter(p => selectedPlaques.includes(p.id));
-      setPlaques(prev => prev.filter(p => !selectedPlaques.includes(p.id)));
-      setAvailablePlaques([...availablePlaques, ...plaquesToRemove]);
+      // Get plaques being removed
+      const plaquesToRemove = collectionPlaques.filter(p => selectedPlaques.includes(p.id));
+      
+      // Update collection plaques
+      setCollectionPlaques(prev => prev.filter(p => !selectedPlaques.includes(p.id)));
+      
+      // Update available plaques
+      setAvailablePlaques(prev => [...prev, ...plaquesToRemove]);
+      
+      // Update collection in state
+      const updatedPlaqueIds = collection.plaques.filter(id => !selectedPlaques.includes(id));
+      const updatedCollection = {
+        ...collection,
+        plaques: updatedPlaqueIds,
+        updated_at: new Date().toISOString()
+      };
+      
+      setCollection(updatedCollection);
+      
+      // Update all collections
+      setAllCollections(prev => prev.map(c => 
+        c.id === collectionId ? updatedCollection : c
+      ));
+      
+      // Reset selection
       setSelectedPlaques([]);
       setRemovePlaquesOpen(false);
-      
-      console.log(`Removed ${plaquesToRemove.length} plaques from collection`);
     }
+  };
+  
+  // Duplicate this collection
+  const handleDuplicateCollection = () => {
+    const duplicate = {
+      ...collection,
+      id: Date.now(),
+      name: `${collection.name} (Copy)`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_favorite: false
+    };
+    
+    // Add to all collections
+    setAllCollections(prev => [duplicate, ...prev]);
+    
+    // Navigate to the new collection
+    navigate(`/collections/${duplicate.id}`);
+  };
+  
+  // Delete this collection
+  const handleDeleteCollection = () => {
+    setAllCollections(prev => prev.filter(c => c.id !== collectionId));
+    setConfirmDeleteOpen(false);
+    navigate('/collections');
   };
   
   // Find nearby plaques for the detail view
   const getNearbyPlaques = (currentPlaque) => {
-    return plaques.filter(p => 
+    return collectionPlaques.filter(p => 
       p.id !== currentPlaque.id && 
       ((p.profession && currentPlaque.profession && p.profession === currentPlaque.profession) || 
        (p.color && currentPlaque.color && p.color === currentPlaque.color))
     ).slice(0, 3);
   };
+  
+  if (!collection) return <div className="container mx-auto px-4 py-6">Loading collection...</div>;
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -351,7 +476,7 @@ const CollectionDetailPage = () => {
             <Button variant="ghost" size="sm" onClick={handleBackToCollections} className="h-8 w-8 p-0">
               <ArrowLeft size={18} />
             </Button>
-            <a className="text-gray-500 hover:text-blue-600 text-sm cursor-pointer">
+            <a className="text-gray-500 hover:text-blue-600 text-sm cursor-pointer" onClick={handleBackToCollections}>
               Collections
             </a>
             <span className="text-gray-400">/</span>
@@ -452,10 +577,10 @@ const CollectionDetailPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleEditName}>
+                  <DropdownMenuItem onClick={() => setEditFormOpen(true)}>
                     <Pencil size={16} className="mr-2" /> Edit Collection
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDuplicateCollection}>
                     <Copy size={16} className="mr-2" /> Duplicate
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -472,7 +597,7 @@ const CollectionDetailPage = () => {
               <Clock size={12} /> Updated {formatUpdatedText(collection.updated_at)}
             </Badge>
             <Badge variant="outline">
-              {collection.plaques} plaques
+              {collection.plaques.length} plaques
             </Badge>
             {collection.is_public && (
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -495,10 +620,10 @@ const CollectionDetailPage = () => {
         <CollectionStats 
           collection={{
             ...collection,
-            plaques: plaques.length,
+            plaques: collectionPlaques.length,
             updated: formatUpdatedText(collection.updated_at)
           }} 
-          plaques={plaques} 
+          plaques={collectionPlaques} 
           className="mb-6" 
         />
         
@@ -524,19 +649,21 @@ const CollectionDetailPage = () => {
                 />
               </div>
               
-              <Tabs defaultValue={activeTag} onValueChange={setActiveTag} className="w-full md:w-auto">
-                <TabsList className="overflow-auto">
-                  {allTags.map(tag => (
-                    <TabsTrigger 
-                      key={tag} 
-                      value={tag}
-                      className="capitalize"
-                    >
-                      {tag}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+              {allTags.length > 1 && (
+                <Tabs defaultValue={activeTag} onValueChange={setActiveTag} className="w-full md:w-auto">
+                  <TabsList className="overflow-auto">
+                    {allTags.map(tag => (
+                      <TabsTrigger 
+                        key={tag} 
+                        value={tag}
+                        className="capitalize"
+                      >
+                        {tag}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              )}
             </div>
             
             <div className="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
@@ -566,7 +693,7 @@ const CollectionDetailPage = () => {
         </div>
         
         {/* Collection Content */}
-        {plaques.length === 0 ? (
+        {collectionPlaques.length === 0 ? (
           <EmptyState
             icon={MapPin}
             title="No Plaques Yet"
@@ -634,11 +761,10 @@ const CollectionDetailPage = () => {
               icon: <Check size={16} />,
               onClick: () => {
                 // Mark all selected as visited
-                setPlaques(prev => prev.map(plaque => 
+                setCollectionPlaques(prev => prev.map(plaque => 
                   selectedPlaques.includes(plaque.id) ? { ...plaque, visited: true } : plaque
                 ));
                 setSelectedPlaques([]);
-                console.log("Plaques marked as visited");
               }
             },
             {
@@ -653,157 +779,197 @@ const CollectionDetailPage = () => {
       )}
       
       {/* Plaque detail sheet */}
-      <PlaqueDetail
-        plaque={selectedPlaque}
-        isOpen={!!selectedPlaque}
-        onClose={() => setSelectedPlaque(null)}
-        onMarkVisited={(id) => handleMarkVisited(id)}
-        isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
-        onFavoriteToggle={(id) => handleTogglePlaqueFavorite(id)}
-        nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
-        onSelectNearbyPlaque={handleViewPlaque}
+{/* Plaque detail sheet */}
+  <PlaqueDetail
+    plaque={selectedPlaque}
+    isOpen={!!selectedPlaque}
+    onClose={() => setSelectedPlaque(null)}
+    onFavoriteToggle={() => selectedPlaque && handleTogglePlaqueFavorite(selectedPlaque.id)}
+    isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
+    onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
+    nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
+  />
+      
+  {/* Edit collection form */}
+  <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Edit Collection</DialogTitle>
+        <DialogDescription>
+          Update the details of your collection
+        </DialogDescription>
+      </DialogHeader>
+      
+      <CollectionForm
+        defaultValues={{
+          name: collection.name,
+          description: collection.description,
+          icon: collection.icon,
+          color: collection.color,
+          isPublic: collection.is_public
+        }}
+        onSubmit={handleEditCollection}
       />
+    </DialogContent>
+  </Dialog>
       
-      {/* Add plaques sheet */}
-      <Sheet open={addPlaquesOpen} onOpenChange={setAddPlaquesOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Add Plaques to Collection</SheetTitle>
-          </SheetHeader>
+  {/* Add plaques sheet */}
+  <Sheet open={addPlaquesOpen} onOpenChange={setAddPlaquesOpen}>
+    <SheetContent className="sm:max-w-md">
+      <SheetHeader>
+        <SheetTitle>Add Plaques</SheetTitle>
+      </SheetHeader>
+      
+      <div className="mt-6 space-y-4">
+        <div className="flex justify-between items-center">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={selectAllAvailablePlaques}
+          >
+            {selectedAvailablePlaques.length === availablePlaques.length
+              ? "Unselect All"
+              : "Select All"}
+          </Button>
           
-          <div className="py-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <Input
-                  placeholder="Search plaques..."
-                  className="pl-9"
-                />
-              </div>
-              
-              <div className="flex items-center ml-4">
-                <input
-                  type="checkbox"
-                  id="select-all"
-                  checked={selectedAvailablePlaques.length === availablePlaques.length && availablePlaques.length > 0}
-                  onChange={selectAllAvailablePlaques}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="select-all" className="ml-2 text-sm">Select All</label>
-              </div>
+          {selectedAvailablePlaques.length > 0 && (
+            <Badge variant="secondary">
+              {selectedAvailablePlaques.length} selected
+            </Badge>
+          )}
+        </div>
+        
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Input 
+            placeholder="Search available plaques..." 
+            className="pl-9" 
+          />
+        </div>
+        
+        <div className="space-y-2 mt-4 max-h-[50vh] overflow-y-auto">
+          {availablePlaques.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No more plaques available to add</p>
             </div>
-            
-            <div className="space-y-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-2">
-              {availablePlaques.length > 0 ? (
-                availablePlaques.map(plaque => (
-                  <div 
-                    key={plaque.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50"
-                  >
-                    <input 
-                      type="checkbox"
-                      checked={selectedAvailablePlaques.includes(plaque.id)}
-                      onChange={() => toggleSelectAvailablePlaque(plaque.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    
-                    <div className="shrink-0 w-12 h-12 rounded-md overflow-hidden bg-gray-100">
-                      {plaque.image ? (
-                        <img src={plaque.image} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-500">
-                          <MapPin size={20} />
-                        </div>
-                      )}
+          ) : (
+            availablePlaques.map(plaque => (
+              <div 
+                key={plaque.id}
+                className={`p-3 rounded-lg border flex items-start gap-3 cursor-pointer transition-colors ${
+                  selectedAvailablePlaques.includes(plaque.id) 
+                    ? 'bg-blue-50 border-blue-200' 
+                    : 'hover:bg-gray-50 border-gray-200'
+                }`}
+                onClick={() => toggleSelectAvailablePlaque(plaque.id)}
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-gray-100">
+                  {plaque.image ? (
+                    <img src={plaque.image} alt={plaque.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-500">
+                      <MapPin size={16} />
                     </div>
-                    
-                    <div className="flex-grow min-w-0">
-                      <h4 className="font-medium truncate">{plaque.title}</h4>
-                      <p className="text-xs text-gray-500 truncate">{plaque.location}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <MapPin size={32} className="mx-auto mb-3 text-gray-400" />
-                  <p>No more plaques available to add</p>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-          
-          <SheetFooter>
-            <div className="flex justify-between items-center w-full">
-              <div className="text-sm text-gray-600">
-                {selectedAvailablePlaques.length} selected
+                
+                <div className="flex-grow">
+                  <h4 className="font-medium">{plaque.title}</h4>
+                  <p className="text-sm text-gray-500">{plaque.location}</p>
+                </div>
+                
+                <div className="flex-shrink-0">
+                  <div 
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                      selectedAvailablePlaques.includes(plaque.id)
+                        ? 'bg-blue-500 border-blue-500 text-white'
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    {selectedAvailablePlaques.includes(plaque.id) && <Check size={12} />}
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => {
-                  setSelectedAvailablePlaques([]);
-                  setAddPlaquesOpen(false);
-                }}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleAddPlaques}
-                  disabled={selectedAvailablePlaques.length === 0}
-                >
-                  Add to Collection
-                </Button>
-              </div>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            ))
+          )}
+        </div>
+      </div>
       
-      {/* Remove plaques dialog */}
-      <Dialog open={removePlaquesOpen} onOpenChange={setRemovePlaquesOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove Plaques</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to remove {selectedPlaques.length} plaque{selectedPlaques.length !== 1 ? 's' : ''} from this collection?
-              This won't delete the plaques from the system.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRemovePlaquesOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleRemovePlaques}>
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SheetFooter className="mt-6">
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            setSelectedAvailablePlaques([]);
+            setAddPlaquesOpen(false);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          disabled={selectedAvailablePlaques.length === 0}
+          onClick={handleAddPlaques}
+        >
+          Add {selectedAvailablePlaques.length} Plaques
+        </Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
       
-      {/* Delete collection dialog */}
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Collection</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this collection? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={() => {
-              setConfirmDeleteOpen(false);
-              console.log("Collection deleted");
-              handleBackToCollections();
-            }}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+  {/* Remove plaques confirmation */}
+  <Dialog open={removePlaquesOpen} onOpenChange={setRemovePlaquesOpen}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Remove Plaques</DialogTitle>
+        <DialogDescription>
+          Are you sure you want to remove {selectedPlaques.length} {selectedPlaques.length === 1 ? 'plaque' : 'plaques'} from this collection?
+        </DialogDescription>
+      </DialogHeader>
+      
+      <DialogFooter className="mt-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setRemovePlaquesOpen(false)}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant="destructive"
+          onClick={handleRemovePlaques}
+        >
+          Remove
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+      
+  {/* Delete collection confirmation */}
+  <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Delete Collection</DialogTitle>
+        <DialogDescription>
+          Are you sure you want to delete "{collection.name}"? This action cannot be undone.
+        </DialogDescription>
+      </DialogHeader>
+      
+      <DialogFooter className="mt-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setConfirmDeleteOpen(false)}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant="destructive"
+          onClick={handleDeleteCollection}
+        >
+          Delete
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+</div>
+);
 };
 
 export default CollectionDetailPage;
