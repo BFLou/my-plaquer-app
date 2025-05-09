@@ -6,7 +6,7 @@ import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import Discover from './pages/Discover';
 import Home from './pages/Home';
-import UserDashboard from './pages/UserDashboard';
+import About from './pages/About';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
           <Route path="/discover" element={<Discover />} />
           <Route path="/collections" element={<Collections />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
-          <Route path="/profile" element={<UserDashboard />} />
+          <Route path="/about" element={<About />} />
         </Routes>
         <Toaster position="bottom-right" />
       </Router>
