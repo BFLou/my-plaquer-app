@@ -48,6 +48,7 @@ import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ViewToggle } from '@/components/common/ViewToggle';
 import { ActionBar } from '@/components/common/ActionBar';
+import { formatTimeAgo } from '../utils/collectionStatsUtils';
 
 // Data
 import userData from '../data/user_data.json';
@@ -226,23 +227,6 @@ const CollectionDetailPage = () => {
       if (sortOption === 'z_to_a') return b.title.localeCompare(a.title);
       return 0;
     });
-  
-  // Format updated text
-  const formatUpdatedText = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) return 'today';
-    if (diffInDays === 1) return 'yesterday';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) {
-      const weeks = Math.floor(diffInDays / 7);
-      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
-    }
-    const months = Math.floor(diffInDays / 30);
-    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
-  };
   
   // Toggle select plaque
   const toggleSelectPlaque = (id) => {
@@ -594,7 +578,7 @@ const CollectionDetailPage = () => {
           
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <Badge variant="outline" className="flex items-center gap-1">
-              <Clock size={12} /> Updated {formatUpdatedText(collection.updated_at)}
+              <Clock size={12} /> Updated {formatTimeAgo(collection.updated_at)}
             </Badge>
             <Badge variant="outline">
               {collection.plaques.length} plaques
@@ -616,14 +600,11 @@ const CollectionDetailPage = () => {
           )}
         </div>
         
-        {/* Collection Stats */}
+        {/* Collection Stats - Now using user_data to calculate statistics */}
         <CollectionStats 
-          collection={{
-            ...collection,
-            plaques: collectionPlaques.length,
-            updated: formatUpdatedText(collection.updated_at)
-          }} 
+          collection={collection}
           plaques={collectionPlaques} 
+          userVisits={userData.visited_plaques}
           className="mb-6" 
         />
         
@@ -779,197 +760,196 @@ const CollectionDetailPage = () => {
       )}
       
       {/* Plaque detail sheet */}
-{/* Plaque detail sheet */}
-  <PlaqueDetail
-    plaque={selectedPlaque}
-    isOpen={!!selectedPlaque}
-    onClose={() => setSelectedPlaque(null)}
-    onFavoriteToggle={() => selectedPlaque && handleTogglePlaqueFavorite(selectedPlaque.id)}
-    isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
-    onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
-    nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
-  />
-      
-  {/* Edit collection form */}
-  <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Edit Collection</DialogTitle>
-        <DialogDescription>
-          Update the details of your collection
-        </DialogDescription>
-      </DialogHeader>
-      
-      <CollectionForm
-        defaultValues={{
-          name: collection.name,
-          description: collection.description,
-          icon: collection.icon,
-          color: collection.color,
-          isPublic: collection.is_public
-        }}
-        onSubmit={handleEditCollection}
+      <PlaqueDetail
+        plaque={selectedPlaque}
+        isOpen={!!selectedPlaque}
+        onClose={() => setSelectedPlaque(null)}
+        onFavoriteToggle={() => selectedPlaque && handleTogglePlaqueFavorite(selectedPlaque.id)}
+        isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
+        onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
+        nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
       />
-    </DialogContent>
-  </Dialog>
       
-  {/* Add plaques sheet */}
-  <Sheet open={addPlaquesOpen} onOpenChange={setAddPlaquesOpen}>
-    <SheetContent className="sm:max-w-md">
-      <SheetHeader>
-        <SheetTitle>Add Plaques</SheetTitle>
-      </SheetHeader>
-      
-      <div className="mt-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={selectAllAvailablePlaques}
-          >
-            {selectedAvailablePlaques.length === availablePlaques.length
-              ? "Unselect All"
-              : "Select All"}
-          </Button>
+      {/* Edit collection form */}
+      <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Collection</DialogTitle>
+            <DialogDescription>
+              Update the details of your collection
+            </DialogDescription>
+          </DialogHeader>
           
-          {selectedAvailablePlaques.length > 0 && (
-            <Badge variant="secondary">
-              {selectedAvailablePlaques.length} selected
-            </Badge>
-          )}
-        </div>
-        
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <Input 
-            placeholder="Search available plaques..." 
-            className="pl-9" 
+          <CollectionForm
+            initialValues={{
+              name: collection.name,
+              description: collection.description,
+              icon: collection.icon,
+              color: collection.color,
+              isPublic: collection.is_public
+            }}
+            onSubmit={handleEditCollection}
           />
-        </div>
-        
-        <div className="space-y-2 mt-4 max-h-[50vh] overflow-y-auto">
-          {availablePlaques.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No more plaques available to add</p>
-            </div>
-          ) : (
-            availablePlaques.map(plaque => (
-              <div 
-                key={plaque.id}
-                className={`p-3 rounded-lg border flex items-start gap-3 cursor-pointer transition-colors ${
-                  selectedAvailablePlaques.includes(plaque.id) 
-                    ? 'bg-blue-50 border-blue-200' 
-                    : 'hover:bg-gray-50 border-gray-200'
-                }`}
-                onClick={() => toggleSelectAvailablePlaque(plaque.id)}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add plaques sheet */}
+      <Sheet open={addPlaquesOpen} onOpenChange={setAddPlaquesOpen}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Add Plaques</SheetTitle>
+          </SheetHeader>
+          
+          <div className="mt-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={selectAllAvailablePlaques}
               >
-                <div className="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-gray-100">
-                  {plaque.image ? (
-                    <img src={plaque.image} alt={plaque.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-500">
-                      <MapPin size={16} />
-                    </div>
-                  )}
+                {selectedAvailablePlaques.length === availablePlaques.length
+                  ? "Unselect All"
+                  : "Select All"}
+              </Button>
+              
+              {selectedAvailablePlaques.length > 0 && (
+                <Badge variant="secondary">
+                  {selectedAvailablePlaques.length} selected
+                </Badge>
+              )}
+            </div>
+            
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Input 
+                placeholder="Search available plaques..." 
+                className="pl-9" 
+              />
+            </div>
+            
+            <div className="space-y-2 mt-4 max-h-[50vh] overflow-y-auto">
+              {availablePlaques.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No more plaques available to add</p>
                 </div>
-                
-                <div className="flex-grow">
-                  <h4 className="font-medium">{plaque.title}</h4>
-                  <p className="text-sm text-gray-500">{plaque.location}</p>
-                </div>
-                
-                <div className="flex-shrink-0">
+              ) : (
+                availablePlaques.map(plaque => (
                   <div 
-                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                      selectedAvailablePlaques.includes(plaque.id)
-                        ? 'bg-blue-500 border-blue-500 text-white'
-                        : 'border-gray-300'
+                    key={plaque.id}
+                    className={`p-3 rounded-lg border flex items-start gap-3 cursor-pointer transition-colors ${
+                      selectedAvailablePlaques.includes(plaque.id) 
+                        ? 'bg-blue-50 border-blue-200' 
+                        : 'hover:bg-gray-50 border-gray-200'
                     }`}
+                    onClick={() => toggleSelectAvailablePlaque(plaque.id)}
                   >
-                    {selectedAvailablePlaques.includes(plaque.id) && <Check size={12} />}
+                    <div className="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-gray-100">
+                      {plaque.image ? (
+                        <img src={plaque.image} alt={plaque.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-500">
+                          <MapPin size={16} />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-grow">
+                      <h4 className="font-medium">{plaque.title}</h4>
+                      <p className="text-sm text-gray-500">{plaque.location}</p>
+                    </div>
+                    
+                    <div className="flex-shrink-0">
+                      <div 
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                          selectedAvailablePlaques.includes(plaque.id)
+                            ? 'bg-blue-500 border-blue-500 text-white'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        {selectedAvailablePlaques.includes(plaque.id) && <Check size={12} />}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+                ))
+              )}
+            </div>
+          </div>
+          
+          <SheetFooter className="mt-6">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setSelectedAvailablePlaques([]);
+                setAddPlaquesOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              disabled={selectedAvailablePlaques.length === 0}
+              onClick={handleAddPlaques}
+            >
+              Add {selectedAvailablePlaques.length} Plaques
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
       
-      <SheetFooter className="mt-6">
-        <Button 
-          variant="outline" 
-          onClick={() => {
-            setSelectedAvailablePlaques([]);
-            setAddPlaquesOpen(false);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button 
-          disabled={selectedAvailablePlaques.length === 0}
-          onClick={handleAddPlaques}
-        >
-          Add {selectedAvailablePlaques.length} Plaques
-        </Button>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
+      {/* Remove plaques confirmation */}
+      <Dialog open={removePlaquesOpen} onOpenChange={setRemovePlaquesOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove Plaques</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove {selectedPlaques.length} {selectedPlaques.length === 1 ? 'plaque' : 'plaques'} from this collection?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setRemovePlaquesOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleRemovePlaques}
+            >
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
-  {/* Remove plaques confirmation */}
-  <Dialog open={removePlaquesOpen} onOpenChange={setRemovePlaquesOpen}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Remove Plaques</DialogTitle>
-        <DialogDescription>
-          Are you sure you want to remove {selectedPlaques.length} {selectedPlaques.length === 1 ? 'plaque' : 'plaques'} from this collection?
-        </DialogDescription>
-      </DialogHeader>
-      
-      <DialogFooter className="mt-4">
-        <Button 
-          variant="outline" 
-          onClick={() => setRemovePlaquesOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button 
-          variant="destructive"
-          onClick={handleRemovePlaques}
-        >
-          Remove
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-      
-  {/* Delete collection confirmation */}
-  <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Delete Collection</DialogTitle>
-        <DialogDescription>
-          Are you sure you want to delete "{collection.name}"? This action cannot be undone.
-        </DialogDescription>
-      </DialogHeader>
-      
-      <DialogFooter className="mt-4">
-        <Button 
-          variant="outline" 
-          onClick={() => setConfirmDeleteOpen(false)}
-        >
-          Cancel
-        </Button>
-        <Button 
-          variant="destructive"
-          onClick={handleDeleteCollection}
-        >
-          Delete
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-</div>
-);
+      {/* Delete collection confirmation */}
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Collection</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{collection.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteCollection}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 export default CollectionDetailPage;

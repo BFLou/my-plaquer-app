@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Filter, LayoutGrid, List, Star, 
   X, ArrowRight, MoreHorizontal, CheckCircle,
@@ -49,8 +49,109 @@ import { ViewToggle } from '@/components/common/ViewToggle';
 import { SearchableFilterBar } from '@/components/common/SearchableFilterBar';
 import { ActionBar } from '@/components/common/ActionBar';
 
+// Utility functions for collection statistics
+import { 
+  getCollectionStats, 
+  getAllCollectionsStats, 
+  formatTimeAgo 
+} from '../utils/collectionStatsUtils';
+
 // Data
 import userData from '../data/user_data.json';
+
+// Sample plaques data (this would typically come from an API)
+const allPlaques = [
+  {
+    id: 485,
+    title: "Sam Selvon",
+    location: "Brixton, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "Sam Selvon (1923-1994), novelist, lived here 1950-1968.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 1115,
+    title: "Voltaire",
+    location: "Covent Garden, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "Voltaire (1694-1778) stayed here during his visits to London.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 1120,
+    title: "P.G. Wodehouse",
+    location: "Mayfair, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "P.G. Wodehouse (1881-1975), humorist and creator of Jeeves, lived here.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10011,
+    title: "Ealing Studios",
+    location: "Ealing, London",
+    color: "blue",
+    profession: "Film Studio",
+    inscription: "The oldest continuously working film studio in the world.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10014,
+    title: "A.A. Milne",
+    location: "Chelsea, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "A.A. Milne (1882-1956), creator of Winnie-the-Pooh, lived here.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10007,
+    title: "Arthur Haynes",
+    location: "Ealing, London",
+    color: "blue",
+    profession: "Comedian",
+    inscription: "Arthur Haynes (1914-1966), comedian, lived here.",
+    visited: true,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10090,
+    title: "Ada Lovelace",
+    location: "Marylebone, London",
+    color: "blue",
+    profession: "Mathematician",
+    inscription: "Ada Lovelace (1815-1852), mathematician and computing pioneer, lived here.",
+    visited: false,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10027,
+    title: "Literary London",
+    location: "Southwark, London",
+    color: "blue",
+    profession: "Historic Site",
+    inscription: "A historic literary landmark in London.",
+    visited: false,
+    image: "/api/placeholder/400/300"
+  },
+  {
+    id: 10019,
+    title: "Literary Icon",
+    location: "Westminster, London",
+    color: "blue",
+    profession: "Writer",
+    inscription: "A notable literary figure who made significant contributions.",
+    visited: false,
+    image: "/api/placeholder/400/300"
+  }
+];
 
 const CollectionsPage = () => {
   const navigate = useNavigate();
@@ -69,8 +170,19 @@ const CollectionsPage = () => {
   const [collectionsToDelete, setCollectionsToDelete] = useState([]);
   const [menuOpenId, setMenuOpenId] = useState(null);
   
+  // Enhanced collections with computed statistics
+  const [collectionsWithStats, setCollectionsWithStats] = useState([]);
+  
+  // Calculate statistics for all collections when component mounts
+  useEffect(() => {
+    // This would typically be a more efficient process in a real app
+    // We'd query statistics from a database rather than calculating on the client
+    const stats = getAllCollectionsStats(collections, allPlaques, userData.visited_plaques);
+    setCollectionsWithStats(stats);
+  }, [collections]);
+  
   // Filter collections based on search query and favorites
-  const filteredCollections = collections.filter(collection => {
+  const filteredCollections = collectionsWithStats.filter(collection => {
     // Filter by favorites if toggled
     if (showOnlyFavorites && !collection.is_favorite) {
       return false;
@@ -100,9 +212,9 @@ const CollectionsPage = () => {
       case 'z_to_a':
         return b.name.localeCompare(a.name);
       case 'most_plaques':
-        return b.plaques.length - a.plaques.length;
+        return b.plaqueCount - a.plaqueCount;
       case 'least_plaques':
-        return a.plaques.length - b.plaques.length;
+        return a.plaqueCount - b.plaqueCount;
       default:
         return new Date(b.updated_at) - new Date(a.updated_at);
     }
@@ -118,24 +230,6 @@ const CollectionsPage = () => {
   // Toggle menu open
   const toggleMenu = (id) => {
     setMenuOpenId(prev => prev === id ? null : id);
-  };
-  
-  // Format date for display
-  const formatUpdatedText = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) return 'today';
-    if (diffInDays === 1) return 'yesterday';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) {
-      const weeks = Math.floor(diffInDays / 7);
-      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
-    }
-    
-    const months = Math.floor(diffInDays / 30);
-    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
   };
   
   // Handle creating a new collection
@@ -335,7 +429,11 @@ const CollectionsPage = () => {
               {sortedCollections.map(collection => (
                 <EnhancedCollectionCard
                   key={collection.id}
-                  collection={collection}
+                  collection={{
+                    ...collection,
+                    plaques: collection.plaqueCount, // Set plaques to use computed count
+                    updated: formatTimeAgo(collection.updated_at) // Format time
+                  }}
                   isSelected={selectedCollections.includes(collection.id)}
                   menuOpenId={menuOpenId}
                   onToggleSelect={toggleSelect}
@@ -349,7 +447,6 @@ const CollectionsPage = () => {
                     setConfirmDeleteOpen(true);
                   }}
                   onClick={() => navigateToCollection(collection.id)}
-                  formatUpdatedText={formatUpdatedText}
                 />
               ))}
             </div>
@@ -360,7 +457,11 @@ const CollectionsPage = () => {
               {sortedCollections.map(collection => (
                 <EnhancedCollectionListItem
                   key={collection.id}
-                  collection={collection}
+                  collection={{
+                    ...collection,
+                    plaques: collection.plaqueCount, // Set plaques to use computed count
+                    updated: formatTimeAgo(collection.updated_at) // Format time
+                  }}
                   isSelected={selectedCollections.includes(collection.id)}
                   menuOpenId={menuOpenId}
                   onToggleSelect={toggleSelect}
@@ -374,7 +475,6 @@ const CollectionsPage = () => {
                     setConfirmDeleteOpen(true);
                   }}
                   onClick={() => navigateToCollection(collection.id)}
-                  formatUpdatedText={formatUpdatedText}
                 />
               ))}
             </div>
