@@ -1,9 +1,9 @@
+// src/components/collections/CollectionForm.tsx
 import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -13,7 +13,6 @@ export type CollectionFormData = {
   description: string;
   icon: string;
   color: string;
-  isPublic?: boolean;
 };
 
 type CollectionFormProps = {
@@ -37,7 +36,6 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     description: initialValues.description || '',
     icon: initialValues.icon || '🎭',
     color: initialValues.color || 'bg-blue-500',
-    isPublic: initialValues.isPublic || false
   });
   
   // Form validation state
@@ -193,18 +191,6 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         </div>
       </div>
       
-      <div className="flex items-center justify-between pt-2">
-        <div className="space-y-1">
-          <Label htmlFor="public-switch" className="text-base">Make this collection public</Label>
-          <p className="text-sm text-gray-500">Public collections can be shared with anyone</p>
-        </div>
-        <Switch
-          id="public-switch"
-          checked={formState.isPublic}
-          onCheckedChange={(checked) => handleChange('isPublic', checked)}
-        />
-      </div>
-      
       {/* Preview */}
       <div className="pt-2 pb-4">
         <h3 className="text-sm font-medium text-gray-500 mb-3">Preview</h3>
@@ -216,13 +202,6 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             <div className="flex-1">
               <h3 className="font-semibold text-lg">{formState.name || "Your Collection Name"}</h3>
               <p className="text-sm text-gray-600 line-clamp-2">{formState.description || "Collection description will appear here"}</p>
-              {formState.isPublic && (
-                <div className="mt-2">
-                  <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 flex items-center gap-1 w-fit">
-                    <Star size={12} /> Public
-                  </Badge>
-                </div>
-              )}
             </div>
           </div>
         </div>

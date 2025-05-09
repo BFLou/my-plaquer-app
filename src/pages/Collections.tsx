@@ -1,14 +1,13 @@
+// src/pages/CollectionsPage.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, Search, Filter, LayoutGrid, List, Star, 
-  X, ArrowRight, MoreHorizontal, CheckCircle,
-  Pencil, Copy, Share2, Trash2, MapPin
+  Plus, Search, Filter, MapPin, 
+  X, Star, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -17,13 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -35,123 +27,21 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 
 // Collection Components
-import EnhancedCollectionCard from '@/components/collections/EnhancedCollectionCard';
-import EnhancedCollectionListItem from '@/components/collections/EnhancedCollectionListItem';
+import ImprovedCollectionCard from '@/components/collections/ImprovedCollectionCard';
+import ImprovedCollectionListItem from '@/components/collections/ImprovedCollectionListItem';
 import { CollectionForm } from '@/components/collections/CollectionForm';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ViewToggle } from '@/components/common/ViewToggle';
 import { SearchableFilterBar } from '@/components/common/SearchableFilterBar';
 import { ActionBar } from '@/components/common/ActionBar';
 
-// Utility functions for collection statistics
-import { 
-  getCollectionStats, 
-  getAllCollectionsStats, 
-  formatTimeAgo 
-} from '../utils/collectionStatsUtils';
-
 // Data
 import userData from '../data/user_data.json';
-
-// Sample plaques data (this would typically come from an API)
-const allPlaques = [
-  {
-    id: 485,
-    title: "Sam Selvon",
-    location: "Brixton, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "Sam Selvon (1923-1994), novelist, lived here 1950-1968.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 1115,
-    title: "Voltaire",
-    location: "Covent Garden, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "Voltaire (1694-1778) stayed here during his visits to London.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 1120,
-    title: "P.G. Wodehouse",
-    location: "Mayfair, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "P.G. Wodehouse (1881-1975), humorist and creator of Jeeves, lived here.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10011,
-    title: "Ealing Studios",
-    location: "Ealing, London",
-    color: "blue",
-    profession: "Film Studio",
-    inscription: "The oldest continuously working film studio in the world.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10014,
-    title: "A.A. Milne",
-    location: "Chelsea, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "A.A. Milne (1882-1956), creator of Winnie-the-Pooh, lived here.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10007,
-    title: "Arthur Haynes",
-    location: "Ealing, London",
-    color: "blue",
-    profession: "Comedian",
-    inscription: "Arthur Haynes (1914-1966), comedian, lived here.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10090,
-    title: "Ada Lovelace",
-    location: "Marylebone, London",
-    color: "blue",
-    profession: "Mathematician",
-    inscription: "Ada Lovelace (1815-1852), mathematician and computing pioneer, lived here.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10027,
-    title: "Literary London",
-    location: "Southwark, London",
-    color: "blue",
-    profession: "Historic Site",
-    inscription: "A historic literary landmark in London.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10019,
-    title: "Literary Icon",
-    location: "Westminster, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "A notable literary figure who made significant contributions.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  }
-];
 
 const CollectionsPage = () => {
   const navigate = useNavigate();
@@ -168,21 +58,9 @@ const CollectionsPage = () => {
   const [editCollectionData, setEditCollectionData] = useState(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [collectionsToDelete, setCollectionsToDelete] = useState([]);
-  const [menuOpenId, setMenuOpenId] = useState(null);
-  
-  // Enhanced collections with computed statistics
-  const [collectionsWithStats, setCollectionsWithStats] = useState([]);
-  
-  // Calculate statistics for all collections when component mounts
-  useEffect(() => {
-    // This would typically be a more efficient process in a real app
-    // We'd query statistics from a database rather than calculating on the client
-    const stats = getAllCollectionsStats(collections, allPlaques, userData.visited_plaques);
-    setCollectionsWithStats(stats);
-  }, [collections]);
   
   // Filter collections based on search query and favorites
-  const filteredCollections = collectionsWithStats.filter(collection => {
+  const filteredCollections = collections.filter(collection => {
     // Filter by favorites if toggled
     if (showOnlyFavorites && !collection.is_favorite) {
       return false;
@@ -212,9 +90,13 @@ const CollectionsPage = () => {
       case 'z_to_a':
         return b.name.localeCompare(a.name);
       case 'most_plaques':
-        return b.plaqueCount - a.plaqueCount;
+        const bCount = Array.isArray(b.plaques) ? b.plaques.length : b.plaques;
+        const aCount = Array.isArray(a.plaques) ? a.plaques.length : a.plaques;
+        return bCount - aCount;
       case 'least_plaques':
-        return a.plaqueCount - b.plaqueCount;
+        const aCount2 = Array.isArray(a.plaques) ? a.plaques.length : a.plaques;
+        const bCount2 = Array.isArray(b.plaques) ? b.plaques.length : b.plaques;
+        return aCount2 - bCount2;
       default:
         return new Date(b.updated_at) - new Date(a.updated_at);
     }
@@ -227,11 +109,6 @@ const CollectionsPage = () => {
     );
   };
   
-  // Toggle menu open
-  const toggleMenu = (id) => {
-    setMenuOpenId(prev => prev === id ? null : id);
-  };
-  
   // Handle creating a new collection
   const handleCreateCollection = (data) => {
     const newCollection = {
@@ -242,7 +119,6 @@ const CollectionsPage = () => {
       color: data.color,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      is_public: !!data.isPublic,
       is_favorite: false,
       plaques: []
     };
@@ -262,7 +138,6 @@ const CollectionsPage = () => {
         description: data.description || '',
         icon: data.icon,
         color: data.color,
-        is_public: !!data.isPublic,
         updated_at: new Date().toISOString()
       } : collection
     ));
@@ -278,7 +153,6 @@ const CollectionsPage = () => {
       setEditCollectionData(collection);
       setEditCollectionOpen(true);
     }
-    setMenuOpenId(null);
   };
   
   // Toggle favorite status
@@ -289,7 +163,6 @@ const CollectionsPage = () => {
         is_favorite: !collection.is_favorite
       } : collection
     ));
-    setMenuOpenId(null);
   };
   
   // Duplicate a collection
@@ -308,8 +181,6 @@ const CollectionsPage = () => {
       
       setCollections(prev => [duplicate, ...prev]);
     }
-    
-    setMenuOpenId(null);
   };
   
   // Delete collections
@@ -427,26 +298,19 @@ const CollectionsPage = () => {
           {viewMode === 'grid' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedCollections.map(collection => (
-                <EnhancedCollectionCard
+                <ImprovedCollectionCard
                   key={collection.id}
-                  collection={{
-                    ...collection,
-                    plaques: collection.plaqueCount, // Set plaques to use computed count
-                    updated: formatTimeAgo(collection.updated_at) // Format time
-                  }}
+                  collection={collection}
                   isSelected={selectedCollections.includes(collection.id)}
-                  menuOpenId={menuOpenId}
                   onToggleSelect={toggleSelect}
-                  onMenuOpen={toggleMenu}
-                  onEdit={() => openEditDialog(collection.id)}
-                  onDuplicate={() => duplicateCollection(collection.id)}
-                  onShare={() => {/* Share functionality */}}
-                  onToggleFavorite={() => toggleFavorite(collection.id)}
-                  onDelete={() => {
-                    setCollectionsToDelete([collection.id]);
+                  onEdit={openEditDialog}
+                  onDuplicate={duplicateCollection}
+                  onToggleFavorite={toggleFavorite}
+                  onDelete={(id) => {
+                    setCollectionsToDelete([id]);
                     setConfirmDeleteOpen(true);
                   }}
-                  onClick={() => navigateToCollection(collection.id)}
+                  onClick={navigateToCollection}
                 />
               ))}
             </div>
@@ -455,26 +319,19 @@ const CollectionsPage = () => {
           {viewMode === 'list' && (
             <div className="space-y-3">
               {sortedCollections.map(collection => (
-                <EnhancedCollectionListItem
+                <ImprovedCollectionListItem
                   key={collection.id}
-                  collection={{
-                    ...collection,
-                    plaques: collection.plaqueCount, // Set plaques to use computed count
-                    updated: formatTimeAgo(collection.updated_at) // Format time
-                  }}
+                  collection={collection}
                   isSelected={selectedCollections.includes(collection.id)}
-                  menuOpenId={menuOpenId}
                   onToggleSelect={toggleSelect}
-                  onMenuOpen={toggleMenu}
-                  onEdit={() => openEditDialog(collection.id)}
-                  onDuplicate={() => duplicateCollection(collection.id)}
-                  onShare={() => {/* Share functionality */}}
-                  onToggleFavorite={() => toggleFavorite(collection.id)}
-                  onDelete={() => {
-                    setCollectionsToDelete([collection.id]);
+                  onEdit={openEditDialog}
+                  onDuplicate={duplicateCollection}
+                  onToggleFavorite={toggleFavorite}
+                  onDelete={(id) => {
+                    setCollectionsToDelete([id]);
                     setConfirmDeleteOpen(true);
                   }}
-                  onClick={() => navigateToCollection(collection.id)}
+                  onClick={navigateToCollection}
                 />
               ))}
             </div>
@@ -533,8 +390,7 @@ const CollectionsPage = () => {
                 name: editCollectionData.name,
                 description: editCollectionData.description,
                 icon: editCollectionData.icon,
-                color: editCollectionData.color,
-                isPublic: editCollectionData.is_public
+                color: editCollectionData.color
               }}
               onSubmit={handleEditCollection}
               onCancel={() => {

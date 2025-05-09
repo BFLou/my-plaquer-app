@@ -1,11 +1,77 @@
-// src/utils/collectionStatsUtils.js
+// src/utils/collectionStatsUtils.ts
+
+type Collection = {
+  id: number;
+  name: string;
+  description?: string;
+  icon: string;
+  color: string;
+  plaques: number[];
+  updated_at: string;
+  is_favorite?: boolean;
+};
+
+type Plaque = {
+  id: number;
+  title: string;
+  profession?: string;
+  color?: string;
+  visited?: boolean;
+  [key: string]: any;
+};
+
+type Visit = {
+  plaque_id: number;
+  visited_at: string;
+  [key: string]: any;
+};
 
 /**
- * Format a date string to a relative time string (e.g. "2 days ago")
- * @param {string} dateString - ISO date string
- * @returns {string} - Formatted relative time
+ * Get visit statistics for a collection
  */
-export const formatTimeAgo = (dateString) => {
+export function getVisitedStats(
+  collection: Collection, 
+  plaques: Plaque[],
+  userVisits: Visit[]
+) {
+  if (!plaques.length) return { visitedCount: 0, visitedPercentage: 0 };
+  
+  const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
+  const visitedCount = plaques.filter(plaque => 
+    plaque.visited || visitedPlaqueIds.includes(plaque.id)
+  ).length;
+  
+  const visitedPercentage = Math.round((visitedCount / plaques.length) * 100);
+  
+  return { visitedCount, visitedPercentage };
+}
+
+/**
+ * Get profession statistics for a collection
+ */
+export function getProfessionStats(plaques: Plaque[]) {
+  if (!plaques.length) return [];
+  
+  const professionCounts: Record<string, number> = {};
+  
+  plaques.forEach(plaque => {
+    if (!plaque.profession) {
+      professionCounts['Unknown'] = (professionCounts['Unknown'] || 0) + 1;
+      return;
+    }
+    
+    professionCounts[plaque.profession] = (professionCounts[plaque.profession] || 0) + 1;
+  });
+  
+  return Object.entries(professionCounts)
+    .map(([profession, count]) => ({ profession, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Format time ago from a date string
+ */
+export function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -19,112 +85,68 @@ export const formatTimeAgo = (dateString) => {
   }
   const months = Math.floor(diffInDays / 30);
   return `${months} ${months === 1 ? 'month' : 'months'} ago`;
-};
+}
 
 /**
- * Get statistics for a single collection
- * @param {object} collection - Collection object
- * @param {array} allPlaques - Array of all plaques
- * @param {array} userVisits - Array of user visit records
- * @returns {object} - Collection with added statistics
+ * Get the plaque count for a collection (handles array or number)
  */
-export const getCollectionStats = (collection, allPlaques, userVisits) => {
+export function getPlaqueCount(collection: Collection): number {
+  if (Array.isArray(collection.plaques)) {
+    return collection.plaques.length;
+  }
+  return typeof collection.plaques === 'number' ? collection.plaques : 0;
+}
+
+/**
+ * Enhance a collection with computed statistics
+ */
+export function getCollectionStats(
+  collection: Collection, 
+  allPlaques: Plaque[],
+  userVisits: Visit[] = []
+) {
   // Get plaques for this collection
-  const collectionPlaqueIds = collection.plaques || [];
-  const collectionPlaques = allPlaques.filter(plaque => 
-    collectionPlaqueIds.includes(plaque.id)
+  const plaques = allPlaques.filter(plaque => 
+    collection.plaques.includes(plaque.id)
   );
   
-  // Get visit statistics for this collection
+  // Calculate visited stats
   const { visitedCount, visitedPercentage } = getVisitedStats(
     collection, 
-    collectionPlaques, 
+    plaques, 
     userVisits
   );
   
-  // Get profession statistics for this collection
-  const professionStats = getProfessionStats(collectionPlaques);
+  // Calculate profession stats
+  const professionStats = getProfessionStats(plaques);
   
-  // Return enhanced collection with stats
   return {
     ...collection,
-    plaqueCount: collectionPlaqueIds.length,
+    plaqueCount: plaques.length,
     visitedCount,
     visitedPercentage,
     professionStats
   };
-};
+}
 
 /**
- * Get visit statistics for a collection
- * @param {object} collection - Collection object
- * @param {array} plaques - Array of plaques in the collection
- * @param {array} userVisits - Array of user visit records
- * @returns {object} - Visit statistics
+ * Enhance all collections with computed statistics
  */
-export const getVisitedStats = (collection, plaques, userVisits) => {
-  // Default return if no plaques or visits
-  if (!plaques || plaques.length === 0) {
-    return { visitedCount: 0, visitedPercentage: 0 };
-  }
-  
-  // Get visited plaque IDs from user visits
-  const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
-  
-  // Count visited plaques in this collection
-  const visitedCount = plaques.filter(plaque => 
-    visitedPlaqueIds.includes(plaque.id)
-  ).length;
-  
-  // Calculate percentage (avoid division by zero)
-  const visitedPercentage = plaques.length > 0 
-    ? Math.round((visitedCount / plaques.length) * 100) 
-    : 0;
-  
-  return { visitedCount, visitedPercentage };
-};
-
-/**
- * Get profession statistics for plaques
- * @param {array} plaques - Array of plaque objects
- * @returns {array} - Array of profession counts
- */
-export const getProfessionStats = (plaques) => {
-  if (!plaques || plaques.length === 0) return [];
-  
-  // Count occurrences of each profession
-  const professionCounts = plaques.reduce((counts, plaque) => {
-    const profession = plaque.profession || 'Unknown';
-    counts[profession] = (counts[profession] || 0) + 1;
-    return counts;
-  }, {});
-  
-  // Convert to array and sort by count (descending)
-  const professionStats = Object.entries(professionCounts).map(([profession, count]) => ({
-    profession,
-    count
-  })).sort((a, b) => b.count - a.count);
-  
-  return professionStats;
-};
-
-/**
- * Calculate statistics for all collections
- * @param {array} collections - Array of collection objects
- * @param {array} allPlaques - Array of all plaques
- * @param {array} userVisits - Array of user visit records
- * @returns {array} - Array of collections with enhanced statistics
- */
-export const getAllCollectionsStats = (collections, allPlaques, userVisits) => {
+export function getAllCollectionsStats(
+  collections: Collection[],
+  allPlaques: Plaque[],
+  userVisits: Visit[] = []
+) {
   return collections.map(collection => 
     getCollectionStats(collection, allPlaques, userVisits)
   );
-};
+}
 
 export default {
-  formatTimeAgo,
-  getCollectionStats,
   getVisitedStats,
   getProfessionStats,
+  formatTimeAgo,
+  getPlaqueCount,
+  getCollectionStats,
   getAllCollectionsStats
 };

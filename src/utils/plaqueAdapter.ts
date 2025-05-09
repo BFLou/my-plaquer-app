@@ -1,47 +1,102 @@
 // src/utils/plaqueAdapter.ts
-import { Plaque } from '@/types/plaque';
 
-export function adaptPlaqueData(plaque: any): Plaque {
-  return {
-    id: plaque.id,
-    title: plaque.title || `Plaque #${plaque.id}`,
-    inscription: plaque.inscription || '',
-    
-    // Location data
-    address: plaque.address || '',
-    location: plaque.address || '', // For compatibility with existing components
-    postcode: plaque.postcode || '',
-    area: plaque.area || '',
-    country: plaque.country || '',
-    latitude: plaque.latitude,
-    longitude: plaque.longitude,
+type RawPlaqueData = {
+  id: number;
+  title?: string;
+  area?: string;
+  address?: string;
+  postcode?: string;
+  latitude?: string | number;
+  longitude?: string | number;
+  erected?: string;
+  colour?: string;
+  color?: string;
+  inscription?: string;
+  lead_subject_name?: string;
+  lead_subject_primary_role?: string;
+  lead_subject_born_in?: string;
+  lead_subject_died_in?: string;
+  lead_subject_wikipedia?: string;
+  organisations?: string;
+  subjects?: string;
+  language?: string;
+  series?: string;
+  main_photo?: string;
+  [key: string]: any;
+};
 
-    // Visual information
-    main_photo: plaque.main_photo !== "Unknown" ? plaque.main_photo : null,
-    image: plaque.main_photo !== "Unknown" ? plaque.main_photo : "/api/placeholder/400/300", // Fallback for UI
-    colour: plaque.colour || "unknown",
-    color: plaque.colour || "unknown", // For compatibility with existing components
+/**
+ * Converts raw plaque data to a consistent format for the application
+ */
+export function adaptPlaquesData(rawData: RawPlaqueData[]): any[] {
+  return rawData.map(plaque => {
+    // Normalize and clean up properties
+    const adaptedPlaque = {
+      id: plaque.id || 0,
+      title: plaque.title || 'Unknown Plaque',
+      area: plaque.area || '',
+      address: plaque.address || '',
+      postcode: plaque.postcode || '',
+      location: plaque.address ? `${plaque.address}, ${plaque.area || ''}`.trim() : plaque.area || '',
+      latitude: plaque.latitude || null,
+      longitude: plaque.longitude || null,
+      erected: plaque.erected || '',
+      color: plaque.colour || plaque.color || 'blue', // Normalize color field
+      inscription: plaque.inscription || '',
+      
+      // Subject information
+      lead_subject_name: plaque.lead_subject_name || '',
+      profession: plaque.lead_subject_primary_role || '', // Use as profession
+      lead_subject_primary_role: plaque.lead_subject_primary_role || '',
+      lead_subject_born_in: plaque.lead_subject_born_in || '',
+      lead_subject_died_in: plaque.lead_subject_died_in || '',
+      lead_subject_wikipedia: plaque.lead_subject_wikipedia || '',
+      
+      // Additional info
+      organisations: plaque.organisations || '[]',
+      subjects: plaque.subjects || '[]',
+      language: plaque.language || '',
+      series: plaque.series || '',
+      
+      // Image
+      image: plaque.main_photo || '',
+      
+      // Visit status (default to false, will be updated with user data)
+      visited: false
+    };
     
-    // Subject info
-    profession: plaque.lead_subject_primary_role || "Unknown",
-    description: plaque.inscription || '',
+    // Clean up and transform specific fields
     
-    // Metadata
-    erected: plaque.erected || "Unknown",
-    organisations: plaque.organisations || "[]",
+    // Parse coordinates to numbers if they're strings
+    if (adaptedPlaque.latitude && typeof adaptedPlaque.latitude === 'string') {
+      adaptedPlaque.latitude = parseFloat(adaptedPlaque.latitude);
+    }
     
-    // Subject details
-    lead_subject_name: plaque.lead_subject_name || "Unknown",
-    lead_subject_primary_role: plaque.lead_subject_primary_role || "Unknown",
-    lead_subject_born_in: plaque.lead_subject_born_in || "Unknown",
-    lead_subject_died_in: plaque.lead_subject_died_in || "Unknown",
+    if (adaptedPlaque.longitude && typeof adaptedPlaque.longitude === 'string') {
+      adaptedPlaque.longitude = parseFloat(adaptedPlaque.longitude);
+    }
     
-    // App-specific properties (defaults)
-    visited: false,
-    added: new Date().toLocaleDateString()
-  };
+    // Normalize color naming
+    if (adaptedPlaque.color === 'grey') {
+      adaptedPlaque.color = 'gray';
+    }
+    
+    return adaptedPlaque;
+  });
 }
 
-export function adaptPlaquesData(plaques: any[]): Plaque[] {
-  return plaques.map(adaptPlaqueData);
+/**
+ * Parses JSON fields safely
+ */
+export function safeParseJSON(jsonString: string, defaultValue = []) {
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    return defaultValue;
+  }
 }
+
+export default { 
+  adaptPlaquesData,
+  safeParseJSON
+};
