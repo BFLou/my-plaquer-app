@@ -26,29 +26,9 @@ const EnhancedCollectionListItem = ({
   onToggleFavorite,
   onDelete,
   onClick,
-  formatUpdatedText,
   className = ''
 }) => {
 
-  // Format date for display if not provided
-  const getUpdatedText = (dateString) => {
-    if (formatUpdatedText) return formatUpdatedText(dateString);
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) return 'today';
-    if (diffInDays === 1) return 'yesterday';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) {
-      const weeks = Math.floor(diffInDays / 7);
-      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
-    }
-    const months = Math.floor(diffInDays / 30);
-    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
-  };
-  
   // Handle click events
   const handleClick = (e) => {
     if (e.ctrlKey || e.metaKey) {
@@ -65,6 +45,20 @@ const EnhancedCollectionListItem = ({
     if (operation) operation(collection.id);
   };
   
+  // Get color class safely
+  const getColorClass = () => {
+    if (!collection.color) return 'bg-blue-500'; // Default
+    if (typeof collection.color === 'string') {
+      // If it already has bg- prefix, use as is
+      if (collection.color.startsWith('bg-')) return collection.color;
+      // Otherwise, add the prefix
+      return `bg-${collection.color}-500`;
+    }
+    return 'bg-blue-500'; // Fallback
+  };
+
+  const colorClass = getColorClass();
+  
   return (
     <div 
       className={`bg-white rounded-lg shadow hover:shadow-md transition border border-gray-50 overflow-hidden cursor-pointer ${
@@ -73,7 +67,7 @@ const EnhancedCollectionListItem = ({
       onClick={handleClick}
     >
       <div className="flex flex-col sm:flex-row">
-        <div className={`sm:w-16 h-16 sm:h-auto flex-shrink-0 ${collection.color} p-4 flex items-center justify-center text-white text-3xl`}>
+        <div className={`sm:w-16 h-16 sm:h-auto flex-shrink-0 ${colorClass} p-4 flex items-center justify-center text-white text-3xl`}>
           {collection.icon}
         </div>
         
@@ -108,7 +102,7 @@ const EnhancedCollectionListItem = ({
                   : (collection.plaques === 1 ? ' plaque' : ' plaques')}
               </Badge>
               <span className="text-xs text-gray-400">
-                Updated {getUpdatedText(collection.updated_at || collection.updated)}
+                Updated {collection.updated || 'recently'}
               </span>
             </div>
           </div>
@@ -117,7 +111,7 @@ const EnhancedCollectionListItem = ({
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
-                size="icon" 
+                size="sm" 
                 className="h-8 w-8 rounded-full hover:bg-gray-100"
                 onClick={(e) => e.stopPropagation()}
               >
