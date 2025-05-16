@@ -9,6 +9,7 @@ type PageContainerProps = {
   simplifiedFooter?: boolean;
   className?: string;
   containerClass?: string;
+  hideNavBar?: boolean; // New prop to optionally hide NavBar
 };
 
 export const PageContainer = ({
@@ -17,11 +18,13 @@ export const PageContainer = ({
   hasFooter = true,
   simplifiedFooter = false,
   className = '',
-  containerClass = ''
+  containerClass = '',
+  hideNavBar = false  // Default to showing NavBar
 }: PageContainerProps) => {
   return (
     <div className={`min-h-screen flex flex-col bg-gray-50 ${className}`}>
-      <NavBar activePage={activePage} />
+      {/* Only render NavBar if hideNavBar is false */}
+      {!hideNavBar && <NavBar activePage={activePage} />}
       
       <main className={containerClass || 'flex-grow'}>
         {children}

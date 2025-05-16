@@ -1,4 +1,5 @@
-// src/contexts/UserContext.tsx
+// src/contexts/UserContext.tsx - Updated version with fix for undefined values
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -9,16 +10,16 @@ interface UserProfile {
   uid: string;
   displayName: string;
   email: string;
-  photoURL?: string;
-  bio?: string;
-  location?: string;
+  photoURL?: string | null; // Add null as possible type
+  bio?: string | null;
+  location?: string | null;
   joinedAt: string;
   lastActiveAt: string;
   preferences?: {
     theme?: 'light' | 'dark' | 'system';
     notifications?: boolean;
     emailUpdates?: boolean;
-  };
+  } | null;
 }
 
 // User context type
@@ -50,17 +51,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // User profile exists in Firestore
             setProfile(userDoc.data() as UserProfile);
           } else {
-            // Create new user profile
+            // Create new user profile - MAKE SURE TO SANITIZE DATA TO REMOVE UNDEFINED VALUES
             const newProfile: UserProfile = {
               uid: user.uid,
               displayName: user.displayName || 'User',
               email: user.email || '',
-              photoURL: user.photoURL || undefined,
+              // Convert undefined to null for Firestore
+              photoURL: user.photoURL || null, // Changed from undefined to null
               joinedAt: new Date().toISOString(),
               lastActiveAt: new Date().toISOString(),
             };
             
-            await setDoc(userDocRef, newProfile);
+            // Clean the object to remove any undefined values before saving to Firestore
+            const cleanProfile = sanitizeForFirestore(newProfile);
+            
+            await setDoc(userDocRef, cleanProfile);
             setProfile(newProfile);
           }
         } catch (error) {
@@ -77,17 +82,39 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchUserProfile();
   }, [user]);
 
-  // Update user profile
+  // Helper function to remove undefined values that Firestore doesn't support
+  const sanitizeForFirestore = (data: any): any => {
+    const result: any = {};
+    
+    // Remove undefined values, replace with null
+    Object.keys(data).forEach(key => {
+      if (data[key] === undefined) {
+        result[key] = null;
+      } else if (typeof data[key] === 'object' && data[key] !== null) {
+        // Recursively sanitize nested objects
+        result[key] = sanitizeForFirestore(data[key]);
+      } else {
+        result[key] = data[key];
+      }
+    });
+    
+    return result;
+  };
+
+  // Update user profile with sanitization for Firestore
   const updateProfile = async (data: Partial<UserProfile>) => {
     if (!user || !profile) throw new Error('No authenticated user');
     
     try {
       const userDocRef = doc(db, 'users', user.uid);
       
+      // Clean the data before updating Firestore
+      const cleanData = sanitizeForFirestore(data);
+      
       // Update Firestore
       await setDoc(userDocRef, {
         ...profile,
-        ...data,
+        ...cleanData,
         lastActiveAt: new Date().toISOString(),
       }, { merge: true });
       

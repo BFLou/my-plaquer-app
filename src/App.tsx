@@ -12,7 +12,6 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import RequireAuth from './components/auth/RequireAuth';
 import { Toaster } from 'sonner';
-import { PageContainer } from './components/layout/PageContainer';
 
 function App() {
   return (
@@ -20,86 +19,56 @@ function App() {
       <AuthProvider>
         <UserProvider>
           <Routes>
-            <Route path="/" element={
-              <PageContainer activePage="home">
-                <Home />
-              </PageContainer>
-            } />
-            
-            <Route path="/discover" element={
-              <PageContainer activePage="discover">
-                <Discover />
-              </PageContainer>
-            } />
-            
-            <Route path="/about" element={
-              <PageContainer activePage="about">
-                <About />
-              </PageContainer>
-            } />
+            <Route path="/" element={<Home />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/about" element={<About />} />
             
             {/* Protected routes */}
             <Route path="/collections" element={
               <RequireAuth>
-                <PageContainer activePage="collections">
-                  <CollectionsPage />
-                </PageContainer>
+                <CollectionsPage />
               </RequireAuth>
             } />
             
             <Route path="/collections/:id" element={
               <RequireAuth>
-                <PageContainer activePage="collections">
-                  <CollectionDetailPage />
-                </PageContainer>
+                <CollectionDetailPage />
               </RequireAuth>
             } />
             
             <Route path="/collections/new" element={
               <RequireAuth>
-                <PageContainer activePage="collections">
-                  <CollectionDetailPage isNew={true} />
-                </PageContainer>
+                <CollectionDetailPage isNew={true} />
               </RequireAuth>
             } />
             
             <Route path="/profile" element={
               <RequireAuth>
-                <PageContainer activePage="profile">
-                  <ProfilePage />
-                </PageContainer>
+                <ProfilePage />
               </RequireAuth>
             } />
             
             <Route path="/profile/visited" element={
               <RequireAuth>
-                <PageContainer activePage="profile">
-                  <ProfilePage activeTab="visited" />
-                </PageContainer>
+                <ProfilePage activeTab="visited" />
               </RequireAuth>
             } />
             
             <Route path="/profile/routes" element={
               <RequireAuth>
-                <PageContainer activePage="profile">
-                  <ProfilePage activeTab="routes" />
-                </PageContainer>
+                <ProfilePage activeTab="routes" />
               </RequireAuth>
             } />
             
             <Route path="/settings" element={
               <RequireAuth>
-                <PageContainer activePage="settings">
-                  <SettingsPage />
-                </PageContainer>
+                <SettingsPage />
               </RequireAuth>
             } />
             
             <Route path="/settings/profile" element={
               <RequireAuth>
-                <PageContainer activePage="settings">
-                  <SettingsPage activeTab="profile" />
-                </PageContainer>
+                <SettingsPage activeTab="profile" />
               </RequireAuth>
             } />
           </Routes>

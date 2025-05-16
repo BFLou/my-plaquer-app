@@ -5,6 +5,9 @@ import {
   X, Star, Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  PageContainer
+} from "@/components";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -228,6 +231,8 @@ const CollectionsPage = () => {
   const isSelectionMode = selectedCollections.length > 0;
   
   return (
+        <PageContainer activePage="collections" containerClass="flex-grow">
+    
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">My Collections</h1>
@@ -425,6 +430,7 @@ const CollectionsPage = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </PageContainer>
   );
 };
 

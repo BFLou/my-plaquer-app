@@ -2,12 +2,14 @@ import { MapPin, Star, CheckCircle, X, Info, ExternalLink, Calendar } from 'luci
 import { 
   Sheet, 
   SheetContent,
+  SheetHeader,
+  SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plaque } from '@/types/plaque';
-import PlaqueImage from './PlaqueImage'; // Import the PlaqueImage component
+import PlaqueImage from './PlaqueImage';
 
 type PlaqueDetailProps = {
   plaque: Plaque | null;
@@ -90,9 +92,13 @@ export const PlaqueDetail = ({
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="bottom" className="h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0">
+        {/* Add SheetHeader and SheetTitle for accessibility */}
+        <SheetHeader className="sr-only">
+          <SheetTitle>{plaque.title}</SheetTitle>
+        </SheetHeader>
+        
         <div className="h-full flex flex-col overflow-hidden">
           <div className="relative h-56 bg-blue-50">
-            {/* Replace the old image handling with PlaqueImage component */}
             <PlaqueImage 
               src={imageUrl}
               alt={plaque.title} 

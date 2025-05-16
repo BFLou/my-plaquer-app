@@ -1,6 +1,6 @@
 // src/components/plaques/VisitLogger.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MapPin, Star, X, Share2, Check, Image, Edit, Plus, Award } from 'lucide-react';
+import { Camera, MapPin, Star, X, Share2, Check, Image, Edit, Plus, Award, Calendar } from 'lucide-react';
 import { 
   Sheet, 
   SheetContent, 
@@ -12,8 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 // Types for visit data
 interface VisitData {
@@ -94,7 +101,7 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
   onClose,
   onVisitLogged,
   userVisits = [],
-  verifyLocation = true
+  verifyLocation = false // Default changed to false
 }) => {
   // Visit data state
   const [notes, setNotes] = useState("");
@@ -105,6 +112,10 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
   const [isLocating, setIsLocating] = useState(false);
   const [locationVerified, setLocationVerified] = useState(false);
   const [showAchievement, setShowAchievement] = useState<{id: string, title: string, description: string, icon: string} | null>(null);
+  
+  // Added state for custom visit date
+  const [visitDate, setVisitDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   // Refs
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +129,7 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
       setPhotoFiles([]);
       setUserLocation(null);
       setLocationVerified(false);
+      setVisitDate(new Date()); // Reset to current date
     }
   }, [isOpen, plaque]);
   
@@ -271,6 +283,14 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
     setRating(prev => (prev === value) ? 0 : value);
   };
   
+  // Handle date selection
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      setVisitDate(date);
+      setShowDatePicker(false);
+    }
+  };
+
   // Check for achievements
   const checkForAchievements = (visitData: VisitData): string | null => {
     // Create a new array with the current visit added
@@ -325,10 +345,10 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
       return;
     }
     
-    // Create visit data
+    // Create visit data with custom date
     const visitData: VisitData = {
       plaque_id: plaque.id,
-      visited_at: new Date().toISOString(),
+      visited_at: visitDate.toISOString(), // Use the selected date
       notes,
       photos,
       rating,
@@ -416,6 +436,31 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
             </SheetHeader>
             
             <div className="py-4 space-y-6 overflow-y-auto max-h-[calc(100vh-180px)]">
+              {/* Visit Date Selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">When did you visit this plaque?</label>
+                <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {format(visitDate, "PPP")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={visitDate}
+                      onSelect={handleDateChange}
+                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
               {/* Location verification (if needed) */}
               {needsLocationVerification() && (
                 <div className={`p-4 rounded-lg ${locationVerified ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>

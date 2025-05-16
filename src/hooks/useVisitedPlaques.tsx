@@ -1,4 +1,5 @@
 // src/hooks/useVisitedPlaques.tsx
+// Updated version with support for custom visit dates
 import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
@@ -33,6 +34,7 @@ interface VisitData {
   };
   // Achievement system
   achievement?: string;
+  rating?: number;
 }
 
 export const useVisitedPlaques = () => {
@@ -95,7 +97,13 @@ export const useVisitedPlaques = () => {
     return visits.some(visit => visit.plaque_id === plaqueId);
   }, [visits]);
 
-  // Mark a plaque as visited
+  // Get visit information for a specific plaque
+  const getVisitInfo = useCallback((plaqueId: number): VisitData | null => {
+    const visit = visits.find(visit => visit.plaque_id === plaqueId);
+    return visit || null;
+  }, [visits]);
+
+  // Mark a plaque as visited - with support for custom visit date
   const markAsVisited = useCallback(async (
     plaqueId: number, 
     data?: {
@@ -106,6 +114,9 @@ export const useVisitedPlaques = () => {
         longitude: number;
         accuracy?: number;
       };
+      visitedAt?: string; // ISO string date for custom visit date
+      rating?: number;
+      achievement?: string;
     }
   ) => {
     if (!user) throw new Error('You must be logged in to mark plaques as visited');
@@ -117,12 +128,32 @@ export const useVisitedPlaques = () => {
         return null;
       }
 
-      const visitData = {
+      // Prepare the visit data
+      const visitData: any = {
         plaque_id: plaqueId,
         user_id: user.uid,
-        visited_at: serverTimestamp(),
-        ...data
+        notes: data?.notes || '',
+        photos: data?.photos || [],
+        rating: data?.rating || 0
       };
+
+      // Handle custom visit date if provided, otherwise use serverTimestamp
+      if (data?.visitedAt) {
+        // Convert ISO string to Firestore Timestamp
+        visitData.visited_at = Timestamp.fromDate(new Date(data.visitedAt));
+      } else {
+        visitData.visited_at = serverTimestamp();
+      }
+
+      // Add location data if provided
+      if (data?.location) {
+        visitData.location = data.location;
+      }
+
+      // Add achievement if provided
+      if (data?.achievement) {
+        visitData.achievement = data.achievement;
+      }
 
       const docRef = await addDoc(collection(db, 'visited_plaques'), visitData);
       
@@ -132,7 +163,9 @@ export const useVisitedPlaques = () => {
       return {
         id: docRef.id,
         ...visitData,
-        visited_at: new Date() // Use client-side date for immediate UI update
+        visited_at: visitData.visited_at instanceof Timestamp 
+          ? visitData.visited_at 
+          : new Date() // Fallback for serverTimestamp
       } as unknown as VisitData;
     } catch (err) {
       console.error('Error marking plaque as visited:', err);
@@ -141,8 +174,11 @@ export const useVisitedPlaques = () => {
     }
   }, [user, isPlaqueVisited]);
 
-  // Update visit details
-  const updateVisit = useCallback(async (visitId: string, data: Partial<Omit<VisitData, 'id' | 'user_id' | 'plaque_id'>>) => {
+  // Update visit details - with support for updating the visit date
+  const updateVisit = useCallback(async (
+    visitId: string, 
+    data: Partial<Omit<VisitData, 'id' | 'user_id' | 'plaque_id'>> & { visitedAt?: string }
+  ) => {
     if (!user) throw new Error('You must be logged in to update visit details');
 
     try {
@@ -154,7 +190,22 @@ export const useVisitedPlaques = () => {
         throw new Error('Visit not found or access denied');
       }
 
-      await updateDoc(docRef, data);
+      // Prepare update data
+      const updateData: any = {};
+      
+      // Copy all fields except special handling for visited_at
+      Object.keys(data).forEach(key => {
+        if (key !== 'visitedAt') {
+          updateData[key] = data[key as keyof typeof data];
+        }
+      });
+      
+      // Special handling for visited_at if provided as ISO string
+      if (data.visitedAt) {
+        updateData.visited_at = Timestamp.fromDate(new Date(data.visitedAt));
+      }
+
+      await updateDoc(docRef, updateData);
       
       toast.success('Visit updated');
       
@@ -162,7 +213,7 @@ export const useVisitedPlaques = () => {
       const updatedVisit = {
         id: visitId,
         ...docSnap.data(),
-        ...data
+        ...updateData
       } as unknown as VisitData;
 
       return updatedVisit;
@@ -295,6 +346,7 @@ export const useVisitedPlaques = () => {
     error,
     getVisitedPlaqueIds,
     isPlaqueVisited,
+    getVisitInfo,
     markAsVisited,
     updateVisit,
     removeVisit,
