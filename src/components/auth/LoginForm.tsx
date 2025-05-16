@@ -1,15 +1,9 @@
-// src/components/auth/LoginForm.tsx
+// src/components/auth/LoginForm.tsx (Updated with better error handling)
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
-
-// Import correct icons from Lucide React
-import { Loader } from 'lucide-react';
-// For Google icon and Github icon, we need to use Lucide's alternate imports
-// They're now part of the brand icons collection
-import { GithubIcon } from 'lucide-react'; 
 
 // Custom Google Icon since Lucide-React doesn't provide one
 const GoogleIcon = () => (
@@ -28,41 +22,44 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   
-  const { signIn, signInWithGoogle, signInWithGithub } = useAuth();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setDebugInfo(null);
     setIsLoading(true);
     
     try {
-      await signIn(email, password);
+      const userCredential = await signIn(email, password);
+      console.log("Auth successful:", userCredential);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in. Please try again.');
+      console.error('Sign in error:', err);
+      
+      // Set user-friendly error message
+      let errorMessage = 'Failed to sign in. Please try again.';
+      
+      if (err.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (err.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please check your email or register.';
+      } else if (err.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many unsuccessful login attempts. Please try again later.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (err.code === 'auth/configuration-not-found') {
+        errorMessage = 'Authentication configuration error. Please contact support.';
+        setDebugInfo('This error typically occurs when Firebase does not recognize the domain. Check if localhost is added to authorized domains in Firebase console.');
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    try {
-      await signInWithGoogle();
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google.');
-    }
-  };
-
-  const handleGithubSignIn = async () => {
-    setError(null);
-    try {
-      await signInWithGithub();
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with GitHub.');
     }
   };
 
@@ -104,6 +101,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
             {error}
+            {debugInfo && (
+              <div className="mt-2 pt-2 border-t border-red-200 text-xs">
+                <strong>Debug info:</strong> {debugInfo}
+              </div>
+            )}
           </div>
         )}
         
@@ -130,8 +132,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
         <Button 
           type="button" 
           variant="outline"
-          onClick={handleGoogleSignIn}
+          onClick={() => setError("Social sign-in is temporarily disabled. Please use email/password.")}
           className="flex items-center justify-center gap-2"
+          disabled
         >
           <GoogleIcon />
           <span>Google</span>
@@ -139,10 +142,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
         <Button 
           type="button" 
           variant="outline"
-          onClick={handleGithubSignIn}
+          onClick={() => setError("Social sign-in is temporarily disabled. Please use email/password.")}
           className="flex items-center justify-center gap-2"
+          disabled
         >
-          <GithubIcon size={16} />
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+          </svg>
           <span>GitHub</span>
         </Button>
       </div>

@@ -1,4 +1,4 @@
-// src/lib/firebase.ts
+// src/lib/firebase.ts (Simplified for direct auth only)
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -6,65 +6,73 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   sendPasswordResetEmail,
-  signInWithPopup,
-  GoogleAuthProvider,
-  GithubAuthProvider,
-  signOut as authSignOut
+  signOut as authSignOut,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
-import { getAnalytics } from 'firebase/analytics';
 
-// Your Firebase configuration from the Firebase console
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDgiCu1ITfoKedWbU7v2DJ-YD0FhAbyHoo",
   authDomain: "plaquer-9a004.firebaseapp.com",
   projectId: "plaquer-9a004",
-  storageBucket: "plaquer-9a004.firebaseapp.com", // Note: corrected this from firebasestorage.app
+  storageBucket: "plaquer-9a004.firebaseapp.com",
   messagingSenderId: "240735688950",
   appId: "1:240735688950:web:212ca0fffe2d7db4e374d7",
   measurementId: "G-96E6N3PDYT"
 };
 
-// Initialize Firebase services
+// Initialize Firebase only once
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const functions = getFunctions(app);
-const analytics = getAnalytics(app);
 
-// Authentication helpers
+// Enable persistent sessions
+setPersistence(auth, browserLocalPersistence).catch(error => {
+  console.error("Auth persistence error:", error);
+});
+
+// Authentication helpers with improved error handling
 export const signIn = async (email: string, password: string) => {
-  return signInWithEmailAndPassword(auth, email, password);
+  try {
+    return await signInWithEmailAndPassword(auth, email, password);
+  } catch (error: any) {
+    console.error("Sign in error details:", error.code, error.message);
+    throw error;
+  }
 };
 
 export const register = async (email: string, password: string, displayName: string) => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(userCredential.user, { displayName });
-  return userCredential;
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(userCredential.user, { displayName });
+    return userCredential;
+  } catch (error: any) {
+    console.error("Register error details:", error.code, error.message);
+    throw error;
+  }
 };
 
 export const resetPassword = async (email: string) => {
-  return sendPasswordResetEmail(auth, email);
-};
-
-// Social auth providers
-const googleProvider = new GoogleAuthProvider();
-const githubProvider = new GithubAuthProvider();
-
-export const signInWithGoogle = async () => {
-  return signInWithPopup(auth, googleProvider);
-};
-
-export const signInWithGithub = async () => {
-  return signInWithPopup(auth, githubProvider);
+  try {
+    return await sendPasswordResetEmail(auth, email);
+  } catch (error: any) {
+    console.error("Reset password error details:", error.code, error.message);
+    throw error;
+  }
 };
 
 export const signOut = async () => {
-  return authSignOut(auth);
+  try {
+    return await authSignOut(auth);
+  } catch (error: any) {
+    console.error("Sign out error details:", error.code, error.message);
+    throw error;
+  }
 };
 
 // Export initialized services for use throughout the app
-export { app, auth, db, storage, functions, analytics };
+export { app, auth, db, storage };
