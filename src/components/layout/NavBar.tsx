@@ -1,10 +1,10 @@
-// src/components/layout/NavBar.tsx (Updated)
+// src/components/layout/NavBar.tsx (Updated with auth integration)
 import React, { useState } from 'react';
-import { MapPin, X, MoreHorizontal, User } from 'lucide-react';
+import { MapPin, X, MoreHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useUser } from '../../contexts/UserContext';
+import { useAuth } from '@/hooks/useAuth';
+import UserMenu from '@/components/auth/UserMenu';
 
 type NavLinkProps = {
   to: string;
@@ -24,12 +24,12 @@ const NavLink = ({ to, children, isActive = false }: NavLinkProps) => (
 );
 
 type NavBarProps = {
-  activePage?: 'home' | 'discover' | 'collections' | 'about' | 'profile';
+  activePage?: 'home' | 'discover' | 'collections' | 'about' | 'profile' | 'settings';
 };
 
 export const NavBar = ({ activePage }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user } = useUser();
+  const { user } = useAuth(); // Use the auth context instead of UserContext
   const location = useLocation();
   
   return (
@@ -49,27 +49,22 @@ export const NavBar = ({ activePage }: NavBarProps) => {
           <NavLink to="/collections" isActive={activePage === 'collections' || location.pathname.includes('/collections')}>Collections</NavLink>
           <NavLink to="/about" isActive={activePage === 'about'}>About</NavLink>
           
-          {/* User Profile Link */}
-          <Link to="/profile" className="ml-2">
-            <Avatar className={activePage === 'profile' ? 'ring-2 ring-blue-600 ring-offset-2' : ''}>
-            <AvatarFallback className="bg-blue-100 text-blue-600">
-  {(user?.username ?? 'User').substring(0, 2).toUpperCase()}
-</AvatarFallback>
-
-
-            </Avatar>
-          </Link>
+          {/* Replace the Avatar with UserMenu component */}
+          <UserMenu />
         </nav>
         
         {/* Mobile Menu Button */}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="md:hidden"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? <X size={20} /> : <MoreHorizontal size={20} />}
-        </Button>
+        <div className="md:hidden flex items-center">
+          <UserMenu />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="ml-2"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X size={20} /> : <MoreHorizontal size={20} />}
+          </Button>
+        </div>
       </div>
       
       {/* Mobile Menu */}
@@ -104,13 +99,25 @@ export const NavBar = ({ activePage }: NavBarProps) => {
             >
               About
             </Link>
-            <Link 
-              to="/profile" 
-              className={`${activePage === 'profile' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition flex items-center gap-2`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <User size={16} /> My Profile
-            </Link>
+            
+            {user && (
+              <>
+                <Link 
+                  to="/profile" 
+                  className={`${activePage === 'profile' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  My Profile
+                </Link>
+                <Link 
+                  to="/settings" 
+                  className={`${activePage === 'settings' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
