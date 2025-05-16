@@ -1,4 +1,4 @@
-// src/hooks/useAuth.tsx (Simplified for direct auth)
+// src/hooks/useAuth.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { 
@@ -9,7 +9,7 @@ import {
   signOut as firebaseSignOut
 } from '@/lib/firebase';
 
-// Define a simplified auth context
+// Define the auth context
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -18,7 +18,7 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<any>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  // Placeholder methods that return errors (not implemented yet)
+  // Stubbed social auth methods - will implement later
   signInWithGoogle: () => Promise<any>;
   signInWithGithub: () => Promise<any>;
   signInWithFacebook: () => Promise<any>;
@@ -53,9 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  // For now, these methods return errors since we're focusing on direct auth
+  // For now, these social auth methods just return errors
+  // We'll implement them properly later
   const socialAuthNotImplemented = async () => {
-    throw new Error('Social authentication is not implemented yet');
+    throw new Error('Social authentication will be implemented in a future update');
   };
 
   // Auth context value
@@ -67,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register: firebaseRegister,
     resetPassword: firebaseResetPassword,
     signOut: firebaseSignOut,
-    // Placeholder methods
+    // Placeholder methods for social auth
     signInWithGoogle: socialAuthNotImplemented,
     signInWithGithub: socialAuthNotImplemented,
     signInWithFacebook: socialAuthNotImplemented,

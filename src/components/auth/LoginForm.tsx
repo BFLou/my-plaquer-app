@@ -5,12 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
 
-// Custom Google Icon since Lucide-React doesn't provide one
-const GoogleIcon = () => (
-  <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
-  </svg>
-);
 
 type LoginFormProps = {
   onForgotPassword: () => void;
@@ -123,35 +117,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t"></span>
         </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-white px-2 text-gray-500">or continue with</span>
-        </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-3">
-        <Button 
-          type="button" 
-          variant="outline"
-          onClick={() => setError("Social sign-in is temporarily disabled. Please use email/password.")}
-          className="flex items-center justify-center gap-2"
-          disabled
-        >
-          <GoogleIcon />
-          <span>Google</span>
-        </Button>
-        <Button 
-          type="button" 
-          variant="outline"
-          onClick={() => setError("Social sign-in is temporarily disabled. Please use email/password.")}
-          className="flex items-center justify-center gap-2"
-          disabled
-        >
-          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none">
-            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-          </svg>
-          <span>GitHub</span>
-        </Button>
-      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-// src/lib/firebase.ts (Simplified for direct auth only)
+// src/lib/firebase.ts
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
