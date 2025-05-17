@@ -1,5 +1,4 @@
-// Fix for the Discover component - adding useVisitedPlaques hook
-
+// src/pages/Discover.tsx
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
@@ -42,7 +41,7 @@ import MultiSelectFilter from '../components/common/MultiSelectFilter';
 import { cn } from "@/lib/utils";
 import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 import PlaqueMap from '../components/maps/PlaqueMap';
-import RouteBuilder from '../components/plaques/RouteBuilder';
+import RouteBuilder from "../components/plaques/RouteBuider";
 import { calculateRouteDistance } from '../components/maps/utils/routeUtils';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques'; // Import the hook
 import { useRoutes } from '@/hooks/useRoutes';
@@ -276,12 +275,14 @@ const Discover = () => {
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routeDistance, setRouteDistance] = useState(0);
   const [useImperial, setUseImperial] = useState(false);
+  const [useRoadRouting, setUseRoadRouting] = useState(true);
 
   // Pagination state (for list/grid views)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
-   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
+  const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
+  const { createRoute } = useRoutes();
   
   // Enhanced filter states - now arrays for multi-select
   const [selectedPostcodes, setSelectedPostcodes] = useState<string[]>([]);
@@ -294,9 +295,6 @@ const Discover = () => {
   const [postcodeOptions, setPostcodeOptions] = useState<FilterOption[]>([]);
   const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
   const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
-
-  const { createRoute } = useRoutes();
-
 
   // Initialize state from URL params on first load
   useEffect(() => {
@@ -355,11 +353,7 @@ const Discover = () => {
     } catch (error) {
       console.error('Error loading plaque data:', error);
       setLoading(false);
-      toast({
-        title: "Error loading plaque data",
-        description: "Could not load the plaque data. Please try again later.",
-        duration: 3000,
-      });
+      toast.error("Could not load the plaque data. Please try again later.");
     }
   }, []);
 
@@ -437,30 +431,29 @@ const Discover = () => {
   }, [routePoints]);
 
   // Remove plaque from route
-// In Discover.tsx, update the removePlaqueFromRoute function:
-const removePlaqueFromRoute = useCallback((plaqueId) => {
-  setRoutePoints(prev => {
-    const updatedPoints = prev.filter(p => p.id !== plaqueId);
-    
-    // If we still have enough points to draw a route, redraw it
-    if (updatedPoints.length >= 2 && mapRef.current) {
-      setTimeout(() => {
-        if (mapRef.current && mapRef.current.drawRouteLine) {
-          mapRef.current.drawRouteLine(updatedPoints);
+  const removePlaqueFromRoute = useCallback((plaqueId) => {
+    setRoutePoints(prev => {
+      const updatedPoints = prev.filter(p => p.id !== plaqueId);
+      
+      // If we still have enough points to draw a route, redraw it
+      if (updatedPoints.length >= 2 && mapRef.current) {
+        setTimeout(() => {
+          if (mapRef.current && mapRef.current.drawRouteLine) {
+            mapRef.current.drawRouteLine(updatedPoints);
+          }
+        }, 50);
+      } else if (updatedPoints.length < 2 && mapRef.current) {
+        // Clear the route entirely if we don't have enough points
+        if (mapRef.current.clearRoute) {
+          mapRef.current.clearRoute();
         }
-      }, 50);
-    } else if (updatedPoints.length < 2 && mapRef.current) {
-      // Clear the route entirely if we don't have enough points
-      if (mapRef.current.clearRoute) {
-        mapRef.current.clearRoute();
       }
-    }
+      
+      return updatedPoints;
+    });
     
-    return updatedPoints;
-  });
-  
-  toast.info("Removed plaque from route");
-}, []);
+    toast.info("Removed plaque from route");
+  }, []);
 
   // Clear route
   const clearRoute = useCallback(() => {
@@ -541,49 +534,34 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
   }, [routePoints]);
 
   // Save route
-  const saveRoute = useCallback(() => {
+  const saveRoute = useCallback(async () => {
     if (routePoints.length < 2) {
       toast.error("Add at least two plaques to save a route");
       return;
     }
     
-    // Prompt for route name with better default
-    const now = new Date();
-    const defaultName = `Plaque Route - ${now.toLocaleDateString()} (${routePoints.length} stops)`;
-    const routeName = prompt("Enter a name for this route:", defaultName);
-    
-    if (!routeName) return; // User cancelled
-    
-    // Get or initialize saved routes
-    let savedRoutes;
     try {
-      savedRoutes = JSON.parse(localStorage.getItem('plaqueRoutes') || '[]');
-    } catch (e) {
-      savedRoutes = [];
+      // Generate a default name
+      const now = new Date();
+      const defaultName = `Plaque Route - ${now.toLocaleDateString()} (${routePoints.length} stops)`;
+      
+      // Save the route using the createRoute function from the useRoutes hook
+      const savedRoute = await createRoute(
+        defaultName,
+        routePoints,
+        routeDistance,
+        `A route visiting ${routePoints.length} plaques in London`,
+        false // Not public by default
+      );
+      
+      if (savedRoute) {
+        toast.success(`Route "${savedRoute.name}" saved successfully!`);
+      }
+    } catch (error) {
+      console.error("Error saving route:", error);
+      toast.error("Failed to save route. Please make sure you're logged in.");
     }
-    
-    // Create route object with more details
-    const route = {
-      id: Date.now(),
-      name: routeName,
-      created: new Date().toISOString(),
-      distance: calculateRouteDistance(routePoints),
-      points: routePoints.map(p => ({
-        id: p.id,
-        title: p.title,
-        lat: parseFloat(p.latitude as unknown as string),
-        lng: parseFloat(p.longitude as unknown as string),
-        address: p.address || p.location || '',
-        color: p.color || 'blue'
-      }))
-    };
-    
-    // Add new route and save back to localStorage
-    savedRoutes.push(route);
-    localStorage.setItem('plaqueRoutes', JSON.stringify(savedRoutes));
-    
-    toast.success(`Route "${routeName}" saved successfully`);
-  }, [routePoints]);
+  }, [routePoints, routeDistance, createRoute]);
 
   // Find user location
   const findUserLocation = useCallback(() => {
@@ -595,18 +573,7 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
   }, []);
 
   // Apply filters to get filtered plaques
- // This solution focuses on three key areas:
-// 1. Ensuring the visited badges appear correctly on PlaqueCard components
-// 2. Fixing the filter to properly filter by visited status
-// 3. Ensuring proper coordination between Firebase's visited data and UI
-
-// First, the filtering issue in Discover.tsx:
-// The main problem is in how we filter visited plaques - we need to use both
-// the plaque's local visited property AND data from the useVisitedPlaques hook.
-
-// In src/pages/Discover.tsx, find the filteredPlaques useMemo and update:
-
-const filteredPlaques = useMemo(() => {
+  const filteredPlaques = useMemo(() => {
     return allPlaques.filter((plaque) => {
       // Match search query
       const matchesSearch = 
@@ -862,7 +829,7 @@ const filteredPlaques = useMemo(() => {
         p.id === id ? { ...p, visited: true } : p
       ));
       
-      toast.success("Marked as visited", {
+toast.success("Marked as visited", {
         description: "This plaque has been marked as visited in your profile",
         duration: 2000,
       });
@@ -1033,8 +1000,36 @@ const filteredPlaques = useMemo(() => {
                     addPlaqueToRoute={addPlaqueToRoute}
                     removePlaqueFromRoute={removePlaqueFromRoute}
                     clearRoute={clearRoute}
+                    exportRoute={exportRoute}
+                    saveRoute={saveRoute}
                   />
                 </div>
+                
+                {/* Route Builder - Only show when in routing mode */}
+                {isRoutingMode && routePoints.length > 0 && (
+                  <div className="absolute top-4 right-16 z-40">
+                    <RouteBuilder
+                      routePoints={routePoints}
+                      removePlaqueFromRoute={removePlaqueFromRoute}
+                      clearRoute={clearRoute}
+                      exportRoute={exportRoute}
+                      useImperial={useImperial}
+                      setUseImperial={setUseImperial}
+                      useRoadRouting={useRoadRouting}
+                      setUseRoadRouting={setUseRoadRouting}
+                      onClose={() => setIsRoutingMode(false)}
+                      onMoveUp={moveRoutePointUp}
+                      onMoveDown={moveRoutePointDown}
+                      onOptimize={optimizeRoute}
+                      onSave={saveRoute}
+                      onRouteUpdated={() => {
+                        if (mapRef.current && mapRef.current.drawRouteLine) {
+                          mapRef.current.drawRouteLine(routePoints);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 

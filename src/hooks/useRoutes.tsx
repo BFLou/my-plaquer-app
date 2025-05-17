@@ -128,8 +128,8 @@ export const useRoutes = () => {
     name: string,
     points: Plaque[],
     totalDistance: number,
-    description?: string,
-    isPublic?: boolean
+    description: string = '',
+    isPublic: boolean = false
   ) => {
     if (!user) throw new Error('You must be logged in to create a route');
     if (points.length < 2) throw new Error('A route must have at least 2 points');
@@ -138,7 +138,7 @@ export const useRoutes = () => {
       // Format points for storage
       const routePoints = points.map((point, index) => ({
         plaque_id: point.id,
-        title: point.title,
+        title: point.title || 'Unnamed Point',
         lat: parseFloat(point.latitude as unknown as string),
         lng: parseFloat(point.longitude as unknown as string),
         order: index
@@ -209,7 +209,7 @@ export const useRoutes = () => {
       if (updates.points) {
         updateData.points = updates.points.map((point, index) => ({
           plaque_id: point.id,
-          title: point.title,
+          title: point.title || 'Unnamed Point',
           lat: parseFloat(point.latitude as unknown as string),
           lng: parseFloat(point.longitude as unknown as string),
           order: index

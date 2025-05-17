@@ -3,7 +3,7 @@ import React from 'react';
 import { Plaque } from '@/types/plaque';
 import { X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import RouteBuilder from '@/components/plaques/RouteBuilder';
+import RouteBuilder from "../../plaques/RouteBuider";
 
 interface RoutePanelProps {
   routePoints: Plaque[];
