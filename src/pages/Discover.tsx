@@ -45,6 +45,7 @@ import PlaqueMap from '../components/maps/PlaqueMap';
 import RouteBuilder from '../components/plaques/RouteBuilder';
 import { calculateRouteDistance } from '../components/maps/utils/routeUtils';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques'; // Import the hook
+import { useRoutes } from '@/hooks/useRoutes';
 import '../styles/map-styles.css';
 
 // Define color options with style mapping
@@ -294,12 +295,16 @@ const Discover = () => {
   const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
   const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
 
+  const { createRoute } = useRoutes();
+
+
   // Initialize state from URL params on first load
   useEffect(() => {
     const view = searchParams.get('view');
     if (view && (view === 'grid' || view === 'list' || view === 'map')) {
       setViewMode(view);
     }
+    
     
     const search = searchParams.get('search');
     if (search) {
