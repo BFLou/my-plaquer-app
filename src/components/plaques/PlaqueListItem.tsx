@@ -1,10 +1,13 @@
+// Now we need to update the PlaqueListItem component to be consistent with PlaqueCard
+
 import React from 'react';
 import { MapPin, Star, CheckCircle } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
-import PlaqueImage from './PlaqueImage'; // Import the image component
+import PlaqueImage from './PlaqueImage';
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques'; // Import the hook
 
 type PlaqueListItemProps = {
   plaque: Plaque;
@@ -23,6 +26,12 @@ export const PlaqueListItem = ({
   onFavoriteToggle,
   onClick
 }: PlaqueListItemProps) => {
+  // Use the hook to check if a plaque is visited in Firebase
+  const { isPlaqueVisited } = useVisitedPlaques();
+  
+  // Determine if the plaque is visited - either from the prop or from Firebase
+  const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
+
   const handleClick = () => {
     if (onClick) onClick(plaque);
   };
@@ -57,7 +66,7 @@ export const PlaqueListItem = ({
             src={imageUrl}
             alt={plaque.title} 
             className="w-full h-full object-cover"
-            fallbackIcon={<MapPin size={24} className="text-gray-400" />}
+            placeholderClassName="bg-blue-50"
           />
         </div>
         
@@ -118,7 +127,7 @@ export const PlaqueListItem = ({
               </Badge>
             )}
             
-            {plaque.visited && (
+            {isVisited && (
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 <CheckCircle size={12} className="mr-1" /> Visited
               </Badge>

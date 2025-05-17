@@ -1,3 +1,5 @@
+// Fix for the Discover component - adding useVisitedPlaques hook
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
@@ -42,6 +44,7 @@ import PlaqueDataDebugger from '../components/debug/PlaqueDataDebugger';
 import PlaqueMap from '../components/maps/PlaqueMap';
 import RouteBuilder from '../components/plaques/RouteBuilder';
 import { calculateRouteDistance } from '../components/maps/utils/routeUtils';
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques'; // Import the hook
 import '../styles/map-styles.css';
 
 // Define color options with style mapping
@@ -277,6 +280,7 @@ const Discover = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
+   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   
   // Enhanced filter states - now arrays for multi-select
   const [selectedPostcodes, setSelectedPostcodes] = useState<string[]>([]);
@@ -593,7 +597,18 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
   }, []);
 
   // Apply filters to get filtered plaques
-  const filteredPlaques = useMemo(() => {
+ // This solution focuses on three key areas:
+// 1. Ensuring the visited badges appear correctly on PlaqueCard components
+// 2. Fixing the filter to properly filter by visited status
+// 3. Ensuring proper coordination between Firebase's visited data and UI
+
+// First, the filtering issue in Discover.tsx:
+// The main problem is in how we filter visited plaques - we need to use both
+// the plaque's local visited property AND data from the useVisitedPlaques hook.
+
+// In src/pages/Discover.tsx, find the filteredPlaques useMemo and update:
+
+const filteredPlaques = useMemo(() => {
     return allPlaques.filter((plaque) => {
       // Match search query
       const matchesSearch = 
@@ -613,11 +628,11 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
       const matchesProfession = selectedProfessions.length === 0 || 
         (plaque.profession && selectedProfessions.includes(plaque.profession));
       
-      // Match visited status
-      const matchesVisited = onlyVisited ? plaque.visited : true;
+      // Match visited status - Use isPlaqueVisited hook
+      const matchesVisited = !onlyVisited || plaque.visited || isPlaqueVisited(plaque.id);
       
       // Match favorite status
-      const matchesFavorite = onlyFavorites ? favorites.includes(plaque.id) : true;
+      const matchesFavorite = !onlyFavorites || favorites.includes(plaque.id);
 
       return matchesSearch && 
              matchesPostcode && 
@@ -626,9 +641,8 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
              matchesVisited && 
              matchesFavorite;
     });
-  }, [allPlaques, searchQuery, selectedPostcodes, selectedColors, selectedProfessions, onlyVisited, onlyFavorites, favorites]);
+  }, [allPlaques, searchQuery, selectedPostcodes, selectedColors, selectedProfessions, onlyVisited, onlyFavorites, favorites, isPlaqueVisited]);
 
-  
   // Sort and paginate plaques (for list/grid views)
   const sortedAndPaginatedPlaques = useMemo(() => {
     // Sort plaques
@@ -836,17 +850,30 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
     }
   };
 
-const handleMarkVisited = (id: number) => {
-  // Mark plaque as visited
-  setAllPlaques(prev => prev.map(p => 
-    p.id === id ? { ...p, visited: true } : p
-  ));
-  
-  toast.success("Marked as visited", {
-    description: "This plaque has been marked as visited in your profile",
-    duration: 2000,
-  });
-};
+  // Update the handleMarkVisited function to use Firebase
+  const handleMarkVisited = async (id: number) => {
+    try {
+      // Mark plaque as visited in Firebase
+      await markAsVisited(id, {
+        visitedAt: new Date().toISOString(),
+        notes: '',
+      });
+      
+      // Update local state for immediate UI feedback
+      setAllPlaques(prev => prev.map(p => 
+        p.id === id ? { ...p, visited: true } : p
+      ));
+      
+      toast.success("Marked as visited", {
+        description: "This plaque has been marked as visited in your profile",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error marking as visited:", error);
+      toast.error("Failed to mark as visited");
+    }
+  };
+
   const applyFilters = () => {
     setCurrentPage(1); // Reset to first page when applying filters
     setFiltersOpen(false);

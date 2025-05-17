@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
-import PlaqueImage from './PlaqueImage'; // Import the new component
+import PlaqueImage from './PlaqueImage'; 
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques'; // Import the hook
 
 type PlaqueCardProps = {
   plaque: Plaque;
@@ -23,6 +24,12 @@ export const PlaqueCard = ({
   onFavoriteToggle,
   onClick
 }: PlaqueCardProps) => {
+  // Use the hook to check if a plaque is visited in Firebase
+  const { isPlaqueVisited } = useVisitedPlaques();
+  
+  // Determine if the plaque is visited - either from the prop or from Firebase
+  const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
+
   const handleClick = () => {
     if (onClick) onClick(plaque);
   };
@@ -60,7 +67,7 @@ export const PlaqueCard = ({
         />
         
         <div className="absolute top-2 right-2 flex gap-1 z-10">
-          {plaque.visited && (
+          {isVisited && (
             <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200">
               <CheckCircle size={12} className="mr-1" /> Visited
             </Badge>

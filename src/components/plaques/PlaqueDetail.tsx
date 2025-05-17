@@ -51,7 +51,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   onSelectNearbyPlaque,
   className = '',
 }) => {
-  const { markAsVisited, isPlaqueVisited } = useVisitedPlaques();
+  const { markAsVisited, isPlaqueVisited, getVisitInfo } = useVisitedPlaques();
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   
   // Date picker dialog state
@@ -61,6 +61,12 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   
   if (!plaque) return null;
+
+  // Check if plaque is visited - combine local state and Firebase data
+  const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
+  
+  // Get visit info if available
+  const visitInfo = isVisited ? getVisitInfo(plaque.id) : null;
 
   const handleFavoriteToggle = () => {
     if (onFavoriteToggle) onFavoriteToggle(plaque.id);
@@ -147,9 +153,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // Image source with fallback
   const imageUrl = plaque.image || plaque.main_photo;
 
-  // Check if plaque is visited already using both component prop and Firebase data
-  const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
-
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
@@ -234,6 +237,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 {isVisited && (
                   <Badge variant="secondary" className="bg-green-100 text-green-800">
                     <CheckCircle size={12} className="mr-1" /> Visited
+                    {visitInfo?.visited_at && ` on ${format(
+                      new Date(visitInfo.visited_at instanceof Date 
+                        ? visitInfo.visited_at 
+                        : visitInfo.visited_at.toDate ? visitInfo.visited_at.toDate() : visitInfo.visited_at
+                      ), 
+                      'MMM d, yyyy'
+                    )}`}
                   </Badge>
                 )}
               </div>
@@ -245,9 +255,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   {plaque.inscription}
                 </div>
               </div>
-              
-              {/* Rest of your component content (subject info, metadata, etc.) */}
-              {/* ... */}
               
               {/* Subject Information */}
               {plaque.lead_subject_name && plaque.lead_subject_name !== "Unknown" && (
