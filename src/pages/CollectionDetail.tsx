@@ -1,9 +1,10 @@
+// src/pages/CollectionDetailPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Star, Pencil, Share2, MoreHorizontal, 
-  Plus, Search, LayoutGrid, List, MapPin, Filter,
-  Clock, Eye, Trash2, Copy, X, Check, User, Heart
+  ArrowLeft, Star, Pencil, MoreHorizontal, 
+  Plus, Search, X, Check, Trash2, Copy, 
+  Clock, MapPin, Filter
 } from 'lucide-react';
 
 // UI Components
@@ -40,6 +41,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Collection Components
 import { CollectionForm } from '@/components/collections/CollectionForm';
 import { CollectionStats } from '@/components/collections/CollectionStats';
 import { PlaqueCard } from '@/components/plaques/PlaqueCard';
@@ -48,120 +51,42 @@ import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ViewToggle } from '@/components/common/ViewToggle';
 import { ActionBar } from '@/components/common/ActionBar';
-import { formatTimeAgo } from '../utils/collectionStatsUtils';
+import { Plaque } from '@/types/plaque';
+import { formatTimeAgo } from '@/utils/collectionStatsUtils';
 
-// Data
-import userData from '../data/user_data.json';
+// Firebase Hooks
+import { useCollections } from '../hooks/useCollection';
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
+import { toast } from 'sonner';
 
-// Sample plaques data - this would typically come from an API
-// In a real app, we'd fetch all plaques and filter to show only the ones not in the collection
-const allPlaques = [
-  {
-    id: 485,
-    title: "Sam Selvon",
-    location: "Brixton, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "Sam Selvon (1923-1994), novelist, lived here 1950-1968.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 1115,
-    title: "Voltaire",
-    location: "Covent Garden, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "Voltaire (1694-1778) stayed here during his visits to London.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 1120,
-    title: "P.G. Wodehouse",
-    location: "Mayfair, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "P.G. Wodehouse (1881-1975), humorist and creator of Jeeves, lived here.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10011,
-    title: "Ealing Studios",
-    location: "Ealing, London",
-    color: "blue",
-    profession: "Film Studio",
-    inscription: "The oldest continuously working film studio in the world.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10014,
-    title: "A.A. Milne",
-    location: "Chelsea, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "A.A. Milne (1882-1956), creator of Winnie-the-Pooh, lived here.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10007,
-    title: "Arthur Haynes",
-    location: "Ealing, London",
-    color: "blue",
-    profession: "Comedian",
-    inscription: "Arthur Haynes (1914-1966), comedian, lived here.",
-    visited: true,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10090,
-    title: "Ada Lovelace",
-    location: "Marylebone, London",
-    color: "blue",
-    profession: "Mathematician",
-    inscription: "Ada Lovelace (1815-1852), mathematician and computing pioneer, lived here.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10027,
-    title: "Literary London",
-    location: "Southwark, London",
-    color: "blue",
-    profession: "Historic Site",
-    inscription: "A historic literary landmark in London.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  },
-  {
-    id: 10019,
-    title: "Literary Icon",
-    location: "Westminster, London",
-    color: "blue",
-    profession: "Writer",
-    inscription: "A notable literary figure who made significant contributions.",
-    visited: false,
-    image: "/api/placeholder/400/300"
-  }
-];
 
-const CollectionDetailPage = () => {
-  const { id } = useParams();
+const CollectionDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const collectionId = parseInt(id);
+  
+  // Firebase hooks
+  const { 
+    getCollection, 
+    updateCollection, 
+    deleteCollection, 
+    toggleFavorite,
+    duplicateCollection,
+    addPlaquesToCollection,
+    removePlaquesFromCollection 
+  } = useCollections();
+  
+  const { visits: userVisits, isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   
   // State
-  const [allCollections, setAllCollections] = useState(userData.collections || []);
-  const [collection, setCollection] = useState(null);
-  const [collectionPlaques, setCollectionPlaques] = useState([]);
+  const [collection, setCollection] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [collectionPlaques, setCollectionPlaques] = useState<Plaque[]>([]);
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('recently_added');
-  const [selectedPlaques, setSelectedPlaques] = useState([]);
-  const [selectedPlaque, setSelectedPlaque] = useState(null);
+  const [selectedPlaques, setSelectedPlaques] = useState<number[]>([]);
+  const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [editNameMode, setEditNameMode] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [editFormOpen, setEditFormOpen] = useState(false);
@@ -169,74 +94,100 @@ const CollectionDetailPage = () => {
   const [removePlaquesOpen, setRemovePlaquesOpen] = useState(false);
   const [addPlaquesOpen, setAddPlaquesOpen] = useState(false);
   const [activeTag, setActiveTag] = useState('all');
-  const [favorites, setFavorites] = useState([]); // IDs of favorited plaques
-  const [availablePlaques, setAvailablePlaques] = useState([]);
-  const [selectedAvailablePlaques, setSelectedAvailablePlaques] = useState([]);
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [availablePlaques, setAvailablePlaques] = useState<Plaque[]>([]);
+  const [selectedAvailablePlaques, setSelectedAvailablePlaques] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Load collection data
+  // Load collection data from Firebase
   useEffect(() => {
-    const foundCollection = allCollections.find(c => c.id === collectionId);
-    
-    if (foundCollection) {
-      setCollection(foundCollection);
-      setEditNameValue(foundCollection.name);
-      
-      // Get plaques for this collection
-      const plaqueIds = foundCollection.plaques || [];
-      const plaques = allPlaques.filter(plaque => plaqueIds.includes(plaque.id));
-      setCollectionPlaques(plaques);
-      
-      // Get available plaques (ones not in this collection)
-      const available = allPlaques.filter(plaque => !plaqueIds.includes(plaque.id));
-      setAvailablePlaques(available);
-      
-      // Set initial favorites based on user data - using visits as a proxy for favorites
-      const visitedPlaqueIds = userData.visited_plaques.map(visit => visit.plaque_id);
-      setFavorites(visitedPlaqueIds);
-    } else {
-      // Handle collection not found
+    if (!id) {
       navigate('/collections');
+      return;
     }
-  }, [collectionId, allCollections, navigate]);
+    
+    const fetchCollection = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const fetchedCollection = await getCollection(id);
+        if (!fetchedCollection) {
+          throw new Error('Collection not found');
+        }
+        
+        setCollection(fetchedCollection);
+        setEditNameValue(fetchedCollection.name);
+        
+        // Get plaques for this collection
+        const plaqueIds = fetchedCollection.plaques || [];
+        const plaques = allPlaques.filter(plaque => plaqueIds.includes(plaque.id));
+        setCollectionPlaques(plaques);
+        
+        // Get available plaques (ones not in this collection)
+        const available = allPlaques.filter(plaque => !plaqueIds.includes(plaque.id));
+        setAvailablePlaques(available);
+        
+        // Set initial favorites based on visited plaques
+        const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
+        setFavorites(visitedPlaqueIds);
+        
+        setLoading(false);
+      } catch (err: any) {
+        console.error('Error fetching collection:', err);
+        setError(err.message || 'Failed to load collection');
+        setLoading(false);
+        toast.error('Failed to load collection');
+      }
+    };
+    
+    fetchCollection();
+  }, [id, getCollection, navigate, userVisits]);
   
   // Get all unique tags from plaques
-  const allTags = ['all', ...new Set(collectionPlaques.flatMap(plaque => 
-    plaque.profession ? [plaque.profession] : []
-  ))];
+  const allTags = useMemo(() => {
+    const tags = ['all', ...new Set(collectionPlaques
+      .filter(plaque => plaque.profession)
+      .map(plaque => plaque.profession as string)
+    )];
+    return tags;
+  }, [collectionPlaques]);
   
   // Filter plaques based on search query and active tag
-  const filteredPlaques = collectionPlaques
-    .filter(plaque => {
-      // Match search query
-      const matchesSearch = searchQuery === '' || 
-        plaque.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (plaque.location && plaque.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (plaque.inscription && plaque.inscription.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      // Match active tag
-      const matchesTag = activeTag === 'all' || 
-        (plaque.profession && plaque.profession === activeTag);
-      
-      return matchesSearch && matchesTag;
-    })
-    .sort((a, b) => {
-      // Sort based on selected option
-      if (sortOption === 'recently_added') return b.id - a.id; // Using ID as proxy for order added
-      if (sortOption === 'oldest_first') return a.id - b.id;
-      if (sortOption === 'a_to_z') return a.title.localeCompare(b.title);
-      if (sortOption === 'z_to_a') return b.title.localeCompare(a.title);
-      return 0;
-    });
+  const filteredPlaques = useMemo(() => {
+    return collectionPlaques
+      .filter(plaque => {
+        // Match search query
+        const matchesSearch = searchQuery === '' || 
+          plaque.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (plaque.location && plaque.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (plaque.inscription && plaque.inscription.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        // Match active tag
+        const matchesTag = activeTag === 'all' || 
+          (plaque.profession && plaque.profession === activeTag);
+        
+        return matchesSearch && matchesTag;
+      })
+      .sort((a, b) => {
+        // Sort based on selected option
+        if (sortOption === 'recently_added') return b.id - a.id; // Using ID as proxy for order added
+        if (sortOption === 'oldest_first') return a.id - b.id;
+        if (sortOption === 'a_to_z') return a.title.localeCompare(b.title);
+        if (sortOption === 'z_to_a') return b.title.localeCompare(a.title);
+        return 0;
+      });
+  }, [collectionPlaques, searchQuery, activeTag, sortOption]);
   
   // Toggle select plaque
-  const toggleSelectPlaque = (id) => {
+  const toggleSelectPlaque = (id: number) => {
     setSelectedPlaques(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
   
   // Toggle selection of available plaques
-  const toggleSelectAvailablePlaque = (id) => {
+  const toggleSelectAvailablePlaque = (id: number) => {
     setSelectedAvailablePlaques(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -262,55 +213,70 @@ const CollectionDetailPage = () => {
   };
   
   // Save edited name
-  const handleSaveName = () => {
-    if (editNameValue.trim()) {
-      const updatedCollection = { ...collection, name: editNameValue };
-      setCollection(updatedCollection);
+  const handleSaveName = async () => {
+    if (!collection || !editNameValue.trim() || editNameValue === collection.name) {
+      setEditNameMode(false);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
       
-      // Update collections list
-      setAllCollections(prev => prev.map(c => 
-        c.id === collectionId ? updatedCollection : c
-      ));
+      await updateCollection(collection.id, {
+        name: editNameValue
+      });
+      
+      setCollection(prev => ({
+        ...prev,
+        name: editNameValue
+      }));
       
       setEditNameMode(false);
+      toast.success('Collection name updated');
+    } catch (err) {
+      console.error('Error updating collection name:', err);
+      toast.error('Failed to update collection name');
+    } finally {
+      setIsLoading(false);
     }
   };
   
   // Cancel edit
   const handleCancelEdit = () => {
-    setEditNameValue(collection.name);
+    setEditNameValue(collection?.name || '');
     setEditNameMode(false);
   };
   
   // Toggle favorite
-  const handleToggleFavorite = () => {
-    const updatedCollection = { ...collection, is_favorite: !collection.is_favorite };
-    setCollection(updatedCollection);
+  const handleToggleFavorite = async () => {
+    if (!collection) return;
     
-    // Update collections list
-    setAllCollections(prev => prev.map(c => 
-      c.id === collectionId ? updatedCollection : c
-    ));
-  };
-  
-  // Toggle public/private
-  const handleTogglePublic = () => {
-    const updatedCollection = { ...collection, is_public: !collection.is_public };
-    setCollection(updatedCollection);
-    
-    // Update collections list
-    setAllCollections(prev => prev.map(c => 
-      c.id === collectionId ? updatedCollection : c
-    ));
+    try {
+      setIsLoading(true);
+      await toggleFavorite(collection.id);
+      
+      // Update local state
+      setCollection(prev => ({
+        ...prev,
+        is_favorite: !prev.is_favorite
+      }));
+      
+      toast.success(collection.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      toast.error('Failed to update favorite status');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // View plaque details
-  const handleViewPlaque = (plaque) => {
+  const handleViewPlaque = (plaque: Plaque) => {
     setSelectedPlaque(plaque);
   };
   
   // Toggle favorite for a plaque
-  const handleTogglePlaqueFavorite = (plaqueId) => {
+  const handleTogglePlaqueFavorite = (plaqueId: number) => {
     setFavorites(prev => 
       prev.includes(plaqueId) 
         ? prev.filter(id => id !== plaqueId) 
@@ -319,38 +285,66 @@ const CollectionDetailPage = () => {
   };
   
   // Mark plaque as visited
-  const handleMarkVisited = (plaqueId) => {
-    setCollectionPlaques(prev => prev.map(plaque => 
-      plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
-    ));
+  const handleMarkVisited = async (plaqueId: number) => {
+    try {
+      await markAsVisited(plaqueId, {});
+      
+      // Update local state
+      setCollectionPlaques(prev => prev.map(plaque => 
+        plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
+      ));
+      
+      toast.success('Plaque marked as visited');
+    } catch (err) {
+      console.error('Error marking as visited:', err);
+      toast.error('Failed to mark as visited');
+    }
   };
   
   // Handle edit with form
-  const handleEditCollection = (data) => {
-    const updatedCollection = {
-      ...collection,
-      name: data.name,
-      description: data.description || '',
-      icon: data.icon,
-      color: data.color,
-      is_public: !!data.isPublic,
-      updated_at: new Date().toISOString()
-    };
+  const handleEditCollection = async (data: any) => {
+    if (!collection) return;
     
-    setCollection(updatedCollection);
-    
-    // Update collections list
-    setAllCollections(prev => prev.map(c => 
-      c.id === collectionId ? updatedCollection : c
-    ));
-    
-    setEditFormOpen(false);
+    try {
+      setIsLoading(true);
+      
+      await updateCollection(collection.id, {
+        name: data.name,
+        description: data.description,
+        icon: data.icon,
+        color: data.color,
+        tags: data.tags
+      });
+      
+      // Update local state
+      setCollection(prev => ({
+        ...prev,
+        name: data.name,
+        description: data.description,
+        icon: data.icon,
+        color: data.color,
+        tags: data.tags
+      }));
+      
+      setEditFormOpen(false);
+      toast.success('Collection updated successfully');
+    } catch (err) {
+      console.error('Error updating collection:', err);
+      toast.error('Failed to update collection');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Add plaques to collection
-  const handleAddPlaques = () => {
-    // Add selected available plaques to this collection
-    if (selectedAvailablePlaques.length > 0) {
+  const handleAddPlaques = async () => {
+    if (!collection || selectedAvailablePlaques.length === 0) return;
+    
+    try {
+      setIsLoading(true);
+      
+      await addPlaquesToCollection(collection.id, selectedAvailablePlaques);
+      
       // Filter plaques to add
       const plaquesToAdd = availablePlaques.filter(p => selectedAvailablePlaques.includes(p.id));
       
@@ -360,30 +354,28 @@ const CollectionDetailPage = () => {
       // Update available plaques
       setAvailablePlaques(prev => prev.filter(p => !selectedAvailablePlaques.includes(p.id)));
       
-      // Update collection in state
-      const updatedPlaqueIds = [...collection.plaques, ...selectedAvailablePlaques];
-      const updatedCollection = {
-        ...collection,
-        plaques: updatedPlaqueIds,
-        updated_at: new Date().toISOString()
-      };
-      
-      setCollection(updatedCollection);
-      
-      // Update all collections
-      setAllCollections(prev => prev.map(c => 
-        c.id === collectionId ? updatedCollection : c
-      ));
-      
       // Reset selection
       setSelectedAvailablePlaques([]);
       setAddPlaquesOpen(false);
+      
+      toast.success(`${selectedAvailablePlaques.length} plaques added to collection`);
+    } catch (err) {
+      console.error('Error adding plaques:', err);
+      toast.error('Failed to add plaques to collection');
+    } finally {
+      setIsLoading(false);
     }
   };
   
   // Remove plaques from collection
-  const handleRemovePlaques = () => {
-    if (selectedPlaques.length > 0) {
+  const handleRemovePlaques = async () => {
+    if (!collection || selectedPlaques.length === 0) return;
+    
+    try {
+      setIsLoading(true);
+      
+      await removePlaquesFromCollection(collection.id, selectedPlaques);
+      
       // Get plaques being removed
       const plaquesToRemove = collectionPlaques.filter(p => selectedPlaques.includes(p.id));
       
@@ -393,54 +385,62 @@ const CollectionDetailPage = () => {
       // Update available plaques
       setAvailablePlaques(prev => [...prev, ...plaquesToRemove]);
       
-      // Update collection in state
-      const updatedPlaqueIds = collection.plaques.filter(id => !selectedPlaques.includes(id));
-      const updatedCollection = {
-        ...collection,
-        plaques: updatedPlaqueIds,
-        updated_at: new Date().toISOString()
-      };
-      
-      setCollection(updatedCollection);
-      
-      // Update all collections
-      setAllCollections(prev => prev.map(c => 
-        c.id === collectionId ? updatedCollection : c
-      ));
-      
       // Reset selection
       setSelectedPlaques([]);
       setRemovePlaquesOpen(false);
+      
+      toast.success(`${selectedPlaques.length} plaques removed from collection`);
+    } catch (err) {
+      console.error('Error removing plaques:', err);
+      toast.error('Failed to remove plaques from collection');
+    } finally {
+      setIsLoading(false);
     }
   };
   
   // Duplicate this collection
-  const handleDuplicateCollection = () => {
-    const duplicate = {
-      ...collection,
-      id: Date.now(),
-      name: `${collection.name} (Copy)`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_favorite: false
-    };
+  const handleDuplicateCollection = async () => {
+    if (!collection) return;
     
-    // Add to all collections
-    setAllCollections(prev => [duplicate, ...prev]);
-    
-    // Navigate to the new collection
-    navigate(`/collections/${duplicate.id}`);
+    try {
+      setIsLoading(true);
+      
+      const duplicated = await duplicateCollection(collection.id);
+      
+      toast.success('Collection duplicated successfully');
+      
+      // Navigate to the new collection
+      navigate(`/collections/${duplicated.id}`);
+    } catch (err) {
+      console.error('Error duplicating collection:', err);
+      toast.error('Failed to duplicate collection');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Delete this collection
-  const handleDeleteCollection = () => {
-    setAllCollections(prev => prev.filter(c => c.id !== collectionId));
-    setConfirmDeleteOpen(false);
-    navigate('/collections');
+  const handleDeleteCollection = async () => {
+    if (!collection) return;
+    
+    try {
+      setIsLoading(true);
+      
+      await deleteCollection(collection.id);
+      
+      toast.success('Collection deleted successfully');
+      setConfirmDeleteOpen(false);
+      navigate('/collections');
+    } catch (err) {
+      console.error('Error deleting collection:', err);
+      toast.error('Failed to delete collection');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Find nearby plaques for the detail view
-  const getNearbyPlaques = (currentPlaque) => {
+  const getNearbyPlaques = (currentPlaque: Plaque) => {
     return collectionPlaques.filter(p => 
       p.id !== currentPlaque.id && 
       ((p.profession && currentPlaque.profession && p.profession === currentPlaque.profession) || 
@@ -448,7 +448,44 @@ const CollectionDetailPage = () => {
     ).slice(0, 3);
   };
   
-  if (!collection) return <div className="container mx-auto px-4 py-6">Loading collection...</div>;
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent mb-4"></div>
+          <p className="text-gray-500">Loading collection...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state
+  if (error || !collection) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Button variant="ghost" size="sm" onClick={handleBackToCollections} className="h-8 w-8 p-0">
+              <ArrowLeft size={18} />
+            </Button>
+            <a className="text-gray-500 hover:text-blue-600 text-sm cursor-pointer" onClick={handleBackToCollections}>
+              Collections
+            </a>
+            <span className="text-gray-400">/</span>
+          </div>
+          
+          <div className="bg-red-50 p-6 rounded-lg text-center">
+            <h3 className="text-red-600 font-medium mb-2">Error Loading Collection</h3>
+            <p className="text-red-500 mb-4">{error || 'Collection not found'}</p>
+            <Button variant="outline" onClick={handleBackToCollections}>
+              Back to Collections
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -478,6 +515,7 @@ const CollectionDetailPage = () => {
                     value={editNameValue}
                     onChange={(e) => setEditNameValue(e.target.value)}
                     className="text-xl font-bold py-1 h-auto"
+                    disabled={isLoading}
                     autoFocus
                   />
                   <Button 
@@ -485,6 +523,7 @@ const CollectionDetailPage = () => {
                     size="sm" 
                     onClick={handleSaveName} 
                     className="h-8 w-8 p-0 text-green-600"
+                    disabled={isLoading}
                   >
                     <Check size={18} />
                   </Button>
@@ -493,6 +532,7 @@ const CollectionDetailPage = () => {
                     size="sm" 
                     onClick={handleCancelEdit} 
                     className="h-8 w-8 p-0 text-red-600"
+                    disabled={isLoading}
                   >
                     <X size={18} />
                   </Button>
@@ -505,6 +545,7 @@ const CollectionDetailPage = () => {
                     size="sm" 
                     onClick={handleEditName} 
                     className="h-8 w-8 p-0"
+                    disabled={isLoading}
                   >
                     <Pencil size={16} />
                   </Button>
@@ -513,39 +554,12 @@ const CollectionDetailPage = () => {
             </div>
             
             <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Share2 size={16} className="mr-2" /> Share
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <User size={16} className="mr-2" /> Share with friends
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Copy size={16} className="mr-2" /> Copy link
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleTogglePublic}>
-                    {collection.is_public ? (
-                      <>
-                        <Eye size={16} className="mr-2" /> Make Private
-                      </>
-                    ) : (
-                      <>
-                        <Eye size={16} className="mr-2" /> Make Public
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
               <Button 
                 variant={collection.is_favorite ? "outline" : "ghost"}
                 size="sm"
                 onClick={handleToggleFavorite}
                 className={collection.is_favorite ? "text-amber-500" : ""}
+                disabled={isLoading}
               >
                 <Star 
                   size={16} 
@@ -556,7 +570,7 @@ const CollectionDetailPage = () => {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0" disabled={isLoading}>
                     <MoreHorizontal size={16} />
                   </Button>
                 </DropdownMenuTrigger>
@@ -581,18 +595,16 @@ const CollectionDetailPage = () => {
               <Clock size={12} /> Updated {formatTimeAgo(collection.updated_at)}
             </Badge>
             <Badge variant="outline">
-              {collection.plaques.length} plaques
+              {collectionPlaques.length} plaques
             </Badge>
-            {collection.is_public && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <Eye size={12} className="mr-1" /> Public
-              </Badge>
-            )}
             {collection.is_favorite && (
               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                 <Star size={12} className="mr-1 fill-amber-500" /> Favorite
               </Badge>
             )}
+            {collection.tags && collection.tags.map((tag: string) => (
+              <Badge key={tag} variant="outline">{tag}</Badge>
+            ))}
           </div>
           
           {collection.description && (
@@ -600,11 +612,11 @@ const CollectionDetailPage = () => {
           )}
         </div>
         
-        {/* Collection Stats - Now using user_data to calculate statistics */}
+        {/* Collection Stats */}
         <CollectionStats 
           collection={collection}
           plaques={collectionPlaques} 
-          userVisits={userData.visited_plaques}
+          userVisits={userVisits}
           className="mb-6" 
         />
         
@@ -666,7 +678,7 @@ const CollectionDetailPage = () => {
                 </SelectContent>
               </Select>
               
-              <Button onClick={() => setAddPlaquesOpen(true)}>
+              <Button onClick={() => setAddPlaquesOpen(true)} disabled={isLoading}>
                 <Plus size={16} className="mr-2" /> Add Plaques
               </Button>
             </div>
@@ -742,17 +754,19 @@ const CollectionDetailPage = () => {
               icon: <Check size={16} />,
               onClick: () => {
                 // Mark all selected as visited
-                setCollectionPlaques(prev => prev.map(plaque => 
-                  selectedPlaques.includes(plaque.id) ? { ...plaque, visited: true } : plaque
-                ));
+                for (const id of selectedPlaques) {
+                  handleMarkVisited(id);
+                }
                 setSelectedPlaques([]);
-              }
+              },
+              disabled: isLoading
             },
             {
               label: "Remove",
               variant: "destructive",
               icon: <Trash2 size={16} />,
-              onClick: () => setRemovePlaquesOpen(true)
+              onClick: () => setRemovePlaquesOpen(true),
+              disabled: isLoading
             }
           ]}
           onClearSelection={() => setSelectedPlaques([])}
@@ -775,20 +789,19 @@ const CollectionDetailPage = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Collection</DialogTitle>
-            <DialogDescription>
-              Update the details of your collection
-            </DialogDescription>
           </DialogHeader>
           
           <CollectionForm
             initialValues={{
               name: collection.name,
-              description: collection.description,
+              description: collection.description || '',
               icon: collection.icon,
               color: collection.color,
-              isPublic: collection.is_public
+              tags: collection.tags || []
             }}
             onSubmit={handleEditCollection}
+            submitLabel="Save Changes"
+            isLoading={isLoading}
           />
         </DialogContent>
       </Dialog>
@@ -806,8 +819,9 @@ const CollectionDetailPage = () => {
                 variant="ghost" 
                 size="sm"
                 onClick={selectAllAvailablePlaques}
+                disabled={availablePlaques.length === 0 || isLoading}
               >
-                {selectedAvailablePlaques.length === availablePlaques.length
+                {selectedAvailablePlaques.length === availablePlaques.length && availablePlaques.length > 0
                   ? "Unselect All"
                   : "Select All"}
               </Button>
@@ -882,14 +896,20 @@ const CollectionDetailPage = () => {
                 setSelectedAvailablePlaques([]);
                 setAddPlaquesOpen(false);
               }}
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button 
-              disabled={selectedAvailablePlaques.length === 0}
+              disabled={selectedAvailablePlaques.length === 0 || isLoading}
               onClick={handleAddPlaques}
             >
-              Add {selectedAvailablePlaques.length} Plaques
+              {isLoading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                  Adding...
+                </>
+              ) : `Add ${selectedAvailablePlaques.length} Plaques`}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -909,14 +929,21 @@ const CollectionDetailPage = () => {
             <Button 
               variant="outline" 
               onClick={() => setRemovePlaquesOpen(false)}
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button 
               variant="destructive"
               onClick={handleRemovePlaques}
+              disabled={isLoading}
             >
-              Remove
+              {isLoading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                  Removing...
+                </>
+              ) : 'Remove'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -936,14 +963,21 @@ const CollectionDetailPage = () => {
             <Button 
               variant="outline" 
               onClick={() => setConfirmDeleteOpen(false)}
+              disabled={isLoading}
             >
               Cancel
             </Button>
             <Button 
               variant="destructive"
               onClick={handleDeleteCollection}
+              disabled={isLoading}
             >
-              Delete
+              {isLoading ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                  Deleting...
+                </>
+              ) : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

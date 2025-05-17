@@ -1,4 +1,4 @@
-// src/hooks/useCollections.tsx - Enhanced version
+// src/hooks/useCollections.tsx - Simplified version
 import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
@@ -29,14 +29,11 @@ export interface CollectionData {
   icon: string;
   color: string;
   is_favorite: boolean;
-  is_public: boolean;
   plaques: number[]; // Array of plaque IDs
   created_at: Timestamp;
   updated_at: Timestamp;
   user_id: string;
-  views?: number;
   tags?: string[];
-  shared_with?: string[]; // User IDs the collection is shared with
 }
 
 export const useCollections = () => {
@@ -56,7 +53,7 @@ export const useCollections = () => {
     setLoading(true);
     setError(null);
 
-    // Create a query for real-time updates, including shared collections
+    // Create a query for real-time updates
     const q = query(
       collection(db, 'collections'),
       where('user_id', '==', user.uid),
@@ -98,19 +95,8 @@ export const useCollections = () => {
       if (docSnap.exists()) {
         const collectionData = { id: docSnap.id, ...docSnap.data() } as CollectionData;
         
-        // Check if user has access (owner or shared with)
-        const hasAccess = collectionData.user_id === user.uid || 
-                          collectionData.is_public ||
-                          (collectionData.shared_with && collectionData.shared_with.includes(user.uid));
-                          
-        if (hasAccess) {
-          // Increment view for non-owners viewing public collections
-          if (collectionData.is_public && collectionData.user_id !== user.uid) {
-            await updateDoc(docRef, {
-              views: (collectionData.views || 0) + 1
-            });
-          }
-          
+        // Verify ownership
+        if (collectionData.user_id === user.uid) {
           return collectionData;
         } else {
           throw new Error('Collection not found or access denied');
@@ -131,7 +117,6 @@ export const useCollections = () => {
     icon: string,
     color: string,
     description: string = '',
-    isPublic: boolean = false,
     initialPlaques: number[] = [],
     tags: string[] = []
   ) => {
@@ -144,12 +129,10 @@ export const useCollections = () => {
         icon,
         color,
         is_favorite: false,
-        is_public: isPublic,
         plaques: initialPlaques,
         user_id: user.uid,
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
-        views: 0,
         tags
       };
 
@@ -179,7 +162,6 @@ export const useCollections = () => {
       description?: string;
       icon?: string;
       color?: string;
-      isPublic?: boolean;
       tags?: string[];
     }
   ) => {
@@ -203,7 +185,6 @@ export const useCollections = () => {
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.icon !== undefined) updateData.icon = updates.icon;
       if (updates.color !== undefined) updateData.color = updates.color;
-      if (updates.isPublic !== undefined) updateData.is_public = updates.isPublic;
       if (updates.tags !== undefined) updateData.tags = updates.tags;
 
       await updateDoc(docRef, updateData);
@@ -501,33 +482,6 @@ export const useCollections = () => {
     }
   }, [user, getCollection]);
 
-  // Share a collection with another user
-  const shareCollection = useCallback(async (collectionId: string, targetUserId: string) => {
-    if (!user) throw new Error('You must be logged in to share a collection');
-
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
-
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
-      }
-
-      await updateDoc(docRef, {
-        shared_with: arrayUnion(targetUserId),
-        updated_at: serverTimestamp()
-      });
-
-      toast.success('Collection shared successfully');
-      return true;
-    } catch (err) {
-      console.error('Error sharing collection:', err);
-      toast.error('Failed to share collection');
-      throw err;
-    }
-  }, [user]);
-
   // Duplicate a collection
   const duplicateCollection = useCallback(async (collectionId: string, newName?: string) => {
     if (!user) throw new Error('You must be logged in to duplicate a collection');
@@ -542,11 +496,9 @@ export const useCollections = () => {
       }
       
       const sourceData = sourceSnap.data();
-      const hasAccess = sourceData.user_id === user.uid || 
-                        sourceData.is_public ||
-                        (sourceData.shared_with && sourceData.shared_with.includes(user.uid));
-                        
-      if (!hasAccess) {
+      
+      // Verify ownership
+      if (sourceData.user_id !== user.uid) {
         throw new Error('Access denied to this collection');
       }
 
@@ -557,12 +509,10 @@ export const useCollections = () => {
         icon: sourceData.icon,
         color: sourceData.color,
         is_favorite: false, // Reset favorite status
-        is_public: false, // Reset public status
         plaques: [...sourceData.plaques], // Copy plaques array
         user_id: user.uid, // Set new owner
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
-        views: 0,
         tags: sourceData.tags || []
       };
 
@@ -584,28 +534,6 @@ export const useCollections = () => {
     }
   }, [user]);
 
-  // Get public collections
-  const getPublicCollections = useCallback(async (limit = 10) => {
-    try {
-      const q = query(
-        collection(db, 'collections'),
-        where('is_public', '==', true),
-        orderBy('views', 'desc')
-        // Add limit if needed: limit(limit)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as CollectionData[];
-    } catch (err) {
-      console.error('Error fetching public collections:', err);
-      toast.error('Failed to load public collections');
-      throw err;
-    }
-  }, []);
-
   return {
     collections,
     loading,
@@ -621,9 +549,7 @@ export const useCollections = () => {
     addPlaquesToCollection,
     removePlaqueFromCollection,
     removePlaquesFromCollection,
-    shareCollection,
-    duplicateCollection,
-    getPublicCollections
+    duplicateCollection
   };
 };
 

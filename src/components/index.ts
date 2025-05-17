@@ -21,7 +21,6 @@ export { default as Pagination } from './plaques/Pagination';
 export { default as VisitLogger } from './plaques/VisitLogger';
 
 // Collection components
-export { CollectionCard, type Collection } from './collections/CollectionCard';
 export { CollectionStats } from './collections/CollectionStats';
 export { default as EmptyState } from './collections/EmptyState';
 

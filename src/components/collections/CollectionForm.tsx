@@ -14,7 +14,6 @@ export type CollectionFormData = {
   description: string;
   icon: string;
   color: string;
-  isPublic?: boolean;
   tags?: string[];
 };
 
@@ -41,7 +40,6 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     description: initialValues.description || '',
     icon: initialValues.icon || '🎭',
     color: initialValues.color || 'bg-blue-500',
-    isPublic: initialValues.isPublic || false,
     tags: initialValues.tags || []
   });
   
@@ -281,33 +279,6 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
         </div>
       </div>
       
-      {/* Public/Private toggle */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label htmlFor="isPublic" className="text-base">Make Collection Public</Label>
-            <p className="text-sm text-gray-500">
-              Public collections can be viewed by other users
-            </p>
-          </div>
-          <Switch
-            id="isPublic"
-            checked={formState.isPublic}
-            onCheckedChange={(checked) => handleChange('isPublic', checked)}
-            disabled={isLoading}
-          />
-        </div>
-        
-        {formState.isPublic && (
-          <Alert variant="warning" className="mt-2">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Public collections are visible to everyone. Make sure not to include any personal information.
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-      
       {/* Preview */}
       <div className="pt-2 pb-4">
         <h3 className="text-sm font-medium text-gray-500 mb-3">Preview</h3>
@@ -327,10 +298,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                   ))}
                 </div>
               )}
-              
-              {formState.isPublic && (
-                <Badge className="mt-2 bg-green-100 text-green-800 border-green-200">Public</Badge>
-              )}
+            
             </div>
           </div>
         </div>
