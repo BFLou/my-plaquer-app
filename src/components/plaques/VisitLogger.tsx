@@ -112,7 +112,8 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
   const [isLocating, setIsLocating] = useState(false);
   const [locationVerified, setLocationVerified] = useState(false);
   const [showAchievement, setShowAchievement] = useState<{id: string, title: string, description: string, icon: string} | null>(null);
-  
+  const { markAsVisited } = useVisitedPlaques();
+
   // Added state for custom visit date
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -337,23 +338,30 @@ if (isNearby) {
   };
   
   // Submit visit
-  const submitVisit = async () => {
-    if (!plaque) return;
-    
-    if (needsLocationVerification() && !locationVerified) {
-      toast.error("Please verify your location first");
-      return;
-    }
-    
-    // Create visit data with custom date
+const submitVisit = async () => {
+  if (!plaque) return;
+  
+  if (needsLocationVerification() && !locationVerified) {
+    toast.error("Please verify your location first");
+    return;
+  }
+  
+  try {
+    // Create visit data
     const visitData: VisitData = {
       plaque_id: plaque.id,
-      visited_at: visitDate.toISOString(), // Use the selected date
+      visited_at: visitDate.toISOString(),
       notes,
       photos,
       rating,
       location: userLocation || undefined
     };
+    
+    // Save to Firebase via the hook
+    await markAsVisited(plaque.id, {
+      visitedAt: visitData.visited_at,
+      notes: visitData.notes
+    });
     
     // Check for achievements
     const achievementId = checkForAchievements(visitData);
@@ -365,17 +373,22 @@ if (isNearby) {
       }
     }
     
-    // In a real app, you would upload photos to a server here
-    // For this demo, we'll just use the object URLs
-    
-    // Call the callback
-    onVisitLogged(visitData);
+    // Call the callback to notify parent component
+    if (onVisitLogged) {
+      onVisitLogged(visitData);
+    }
     
     // If no achievement to show, close the sheet
     if (!achievementId) {
       onClose();
     }
-  };
+    
+    toast.success("Visit logged successfully");
+  } catch (error) {
+    console.error("Error saving visit:", error);
+    toast.error("Failed to save visit");
+  }
+};
   
   // Share visit to social media
   const shareVisit = () => {

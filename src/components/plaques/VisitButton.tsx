@@ -1,10 +1,11 @@
 // src/components/plaques/VisitButton.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Calendar } from 'lucide-react';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface VisitButtonProps {
   plaque: Plaque;
@@ -20,6 +21,7 @@ const VisitButton: React.FC<VisitButtonProps> = ({
   onVisitStateChange,
 }) => {
   const { isPlaqueVisited, getVisitInfo, markAsVisited } = useVisitedPlaques();
+  const [isLoading, setIsLoading] = useState(false);
 
   const isVisited = isPlaqueVisited(plaque.id);
   const visitInfo = isVisited ? getVisitInfo(plaque.id) : null;
@@ -39,22 +41,28 @@ const VisitButton: React.FC<VisitButtonProps> = ({
 
   const handleToggleVisit = async () => {
     if (isVisited) {
-      // If already visited, we could implement edit or remove functionality
-      // But for now, we'll just keep it simple
+      // If already visited, we could implement edit functionality here
+      // For now, we just indicate it's already visited
       return;
     }
     
+    setIsLoading(true);
     try {
       // Simply mark as visited with today's date
       await markAsVisited(plaque.id, {
         visitedAt: new Date().toISOString(),
       });
       
+      toast.success("Plaque marked as visited");
+      
       if (onVisitStateChange) {
         onVisitStateChange();
       }
     } catch (error) {
       console.error('Error marking as visited:', error);
+      toast.error("Failed to mark as visited");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,8 +71,14 @@ const VisitButton: React.FC<VisitButtonProps> = ({
       variant={variant}
       className={className}
       onClick={handleToggleVisit}
+      disabled={isLoading}
     >
-      {isVisited ? (
+      {isLoading ? (
+        <>
+          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+          Saving...
+        </>
+      ) : isVisited ? (
         <>
           <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
           Visited ({formatVisitDate()})

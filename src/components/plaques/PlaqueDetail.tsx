@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage';
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
+import { toast } from 'sonner';
 
 type PlaqueDetailProps = {
   plaque: Plaque | null;
@@ -22,9 +24,10 @@ type PlaqueDetailProps = {
   onMarkVisited?: (id: number) => void;
   nearbyPlaques?: Plaque[];
   onSelectNearbyPlaque?: (plaque: Plaque) => void;
+  className?: string;
 };
 
-export const PlaqueDetail = ({
+export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   plaque,
   isOpen,
   onClose,
@@ -32,16 +35,41 @@ export const PlaqueDetail = ({
   onFavoriteToggle,
   onMarkVisited,
   nearbyPlaques = [],
-  onSelectNearbyPlaque
-}: PlaqueDetailProps) => {
+  onSelectNearbyPlaque,
+  className = '',
+}) => {
+  const { markAsVisited, isPlaqueVisited } = useVisitedPlaques();
+  const [isMarkingVisited, setIsMarkingVisited] = useState(false);
+  
   if (!plaque) return null;
 
   const handleFavoriteToggle = () => {
     if (onFavoriteToggle) onFavoriteToggle(plaque.id);
   };
 
-  const handleMarkVisited = () => {
-    if (onMarkVisited) onMarkVisited(plaque.id);
+  const handleMarkVisitedInternal = async () => {
+    if (!plaque) return;
+    
+    setIsMarkingVisited(true);
+    try {
+      // Create new visit in Firebase
+      await markAsVisited(plaque.id, {
+        visitedAt: new Date().toISOString(),
+        notes: '', // Optional notes could be added here
+      });
+      
+      // Call the external handler if provided (for parent component to update UI)
+      if (onMarkVisited) {
+        onMarkVisited(plaque.id);
+      }
+      
+      toast.success("Plaque marked as visited");
+    } catch (error) {
+      console.error("Error marking as visited:", error);
+      toast.error("Failed to mark as visited");
+    } finally {
+      setIsMarkingVisited(false);
+    }
   };
 
   // Parse organisations if available
@@ -91,9 +119,12 @@ export const PlaqueDetail = ({
   // Image source with fallback
   const imageUrl = plaque.image || plaque.main_photo;
 
+  // Check if plaque is visited already using both component prop and Firebase data
+  const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0">
+      <SheetContent side="bottom" className={`h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0 ${className}`}>
         {/* Add SheetDescription for accessibility */}
         <SheetHeader className="sr-only">
           <SheetTitle>{plaque.title}</SheetTitle>
@@ -171,7 +202,7 @@ export const PlaqueDetail = ({
                 </Badge>
               )}
               
-              {plaque.visited && (
+              {isVisited && (
                 <Badge variant="secondary" className="bg-green-100 text-green-800">
                   <CheckCircle size={12} className="mr-1" /> Visited
                 </Badge>
@@ -319,10 +350,16 @@ export const PlaqueDetail = ({
             <div className="flex gap-2">
               <Button 
                 className="flex-1"
-                variant={plaque.visited ? "outline" : "default"}
-                onClick={handleMarkVisited}
+                variant={isVisited ? "outline" : "default"}
+                onClick={handleMarkVisitedInternal}
+                disabled={isMarkingVisited || isVisited}
               >
-                {plaque.visited ? (
+                {isMarkingVisited ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                    Saving...
+                  </>
+                ) : isVisited ? (
                   <>
                     <CheckCircle className="mr-2 h-4 w-4" /> Visited
                   </>
@@ -332,6 +369,7 @@ export const PlaqueDetail = ({
                   </>
                 )}
               </Button>
+              
               <Button 
                 className="flex-1" 
                 variant="outline"
