@@ -345,13 +345,6 @@ const Discover = () => {
       // Use imported data
       const adaptedData = adaptPlaquesData(plaqueData);
       
-      // Set some plaques as visited and add to favorites for demo
-      if (adaptedData.length > 0) {
-        adaptedData[0].visited = true;
-        adaptedData[2].visited = true;
-        setFavorites([adaptedData[0].id, adaptedData[1].id]);
-      }
-      
       setAllPlaques(adaptedData);
       setLoading(false);
     } catch (error) {
