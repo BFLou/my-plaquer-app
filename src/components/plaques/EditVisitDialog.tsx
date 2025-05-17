@@ -1,5 +1,5 @@
 // src/components/plaques/EditVisitDialog.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -19,6 +19,7 @@ import {
 import { format } from 'date-fns';
 import { Plaque } from '@/types/plaque';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
+import { toast } from 'sonner';
 
 interface EditVisitDialogProps {
   isOpen: boolean;
@@ -93,10 +94,13 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
         rating: rating
       });
       
+      // Use string instead of object for toast
+      toast.success("Visit updated successfully");
       onVisitUpdated();
       onClose();
     } catch (error) {
       console.error("Error updating visit:", error);
+      toast.error("Failed to update visit");
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +114,8 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
     try {
       await removeVisit(visitId);
       
+      toast.success("Visit record deleted");
+      
       if (onVisitDeleted) {
         onVisitDeleted();
       } else {
@@ -118,6 +124,7 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
       onClose();
     } catch (error) {
       console.error("Error deleting visit:", error);
+      toast.error("Failed to delete visit");
     } finally {
       setIsLoading(false);
       setIsDeleteConfirmOpen(false);

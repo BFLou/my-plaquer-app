@@ -61,6 +61,7 @@ const VisitButton: React.FC<VisitButtonProps> = ({
           onVisitStateChange();
         }
         
+        // Fix: Use a string for toast message instead of an object
         toast.success('Marked as visited today');
       } catch (error) {
         console.error('Error marking as visited:', error);
