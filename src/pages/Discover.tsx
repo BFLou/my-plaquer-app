@@ -836,19 +836,17 @@ const removePlaqueFromRoute = useCallback((plaqueId) => {
     }
   };
 
-  const handleMarkVisited = (id: number) => {
-    // Mark plaque as visited
-    setAllPlaques(prev => prev.map(p => 
-      p.id === id ? { ...p, visited: true } : p
-    ));
-    
-    toast({
-      title: "Marked as visited",
-      description: "This plaque has been marked as visited in your profile",
-      duration: 2000,
-    });
-  };
-
+const handleMarkVisited = (id: number) => {
+  // Mark plaque as visited
+  setAllPlaques(prev => prev.map(p => 
+    p.id === id ? { ...p, visited: true } : p
+  ));
+  
+  toast.success("Marked as visited", {
+    description: "This plaque has been marked as visited in your profile",
+    duration: 2000,
+  });
+};
   const applyFilters = () => {
     setCurrentPage(1); // Reset to first page when applying filters
     setFiltersOpen(false);

@@ -1,13 +1,10 @@
 // src/components/plaques/VisitButton.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Edit, Calendar } from 'lucide-react';
+import { CheckCircle, Calendar } from 'lucide-react';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
-import VisitLogger from './VisitLogger';
-import EditVisitDialog from './EditVisitDialog';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
 
 interface VisitButtonProps {
   plaque: Plaque;
@@ -23,8 +20,6 @@ const VisitButton: React.FC<VisitButtonProps> = ({
   onVisitStateChange,
 }) => {
   const { isPlaqueVisited, getVisitInfo, markAsVisited } = useVisitedPlaques();
-  const [showVisitLogger, setShowVisitLogger] = useState(false);
-  const [showEditVisit, setShowEditVisit] = useState(false);
 
   const isVisited = isPlaqueVisited(plaque.id);
   const visitInfo = isVisited ? getVisitInfo(plaque.id) : null;
@@ -44,78 +39,43 @@ const VisitButton: React.FC<VisitButtonProps> = ({
 
   const handleToggleVisit = async () => {
     if (isVisited) {
-      setShowEditVisit(true);
-    } else {
-      try {
-        await markAsVisited(plaque.id, {
-          visitedAt: new Date().toISOString(),
-        });
-        toast.success('Marked as visited today');
-        onVisitStateChange?.();
-      } catch (error) {
-        console.error('Error marking as visited:', error);
-        toast.error('Failed to mark as visited');
-      }
+      // If already visited, we could implement edit or remove functionality
+      // But for now, we'll just keep it simple
+      return;
     }
-  };
-
-  const handleVisitLogged = async (visitData: any) => {
+    
     try {
+      // Simply mark as visited with today's date
       await markAsVisited(plaque.id, {
-        notes: visitData.notes,
-        photos: visitData.photos,
-        visitedAt: visitData.visited_at,
-        rating: visitData.rating,
-        location: visitData.location,
-        achievement: visitData.achievement,
+        visitedAt: new Date().toISOString(),
       });
-      onVisitStateChange?.();
+      
+      if (onVisitStateChange) {
+        onVisitStateChange();
+      }
     } catch (error) {
-      console.error('Error logging visit:', error);
-      toast.error('Failed to log visit');
+      console.error('Error marking as visited:', error);
     }
   };
 
   return (
-    <>
-      <Button
-        variant={variant}
-        className={className}
-        onClick={handleToggleVisit}
-      >
-        {isVisited ? (
-          <>
-            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-            Visited ({formatVisitDate()})
-          </>
-        ) : (
-          <>
-            <Calendar className="mr-2 h-4 w-4" />
-            Mark as Visited
-          </>
-        )}
-      </Button>
-
-      {showVisitLogger && (
-        <VisitLogger
-          isOpen={showVisitLogger}
-          onClose={() => setShowVisitLogger(false)}
-          plaque={plaque}
-          onVisitLogged={handleVisitLogged}
-        />
+    <Button
+      variant={variant}
+      className={className}
+      onClick={handleToggleVisit}
+    >
+      {isVisited ? (
+        <>
+          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+          Visited ({formatVisitDate()})
+        </>
+      ) : (
+        <>
+          <Calendar className="mr-2 h-4 w-4" />
+          Mark as Visited
+        </>
       )}
-
-      {showEditVisit && visitInfo?.id && (
-        <EditVisitDialog
-          isOpen={showEditVisit}
-          onClose={() => setShowEditVisit(false)}
-          plaque={plaque}
-          visitId={visitInfo.id}
-          onVisitUpdated={onVisitStateChange || (() => {})}
-          onVisitDeleted={onVisitStateChange}
-        />
-      )}
-    </>
+    </Button>
   );
 };
 

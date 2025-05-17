@@ -1,14 +1,15 @@
+// src/components/plaques/PlaqueDetail.tsx
+import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, X, Info, ExternalLink, Calendar } from 'lucide-react';
 import { 
   Sheet, 
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription, // Add this import
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage';
 
@@ -91,7 +92,7 @@ export const PlaqueDetail = ({
   const imageUrl = plaque.image || plaque.main_photo;
 
   return (
-  <Sheet open={isOpen} onOpenChange={onClose}>
+    <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="bottom" className="h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0">
         {/* Add SheetDescription for accessibility */}
         <SheetHeader className="sr-only">
