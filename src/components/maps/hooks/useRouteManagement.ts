@@ -1,4 +1,5 @@
-// src/components/maps/hooks/useRouteManagement.ts
+// Updated useRouteManagement.ts
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance, formatDistance as formatDistanceUtil } from '../utils/routeUtils';
@@ -89,7 +90,7 @@ export const useRouteManagement = ({
   }, [routePoints]);
   
   // Helper function to draw direct route (without API call)
-  const drawDirectRoute = useCallback((points) => {
+  const drawDirectRoute = useCallback((points, maintainView = false) => {
     if (!mapInstance || !window.L || points.length < 2) return null;
     
     try {
@@ -229,10 +230,33 @@ export const useRouteManagement = ({
         }).addTo(routeGroup);
       }
       
-      // Fit bounds to show entire route
+      // Handle zooming based on context
       if (allLatLngs.length > 0) {
+        // Create bounds
         const bounds = window.L.latLngBounds(allLatLngs);
-        mapInstance.fitBounds(bounds, { padding: [50, 50] });
+        
+        // Only zoom if we're not maintaining the view and one of the following is true:
+        // 1. This is a new route (2 points or less)
+        // 2. The route extends beyond the current view
+        if (!maintainView) {
+          if (points.length <= 2) {
+            // Always fit for new routes
+            mapInstance.fitBounds(bounds, { padding: [50, 50] });
+          } else {
+            // For existing routes, only fit if route goes out of current view
+            const currentBounds = mapInstance.getBounds();
+            const paddedBounds = currentBounds.pad(-0.2); // -0.2 means 20% smaller bounds
+            
+            // Only fit bounds if the route isn't fully visible in the current view
+            if (!paddedBounds.contains(bounds)) {
+              mapInstance.fitBounds(bounds, { 
+                padding: [50, 50],
+                animate: true,
+                duration: 0.5
+              });
+            }
+          }
+        }
       }
       
       // Store reference to this route
@@ -249,7 +273,7 @@ export const useRouteManagement = ({
   }, [mapInstance, formatDistance]);
 
   // Main function to draw walking route (using API if enabled)
-  const drawWalkingRoute = useCallback(async (pointsForRoute, useRoadAPI = useRoadRouting) => {
+  const drawWalkingRoute = useCallback(async (pointsForRoute, useRoadAPI = useRoadRouting, maintainView = false) => {
     if (!mapInstance || !window.L || !pointsForRoute || pointsForRoute.length < 2) {
       console.log("Cannot draw route: Map not loaded or insufficient points");
       return null;
@@ -263,7 +287,7 @@ export const useRouteManagement = ({
     
     // Skip API call and use direct route if road routing is disabled
     if (!useRoadAPI) {
-      return drawDirectRoute(pointsForRoute);
+      return drawDirectRoute(pointsForRoute, maintainView);
     }
     
     // We're using the API for road routing - show loading state
@@ -484,10 +508,29 @@ export const useRouteManagement = ({
         }
       }
       
-      // Fit bounds to show entire route
-      if (allCoordinates.length > 0) {
+      // Handle zooming based on maintainView and route context
+      if (allCoordinates.length > 0 && !maintainView) {
+        // Create bounds
         const bounds = window.L.latLngBounds(allCoordinates);
-        mapInstance.fitBounds(bounds, { padding: [50, 50] });
+        
+        if (pointsForRoute.length <= 2) {
+          // Always fit for new routes (1-2 points)
+          mapInstance.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+          // For existing routes with 3+ points, only fit if route goes out of current view
+          const currentBounds = mapInstance.getBounds();
+          // Create smaller bounds (80% of current view) to determine if we need to zoom out
+          const paddedBounds = currentBounds.pad(-0.2);
+          
+          // Only fit bounds if the route isn't fully visible in the current view
+          if (!paddedBounds.contains(bounds)) {
+            mapInstance.fitBounds(bounds, { 
+              padding: [50, 50],
+              animate: true,
+              duration: 0.5
+            });
+          }
+        }
       }
       
       // Store reference and update state
@@ -502,7 +545,7 @@ export const useRouteManagement = ({
       setIsDrawingRoute(false);
       
       // Fallback to direct lines if everything fails
-      return drawDirectRoute(pointsForRoute);
+      return drawDirectRoute(pointsForRoute, maintainView);
     }
   }, [API_KEY, mapInstance, drawDirectRoute, formatDistance]);
   
@@ -548,9 +591,9 @@ export const useRouteManagement = ({
       // Create optimized route
       const optimized = [start, ...optimizedMiddle, end];
       
-      // Draw the route
+      // Draw the route - not maintaining view since optimization is an explicit user action
       drawingTimeoutRef.current = setTimeout(() => {
-        drawWalkingRoute(optimized);
+        drawWalkingRoute(optimized, useRoadRouting, false);
       }, 100);
       
       // Update state in parent via callback
@@ -561,7 +604,7 @@ export const useRouteManagement = ({
       console.error("Error optimizing route:", error);
       return routePoints;
     }
-  }, [routePoints, drawWalkingRoute, onRouteChange]);
+  }, [routePoints, drawWalkingRoute, onRouteChange, useRoadRouting]);
   
   // Clear route
   const clearRoute = useCallback(() => {

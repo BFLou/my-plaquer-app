@@ -158,22 +158,23 @@ const PlaqueMap = React.forwardRef(({
   
   // Expose methods to the parent component via ref
   React.useImperativeHandle(ref, () => ({
-    drawRouteLine: (points) => drawWalkingRoute(points, useRoadRouting),
-    clearRoute,
-    findUserLocation,
-    fitToMarkers: () => {
-      if (mapInstance && plaques.length > 0) {
-        const bounds = getBoundsFromPlaques(plaques);
-        if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
-      }
-    },
-    fitRoute: (points) => {
-      if (mapInstance && points && points.length >= 2) {
-        const bounds = getBoundsFromPlaques(points);
-        if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
-      }
+  drawRouteLine: (points, useRoadRoutingParam = useRoadRouting, maintainView = false) => 
+    drawWalkingRoute(points, useRoadRoutingParam, maintainView),
+  clearRoute,
+  findUserLocation,
+  fitToMarkers: () => {
+    if (mapInstance && plaques.length > 0) {
+      const bounds = getBoundsFromPlaques(plaques);
+      if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
     }
-  }));
+  },
+  fitRoute: (points) => {
+    if (mapInstance && points && points.length >= 2) {
+      const bounds = getBoundsFromPlaques(points);
+      if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }
+}));
   
   // Helper to get bounds from plaque points
   const getBoundsFromPlaques = (plaquesArray) => {

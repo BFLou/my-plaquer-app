@@ -253,30 +253,30 @@ export default function useMapMarkers(
         }
       }
     } else if (plaques.length > 0 && !maintainView) {
-      // Fit bounds to show all markers if no specific one is selected
-      const validPlaques = plaques.filter(p => p.latitude && p.longitude);
+  // Fit bounds to show all markers if no specific one is selected
+  const validPlaques = plaques.filter(p => p.latitude && p.longitude);
+  
+  if (validPlaques.length > 0) {
+    try {
+      const latLngs = validPlaques.map(p => [
+        parseFloat(p.latitude), 
+        parseFloat(p.longitude)
+      ]);
       
-      if (validPlaques.length > 0) {
-        try {
-          const latLngs = validPlaques.map(p => [
-            parseFloat(p.latitude), 
-            parseFloat(p.longitude)
-          ]);
-          
-          // Create bounds from points
-          const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
-          
-          if (bounds.isValid()) {
-            // Use a timeout to allow map to render first
-            setTimeout(() => {
-              mapInstance.fitBounds(bounds, { padding: [50, 50] });
-            }, 300);
-          }
-        } catch (e) {
-          console.error("Error fitting bounds:", e);
-        }
+      // Create bounds from points
+      const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
+      
+      if (bounds.isValid()) {
+        // Use a timeout to allow map to render first
+        setTimeout(() => {
+          mapInstance.fitBounds(bounds, { padding: [50, 50] });
+        }, 300);
       }
+    } catch (e) {
+      console.error("Error fitting bounds:", e);
     }
+  }
+} 
   }, [
     mapInstance, 
     plaques, 

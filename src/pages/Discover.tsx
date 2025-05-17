@@ -420,15 +420,37 @@ const Discover = () => {
   }, [routePoints, isRoutingMode]);
 
   // Add plaque to route
-  const addPlaqueToRoute = useCallback((plaque: Plaque) => {
-    if (routePoints.some(p => p.id === plaque.id)) {
-      toast.info("This plaque is already in your route.");
-      return;
+const addPlaqueToRoute = useCallback((plaque: Plaque) => {
+  if (routePoints.some(p => p.id === plaque.id)) {
+    toast.info("This plaque is already in your route.");
+    return;
+  }
+  
+  // Set a flag to maintain the current map view
+  setMaintainMapView(true);
+  
+  // Add the plaque to route points
+  setRoutePoints(prev => {
+    const newPoints = [...prev, plaque];
+    
+    // Only draw the route after the state has been updated
+    // and only if we have at least 2 points
+    if (newPoints.length >= 2 && mapRef.current) {
+      // Use shorter timeout to minimize delay but ensure state is updated
+      setTimeout(() => {
+        if (mapRef.current && mapRef.current.drawRouteLine) {
+          // When adding a new point, we want to keep the current view if possible
+          // Pass a flag to the drawRouteLine function to indicate this
+          mapRef.current.drawRouteLine(newPoints, useRoadRouting, true);
+        }
+      }, 50);
     }
     
-    setRoutePoints(prev => [...prev, plaque]);
-    toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
-  }, [routePoints]);
+    return newPoints;
+  });
+  
+  toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
+}, [routePoints, useRoadRouting]);
 
   // Remove plaque from route
   const removePlaqueFromRoute = useCallback((plaqueId) => {
@@ -1004,32 +1026,6 @@ toast.success("Marked as visited", {
                     saveRoute={saveRoute}
                   />
                 </div>
-                
-                {/* Route Builder - Only show when in routing mode */}
-                {isRoutingMode && routePoints.length > 0 && (
-                  <div className="absolute top-4 right-16 z-40">
-                    <RouteBuilder
-                      routePoints={routePoints}
-                      removePlaqueFromRoute={removePlaqueFromRoute}
-                      clearRoute={clearRoute}
-                      exportRoute={exportRoute}
-                      useImperial={useImperial}
-                      setUseImperial={setUseImperial}
-                      useRoadRouting={useRoadRouting}
-                      setUseRoadRouting={setUseRoadRouting}
-                      onClose={() => setIsRoutingMode(false)}
-                      onMoveUp={moveRoutePointUp}
-                      onMoveDown={moveRoutePointDown}
-                      onOptimize={optimizeRoute}
-                      onSave={saveRoute}
-                      onRouteUpdated={() => {
-                        if (mapRef.current && mapRef.current.drawRouteLine) {
-                          mapRef.current.drawRouteLine(routePoints);
-                        }
-                      }}
-                    />
-                  </div>
-                )}
               </div>
             )}
 
