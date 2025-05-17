@@ -1,0 +1,155 @@
+// src/components/collections/ImprovedCollectionListItem.tsx
+import React from 'react';
+import { CheckCircle, Star, MoreHorizontal } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Collection } from './ImprovedCollectionCard';
+
+type ImprovedCollectionListItemProps = {
+  collection: Collection;
+  isSelected?: boolean;
+  onToggleSelect?: (id: number) => void;
+  onEdit?: (id: number) => void;
+  onDuplicate?: (id: number) => void;
+  onToggleFavorite?: (id: number) => void;
+  onDelete?: (id: number) => void;
+  onClick?: (id: number) => void;
+  className?: string;
+};
+
+const ImprovedCollectionListItem: React.FC<ImprovedCollectionListItemProps> = ({
+  collection,
+  isSelected = false,
+  onToggleSelect,
+  onEdit,
+  onDuplicate,
+  onToggleFavorite,
+  onDelete,
+  onClick,
+  className = ''
+}) => {
+  // Handle click events
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (onToggleSelect) onToggleSelect(collection.id);
+    } else if (!e.target.closest('button') && onClick) {
+      onClick(collection.id);
+    }
+  };
+  
+  // Handle menu operations
+  const handleMenuOperation = (e: React.MouseEvent, operation?: (id: number) => void) => {
+    e.stopPropagation();
+    if (operation) operation(collection.id);
+  };
+  
+  // Get the plaque count safely
+  const getPlaqueCount = () => {
+    if (Array.isArray(collection.plaques)) {
+      return collection.plaques.length;
+    }
+    return collection.plaques;
+  };
+  
+  // Format updated time
+  const formatTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'today';
+    if (diffInDays === 1) return 'yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) {
+      const weeks = Math.floor(diffInDays / 7);
+      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    }
+    const months = Math.floor(diffInDays / 30);
+    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  };
+  
+  return (
+    <div 
+      className={`bg-white rounded-lg shadow hover:shadow-md transition border border-gray-50 overflow-hidden cursor-pointer ${
+        isSelected ? 'ring-2 ring-blue-500' : ''
+      } ${className}`}
+      onClick={handleClick}
+    >
+      <div className="flex flex-col sm:flex-row">
+        <div className={`sm:w-16 h-16 sm:h-auto flex-shrink-0 ${collection.color} p-4 flex items-center justify-center text-white text-3xl`}>
+          {collection.icon}
+        </div>
+        
+        <div className="flex-grow p-4 flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold">{collection.name}</h3>
+              {collection.is_favorite && (
+                <Star size={16} className="fill-amber-500 text-amber-500" />
+              )}
+              {isSelected && (
+                <div className="bg-blue-100 text-blue-600 p-1 rounded-full">
+                  <CheckCircle size={14} />
+                </div>
+              )}
+            </div>
+            
+            {collection.description && (
+              <p className="text-sm text-gray-600 mt-1 line-clamp-1">{collection.description}</p>
+            )}
+            
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="outline" className="bg-gray-50">
+                {getPlaqueCount()} {getPlaqueCount() === 1 ? 'plaque' : 'plaques'}
+              </Badge>
+              <span className="text-xs text-gray-400">
+                Updated {formatTimeAgo(collection.updated_at)}
+              </span>
+            </div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 rounded-full hover:bg-gray-100 p-0"
+              >
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onEdit)}>
+                Edit Collection
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onDuplicate)}>
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onToggleFavorite)}>
+                {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                onClick={(e) => handleMenuOperation(e, onDelete)}
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ImprovedCollectionListItem;

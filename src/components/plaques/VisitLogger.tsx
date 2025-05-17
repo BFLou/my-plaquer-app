@@ -176,11 +176,11 @@ const VisitLogger: React.FC<VisitLoggerProps> = ({
             const isNearby = distance <= 0.1; // 100 meters = 0.1 km
             setLocationVerified(isNearby);
             
-            if (isNearby) {
-              toast.success("Location verified! You are near the plaque.");
-            } else {
-              toast.info(`You appear to be ${Math.round(distance * 1000)}m away from the plaque.`);
-            }
+if (isNearby) {
+  toast.success("Location verified! You are near the plaque.");
+} else {
+  toast.info(`You appear to be ${Math.round(distance * 1000)}m away from the plaque.`);
+}
           } else {
             // If plaque has no coordinates, we can't verify - just accept
             setLocationVerified(true);

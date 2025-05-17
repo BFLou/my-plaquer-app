@@ -4,6 +4,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription, // Add this import
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,11 +91,12 @@ export const PlaqueDetail = ({
   const imageUrl = plaque.image || plaque.main_photo;
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
+  <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="bottom" className="h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0">
-        {/* Add SheetHeader and SheetTitle for accessibility */}
+        {/* Add SheetDescription for accessibility */}
         <SheetHeader className="sr-only">
           <SheetTitle>{plaque.title}</SheetTitle>
+          <SheetDescription>Details about {plaque.title} plaque</SheetDescription>
         </SheetHeader>
         
         <div className="h-full flex flex-col overflow-hidden">

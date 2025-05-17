@@ -1,10 +1,9 @@
-// src/components/auth/LoginForm.tsx (Updated with better error handling)
+// src/components/auth/LoginForm.tsx
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
-
 
 type LoginFormProps = {
   onForgotPassword: () => void;
@@ -112,13 +111,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
           ) : 'Sign In'}
         </Button>
       </form>
-      
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t"></span>
-        </div>
-      </div>
-      
     </div>
   );
 };
