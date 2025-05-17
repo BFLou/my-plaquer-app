@@ -1,4 +1,4 @@
-// src/hooks/useCollections.tsx
+// src/hooks/useCollections.tsx - Enhanced version
 import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
@@ -15,7 +15,8 @@ import {
   Timestamp,
   onSnapshot,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
@@ -25,7 +26,7 @@ export interface CollectionData {
   id: string;
   name: string;
   description: string;
-  icon: string; // For storing emoji or icon name
+  icon: string;
   color: string;
   is_favorite: boolean;
   is_public: boolean;
@@ -35,6 +36,7 @@ export interface CollectionData {
   user_id: string;
   views?: number;
   tags?: string[];
+  shared_with?: string[]; // User IDs the collection is shared with
 }
 
 export const useCollections = () => {
@@ -43,7 +45,7 @@ export const useCollections = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // Fetch all collections for the current user with real-time updates
+  // Fetch collections with real-time updates
   useEffect(() => {
     if (!user) {
       setCollections([]);
@@ -54,14 +56,14 @@ export const useCollections = () => {
     setLoading(true);
     setError(null);
 
-    // Create a query for real-time updates
+    // Create a query for real-time updates, including shared collections
     const q = query(
       collection(db, 'collections'),
       where('user_id', '==', user.uid),
       orderBy('updated_at', 'desc')
     );
 
-    // Set up a listener for real-time updates
+    // Set up real-time listener
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
@@ -81,11 +83,11 @@ export const useCollections = () => {
       }
     );
 
-    // Clean up the listener when the component unmounts
+    // Clean up listener
     return () => unsubscribe();
   }, [user]);
 
-  // Get a single collection by ID
+  // Get a single collection
   const getCollection = useCallback(async (collectionId: string) => {
     if (!user) return null;
 
@@ -96,9 +98,13 @@ export const useCollections = () => {
       if (docSnap.exists()) {
         const collectionData = { id: docSnap.id, ...docSnap.data() } as CollectionData;
         
-        // Check if the collection is public or belongs to the user
-        if (collectionData.user_id === user.uid || collectionData.is_public) {
-          // Increment view count if viewing someone else's public collection
+        // Check if user has access (owner or shared with)
+        const hasAccess = collectionData.user_id === user.uid || 
+                          collectionData.is_public ||
+                          (collectionData.shared_with && collectionData.shared_with.includes(user.uid));
+                          
+        if (hasAccess) {
+          // Increment view for non-owners viewing public collections
           if (collectionData.is_public && collectionData.user_id !== user.uid) {
             await updateDoc(docRef, {
               views: (collectionData.views || 0) + 1
@@ -137,7 +143,7 @@ export const useCollections = () => {
         description,
         icon,
         color,
-        is_favorite: false, // Default not favorite
+        is_favorite: false,
         is_public: isPublic,
         plaques: initialPlaques,
         user_id: user.uid,
@@ -155,7 +161,7 @@ export const useCollections = () => {
       return {
         id: docRef.id,
         ...collectionData,
-        created_at: new Date(), // Use client-side date for immediate UI update
+        created_at: new Date(),
         updated_at: new Date()
       } as unknown as CollectionData;
     } catch (err) {
@@ -165,7 +171,7 @@ export const useCollections = () => {
     }
   }, [user]);
 
-  // Update an existing collection
+  // Update a collection
   const updateCollection = useCallback(async (
     collectionId: string, 
     updates: {
@@ -183,7 +189,7 @@ export const useCollections = () => {
       const docRef = doc(db, 'collections', collectionId);
       const docSnap = await getDoc(docRef);
 
-      // Check if collection exists and belongs to user
+      // Verify ownership
       if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
         throw new Error('Collection not found or access denied');
       }
@@ -192,7 +198,7 @@ export const useCollections = () => {
         updated_at: serverTimestamp()
       };
 
-      // Add fields to update if provided
+      // Add fields to update
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.icon !== undefined) updateData.icon = updates.icon;
@@ -204,13 +210,13 @@ export const useCollections = () => {
       
       toast.success('Collection updated successfully');
       
-      // Return the updated collection
+      // Return updated collection
       const currentData = docSnap.data();
       return {
         id: collectionId,
         ...currentData,
         ...updateData,
-        updated_at: new Date() // Use client-side date for immediate UI update
+        updated_at: new Date()
       } as unknown as CollectionData;
     } catch (err) {
       console.error('Error updating collection:', err);
@@ -227,7 +233,7 @@ export const useCollections = () => {
       const docRef = doc(db, 'collections', collectionId);
       const docSnap = await getDoc(docRef);
 
-      // Check if collection exists and belongs to user
+      // Verify ownership
       if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
         throw new Error('Collection not found or access denied');
       }
@@ -242,6 +248,42 @@ export const useCollections = () => {
     }
   }, [user]);
 
+  // Batch delete multiple collections
+  const batchDeleteCollections = useCallback(async (collectionIds: string[]) => {
+    if (!user) throw new Error('You must be logged in to delete collections');
+    if (collectionIds.length === 0) return true;
+
+    try {
+      const batch = writeBatch(db);
+      let unauthorized = false;
+
+      // First verify ownership of all collections
+      for (const id of collectionIds) {
+        const docRef = doc(db, 'collections', id);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          unauthorized = true;
+          break;
+        }
+
+        batch.delete(docRef);
+      }
+
+      if (unauthorized) {
+        throw new Error('One or more collections not found or access denied');
+      }
+
+      await batch.commit();
+      toast.success(`${collectionIds.length} collections deleted successfully`);
+      return true;
+    } catch (err) {
+      console.error('Error batch deleting collections:', err);
+      toast.error('Failed to delete collections');
+      throw err;
+    }
+  }, [user]);
+
   // Toggle favorite status
   const toggleFavorite = useCallback(async (collectionId: string) => {
     if (!user) throw new Error('You must be logged in to update a collection');
@@ -250,7 +292,7 @@ export const useCollections = () => {
       const docRef = doc(db, 'collections', collectionId);
       const docSnap = await getDoc(docRef);
 
-      // Check if collection exists and belongs to user
+      // Verify ownership
       if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
         throw new Error('Collection not found or access denied');
       }
@@ -278,6 +320,45 @@ export const useCollections = () => {
     }
   }, [user]);
 
+  // Batch toggle favorite for multiple collections
+  const batchToggleFavorite = useCallback(async (collectionIds: string[], status: boolean) => {
+    if (!user) throw new Error('You must be logged in to update collections');
+    if (collectionIds.length === 0) return true;
+
+    try {
+      const batch = writeBatch(db);
+      let unauthorized = false;
+
+      // First verify ownership of all collections
+      for (const id of collectionIds) {
+        const docRef = doc(db, 'collections', id);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          unauthorized = true;
+          break;
+        }
+
+        batch.update(docRef, {
+          is_favorite: status,
+          updated_at: serverTimestamp()
+        });
+      }
+
+      if (unauthorized) {
+        throw new Error('One or more collections not found or access denied');
+      }
+
+      await batch.commit();
+      toast.success(`${collectionIds.length} collections ${status ? 'added to' : 'removed from'} favorites`);
+      return true;
+    } catch (err) {
+      console.error('Error batch updating favorites:', err);
+      toast.error('Failed to update collections');
+      throw err;
+    }
+  }, [user]);
+
   // Add a plaque to a collection
   const addPlaqueToCollection = useCallback(async (collectionId: string, plaqueId: number) => {
     if (!user) throw new Error('You must be logged in to update a collection');
@@ -286,7 +367,7 @@ export const useCollections = () => {
       const docRef = doc(db, 'collections', collectionId);
       const docSnap = await getDoc(docRef);
 
-      // Check if collection exists and belongs to user
+      // Verify ownership
       if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
         throw new Error('Collection not found or access denied');
       }
@@ -315,6 +396,47 @@ export const useCollections = () => {
     }
   }, [user, getCollection]);
 
+  // Add multiple plaques to a collection
+  const addPlaquesToCollection = useCallback(async (collectionId: string, plaqueIds: number[]) => {
+    if (!user) throw new Error('You must be logged in to update a collection');
+    if (plaqueIds.length === 0) return getCollection(collectionId);
+
+    try {
+      const docRef = doc(db, 'collections', collectionId);
+      const docSnap = await getDoc(docRef);
+
+      // Verify ownership
+      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+        throw new Error('Collection not found or access denied');
+      }
+
+      // Get current plaques array
+      const currentData = docSnap.data();
+      const currentPlaques = currentData.plaques || [];
+
+      // Filter out already included plaques
+      const newPlaques = plaqueIds.filter(id => !currentPlaques.includes(id));
+      
+      if (newPlaques.length > 0) {
+        // Add all new plaques at once
+        await updateDoc(docRef, {
+          plaques: [...currentPlaques, ...newPlaques],
+          updated_at: serverTimestamp()
+        });
+
+        toast.success(`${newPlaques.length} plaques added to collection`);
+      } else {
+        toast.info('All selected plaques are already in this collection');
+      }
+      
+      return getCollection(collectionId);
+    } catch (err) {
+      console.error('Error adding plaques to collection:', err);
+      toast.error('Failed to add plaques to collection');
+      throw err;
+    }
+  }, [user, getCollection]);
+
   // Remove a plaque from a collection
   const removePlaqueFromCollection = useCallback(async (collectionId: string, plaqueId: number) => {
     if (!user) throw new Error('You must be logged in to update a collection');
@@ -323,7 +445,7 @@ export const useCollections = () => {
       const docRef = doc(db, 'collections', collectionId);
       const docSnap = await getDoc(docRef);
 
-      // Check if collection exists and belongs to user
+      // Verify ownership
       if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
         throw new Error('Collection not found or access denied');
       }
@@ -343,14 +465,133 @@ export const useCollections = () => {
     }
   }, [user, getCollection]);
 
+  // Remove multiple plaques from a collection
+  const removePlaquesFromCollection = useCallback(async (collectionId: string, plaqueIds: number[]) => {
+    if (!user) throw new Error('You must be logged in to update a collection');
+    if (plaqueIds.length === 0) return getCollection(collectionId);
+
+    try {
+      const docRef = doc(db, 'collections', collectionId);
+      const docSnap = await getDoc(docRef);
+
+      // Verify ownership
+      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+        throw new Error('Collection not found or access denied');
+      }
+
+      // Get current plaques array
+      const currentData = docSnap.data();
+      const currentPlaques = currentData.plaques || [];
+
+      // Filter out plaques to remove
+      const updatedPlaques = currentPlaques.filter(id => !plaqueIds.includes(id));
+      
+      await updateDoc(docRef, {
+        plaques: updatedPlaques,
+        updated_at: serverTimestamp()
+      });
+
+      toast.success(`${plaqueIds.length} plaques removed from collection`);
+      
+      return getCollection(collectionId);
+    } catch (err) {
+      console.error('Error removing plaques from collection:', err);
+      toast.error('Failed to remove plaques from collection');
+      throw err;
+    }
+  }, [user, getCollection]);
+
+  // Share a collection with another user
+  const shareCollection = useCallback(async (collectionId: string, targetUserId: string) => {
+    if (!user) throw new Error('You must be logged in to share a collection');
+
+    try {
+      const docRef = doc(db, 'collections', collectionId);
+      const docSnap = await getDoc(docRef);
+
+      // Verify ownership
+      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+        throw new Error('Collection not found or access denied');
+      }
+
+      await updateDoc(docRef, {
+        shared_with: arrayUnion(targetUserId),
+        updated_at: serverTimestamp()
+      });
+
+      toast.success('Collection shared successfully');
+      return true;
+    } catch (err) {
+      console.error('Error sharing collection:', err);
+      toast.error('Failed to share collection');
+      throw err;
+    }
+  }, [user]);
+
+  // Duplicate a collection
+  const duplicateCollection = useCallback(async (collectionId: string, newName?: string) => {
+    if (!user) throw new Error('You must be logged in to duplicate a collection');
+
+    try {
+      const sourceRef = doc(db, 'collections', collectionId);
+      const sourceSnap = await getDoc(sourceRef);
+
+      // Check if collection exists and user has access
+      if (!sourceSnap.exists()) {
+        throw new Error('Collection not found');
+      }
+      
+      const sourceData = sourceSnap.data();
+      const hasAccess = sourceData.user_id === user.uid || 
+                        sourceData.is_public ||
+                        (sourceData.shared_with && sourceData.shared_with.includes(user.uid));
+                        
+      if (!hasAccess) {
+        throw new Error('Access denied to this collection');
+      }
+
+      // Create a new collection with the same data
+      const duplicateData = {
+        name: newName || `${sourceData.name} (Copy)`,
+        description: sourceData.description || '',
+        icon: sourceData.icon,
+        color: sourceData.color,
+        is_favorite: false, // Reset favorite status
+        is_public: false, // Reset public status
+        plaques: [...sourceData.plaques], // Copy plaques array
+        user_id: user.uid, // Set new owner
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        views: 0,
+        tags: sourceData.tags || []
+      };
+
+      const docRef = await addDoc(collection(db, 'collections'), duplicateData);
+      
+      toast.success('Collection duplicated successfully');
+      
+      // Return the new collection
+      return {
+        id: docRef.id,
+        ...duplicateData,
+        created_at: new Date(),
+        updated_at: new Date()
+      } as unknown as CollectionData;
+    } catch (err) {
+      console.error('Error duplicating collection:', err);
+      toast.error('Failed to duplicate collection');
+      throw err;
+    }
+  }, [user]);
+
   // Get public collections
   const getPublicCollections = useCallback(async (limit = 10) => {
     try {
       const q = query(
         collection(db, 'collections'),
         where('is_public', '==', true),
-        orderBy('views', 'desc'),
-        // limit(limit)
+        orderBy('views', 'desc')
+        // Add limit if needed: limit(limit)
       );
       
       const querySnapshot = await getDocs(q);
@@ -373,9 +614,15 @@ export const useCollections = () => {
     createCollection,
     updateCollection,
     deleteCollection,
+    batchDeleteCollections,
     toggleFavorite,
+    batchToggleFavorite,
     addPlaqueToCollection,
+    addPlaquesToCollection,
     removePlaqueFromCollection,
+    removePlaquesFromCollection,
+    shareCollection,
+    duplicateCollection,
     getPublicCollections
   };
 };
