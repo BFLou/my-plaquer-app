@@ -101,54 +101,148 @@ const CollectionDetailPage: React.FC = () => {
   const [allPlaques, setAllPlaques] = useState<Plaque[]>([]);
   const [availablePlaques, setAvailablePlaques] = useState<Plaque[]>([]);
   const [loadingPlaques, setLoadingPlaques] = useState(false);
+  const [confirmRemovePlaqueOpen, setConfirmRemovePlaqueOpen] = useState(false);
+const [plaqueToRemove, setPlaqueToRemove] = useState<number | null>(null);
 
-  // Define fetchCollection function
-  const fetchCollection = async () => {
-    if (!id) {
-      navigate('/collections');
-      return;
+
+const adaptPlaquesData = (rawData: any[]): Plaque[] => {
+  return rawData.map(item => {
+    // Handle image sources (PlaqueCard and other components look for both image and main_photo)
+    const imageSource = item.main_photo || item.image || null;
+    
+    // Handle color (some components use colour, others use color)
+    let plaqueColor = item.color || item.colour || 'blue';
+    if (plaqueColor === 'grey') plaqueColor = 'gray'; // Normalize spelling
+    
+    // Handle location information
+    const location = item.location || item.address || (
+      item.area ? `${item.address || ''}, ${item.area}`.trim() : 'Unknown Location'
+    );
+    
+    // Parse coordinates if they are strings
+    let latitude = item.latitude;
+    let longitude = item.longitude;
+    
+    if (latitude && typeof latitude === 'string') {
+      latitude = parseFloat(latitude);
     }
     
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const fetchedCollection = await getCollection(id);
-      if (!fetchedCollection) {
-        throw new Error('Collection not found');
-      }
-      
-      setCollection(fetchedCollection);
-      setEditNameValue(fetchedCollection.name);
-      
-      // Get plaques for this collection
-      const plaqueIds = fetchedCollection.plaques || [];
-      
-      // This is a placeholder - in a real app, you'd fetch the plaques data
-      // For demo purposes, we're creating empty arrays
-      // In your real implementation, you would fetch plaques from Firebase
-      const plaques: Plaque[] = [];
-      const allPlaquesData: Plaque[] = [];
-      
-      setCollectionPlaques(plaques);
-      setAllPlaques(allPlaquesData);
-      
-      // Get available plaques (ones not in this collection)
-      const available = allPlaquesData.filter(plaque => !plaqueIds.includes(plaque.id));
-      setAvailablePlaques(available);
-      
-      // Set initial favorites based on visited plaques
-      const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
-      setFavorites(visitedPlaqueIds);
-      
-      setLoading(false);
-    } catch (err: any) {
-      console.error('Error fetching collection:', err);
-      setError(err.message || 'Failed to load collection');
-      setLoading(false);
-      toast.error('Failed to load collection');
+    if (longitude && typeof longitude === 'string') {
+      longitude = parseFloat(longitude);
     }
-  };
+    
+    // Create formatted plaque object
+    return {
+      id: item.id,
+      title: item.title || 'Unknown Plaque',
+      location: location,
+      address: item.address || '',
+      postcode: item.postcode || '',
+      area: item.area || '',
+      color: plaqueColor,
+      colour: plaqueColor, // Include both spellings
+      profession: item.lead_subject_primary_role || item.profession || null,
+      description: item.description || '',
+      inscription: item.inscription || '',
+      visited: item.visited || false,
+      image: imageSource,
+      main_photo: imageSource, // Duplicate to support both field names
+      latitude: latitude || null,
+      longitude: longitude || null,
+      lead_subject_name: item.lead_subject_name || '',
+      lead_subject_born_in: item.lead_subject_born_in || '',
+      lead_subject_died_in: item.lead_subject_died_in || '',
+      lead_subject_primary_role: item.lead_subject_primary_role || '',
+      lead_subject_wikipedia: item.lead_subject_wikipedia || '',
+      organisations: item.organisations || '[]',
+      subjects: item.subjects || '[]',
+      series: item.series || '',
+      language: item.language || '',
+      erected: item.erected || '',
+      // Add any additional fields that might be needed
+    };
+  });
+};
+
+const handleRemovePlaqueFromCollection = async (plaqueId: number) => {
+  if (!collection || !plaqueId) return;
+  
+  try {
+    setIsLoading(true);
+    
+    // Call Firebase function to remove the plaque
+    await removePlaquesFromCollection(collection.id, [plaqueId]);
+    
+    // Update local state by removing the plaque
+    setCollectionPlaques(prev => prev.filter(p => p.id !== plaqueId));
+    
+    // Close the detail view since the plaque is being removed
+    setSelectedPlaque(null);
+    
+    toast.success("Plaque removed from collection");
+  } catch (err) {
+    console.error('Error removing plaque from collection:', err);
+    toast.error('Failed to remove plaque from collection');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  // Define fetchCollection function
+const fetchCollection = async () => {
+  if (!id) {
+    setError('Collection ID is missing');
+    setLoading(false);
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    const collectionData = await getCollection(id);
+    
+    if (!collectionData) {
+      throw new Error('Collection not found');
+    }
+    
+    setCollection(collectionData);
+    setEditNameValue(collectionData.name);
+    
+    // Fetch plaques data for this collection
+    const plaqueIds = collectionData.plaques || [];
+    
+    // Check if there are any plaques in this collection
+    if (plaqueIds.length > 0) {
+      try {
+        // Import plaque data
+        const plaqueDataImport = await import('../data/plaque_data.json');
+        const adaptedData = adaptPlaquesData(plaqueDataImport.default);
+        
+        // Filter only the plaques that are in this collection
+        const collectionPlaques = adaptedData.filter(plaque => 
+          plaqueIds.includes(plaque.id)
+        );
+        
+        // Update state with the matching plaques
+        setCollectionPlaques(collectionPlaques);
+        
+        console.log(`Found ${collectionPlaques.length} plaques for collection from ${plaqueIds.length} IDs`);
+      } catch (err) {
+        console.error('Error fetching plaque data:', err);
+        toast.error('Failed to load plaque data');
+      }
+    } else {
+      // No plaques in this collection
+      setCollectionPlaques([]);
+    }
+    
+    setLoading(false);
+  } catch (err) {
+    console.error('Error fetching collection:', err);
+    setError(err.message || 'Failed to load collection');
+    setLoading(false);
+    toast.error('Failed to load collection');
+  }
+};
 
   // Load collection data from Firebase - SINGLE useEffect
   useEffect(() => {
@@ -284,6 +378,36 @@ const CollectionDetailPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Function to open confirmation dialog for single plaque removal
+const handleRemoveSinglePlaque = (plaqueId: number) => {
+  setPlaqueToRemove(plaqueId);
+  setConfirmRemovePlaqueOpen(true);
+};
+
+// Function to execute the removal after confirmation
+const confirmRemovePlaque = async () => {
+  if (!collection || plaqueToRemove === null) return;
+  
+  try {
+    setIsLoading(true);
+    
+    // Call Firebase function to remove the plaque
+    await removePlaquesFromCollection(collection.id, [plaqueToRemove]);
+    
+    // Update local state by removing the plaque
+    setCollectionPlaques(prev => prev.filter(p => p.id !== plaqueToRemove));
+    
+    toast.success("Plaque removed from collection");
+  } catch (err) {
+    console.error('Error removing plaque from collection:', err);
+    toast.error('Failed to remove plaque from collection');
+  } finally {
+    setConfirmRemovePlaqueOpen(false);
+    setPlaqueToRemove(null);
+    setIsLoading(false);
+  }
+};
   
   // View plaque details
   const handleViewPlaque = (plaque: Plaque) => {
@@ -791,21 +915,65 @@ const CollectionDetailPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {filteredPlaques.map((plaque) => (
-                  <PlaqueCard 
-                    key={plaque.id}
-                    plaque={plaque}
-                    isFavorite={favorites.includes(plaque.id)}
-                    isSelected={selectedPlaques.includes(plaque.id)}
-                    onSelect={toggleSelectPlaque}
-                    onFavoriteToggle={() => handleTogglePlaqueFavorite(plaque.id)}
-                    onClick={handleViewPlaque}
-                  />
-                ))}
-              </div>
-            )}
+{viewMode === 'grid' && (
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    {filteredPlaques.map((plaque) => (
+      <div key={plaque.id} className="relative group">
+        <PlaqueCard 
+          plaque={plaque}
+          isFavorite={favorites.includes(plaque.id)}
+          isSelected={selectedPlaques.includes(plaque.id)}
+          onSelect={toggleSelectPlaque}
+          onFavoriteToggle={() => handleTogglePlaqueFavorite(plaque.id)}
+          onClick={handleViewPlaque}
+        />
+        
+        {/* Context menu for more actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white"
+              onClick={(e) => e.stopPropagation()} // Prevent card click
+            >
+              <MoreHorizontal size={16} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMarkVisited(plaque.id);
+              }}
+            >
+              <Check size={16} className="mr-2" /> Mark as Visited
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTogglePlaqueFavorite(plaque.id);
+              }}
+            >
+              <Star size={16} className={`mr-2 ${favorites.includes(plaque.id) ? "fill-amber-500" : ""}`} />
+              {favorites.includes(plaque.id) ? "Remove from Favorites" : "Add to Favorites"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              className="text-red-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveSinglePlaque(plaque.id);
+              }}
+            >
+              <Trash2 size={16} className="mr-2" /> Remove from Collection
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ))}
+  </div>
+)}
             
             {viewMode === 'list' && (
               <div className="space-y-3">
@@ -867,6 +1035,43 @@ const CollectionDetailPage: React.FC = () => {
         nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
       />
       
+{/* Remove single plaque confirmation */}
+<Dialog open={confirmRemovePlaqueOpen} onOpenChange={setConfirmRemovePlaqueOpen}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Remove Plaque</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to remove this plaque from the collection? This action cannot be undone.
+      </DialogDescription>
+    </DialogHeader>
+    
+    <DialogFooter className="mt-4">
+      <Button 
+        variant="outline" 
+        onClick={() => {
+          setConfirmRemovePlaqueOpen(false);
+          setPlaqueToRemove(null);
+        }}
+        disabled={isLoading}
+      >
+        Cancel
+      </Button>
+      <Button 
+        variant="destructive"
+        onClick={confirmRemovePlaque}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <>
+            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+            Removing...
+          </>
+        ) : 'Remove'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
       {/* Edit collection form */}
       <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
         <DialogContent className="sm:max-w-md">

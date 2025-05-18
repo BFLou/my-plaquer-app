@@ -37,6 +37,7 @@ import { CollectionForm } from '@/components/collections/CollectionForm';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 
+
 // Import existing components and hooks for plaques as needed
 
 const CollectionDetailContent = () => {
@@ -71,6 +72,10 @@ const CollectionDetailContent = () => {
   const [addPlaquesOpen, setAddPlaquesOpen] = useState(false);
   const [availablePlaques, setAvailablePlaques] = useState([]);
   const [selectedAvailablePlaques, setSelectedAvailablePlaques] = useState([]);
+  
+const [confirmRemovePlaqueOpen, setConfirmRemovePlaqueOpen] = useState(false);
+const [plaqueToRemove, setPlaqueToRemove] = useState<number | null>(null);
+
   
   // Fetch collection data
   useEffect(() => {
@@ -192,6 +197,35 @@ const CollectionDetailContent = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleRemovePlaqueFromCollection = (plaqueId: number) => {
+  setPlaqueToRemove(plaqueId);
+  setConfirmRemovePlaqueOpen(true);
+};
+
+const confirmRemovePlaque = async () => {
+  if (!collection || plaqueToRemove === null) return;
+  
+  try {
+    setIsLoading(true);
+    
+    // Call Firebase function to remove the plaque
+    await removePlaquesFromCollection(collection.id, [plaqueToRemove]);
+    
+    // Update local state by removing the plaque
+    setCollectionPlaques(prev => prev.filter(p => p.id !== plaqueToRemove));
+    
+    toast.success("Plaque removed from collection");
+  } catch (err) {
+    console.error('Error removing plaque from collection:', err);
+    toast.error('Failed to remove plaque from collection');
+  } finally {
+    setConfirmRemovePlaqueOpen(false);
+    setPlaqueToRemove(null);
+    setIsLoading(false);
+  }
+};
+
   
   // Toggle favorite status
   const handleToggleFavorite = async () => {
@@ -565,6 +599,8 @@ const CollectionDetailContent = () => {
           </div>
         )}
       </div>
+
+      
       
       {/* Edit Collection Dialog */}
       <Dialog open={editFormOpen} onOpenChange={setEditFormOpen}>
@@ -588,6 +624,43 @@ const CollectionDetailContent = () => {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Remove single plaque confirmation */}
+<Dialog open={confirmRemovePlaqueOpen} onOpenChange={setConfirmRemovePlaqueOpen}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Remove Plaque</DialogTitle>
+      <DialogDescription>
+        Are you sure you want to remove this plaque from the collection?
+      </DialogDescription>
+    </DialogHeader>
+    
+    <DialogFooter className="mt-4">
+      <Button 
+        variant="outline" 
+        onClick={() => {
+          setConfirmRemovePlaqueOpen(false);
+          setPlaqueToRemove(null);
+        }}
+        disabled={isLoading}
+      >
+        Cancel
+      </Button>
+      <Button 
+        variant="destructive"
+        onClick={confirmRemovePlaque}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <>
+            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+            Removing...
+          </>
+        ) : 'Remove'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
