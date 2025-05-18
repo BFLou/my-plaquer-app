@@ -58,6 +58,7 @@ const PlaqueMap = React.forwardRef(({
   const [toast, setToastMessage] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeBaseMap, setActiveBaseMap] = useState('street');
+  const [maxDistance, setMaxDistance] = useState(1); // Added missing state declaration
   
   // Initialize map using the custom hook
   const { 
@@ -166,35 +167,82 @@ const PlaqueMap = React.forwardRef(({
 
     if (!document.fullscreenElement) {
       // Request fullscreen
-      if (mapContainer.requestFullscreen) {
-        mapContainer.requestFullscreen();
-      } else if ((mapContainer as any).webkitRequestFullscreen) {
-        (mapContainer as any).webkitRequestFullscreen();
-      } else if ((mapContainer as any).mozRequestFullScreen) {
-        (mapContainer as any).mozRequestFullScreen();
-      } else if ((mapContainer as any).msRequestFullscreen) {
-        (mapContainer as any).msRequestFullscreen();
+      try {
+        if (mapContainer.requestFullscreen) {
+          mapContainer.requestFullscreen();
+        } else if ((mapContainer as any).webkitRequestFullscreen) {
+          (mapContainer as any).webkitRequestFullscreen();
+        } else if ((mapContainer as any).mozRequestFullScreen) {
+          (mapContainer as any).mozRequestFullScreen();
+        } else if ((mapContainer as any).msRequestFullscreen) {
+          (mapContainer as any).msRequestFullscreen();
+        }
+        setIsFullScreen(true);
+        
+        // Force map to recalculate dimensions after entering fullscreen
+        setTimeout(() => {
+          if (mapInstance) {
+            mapInstance.invalidateSize();
+          }
+        }, 300);
+      } catch (error) {
+        console.error("Error entering fullscreen mode:", error);
+        showToast("Couldn't enter fullscreen mode. Please try again.", "error");
       }
-      setIsFullScreen(true);
     } else {
       // Exit fullscreen
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      } else if ((document as any).mozCancelFullScreen) {
-        (document as any).mozCancelFullScreen();
-      } else if ((document as any).msExitFullscreen) {
-        (document as any).msExitFullscreen();
+      try {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          (document as any).msExitFullscreen();
+        }
+        setIsFullScreen(false);
+        
+        // Force map to recalculate dimensions after exiting fullscreen
+        setTimeout(() => {
+          if (mapInstance) {
+            mapInstance.invalidateSize();
+          }
+        }, 300);
+      } catch (error) {
+        console.error("Error exiting fullscreen mode:", error);
+        showToast("Couldn't exit fullscreen mode. Please refresh the page.", "error");
       }
-      setIsFullScreen(false);
     }
-  }, []);
+  }, [mapInstance]);
 
   // Handle fullscreen change events
   useEffect(() => {
     const handleFullScreenChange = () => {
-      setIsFullScreen(!!document.fullscreenElement);
+      const isFullScreenActive = !!document.fullscreenElement;
+      setIsFullScreen(isFullScreenActive);
+      
+      // Force map to recalculate dimensions when fullscreen state changes
+      if (mapInstance) {
+        setTimeout(() => {
+          mapInstance.invalidateSize();
+          
+          // Redraw markers to ensure they're properly positioned
+          redrawMarkers();
+          
+          // If the user has selected a plaque, make sure it's still visible
+          if (selectedPlaqueId && !maintainView) {
+            const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
+            if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
+              const lat = parseFloat(selectedPlaque.latitude as unknown as string);
+              const lng = parseFloat(selectedPlaque.longitude as unknown as string);
+              if (!isNaN(lat) && !isNaN(lng)) {
+                mapInstance.setView([lat, lng], mapInstance.getZoom() || 15);
+              }
+            }
+          }
+        }, 300);
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullScreenChange);
@@ -208,7 +256,7 @@ const PlaqueMap = React.forwardRef(({
       document.removeEventListener('mozfullscreenchange', handleFullScreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullScreenChange);
     };
-  }, []);
+  }, [mapInstance, selectedPlaqueId, plaques, maintainView, redrawMarkers]);
 
   // Custom zoom controls
   const zoomIn = useCallback(() => {

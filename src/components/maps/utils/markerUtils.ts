@@ -1,6 +1,4 @@
-// src/components/maps/utils/markerUtils.ts
-// This replaces your existing markerUtils.ts file
-
+// src/components/maps/utils/markerUtils.ts - Updated
 import { Plaque } from '@/types/plaque';
 
 /**
@@ -59,6 +57,7 @@ export const createPlaqueIcon = (
 
 /**
  * Creates popup content for a plaque marker with improved styling
+ * Enhanced to work properly in fullscreen mode
  */
 export const createPlaquePopup = (
   plaque: Plaque,
@@ -74,33 +73,44 @@ export const createPlaquePopup = (
     <div class="font-semibold text-sm mb-2">${plaque.title || 'Unnamed Plaque'}</div>
     <div class="text-xs text-gray-600 mb-3">${plaque.location || plaque.address || ''}</div>
     <div class="flex gap-2">
-      <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors">
+      <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors cursor-pointer">
         View Details
       </button>
       ${isRoutingMode ? `
-        <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors">
+        <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors cursor-pointer">
           Add to Route
         </button>
       ` : ''}
     </div>
   `;
   
-  // Add event listeners after a small delay to ensure DOM is ready
-  setTimeout(() => {
-    const detailButton = popupContent.querySelector('.view-details');
-    if (detailButton) {
-      detailButton.addEventListener('click', () => {
-        onPlaqueClick(plaque);
-      });
+  // Add event listeners - Improved with proper event handling for fullscreen
+  const detailButtonHandler = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onPlaqueClick) {
+      onPlaqueClick(plaque);
     }
-    
-    const routeButton = popupContent.querySelector('.add-to-route');
-    if (routeButton && onAddToRoute) {
-      routeButton.addEventListener('click', () => {
-        onAddToRoute(plaque);
-      });
+  };
+  
+  const routeButtonHandler = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onAddToRoute) {
+      onAddToRoute(plaque);
     }
-  }, 10);
+  };
+  
+  // Add event listeners immediately
+  const detailButton = popupContent.querySelector('.view-details');
+  if (detailButton) {
+    detailButton.addEventListener('click', detailButtonHandler, { capture: true });
+  }
+  
+  const routeButton = popupContent.querySelector('.add-to-route');
+  if (routeButton && onAddToRoute) {
+    routeButton.addEventListener('click', routeButtonHandler, { capture: true });
+  }
   
   return popupContent;
 };
@@ -108,8 +118,8 @@ export const createPlaquePopup = (
 /**
  * Calculate distance between two points using Haversine formula
  */
-export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371; // Earth radius in kilometers
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -117,6 +127,18 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distance = R * c;
-  return distance;
-};
+  return R * c;
+}
+
+/**
+ * Format distance based on unit preference
+ */
+export function formatDistance(distanceKm: number, useImperial = false): string {
+  if (useImperial) {
+    // Convert to miles (1 km = 0.621371 miles)
+    const miles = distanceKm * 0.621371;
+    return `${miles.toFixed(1)} mi`;
+  } else {
+    return `${distanceKm.toFixed(1)} km`;
+  }
+}

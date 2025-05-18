@@ -1,4 +1,4 @@
-// src/components/maps/hooks/useMapMarkers.ts - with fixes
+// src/components/maps/hooks/useMapMarkers.ts - Fixed version
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 import { createPlaqueIcon, createPlaquePopup } from '../utils/markerUtils';
@@ -178,10 +178,13 @@ export default function useMapMarkers(
         // Create icon for this plaque
         const icon = createPlaqueIcon(window.L, plaque, isFavorite, isSelected);
         
-        // Create marker
+        // Create marker with better event handling
         const marker = window.L.marker([lat, lng], { 
           icon,
-          bubblingMouseEvents: false // Prevents click events from bubbling to map
+          bubblingMouseEvents: false, // Prevents click events from bubbling to map
+          interactive: true, // Ensure the marker can be clicked
+          keyboard: false, // Disable keyboard navigation to improve mobile experience
+          zIndexOffset: isSelected ? 1000 : 0 // Make selected markers appear on top
         });
         
         // Create popup content
@@ -199,14 +202,21 @@ export default function useMapMarkers(
           className: 'plaque-popup-container',
           maxWidth: 300,
           minWidth: 200,
-          offset: [0, -20]
+          offset: [0, -20],
+          autoPanPadding: [50, 50], // Make sure popup is fully visible
+          // Ensure popups work in fullscreen mode
+          keepInView: true // Keep popup in view when panning
         };
         
         // Bind popup to marker
         marker.bindPopup(popupContent, popupOptions);
         
         // Add click handler
-        marker.on('click', () => {
+        marker.on('click', (e) => {
+          // Stop propagation to prevent map click
+          if (e.originalEvent) {
+            L.DomEvent.stopPropagation(e.originalEvent);
+          }
           marker.openPopup();
         });
         
@@ -253,30 +263,30 @@ export default function useMapMarkers(
         }
       }
     } else if (plaques.length > 0 && !maintainView) {
-  // Fit bounds to show all markers if no specific one is selected
-  const validPlaques = plaques.filter(p => p.latitude && p.longitude);
-  
-  if (validPlaques.length > 0) {
-    try {
-      const latLngs = validPlaques.map(p => [
-        parseFloat(p.latitude), 
-        parseFloat(p.longitude)
-      ]);
+      // Fit bounds to show all markers if no specific one is selected
+      const validPlaques = plaques.filter(p => p.latitude && p.longitude);
       
-      // Create bounds from points
-      const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
-      
-      if (bounds.isValid()) {
-        // Use a timeout to allow map to render first
-        setTimeout(() => {
-          mapInstance.fitBounds(bounds, { padding: [50, 50] });
-        }, 300);
+      if (validPlaques.length > 0) {
+        try {
+          const latLngs = validPlaques.map(p => [
+            parseFloat(p.latitude), 
+            parseFloat(p.longitude)
+          ]);
+          
+          // Create bounds from points
+          const bounds = window.L.latLngBounds(latLngs.map(coords => window.L.latLng(coords[0], coords[1])));
+          
+          if (bounds.isValid()) {
+            // Use a timeout to allow map to render first
+            setTimeout(() => {
+              mapInstance.fitBounds(bounds, { padding: [50, 50] });
+            }, 300);
+          }
+        } catch (e) {
+          console.error("Error fitting bounds:", e);
+        }
       }
-    } catch (e) {
-      console.error("Error fitting bounds:", e);
     }
-  }
-} 
   }, [
     mapInstance, 
     plaques, 
