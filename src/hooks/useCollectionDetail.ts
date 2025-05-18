@@ -491,4 +491,4 @@ export const useCollectionDetail = (collectionId: string) => {
   };
 };
 
-export default useCollectionDetail;s
+export default useCollectionDetail;

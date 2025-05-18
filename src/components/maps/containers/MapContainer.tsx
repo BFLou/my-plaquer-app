@@ -1,10 +1,11 @@
-// src/components/maps/containers/MapContainer.tsx - with fixes
+// src/components/maps/containers/MapContainer.tsx - Updated with fullscreen support
 import React, { useEffect } from 'react';
 
 interface MapContainerProps {
   mapLoaded: boolean;
   isDrawingRoute: boolean;
   isRoutingMode: boolean;
+  isFullScreen?: boolean;
 }
 
 /**
@@ -14,7 +15,8 @@ interface MapContainerProps {
 const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
   mapLoaded,
   isDrawingRoute,
-  isRoutingMode
+  isRoutingMode,
+  isFullScreen = false
 }, ref) => {
   // Generate a unique ID for this container instance
   const uniqueId = React.useRef(`map-container-${Math.random().toString(36).substring(2, 9)}`);
@@ -32,6 +34,25 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
     }
   }, [ref]);
   
+  // Handle resize events, especially for fullscreen mode
+  useEffect(() => {
+    const handleResize = () => {
+      // Ensure map recalculates its dimensions
+      window.dispatchEvent(new Event('resize'));
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // When fullscreen mode changes, ensure map resizes
+    if (isFullScreen) {
+      setTimeout(handleResize, 100);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isFullScreen]);
+  
   // Add styles that might be needed for Leaflet
   useEffect(() => {
     // Check if Leaflet-specific styles are needed
@@ -46,6 +67,18 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
           height: 100% !important;
           min-height: 400px !important;
           overflow: hidden !important;
+        }
+        
+        /* Fullscreen mode styles */
+        .map-container-fullscreen {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          z-index: 9999 !important;
         }
         
         /* Make sure popups appear correctly */
@@ -184,6 +217,44 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
           left: 0;
           top: 0;
         }
+        
+        /* Fullscreen button styling */
+        .fullscreen-button {
+          background-color: white;
+          border: none;
+          border-radius: 4px;
+          box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+          cursor: pointer;
+          display: block;
+          height: 36px;
+          width: 36px;
+          text-align: center;
+          line-height: 36px;
+        }
+        
+        /* Layer selection control styling */
+        .layer-control {
+          background-color: white;
+          border-radius: 4px;
+          box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+          padding: 8px;
+        }
+        
+        .layer-control-item {
+          padding: 4px 8px;
+          cursor: pointer;
+          margin: 2px 0;
+          border-radius: 2px;
+        }
+        
+        .layer-control-item:hover {
+          background-color: #f0f9ff;
+        }
+        
+        .layer-control-item.active {
+          background-color: #3b82f6;
+          color: white;
+        }
       `;
       document.head.appendChild(style);
     }
@@ -201,13 +272,14 @@ const MapContainer = React.forwardRef<HTMLDivElement, MapContainerProps>(({
         ref={ref} 
         key={uniqueId.current}
         id={uniqueId.current}
-        className="w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md map-container"
+        className={`w-full h-full rounded-lg overflow-hidden border border-gray-200 shadow-md map-container ${isFullScreen ? 'map-container-fullscreen' : ''}`}
         style={{ 
-          minHeight: '400px', 
-          height: '500px',
+          minHeight: isFullScreen ? '100vh' : '400px', 
+          height: isFullScreen ? '100vh' : '500px',
           position: 'relative' // Critical for Leaflet positioning
         }}
         data-testid="map-container"
+        data-fullscreen={isFullScreen ? 'true' : 'false'}
       />
       
       {/* Map overlay for loading state */}

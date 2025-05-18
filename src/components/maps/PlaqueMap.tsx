@@ -1,8 +1,8 @@
-// src/components/maps/PlaqueMap.tsx
-import React, { useState, useRef } from 'react';
+// src/components/maps/PlaqueMap.tsx - Updated with fullscreen, enhanced zoom and layer controls
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from "@/components/ui/button";
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, Maximize, Minimize, Layers } from 'lucide-react';
 
 // Import sub-components
 import MapContainer from './containers/MapContainer';
@@ -22,6 +22,7 @@ import useRouteManagement from './hooks/useRouteManagement';
 const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_ORS_API_KEY) 
   ? process.env.REACT_APP_ORS_API_KEY 
   : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
+
 /**
  * PlaqueMap Component
  * A comprehensive map component for displaying plaques with routing functionality
@@ -54,15 +55,17 @@ const PlaqueMap = React.forwardRef(({
   const [useImperial, setUseImperial] = useState(false);
   const [useRoadRouting, setUseRoadRouting] = useState(true);
   const [filteredPlaquesCount, setFilteredPlaquesCount] = useState(0);
-  const [maxDistance, setMaxDistance] = useState(3.0);
   const [toast, setToastMessage] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [activeBaseMap, setActiveBaseMap] = useState('street');
   
   // Initialize map using the custom hook
   const { 
     mapLoaded, 
     mapError, 
     mapInstance, 
-    isScriptLoaded 
+    isScriptLoaded,
+    setBaseMap
   } = useMapInitialization(mapContainerRef);
   
   // Show toast messages
@@ -155,26 +158,104 @@ const PlaqueMap = React.forwardRef(({
       showToast("Couldn't find that location. Please try a different search.", "error");
     }
   };
+
+  // Toggle fullscreen mode
+  const toggleFullScreen = useCallback(() => {
+    const mapContainer = mapContainerRef.current;
+    if (!mapContainer) return;
+
+    if (!document.fullscreenElement) {
+      // Request fullscreen
+      if (mapContainer.requestFullscreen) {
+        mapContainer.requestFullscreen();
+      } else if ((mapContainer as any).webkitRequestFullscreen) {
+        (mapContainer as any).webkitRequestFullscreen();
+      } else if ((mapContainer as any).mozRequestFullScreen) {
+        (mapContainer as any).mozRequestFullScreen();
+      } else if ((mapContainer as any).msRequestFullscreen) {
+        (mapContainer as any).msRequestFullscreen();
+      }
+      setIsFullScreen(true);
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
+      setIsFullScreen(false);
+    }
+  }, []);
+
+  // Handle fullscreen change events
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullScreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullScreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullScreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullScreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullScreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullScreenChange);
+    };
+  }, []);
+
+  // Custom zoom controls
+  const zoomIn = useCallback(() => {
+    if (mapInstance) {
+      const currentZoom = mapInstance.getZoom();
+      mapInstance.setZoom(currentZoom + 1);
+    }
+  }, [mapInstance]);
+
+  const zoomOut = useCallback(() => {
+    if (mapInstance) {
+      const currentZoom = mapInstance.getZoom();
+      mapInstance.setZoom(currentZoom - 1);
+    }
+  }, [mapInstance]);
+
+  // Change base map
+  const changeBaseMap = useCallback((mapType) => {
+    setActiveBaseMap(mapType);
+    if (setBaseMap && mapInstance) {
+      setBaseMap(mapInstance, mapType);
+    }
+  }, [mapInstance, setBaseMap]);
   
   // Expose methods to the parent component via ref
   React.useImperativeHandle(ref, () => ({
-  drawRouteLine: (points, useRoadRoutingParam = useRoadRouting, maintainView = false) => 
-    drawWalkingRoute(points, useRoadRoutingParam, maintainView),
-  clearRoute,
-  findUserLocation,
-  fitToMarkers: () => {
-    if (mapInstance && plaques.length > 0) {
-      const bounds = getBoundsFromPlaques(plaques);
-      if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
-    }
-  },
-  fitRoute: (points) => {
-    if (mapInstance && points && points.length >= 2) {
-      const bounds = getBoundsFromPlaques(points);
-      if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }
-}));
+    drawRouteLine: (points, useRoadRoutingParam = useRoadRouting, maintainView = false) => 
+      drawWalkingRoute(points, useRoadRoutingParam, maintainView),
+    clearRoute,
+    findUserLocation,
+    fitToMarkers: () => {
+      if (mapInstance && plaques.length > 0) {
+        const bounds = getBoundsFromPlaques(plaques);
+        if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
+      }
+    },
+    fitRoute: (points) => {
+      if (mapInstance && points && points.length >= 2) {
+        const bounds = getBoundsFromPlaques(points);
+        if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
+      }
+    },
+    toggleFullScreen,
+    zoomIn,
+    zoomOut,
+    changeBaseMap
+  }));
   
   // Helper to get bounds from plaque points
   const getBoundsFromPlaques = (plaquesArray) => {
@@ -192,13 +273,14 @@ const PlaqueMap = React.forwardRef(({
   };
   
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className} ${isFullScreen ? 'fixed inset-0 z-50 bg-white' : ''}`}>
       {/* Map Container */}
       <MapContainer
         ref={mapContainerRef}
         mapLoaded={mapLoaded}
         isDrawingRoute={isDrawingRoute}
         isRoutingMode={isRoutingMode}
+        isFullScreen={isFullScreen}
       />
       
       {/* Search location button */}
@@ -226,6 +308,12 @@ const PlaqueMap = React.forwardRef(({
         hasUserLocation={!!userLocation}
         routePointsCount={routePoints.length}
         resetMap={resetMap}
+        isFullScreen={isFullScreen}
+        toggleFullScreen={toggleFullScreen}
+        zoomIn={zoomIn}
+        zoomOut={zoomOut}
+        activeBaseMap={activeBaseMap}
+        changeBaseMap={changeBaseMap}
       />
       
       {/* Route Panel */}

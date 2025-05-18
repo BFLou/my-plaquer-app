@@ -1,5 +1,5 @@
-// src/components/maps/hooks/useMapInitialization.ts - with fixes
-import { useState, useEffect, useRef } from 'react';
+// src/components/maps/hooks/useMapInitialization.ts - Updated with base map selection
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface MapOptions {
   center?: [number, number];
@@ -7,6 +7,10 @@ interface MapOptions {
   maxZoom?: number;
   minZoom?: number;
   disableAutomaticZoom?: boolean;
+}
+
+interface BaseMaps {
+  [key: string]: any; // Leaflet tilelayer
 }
 
 /**
@@ -21,6 +25,8 @@ export const useMapInitialization = (
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const mapInstanceRef = useRef<any>(null);
+  const baseLayersRef = useRef<BaseMaps>({});
+  const activeBaseLayerRef = useRef<string>('street');
   
   // Load Leaflet scripts and styles
   useEffect(() => {
@@ -135,16 +141,51 @@ export const useMapInitialization = (
           zoomOutTitle: 'Zoom out'
         }).addTo(map);
 
-        // Add tile layer - using more attractive Carto tiles
-        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        // Initialize different base map layers
+        const streetLayer = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 20
+        });
+
+        const lightLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
           subdomains: 'abcd',
           maxZoom: 20
-        }).addTo(map);
+        });
 
-        // Add scale control with metric only
+        const darkLayer = window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+          subdomains: 'abcd',
+          maxZoom: 20
+        });
+
+        const satelliteLayer = window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 20
+        });
+
+        const terrainLayer = window.L.tileLayer('https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38', {
+          attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 22
+        });
+
+        // Store base layers
+        baseLayersRef.current = {
+          'street': streetLayer,
+          'light': lightLayer,
+          'dark': darkLayer,
+          'satellite': satelliteLayer,
+          'terrain': terrainLayer
+        };
+
+        // Add the default base layer
+        baseLayersRef.current['street'].addTo(map);
+        activeBaseLayerRef.current = 'street';
+
+        // Add scale control with both imperial and metric
         window.L.control.scale({
-          imperial: false,
+          imperial: true,
+          metric: true,
           position: 'bottomright',
           maxWidth: 150
         }).addTo(map);
@@ -244,11 +285,28 @@ export const useMapInitialization = (
     };
   }, [isScriptLoaded, options]);
 
+  // Function to change base map layer
+  const setBaseMap = useCallback((mapInstance, mapType: string) => {
+    if (!mapInstance || !baseLayersRef.current[mapType]) return;
+    
+    // Remove current active layer
+    if (baseLayersRef.current[activeBaseLayerRef.current]) {
+      mapInstance.removeLayer(baseLayersRef.current[activeBaseLayerRef.current]);
+    }
+    
+    // Add new layer
+    baseLayersRef.current[mapType].addTo(mapInstance);
+    activeBaseLayerRef.current = mapType;
+    
+    console.log(`Base map changed to ${mapType}`);
+  }, []);
+
   return {
     mapLoaded,
     mapError,
     mapInstance: mapInstanceRef.current,
-    isScriptLoaded
+    isScriptLoaded,
+    setBaseMap
   };
 };
 

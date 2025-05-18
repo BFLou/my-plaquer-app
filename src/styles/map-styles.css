@@ -1,4 +1,4 @@
-/* src/styles/map-styles.css */
+/* src/styles/map-styles.css - Updated with fullscreen and layer controls */
 
 /* General map container styling */
 .map-container {
@@ -6,12 +6,26 @@
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, height 0.3s ease;
   z-index: 1; /* Base level for map */
 }
 
 .map-container:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Fullscreen mode styles */
+.map-container-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  border-radius: 0 !important;
+  border: none !important;
 }
 
 /* Map controls styling */
@@ -224,12 +238,92 @@
   stroke-dasharray: 4, 4 !important;
 }
 
+/* Fullscreen specific styles */
+.fullscreen-map {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9990 !important;
+}
+
+.fullscreen-exit-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 9995;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  padding: 8px;
+  cursor: pointer;
+}
+
+/* Layer switcher styles */
+.layer-switcher {
+  position: absolute;
+  top: 20px;
+  right: 60px;
+  z-index: 9995;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.layer-switcher-button {
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.layer-switcher-options {
+  display: none;
+  padding: 8px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.layer-switcher-options.open {
+  display: block;
+}
+
+.layer-option {
+  padding: 6px 12px;
+  cursor: pointer;
+  margin: 2px 0;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.layer-option:hover {
+  background-color: #f3f4f6;
+}
+
+.layer-option.active {
+  background-color: #ebf5ff;
+  color: #2563eb;
+  font-weight: 500;
+}
+
 /* Mobile optimizations */
 @media (max-width: 768px) {
   .map-controls {
     top: auto;
-    bottom: 1rem;
-    right: 1rem;
+    bottom: 20px;
+    right: 20px;
+  }
+  
+  .fullscreen-exit-button {
+    top: auto;
+    bottom: 20px;
+    right: 20px;
   }
   
   .route-panel,
@@ -241,165 +335,65 @@
   }
 }
 
-/* Ensure proper z-index stacking */
-.leaflet-map-pane {
+/* Ensure proper z-index stacking during fullscreen */
+body.map-fullscreen .header,
+body.map-fullscreen .navigation,
+body.map-fullscreen .footer {
   z-index: 1 !important;
 }
 
-.leaflet-tile-pane {
-  z-index: 2 !important;
+/* Prevent scrolling when in fullscreen mode */
+body.map-fullscreen {
+  overflow: hidden !important;
 }
 
-.leaflet-overlay-pane {
-  z-index: 3 !important;
+/* Custom controls for touch devices */
+.touch-controls {
+  display: none;
 }
 
-.leaflet-shadow-pane {
-  z-index: 4 !important;
-}
-
-.leaflet-marker-pane {
-  z-index: 5 !important;
-}
-
-.leaflet-tooltip-pane {
-  z-index: 6 !important;
-}
-
-.leaflet-popup-pane {
-  z-index: 7 !important;
-}
-
-/* Ensure map controls are visible */
-.leaflet-control-container {
-  z-index: 800 !important;
-}
-
-/* Z-index fixes for overlay panels */
-.leaflet-container {
-  z-index: 1 !important;
-}
-
-/* Make popups appear above map controls */
-.leaflet-popup {
-  z-index: 999 !important;
-}
-
-/* Make sure UI components appear above map */
-.ui-panel, 
-.filter-sheet, 
-.plaque-detail {
-  z-index: 9999 !important;
-}
-
-/* Higher z-index for Sheet components */
-.ui-sheet {
-  z-index: 9999 !important;
-}
-
-/* Route planning specific components */
-.route-planning-indicator {
-  z-index: 900 !important;
-  position: absolute;
-  background-color: rgba(16, 185, 129, 0.9);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.route-panel-container {
-  z-index: 950 !important;
-  position: absolute;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* SheetContent z-index boost */
-.Sheet-content {
-  z-index: 9999 !important;
-}
-
-/* High z-index for all dialog components */
-[role="dialog"] {
-  z-index: 9999 !important;
-}
-
-/* Class for elements that should appear on top */
-.above-map {
-  z-index: 9999 !important;
-  position: relative;
-}
-
-/* src/styles/map-styles.css */
-/* Add these styles to your existing map-styles.css file */
-
-/* Route line animation */
-@keyframes dash {
-  to {
-    stroke-dashoffset: -1000;
+@media (pointer: coarse) {
+  .touch-controls {
+    display: block;
+    position: absolute;
+    bottom: 80px;
+    right: 20px;
+    z-index: 995;
+  }
+  
+  .touch-controls button {
+    width: 44px;
+    height: 44px;
+    margin: 5px 0;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    outline: none;
   }
 }
 
-.animated-dash {
-  animation: dash 30s linear infinite;
-}
-
-/* Route marker styles */
-.route-marker-start {
-  background: #3b82f6 !important;
-  border: 2px solid white !important;
-}
-
-.route-marker-end {
-  background: #ef4444 !important;
-  border: 2px solid white !important;
-}
-
-.route-marker-waypoint {
-  background: #10b981 !important;
-  border: 2px solid white !important;
-}
-
-/* Ensure polylines are visible with proper z-index */
-.leaflet-overlay-pane {
-  z-index: 450 !important;
-}
-
-/* Make route lines more prominent */
-.leaflet-overlay-pane svg path {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  pointer-events: visibleStroke;
-}
-
-/* Make sure markers remain on top of route lines */
-.leaflet-marker-pane {
-  z-index: 600 !important;
-}
-
-/* Make sure popup appears above everything */
-.leaflet-popup-pane {
-  z-index: 700 !important;
-}
-
-/* Distance label styling */
-.distance-label {
-  background: transparent !important;
-  border: none !important;
-}
-
-/* Additional hover effects for better UX */
-.route-marker:hover {
-  transform: scale(1.1);
-  transition: transform 0.2s;
-}
-
-/* Fix for Safari route rendering issues */
-.leaflet-safari .leaflet-tile-container {
+/* Improved fullscreen controls for Safari */
+.safari .map-container-fullscreen {
   width: 100% !important;
   height: 100% !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Fix for Safari and Firefox issues with z-index */
+_::-webkit-full-page-media, _:future, :root .map-container-fullscreen {
+  transform: translateZ(0);
+}
+
+@-moz-document url-prefix() {
+  .map-container-fullscreen {
+    transform: translateZ(0);
+  }
 }

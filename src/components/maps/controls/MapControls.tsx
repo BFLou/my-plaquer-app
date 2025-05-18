@@ -1,10 +1,15 @@
-// src/components/maps/controls/MapControls.tsx
+// src/components/maps/controls/MapControls.tsx - Updated with fullscreen and layer controls
 import React from 'react';
 import { 
   Navigation, 
   Filter, 
   Route as RouteIcon, 
-  Map
+  Map,
+  Maximize,
+  Minimize,
+  ZoomIn,
+  ZoomOut,
+  Layers
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +19,12 @@ import {
   TooltipProvider, 
   TooltipTrigger 
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MapControlsProps {
   isLoadingLocation: boolean;
@@ -25,6 +36,12 @@ interface MapControlsProps {
   hasUserLocation: boolean;
   routePointsCount: number;
   resetMap: () => void;
+  isFullScreen?: boolean;
+  toggleFullScreen?: () => void;
+  zoomIn?: () => void;
+  zoomOut?: () => void;
+  activeBaseMap?: string;
+  changeBaseMap?: (type: string) => void;
 }
 
 /**
@@ -40,8 +57,29 @@ const MapControls: React.FC<MapControlsProps> = ({
   findUserLocation,
   hasUserLocation,
   routePointsCount,
-  resetMap
+  resetMap,
+  isFullScreen = false,
+  toggleFullScreen,
+  zoomIn,
+  zoomOut,
+  activeBaseMap = 'street',
+  changeBaseMap
 }) => {
+  // Check if fullscreen is supported
+  const isFullScreenSupported = document.fullscreenEnabled || 
+    (document as any).webkitFullscreenEnabled || 
+    (document as any).mozFullScreenEnabled || 
+    (document as any).msFullscreenEnabled;
+
+  // Map type names for display
+  const mapTypeNames: Record<string, string> = {
+    'street': 'Street',
+    'satellite': 'Satellite',
+    'terrain': 'Terrain',
+    'light': 'Light',
+    'dark': 'Dark'
+  };
+
   return (
     <TooltipProvider>
       <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
@@ -114,6 +152,77 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
+          {/* Zoom In Button */}
+          {zoomIn && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-10 w-10 p-0"
+                  onClick={zoomIn}
+                >
+                  <ZoomIn size={18} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>Zoom in</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
+          {/* Zoom Out Button */}
+          {zoomOut && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-10 w-10 p-0"
+                  onClick={zoomOut}
+                >
+                  <ZoomOut size={18} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>Zoom out</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
+          {/* Map Layers Button */}
+          {changeBaseMap && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-10 w-10 p-0"
+                    >
+                      <Layers size={18} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="left" className="w-32">
+                    {Object.entries(mapTypeNames).map(([type, name]) => (
+                      <DropdownMenuItem 
+                        key={type}
+                        className={activeBaseMap === type ? 'bg-blue-50 text-blue-700' : ''}
+                        onClick={() => changeBaseMap(type)}
+                      >
+                        {name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>Change map style</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
           {/* Reset Button */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -130,6 +239,25 @@ const MapControls: React.FC<MapControlsProps> = ({
               <p>Reset map view</p>
             </TooltipContent>
           </Tooltip>
+          
+          {/* Fullscreen Button - conditionally rendered if supported & provided */}
+          {isFullScreenSupported && toggleFullScreen && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-10 w-10 p-0"
+                  onClick={toggleFullScreen}
+                >
+                  {isFullScreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>{isFullScreen ? 'Exit fullscreen' : 'Fullscreen'}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
     </TooltipProvider>
