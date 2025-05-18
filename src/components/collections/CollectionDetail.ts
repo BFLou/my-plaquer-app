@@ -158,12 +158,24 @@ const [plaqueToRemove, setPlaqueToRemove] = useState<number | null>(null);
     setEditNameValue(collection?.name || '');
     setEditNameMode(false);
   };
+
   
   // Open edit collection form
   const handleOpenEditForm = () => {
     setEditFormOpen(true);
   };
   
+useEffect(() => {
+  if (collectionPlaques.length > 0) {
+    // Check if any plaques are marked as visited
+    const hasVisited = collectionPlaques.some(p => p.visited === true);
+    console.log("Has visited plaques:", hasVisited);
+    console.log("Visited plaques IDs:", collectionPlaques
+      .filter(p => p.visited === true)
+      .map(p => p.id));
+  }
+}, [collectionPlaques]);
+
   // Save edited collection
   const handleUpdateCollection = async (data) => {
     try {

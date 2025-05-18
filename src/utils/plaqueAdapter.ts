@@ -1,5 +1,4 @@
 // src/utils/plaqueAdapter.ts
-
 type RawPlaqueData = {
   id: number;
   title?: string;
@@ -28,7 +27,7 @@ type RawPlaqueData = {
 /**
  * Converts raw plaque data to a consistent format for the application
  */
-export function adaptPlaquesData(rawData: RawPlaqueData[]): any[] {
+export function adaptPlaquesData(rawData: RawPlaqueData[], visitedIds: number[] = []): any[] {
   return rawData.map(plaque => {
     // Normalize and clean up properties
     const adaptedPlaque = {
@@ -61,8 +60,8 @@ export function adaptPlaquesData(rawData: RawPlaqueData[]): any[] {
       // Image
       image: plaque.main_photo || '',
       
-      // Visit status (default to false, will be updated with user data)
-      visited: false
+      // Visit status - default to false or true if in visitedIds
+      visited: visitedIds.includes(plaque.id) || false
     };
     
     // Clean up and transform specific fields

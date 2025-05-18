@@ -1,4 +1,4 @@
-// src/features/collections/hooks/useCollectionDetail.ts
+// src/hooks/useCollectionDetail.ts
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '@/hooks/useCollection';
@@ -13,7 +13,7 @@ export type ViewMode = 'grid' | 'list' | 'map';
 export const useCollectionDetail = (collectionId: string) => {
   const navigate = useNavigate();
   const { getCollection, updateCollection, deleteCollection, toggleFavorite, duplicateCollection, addPlaquesToCollection, removePlaquesFromCollection } = useCollections();
-  const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
+  const { visits, isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   
   // State
   const [collection, setCollection] = useState<any>(null);
@@ -101,8 +101,20 @@ export const useCollectionDetail = (collectionId: string) => {
               plaqueIds.includes(plaque.id)
             );
             
+            // Mark visited status for each plaque
+            const plaquesWithVisitedStatus = collectionPlaques.map(plaque => ({
+              ...plaque,
+              visited: isPlaqueVisited(plaque.id)
+            }));
+            
+            // Log for debugging
+            console.log("Setting plaques with visited status:", 
+              plaquesWithVisitedStatus.filter(p => p.visited).length, 
+              "of", plaquesWithVisitedStatus.length
+            );
+            
             // Update state with the matching plaques
-            setCollectionPlaques(collectionPlaques);
+            setCollectionPlaques(plaquesWithVisitedStatus);
           } catch (err) {
             console.error('Error fetching plaque data:', err);
             toast.error('Failed to load plaque data');
@@ -122,7 +134,28 @@ export const useCollectionDetail = (collectionId: string) => {
     };
     
     fetchCollection();
-  }, [collectionId, getCollection]);
+  }, [collectionId, getCollection, isPlaqueVisited]);
+  
+  // Add an additional effect to update visited status when visits change
+  useEffect(() => {
+    if (collectionPlaques.length > 0 && visits.length > 0) {
+      // Update plaques with current visited status
+      const updatedPlaques = collectionPlaques.map(plaque => ({
+        ...plaque,
+        visited: isPlaqueVisited(plaque.id)
+      }));
+      
+      // Only update if there are changes to avoid infinite loops
+      const hasChanges = updatedPlaques.some((p, i) => 
+        p.visited !== collectionPlaques[i].visited
+      );
+      
+      if (hasChanges) {
+        console.log("Updating plaques with new visited status");
+        setCollectionPlaques(updatedPlaques);
+      }
+    }
+  }, [visits, collectionPlaques, isPlaqueVisited]);
   
   // Get all unique tags from plaques
   const getAllTags = () => {
@@ -203,10 +236,20 @@ export const useCollectionDetail = (collectionId: string) => {
   // Mark plaque as visited
   const handleMarkVisited = async (plaqueId: number) => {
     try {
+      // Call the hook's markAsVisited function
       await markAsVisited(plaqueId, {});
+      
+      // Update local state for immediate UI feedback
       setCollectionPlaques(prev => prev.map(plaque => 
         plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
       ));
+      
+      // Debug logging
+      console.log(`Marked plaque ${plaqueId} as visited`);
+      console.log("Updated plaques:", collectionPlaques.map(p => 
+        ({ id: p.id, visited: p.id === plaqueId ? true : p.visited })
+      ));
+      
       toast.success('Plaque marked as visited');
     } catch (err) {
       console.error('Error marking as visited:', err);
@@ -418,7 +461,8 @@ export const useCollectionDetail = (collectionId: string) => {
     fetchAvailablePlaques,
     confirmDeleteOpen,
     setConfirmDeleteOpen,
-    handleClearSearch
+    handleClearSearch,
+    visits
   };
 };
 

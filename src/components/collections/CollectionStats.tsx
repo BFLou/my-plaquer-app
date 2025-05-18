@@ -3,13 +3,13 @@ import React from 'react';
 import { Clock, CheckCircle, User, BrainCircuit } from 'lucide-react';
 
 type Collection = {
-  id: number;
+  id: number | string;
   name: string;
   description?: string;
   icon: string;
   color: string;
-  plaques: number[] | number;
-  updated_at: string;
+  plaques: number[];
+  updated_at: any; // Can be Date, Timestamp, or string
   is_favorite?: boolean;
 };
 
@@ -19,18 +19,12 @@ type Plaque = {
   profession?: string;
   color?: string;
   visited?: boolean;
-  location?: string;
-  address?: string;
-  inscription?: string;
-  image?: string;
   [key: string]: any;
 };
 
 type Visit = {
   plaque_id: number;
   visited_at: string;
-  notes?: string;
-  location?: any;
   [key: string]: any;
 };
 
@@ -54,12 +48,22 @@ export const CollectionStats: React.FC<CollectionStatsProps> = ({
   const getVisitedStats = () => {
     if (!plaques.length) return { visitedCount: 0, visitedPercentage: 0 };
     
+    // Count plaques with visited=true property
+    const visitedByProperty = plaques.filter(plaque => plaque.visited === true).length;
+    
+    // Also count plaques that exist in userVisits array
     const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
-    const visitedCount = plaques.filter(plaque => 
-      plaque.visited || visitedPlaqueIds.includes(plaque.id)
+    const visitedInArray = plaques.filter(plaque => 
+      visitedPlaqueIds.includes(plaque.id)
     ).length;
     
+    // Use the greater of the two counts (should be the same in properly synced state)
+    const visitedCount = Math.max(visitedByProperty, visitedInArray);
+    
     const visitedPercentage = Math.round((visitedCount / plaques.length) * 100);
+    
+    // Debug log
+    console.log(`Stats: ${visitedCount} visited (${visitedByProperty} by property, ${visitedInArray} in visits array) out of ${plaques.length} (${visitedPercentage}%)`);
     
     return { visitedCount, visitedPercentage };
   };
@@ -86,19 +90,55 @@ export const CollectionStats: React.FC<CollectionStatsProps> = ({
   
   // Format time ago
   const formatTimeAgo = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    // If no date value is provided, return 'recently'
+    if (!dateString) return 'recently';
     
-    if (diffInDays === 0) return 'today';
-    if (diffInDays === 1) return 'yesterday';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) {
-      const weeks = Math.floor(diffInDays / 7);
-      return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+    try {
+      let date: Date;
+      
+      // Handle different date formats
+      if (typeof dateString === 'string') {
+        date = new Date(dateString);
+      } else if (dateString instanceof Date) {
+        date = dateString;
+      } else if (dateString && typeof dateString === 'object' && 'toDate' in dateString) {
+        // Firebase Timestamp object with toDate method
+        date = dateString.toDate();
+      } else if (dateString && typeof dateString === 'object' && 'seconds' in dateString) {
+        // Firebase server timestamp object with seconds
+        date = new Date(dateString.seconds * 1000);
+      } else {
+        return 'recently';
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.error("Invalid date:", dateString);
+        return 'recently';
+      }
+      
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+      
+      // Format based on time difference
+      if (diffInSeconds < 60) return 'just now';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+      
+      const diffInDays = Math.floor(diffInSeconds / 86400);
+      if (diffInDays === 1) return 'yesterday';
+      if (diffInDays < 7) return `${diffInDays} days ago`;
+      if (diffInDays < 30) {
+        const weeks = Math.floor(diffInDays / 7);
+        return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+      }
+      
+      const diffInMonths = Math.floor(diffInDays / 30);
+      return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
+    } catch (error) {
+      console.error("Error formatting date:", error, dateString);
+      return 'recently';
     }
-    const months = Math.floor(diffInDays / 30);
-    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
   };
 
   // Get stats
