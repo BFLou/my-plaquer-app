@@ -1,36 +1,28 @@
-// src/pages/CollectionDetailPage.tsx
-import React from 'react';
-import { Check, Filter, Plus, Search, Trash2 } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+// src/pages/CollectionDetailPage.tsx - Improved Version
+import React, { useState, useEffect } from 'react';
+import { Check, Filter, Map, Trash2 } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useCollectionDetail } from '../hooks/useCollectionDetail';
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ViewToggle } from "@/components/common/ViewToggle";
 import { ActionBar } from "@/components/common/ActionBar";
 
 // Collection Components
 import CollectionDetailHeader from '../components/collections/CollectionDetailHeader';
 import CollectionPlaqueGrid from '../components/collections/CollectionPlaqueGrid';
 import CollectionPlaqueList from '../components/collections/CollectionPlaqueList';
-import AddPlaquesButton from '../components/collections/AddPlaquesButton';
 import { CollectionStats } from '@/components/collections/CollectionStats';
 import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import DeleteCollectionDialog from '../components/collections/DeleteCollectionDialog';
 import CollectionEditForm from '../components/collections/forms/CollectionEditForm';
 import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
+import CollectionFilterView from '@/components/collections/CollectionFilterView';
+import { EmptyState } from '@/components/common/EmptyState';
 
 const CollectionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const collectionId = id || '';
   
   // Use our collection detail hook
@@ -39,16 +31,12 @@ const CollectionDetailPage: React.FC = () => {
     loading,
     error,
     collectionPlaques,
-    filteredPlaques,
-    allTags,
     viewMode,
     setViewMode,
     searchQuery,
     setSearchQuery,
     sortOption,
     setSortOption,
-    activeTag,
-    setActiveTag,
     isLoading,
     selectedPlaques,
     setSelectedPlaques,
@@ -77,8 +65,18 @@ const CollectionDetailPage: React.FC = () => {
     confirmDeleteOpen,
     setConfirmDeleteOpen,
     handleSaveName,
-    handleClearSearch
+    handleUpdateCollection,
+    editFormOpen,
+    setEditFormOpen
   } = useCollectionDetail(collectionId);
+
+  // State for filtered plaques
+  const [filteredPlaques, setFilteredPlaques] = useState(collectionPlaques);
+  
+  // Update filtered plaques when collection plaques change
+  useEffect(() => {
+    setFilteredPlaques(collectionPlaques);
+  }, [collectionPlaques]);
   
   // Show loading state
   if (loading) {
@@ -100,7 +98,7 @@ const CollectionDetailPage: React.FC = () => {
           <div className="bg-red-50 p-6 rounded-lg text-center">
             <h3 className="text-red-600 font-medium mb-2">Error Loading Collection</h3>
             <p className="text-red-500 mb-4">{error || 'Collection not found'}</p>
-            <Button variant="outline" onClick={() => window.location.href = '/collections'}>
+            <Button variant="outline" onClick={() => navigate('/collections')}>
               Back to Collections
             </Button>
           </div>
@@ -117,8 +115,8 @@ const CollectionDetailPage: React.FC = () => {
         {/* Collection header */}
         <CollectionDetailHeader
           collection={collection}
-          onBack={() => window.location.href = '/collections'}
-          onEdit={() => {/* Open edit dialog */}}
+          onBack={() => navigate('/collections')}
+          onEdit={() => setEditFormOpen(true)}
           onDuplicate={handleDuplicateCollection}
           onDelete={() => setConfirmDeleteOpen(true)}
           onToggleFavorite={handleToggleFavorite}
@@ -134,109 +132,78 @@ const CollectionDetailPage: React.FC = () => {
           className="mb-6" 
         />
         
-        {/* Search and controls bar */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 justify-between">
-            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-              <div className="relative w-full md:w-auto md:min-w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                {searchQuery && (
-                  <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    onClick={handleClearSearch}
-                  >
-                    <Search size={16} />
-                  </button>
-                )}
-                <Input
-                  placeholder="Search in this collection..."
-                  className="pl-9 pr-9 w-full"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              
-              {allTags.length > 1 && (
-                <Tabs defaultValue={activeTag} onValueChange={setActiveTag} className="w-full md:w-auto">
-                  <TabsList className="overflow-auto">
-                    {allTags.map(tag => (
-                      <TabsTrigger 
-                        key={tag} 
-                        value={tag}
-                        className="capitalize"
-                      >
-                        {tag}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-              )}
+        {/* Collection Content with Filters */}
+        <CollectionFilterView
+          plaques={collectionPlaques}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onAddPlaquesClick={() => {
+            setAddPlaquesModalOpen(true);
+            fetchAvailablePlaques();
+          }}
+          isLoading={isLoading}
+          onFilterChange={setFilteredPlaques}
+        >
+          {collectionPlaques.length === 0 ? (
+            <EmptyState
+              icon={Map}
+              title="No Plaques in this Collection"
+              description="Start building your collection by adding plaques"
+              actionLabel="Add Your First Plaque"
+              onAction={() => {
+                setAddPlaquesModalOpen(true);
+                fetchAvailablePlaques();
+              }}
+            />
+          ) : filteredPlaques.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+              <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
+              <p className="text-gray-500 mb-4">Try adjusting your search criteria or clear filters</p>
+              <Button 
+                variant="outline" 
+                onClick={() => setSearchQuery('')}
+              >
+                Clear Filters
+              </Button>
             </div>
-            
-            <div className="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
-              <ViewToggle
-                viewMode={viewMode}
-                onChange={setViewMode}
-                showMap={false}
-              />
-              
-              <Select value={sortOption} onValueChange={setSortOption}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recently_added">Recently Added</SelectItem>
-                  <SelectItem value="oldest_first">Oldest First</SelectItem>
-                  <SelectItem value="a_to_z">A to Z</SelectItem>
-                  <SelectItem value="z_to_a">Z to A</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <AddPlaquesButton 
-                onAddPlaques={() => {
-                  setAddPlaquesModalOpen(true);
-                  fetchAvailablePlaques();
-                }} 
-                isLoading={isLoading}
-              />
-            </div>
-          </div>
-        </div>
-        
-        {/* Collection Content */}
-        {viewMode === 'grid' ? (
-          <CollectionPlaqueGrid 
-            plaques={filteredPlaques}
-            isLoading={isLoading}
-            favorites={favorites}
-            selectedPlaques={selectedPlaques}
-            searchQuery={searchQuery}
-            onClearSearch={handleClearSearch}
-            onToggleSelect={toggleSelectPlaque}
-            onToggleFavorite={handleTogglePlaqueFavorite}
-            onPlaqueClick={handleViewPlaque}
-            onAddPlaquesClick={() => {
-              setAddPlaquesModalOpen(true);
-              fetchAvailablePlaques();
-            }}
-          />
-        ) : (
-          <CollectionPlaqueList
-            plaques={filteredPlaques}
-            isLoading={isLoading}
-            favorites={favorites}
-            selectedPlaques={selectedPlaques}
-            searchQuery={searchQuery}
-            onClearSearch={handleClearSearch}
-            onToggleSelect={toggleSelectPlaque}
-            onToggleFavorite={handleTogglePlaqueFavorite}
-            onPlaqueClick={handleViewPlaque}
-            onAddPlaquesClick={() => {
-              setAddPlaquesModalOpen(true);
-              fetchAvailablePlaques();
-            }}
-          />
-        )}
+          ) : viewMode === 'grid' ? (
+            <CollectionPlaqueGrid 
+              plaques={filteredPlaques}
+              isLoading={isLoading}
+              favorites={favorites}
+              selectedPlaques={selectedPlaques}
+              searchQuery={searchQuery}
+              onClearSearch={() => setSearchQuery('')}
+              onToggleSelect={toggleSelectPlaque}
+              onToggleFavorite={handleTogglePlaqueFavorite}
+              onMarkVisited={handleMarkVisited}
+              onRemovePlaque={handleRemovePlaque}
+              onPlaqueClick={handleViewPlaque}
+              onAddPlaquesClick={() => {
+                setAddPlaquesModalOpen(true);
+                fetchAvailablePlaques();
+              }}
+            />
+          ) : (
+            <CollectionPlaqueList
+              plaques={filteredPlaques}
+              isLoading={isLoading}
+              favorites={favorites}
+              selectedPlaques={selectedPlaques}
+              searchQuery={searchQuery}
+              onClearSearch={() => setSearchQuery('')}
+              onToggleSelect={toggleSelectPlaque}
+              onToggleFavorite={handleTogglePlaqueFavorite}
+              onPlaqueClick={handleViewPlaque}
+              onAddPlaquesClick={() => {
+                setAddPlaquesModalOpen(true);
+                fetchAvailablePlaques();
+              }}
+            />
+          )}
+        </CollectionFilterView>
       </div>
       
       {/* Action bar (visible when plaques are selected) */}
@@ -302,7 +269,6 @@ const CollectionDetailPage: React.FC = () => {
         isOpen={confirmRemovePlaqueOpen}
         onClose={() => {
           setConfirmRemovePlaqueOpen(false);
-          setPlaqueToRemove(null);
         }}
         onDelete={confirmRemovePlaque}
         isLoading={isLoading}
@@ -320,9 +286,9 @@ const CollectionDetailPage: React.FC = () => {
       
       {/* Edit collection form */}
       <CollectionEditForm
-        isOpen={false} // This would be controlled by state
-        onClose={() => {/* Close edit form */}}
-        onSubmit={() => {/* Handle edit form submit */}}
+        isOpen={editFormOpen}
+        onClose={() => setEditFormOpen(false)}
+        onSubmit={handleUpdateCollection}
         isLoading={isLoading}
         collection={collection}
       />
