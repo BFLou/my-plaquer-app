@@ -1,12 +1,13 @@
-// src/pages/CollectionDetailPage.tsx - Improved Version
-import React, { useState, useEffect } from 'react';
-import { Check, Filter, Map, Trash2 } from 'lucide-react';
+// src/pages/CollectionDetailPage.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { Check, Filter, Map, Trash2, Plus, Grid, List, Navigation, Route as RouteIcon } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCollectionDetail } from '../hooks/useCollectionDetail';
+import { useCollectionDetail, ViewMode } from '../hooks/useCollectionDetail';
 
 // UI Components
 import { Button } from "@/components/ui/button";
 import { ActionBar } from "@/components/common/ActionBar";
+import { toast } from 'sonner';
 
 // Collection Components
 import CollectionDetailHeader from '../components/collections/CollectionDetailHeader';
@@ -19,11 +20,16 @@ import CollectionEditForm from '../components/collections/forms/CollectionEditFo
 import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
 import CollectionFilterView from '@/components/collections/CollectionFilterView';
 import { EmptyState } from '@/components/common/EmptyState';
+import PlaqueMap from '../components/maps/PlaqueMap';
+import { calculateRouteDistance } from '../components/maps/utils/routeUtils';
+import { useRoutes } from '@/hooks/useRoutes';
 
 const CollectionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const collectionId = id || '';
+  const mapRef = useRef(null);
+  const { createRoute } = useRoutes();
   
   // Use our collection detail hook
   const {
@@ -65,18 +71,202 @@ const CollectionDetailPage: React.FC = () => {
     confirmDeleteOpen,
     setConfirmDeleteOpen,
     handleSaveName,
-    handleUpdateCollection,
-    editFormOpen,
-    setEditFormOpen
+    editNameMode,
+    editNameValue,
+    handleCancelEdit,
+    handleEditName
   } = useCollectionDetail(collectionId);
 
   // State for filtered plaques
   const [filteredPlaques, setFilteredPlaques] = useState(collectionPlaques);
   
+  // Additional state for map view
+  const [isRoutingMode, setIsRoutingMode] = useState(false);
+  const [routePoints, setRoutePoints] = useState([]);
+  const [routeDistance, setRouteDistance] = useState(0);
+  const [useImperial, setUseImperial] = useState(false);
+  const [useRoadRouting, setUseRoadRouting] = useState(true);
+  const [maintainMapView, setMaintainMapView] = useState(false);
+
+  // Effect to calculate route distance when route points change
+  useEffect(() => {
+    if (routePoints.length >= 2) {
+      const distance = calculateRouteDistance(routePoints);
+      setRouteDistance(distance);
+    } else {
+      setRouteDistance(0);
+    }
+  }, [routePoints]);
+
   // Update filtered plaques when collection plaques change
   useEffect(() => {
     setFilteredPlaques(collectionPlaques);
   }, [collectionPlaques]);
+  
+  // Add plaque to route
+  const addPlaqueToRoute = (plaque) => {
+    if (routePoints.some(p => p.id === plaque.id)) {
+      toast.info("This plaque is already in your route.");
+      return;
+    }
+    
+    setMaintainMapView(true);
+    setRoutePoints(prev => {
+      const newPoints = [...prev, plaque];
+      
+      if (newPoints.length >= 2 && mapRef.current) {
+        setTimeout(() => {
+          if (mapRef.current && mapRef.current.drawRouteLine) {
+            mapRef.current.drawRouteLine(newPoints, useRoadRouting, true);
+          }
+        }, 50);
+      }
+      
+      return newPoints;
+    });
+    
+    toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
+  };
+
+  // Remove plaque from route
+  const removePlaqueFromRoute = (plaqueId) => {
+    setRoutePoints(prev => {
+      const updatedPoints = prev.filter(p => p.id !== plaqueId);
+      
+      if (updatedPoints.length >= 2 && mapRef.current) {
+        setTimeout(() => {
+          if (mapRef.current && mapRef.current.drawRouteLine) {
+            mapRef.current.drawRouteLine(updatedPoints);
+          }
+        }, 50);
+      } else if (updatedPoints.length < 2 && mapRef.current) {
+        if (mapRef.current.clearRoute) {
+          mapRef.current.clearRoute();
+        }
+      }
+      
+      return updatedPoints;
+    });
+    
+    toast.info("Removed plaque from route");
+  };
+
+  // Clear route
+  const clearRoute = () => {
+    if (mapRef.current && mapRef.current.clearRoute) {
+      mapRef.current.clearRoute();
+    }
+    setRoutePoints([]);
+  };
+
+  // Export route as GeoJSON
+  const exportRoute = () => {
+    if (routePoints.length < 2) {
+      toast.error("Add at least two plaques to export a route");
+      return;
+    }
+    
+    // Create GeoJSON data with more detailed properties
+    const routeData = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {
+            name: `${collection.name} Route`,
+            description: `Route with ${routePoints.length} plaques from ${collection.name}`,
+            distance: calculateRouteDistance(routePoints),
+            points: routePoints.map(p => ({
+              id: p.id,
+              title: p.title,
+              description: p.inscription || '',
+              address: p.address || p.location || ''
+            }))
+          },
+          geometry: {
+            type: "LineString",
+            coordinates: routePoints
+              .filter(p => p.latitude && p.longitude)
+              .map(p => [
+                parseFloat(p.longitude), 
+                parseFloat(p.latitude)
+              ])
+          }
+        },
+        // Add individual points as separate features
+        ...routePoints.map((p, index) => ({
+          type: "Feature",
+          properties: {
+            name: p.title,
+            id: p.id,
+            index: index + 1,
+            description: p.inscription || '',
+            address: p.address || p.location || '',
+            type: index === 0 ? 'start' : (index === routePoints.length - 1 ? 'end' : 'waypoint')
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [
+              parseFloat(p.longitude),
+              parseFloat(p.latitude)
+            ]
+          }
+        }))
+      ]
+    };
+    
+    // Convert to JSON string with formatting
+    const dataStr = JSON.stringify(routeData, null, 2);
+    
+    // Create download link
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `${collection.name}-route-${new Date().toISOString().slice(0, 10)}.geojson`);
+    a.click();
+    
+    toast.success("Route exported successfully as GeoJSON");
+  };
+
+  // Save route
+  const saveRoute = async () => {
+    if (routePoints.length < 2) {
+      toast.error("Add at least two plaques to save a route");
+      return;
+    }
+    
+    try {
+      // Generate a default name
+      const now = new Date();
+      const defaultName = `${collection.name} Route - ${now.toLocaleDateString()} (${routePoints.length} stops)`;
+      
+      // Save the route using the createRoute function from the useRoutes hook
+      const savedRoute = await createRoute(
+        defaultName,
+        routePoints,
+        routeDistance,
+        `A route visiting ${routePoints.length} plaques from "${collection.name}"`,
+        false // Not public by default
+      );
+      
+      if (savedRoute) {
+        toast.success(`Route "${savedRoute.name}" saved successfully!`);
+      }
+    } catch (error) {
+      console.error("Error saving route:", error);
+      toast.error("Failed to save route. Please make sure you're logged in.");
+    }
+  };
+
+  // Find user location
+  const findUserLocation = () => {
+    if (mapRef.current && mapRef.current.findUserLocation) {
+      mapRef.current.findUserLocation();
+    } else {
+      toast.error("Map not ready. Please try again.");
+    }
+  };
   
   // Show loading state
   if (loading) {
@@ -116,7 +306,7 @@ const CollectionDetailPage: React.FC = () => {
         <CollectionDetailHeader
           collection={collection}
           onBack={() => navigate('/collections')}
-          onEdit={() => setEditFormOpen(true)}
+          onEdit={handleEditName}
           onDuplicate={handleDuplicateCollection}
           onDelete={() => setConfirmDeleteOpen(true)}
           onToggleFavorite={handleToggleFavorite}
@@ -167,6 +357,28 @@ const CollectionDetailPage: React.FC = () => {
               >
                 Clear Filters
               </Button>
+            </div>
+          ) : viewMode === 'map' ? (
+            <div className="relative">
+              <div className="h-[650px]">
+                <PlaqueMap
+                  ref={mapRef}
+                  plaques={filteredPlaques}
+                  onPlaqueClick={handleViewPlaque}
+                  favorites={favorites}
+                  selectedPlaqueId={selectedPlaque?.id}
+                  maintainView={maintainMapView}
+                  className="h-full w-full"
+                  isRoutingMode={isRoutingMode}
+                  setIsRoutingMode={setIsRoutingMode}
+                  routePoints={routePoints}
+                  addPlaqueToRoute={addPlaqueToRoute}
+                  removePlaqueFromRoute={removePlaqueFromRoute}
+                  clearRoute={clearRoute}
+                  exportRoute={exportRoute}
+                  saveRoute={saveRoute}
+                />
+              </div>
             </div>
           ) : viewMode === 'grid' ? (
             <CollectionPlaqueGrid 
@@ -286,9 +498,9 @@ const CollectionDetailPage: React.FC = () => {
       
       {/* Edit collection form */}
       <CollectionEditForm
-        isOpen={editFormOpen}
-        onClose={() => setEditFormOpen(false)}
-        onSubmit={handleUpdateCollection}
+        isOpen={editNameMode}
+        onClose={handleCancelEdit}
+        onSubmit={handleSaveName}
         isLoading={isLoading}
         collection={collection}
       />

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { capitalizeWords } from '@/utils/stringUtils';
 import {
   Popover,
   PopoverContent,
@@ -61,7 +62,8 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
     const professionCounts: Record<string, number> = {};
     
     plaques.forEach(plaque => {
-      const profession = plaque.profession || 'Unknown';
+      // Get profession or use 'Unknown' default - with capitalization
+      const profession = plaque.profession ? capitalizeWords(plaque.profession) : 'Unknown';
       professionCounts[profession] = (professionCounts[profession] || 0) + 1;
     });
     
@@ -79,9 +81,10 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
         (plaque.location?.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (plaque.description?.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      // Filter by selected professions
+      // Filter by selected professions - capitalize profession for comparison
+      const plaqueProfession = plaque.profession ? capitalizeWords(plaque.profession) : 'Unknown';
       const matchesProfession = selectedProfessions.length === 0 || 
-        selectedProfessions.includes(plaque.profession || 'Unknown');
+        selectedProfessions.includes(plaqueProfession);
       
       return matchesSearch && matchesProfession;
     });

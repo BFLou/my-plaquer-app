@@ -1,5 +1,5 @@
 // src/hooks/useCollectionDetail.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '@/hooks/useCollection';
 import { usePlaques } from '@/hooks/usePlaques';
@@ -35,6 +35,7 @@ export const useCollectionDetail = (collectionId: string) => {
   const [confirmRemovePlaqueOpen, setConfirmRemovePlaqueOpen] = useState(false);
   const [plaqueToRemove, setPlaqueToRemove] = useState<number | null>(null);
   const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
+  const [editFormOpen, setEditFormOpen] = useState(false);
 
   // Fetch available plaques
   const fetchAvailablePlaques = async () => {
@@ -107,12 +108,6 @@ export const useCollectionDetail = (collectionId: string) => {
               visited: isPlaqueVisited(plaque.id)
             }));
             
-            // Log for debugging
-            console.log("Setting plaques with visited status:", 
-              plaquesWithVisitedStatus.filter(p => p.visited).length, 
-              "of", plaquesWithVisitedStatus.length
-            );
-            
             // Update state with the matching plaques
             setCollectionPlaques(plaquesWithVisitedStatus);
           } catch (err) {
@@ -151,7 +146,6 @@ export const useCollectionDetail = (collectionId: string) => {
       );
       
       if (hasChanges) {
-        console.log("Updating plaques with new visited status");
         setCollectionPlaques(updatedPlaques);
       }
     }
@@ -242,12 +236,6 @@ export const useCollectionDetail = (collectionId: string) => {
       // Update local state for immediate UI feedback
       setCollectionPlaques(prev => prev.map(plaque => 
         plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
-      ));
-      
-      // Debug logging
-      console.log(`Marked plaque ${plaqueId} as visited`);
-      console.log("Updated plaques:", collectionPlaques.map(p => 
-        ({ id: p.id, visited: p.id === plaqueId ? true : p.visited })
       ));
       
       toast.success('Plaque marked as visited');
@@ -394,6 +382,40 @@ export const useCollectionDetail = (collectionId: string) => {
     }
   };
   
+  // Handle updating collection
+  const handleUpdateCollection = async (data: any) => {
+    if (!collection) return;
+    
+    try {
+      setIsLoading(true);
+      await updateCollection(collection.id, {
+        name: data.name,
+        description: data.description || '',
+        icon: data.icon,
+        color: data.color,
+        tags: data.tags || []
+      });
+      
+      // Update collection in state
+      setCollection(prev => ({
+        ...prev,
+        name: data.name,
+        description: data.description || '',
+        icon: data.icon,
+        color: data.color,
+        tags: data.tags || []
+      }));
+      
+      setEditFormOpen(false);
+      toast.success('Collection updated successfully');
+    } catch (err) {
+      console.error('Error updating collection:', err);
+      toast.error('Failed to update collection');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // View plaque details
   const handleViewPlaque = (plaque: Plaque) => {
     setSelectedPlaque(plaque);
@@ -462,8 +484,11 @@ export const useCollectionDetail = (collectionId: string) => {
     confirmDeleteOpen,
     setConfirmDeleteOpen,
     handleClearSearch,
-    visits
+    visits,
+    editFormOpen,
+    setEditFormOpen,
+    handleUpdateCollection
   };
 };
 
-export default useCollectionDetail;
+export default useCollectionDetail;s

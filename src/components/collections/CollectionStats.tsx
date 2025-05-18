@@ -1,6 +1,7 @@
 // src/components/collections/CollectionStats.tsx
 import React from 'react';
 import { Clock, CheckCircle, User, BrainCircuit } from 'lucide-react';
+import { capitalizeWords } from '@/utils/stringUtils';
 
 type Collection = {
   id: number | string;
@@ -80,7 +81,9 @@ export const CollectionStats: React.FC<CollectionStatsProps> = ({
         return;
       }
       
-      professionCounts[plaque.profession] = (professionCounts[plaque.profession] || 0) + 1;
+      // Capitalize the profession before adding to counts
+      const capitalizedProfession = capitalizeWords(plaque.profession);
+      professionCounts[capitalizedProfession] = (professionCounts[capitalizedProfession] || 0) + 1;
     });
     
     return Object.entries(professionCounts)
