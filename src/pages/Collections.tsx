@@ -443,22 +443,22 @@ const CollectionsPage = () => {
           />
         )}
         
-        {/* Create Collection Sheet */}
-        <Sheet open={createCollectionOpen} onOpenChange={setCreateCollectionOpen}>
-          <SheetContent side="right" className="sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>Create New Collection</SheetTitle>
-            </SheetHeader>
-            
-            <CollectionForm
-              onSubmit={handleCreateCollection}
-              onCancel={() => setCreateCollectionOpen(false)}
-              submitLabel="Create Collection"
-              className="pt-4"
-              isLoading={isLoading}
-            />
-          </SheetContent>
-        </Sheet>
+<Dialog open={createCollectionOpen} onOpenChange={setCreateCollectionOpen}>
+  <DialogContent className="sm:max-w-md max-h-[80vh] overflow-auto">
+    <DialogHeader>
+      <DialogTitle>Create New Collection</DialogTitle>
+    </DialogHeader>
+    
+    <div className="py-4">
+      <CollectionForm
+        onSubmit={handleCreateCollection}
+        onCancel={() => setCreateCollectionOpen(false)}
+        submitLabel="Create Collection"
+        isLoading={isLoading}
+      />
+    </div>
+  </DialogContent>
+</Dialog>
         
         {/* Edit Collection Sheet */}
         <Sheet open={editCollectionOpen} onOpenChange={setEditCollectionOpen}>

@@ -7,6 +7,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
+  DialogFooter,
   Button,
   Input,
   Textarea,
@@ -37,11 +38,10 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('📍'); // Default icon
   const [color, setColor] = useState('blue-500'); // Default color
-  const [isPublic, setIsPublic] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   
-  // List of icons to choose from
-  const icons = ['📍', '🔍', '🏛️', '🏠', '🌆', '📚', '🎭', '🎨', '🎵', '🔬', '⚔️', '👑', '🏆', '⭐'];
+  // List of icons to choose from - expanded selection
+  const icons = ['📍', '🔍', '🏛️', '🏠', '🌆', '📚', '🎭', '🎨', '🎵', '🔬', '⚔️', '👑', '🏆', '⭐', '🌟', '🧠', '💡', '🏺', '🗺️', '🏙️'];
   
   // List of colors to choose from
   const colors = [
@@ -52,8 +52,24 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
     { value: 'amber-500', label: 'Amber' },
     { value: 'pink-500', label: 'Pink' },
     { value: 'indigo-500', label: 'Indigo' },
-    { value: 'gray-500', label: 'Gray' }
+    { value: 'gray-500', label: 'Gray' },
+    { value: 'teal-500', label: 'Teal' },
+    { value: 'cyan-500', label: 'Cyan' }
   ];
+  
+  // Reset form when dialog closes
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      // Reset after a short delay to prevent visual glitches
+      setTimeout(() => {
+        setName('');
+        setDescription('');
+        setIcon('📍');
+        setColor('blue-500');
+      }, 200);
+      onClose();
+    }
+  };
   
   // Handle form submission
   const handleSubmit = async () => {
@@ -78,7 +94,7 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
         icon,
         color,
         description,
-        isPublic,
+        false, // Removing isPublic option
         plaqueIds
       );
       
@@ -93,59 +109,77 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Collection</DialogTitle>
+          <DialogTitle className="text-xl">Create New Collection</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Collection Name</Label>
+            <Label htmlFor="name" className="text-base font-medium">
+              Collection Name <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="name"
               placeholder="My Blue Plaques"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="w-full"
               autoFocus
             />
+            <p className="text-xs text-gray-500">{name.length}/50 characters</p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="description">Description (Optional)</Label>
+            <Label htmlFor="description" className="text-base font-medium">
+              Description (Optional)
+            </Label>
             <Textarea
               id="description"
               placeholder="Add a description for your collection..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="w-full"
               rows={3}
             />
+            <p className="text-xs text-gray-500">{description.length}/200 characters</p>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="icon">Icon</Label>
+              <Label htmlFor="icon" className="text-base font-medium">
+                Icon
+              </Label>
               <Select value={icon} onValueChange={setIcon}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger id="icon" className="w-full">
+                  <SelectValue placeholder="Select an icon" />
                 </SelectTrigger>
-                <SelectContent>
-                  {icons.map((iconOption) => (
-                    <SelectItem key={iconOption} value={iconOption}>
-                      <span className="text-lg mr-2">{iconOption}</span> {iconOption}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="max-h-[200px]">
+                  <div className="grid grid-cols-5 gap-2 p-2">
+                    {icons.map((iconOption) => (
+                      <SelectItem 
+                        key={iconOption} 
+                        value={iconOption}
+                        className="flex justify-center items-center h-10 cursor-pointer rounded hover:bg-gray-100"
+                      >
+                        <span className="text-xl">{iconOption}</span>
+                      </SelectItem>
+                    ))}
+                  </div>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="color">Color</Label>
+              <Label htmlFor="color" className="text-base font-medium">
+                Color
+              </Label>
               <Select value={color} onValueChange={setColor}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger id="color" className="w-full">
+                  <SelectValue placeholder="Select a color" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[200px]">
                   {colors.map((colorOption) => (
                     <SelectItem key={colorOption.value} value={colorOption.value}>
                       <div className="flex items-center">
@@ -161,16 +195,20 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
             </div>
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="isPublic">Make Public</Label>
-              <p className="text-sm text-gray-500">Allow others to view this collection</p>
+          {/* Preview */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-500 mb-2">Preview</h3>
+            <div className="flex items-center gap-3 bg-white p-3 rounded-md shadow-sm">
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-white bg-${color.split('-')[0]}-500`}>
+                <span className="text-2xl">{icon}</span>
+              </div>
+              <div>
+                <h3 className="font-medium">{name || "My Collection"}</h3>
+                {description && (
+                  <p className="text-sm text-gray-500 line-clamp-1">{description}</p>
+                )}
+              </div>
             </div>
-            <Switch
-              id="isPublic"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-            />
           </div>
           
           {initialPlaques.length > 0 && (
@@ -187,11 +225,20 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
           )}
         </div>
         
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose} disabled={isCreating}>
+        <DialogFooter className="sm:justify-end gap-2 pt-2 mt-2 border-t">
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={isCreating}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isCreating}>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isCreating || !name.trim()}
+            className="w-full sm:w-auto"
+          >
             {isCreating ? (
               <>
                 <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
@@ -199,7 +246,7 @@ const CreateCollectionDialog = ({ isOpen, onClose, initialPlaques = [] }: Create
               </>
             ) : 'Create Collection'}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
