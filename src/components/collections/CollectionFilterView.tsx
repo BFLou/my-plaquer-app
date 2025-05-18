@@ -1,5 +1,5 @@
 // src/components/collections/CollectionFilterView.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import { Search, Filter, X, Plus } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ type CollectionFilterViewProps = {
   children: React.ReactNode;
   onFilterChange?: (filtered: Plaque[]) => void;
   className?: string;
+  showMapView?: boolean; // Added parameter for enabling/disabling map view
 };
 
 const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
@@ -51,14 +52,15 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   children,
   onFilterChange,
   className = '',
+  showMapView = true, // Default to true to enable map view
 }) => {
   // Filter state
-  const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
-  const [professionDropdownOpen, setProfessionDropdownOpen] = useState(false);
-  const [mobileProfessionFilterOpen, setMobileProfessionFilterOpen] = useState(false);
+  const [selectedProfessions, setSelectedProfessions] = React.useState<string[]>([]);
+  const [professionDropdownOpen, setProfessionDropdownOpen] = React.useState(false);
+  const [mobileProfessionFilterOpen, setMobileProfessionFilterOpen] = React.useState(false);
 
   // Generate profession statistics
-  const professionStats = useMemo(() => {
+  const professionStats = React.useMemo(() => {
     const professionCounts: Record<string, number> = {};
     
     plaques.forEach(plaque => {
@@ -73,7 +75,7 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   }, [plaques]);
 
   // Filter plaques based on search query and selected professions
-  const filteredPlaques = useMemo(() => {
+  const filteredPlaques = React.useMemo(() => {
     return plaques.filter(plaque => {
       // Filter by search query
       const matchesSearch = !searchQuery.trim() || 
@@ -91,7 +93,7 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   }, [plaques, searchQuery, selectedProfessions]);
 
   // Update parent component when filtered plaques change
-  useEffect(() => {
+  React.useEffect(() => {
     if (onFilterChange) {
       onFilterChange(filteredPlaques);
     }
@@ -199,7 +201,7 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
             <ViewToggle
               viewMode={viewMode}
               onChange={setViewMode}
-              showMap={false}
+              showMap={showMapView} // Use the showMapView prop
             />
           </div>
         </div>
@@ -315,7 +317,7 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
             <ViewToggle
               viewMode={viewMode}
               onChange={setViewMode}
-              showMap={false}
+              showMap={showMapView} // Use the showMapView prop
             />
             
             <AddPlaquesButton 
