@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatTimeAgo, getPlaqueCount } from '../utils/collectionHelpers';
+import { formatTimeAgo, getPlaqueCount } from '../../utils/collectionHelpers';
 
 export type Collection = {
   id: string;

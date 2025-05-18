@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Collection } from './CollectionCard';
-import { formatTimeAgo, getPlaqueCount } from '../utils/collectionHelpers';
+import { formatTimeAgo, getPlaqueCount } from '../../utils/collectionHelpers';
 
 type CollectionListItemProps = {
   collection: Collection;
