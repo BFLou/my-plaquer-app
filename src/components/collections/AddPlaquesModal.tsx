@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import PlaqueImage from '../plaques/PlaqueImage';
 import plaqueData from '../../data/plaque_data.json';
 import { adaptPlaquesData } from '@/utils/plaqueAdapter';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface AddPlaquesModalProps {
   isOpen: boolean;
@@ -37,15 +38,19 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [hasSearched, setHasSearched] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [activeTab, setActiveTab] = useState('search'); // 'search' or 'selected'
+  const [selectedPlaques, setSelectedPlaques] = useState<Plaque[]>([]); // Full plaque objects that are selected
   
   // Reset selection when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setSelectedPlaqueIds([]);
+      setSelectedPlaques([]);
       setSearchQuery('');
       setSearchResults([]);
       setCurrentPage(1);
       setHasSearched(false);
+      setActiveTab('search');
     }
   }, [isOpen]);
 
@@ -153,12 +158,18 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   const totalPages = Math.ceil(searchResults.length / ITEMS_PER_PAGE);
   
   // Toggle selection of a plaque
-  const togglePlaque = (plaqueId: number) => {
-    setSelectedPlaqueIds(prev =>
-      prev.includes(plaqueId) 
-        ? prev.filter(id => id !== plaqueId) 
-        : [...prev, plaqueId]
-    );
+  const togglePlaque = (plaque: Plaque) => {
+    const plaqueId = plaque.id;
+    
+    if (selectedPlaqueIds.includes(plaqueId)) {
+      // Remove from selection
+      setSelectedPlaqueIds(prev => prev.filter(id => id !== plaqueId));
+      setSelectedPlaques(prev => prev.filter(p => p.id !== plaqueId));
+    } else {
+      // Add to selection
+      setSelectedPlaqueIds(prev => [...prev, plaqueId]);
+      setSelectedPlaques(prev => [...prev, plaque]);
+    }
   };
   
   // Handle adding plaques
@@ -192,224 +203,320 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
     }
   };
   
+  // Clear search and reset
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setHasSearched(false);
+    setCurrentPage(1);
+  };
+  
+  // Remove a plaque from selection
+  const removeFromSelection = (plaqueId: number) => {
+    setSelectedPlaqueIds(prev => prev.filter(id => id !== plaqueId));
+    setSelectedPlaques(prev => prev.filter(p => p.id !== plaqueId));
+  };
+  
+  // Clear all selections
+  const clearAllSelections = () => {
+    setSelectedPlaqueIds([]);
+    setSelectedPlaques([]);
+  };
+  
+  // Render a plaque item
+  const renderPlaqueItem = (plaque: Plaque, isInSelectedView = false) => {
+    const isSelected = selectedPlaqueIds.includes(plaque.id);
+    
+    return (
+      <div
+        key={plaque.id}
+        className={`border rounded-lg overflow-hidden ${
+          isSelected 
+            ? 'border-blue-500 bg-blue-50' 
+            : 'border-gray-200 hover:border-gray-300'
+        } transition-colors cursor-pointer`}
+        onClick={() => !isInSelectedView && togglePlaque(plaque)}
+      >
+        <div className="flex items-center p-3">
+          <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 bg-gray-100">
+            <PlaqueImage
+              src={plaque.image || plaque.main_photo}
+              alt={plaque.title}
+              className="w-full h-full object-cover"
+              plaqueColor={plaque.color}
+            />
+          </div>
+          
+          <div className="ml-3 flex-grow">
+            <h4 className="font-medium text-sm">{plaque.title}</h4>
+            <p className="text-xs text-gray-500">{plaque.location || plaque.address}</p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {plaque.color && (
+                <Badge variant="outline" className="text-xs py-0">
+                  {plaque.color}
+                </Badge>
+              )}
+              {plaque.profession && (
+                <Badge variant="outline" className="text-xs py-0">
+                  {plaque.profession}
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          {isInSelectedView ? (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeFromSelection(plaque.id);
+              }}
+            >
+              <X size={18} />
+            </Button>
+          ) : (
+            <div className={`h-6 w-6 rounded-full flex items-center justify-center border ${
+              isSelected
+                ? 'bg-blue-500 border-blue-500 text-white'
+                : 'border-gray-300'
+            }`}>
+              {isSelected && <Check size={14} />}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Add Plaques to Collection</DialogTitle>
-        </DialogHeader>
-        
-        <div className="mt-2 text-sm text-gray-500 bg-blue-50 p-4 rounded-md border border-blue-100">
-          <p className="flex items-center gap-2">
-            <MapPin size={16} className="text-blue-500" />
-            <span>You can also add plaques directly from the <strong>Discover</strong> page when browsing the map or list view.</span>
-          </p>
-        </div>
-        
-        <div className="flex justify-between items-center mt-4 mb-2">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <Input
-              placeholder="Search plaques by any text..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyPress}
-              className="pl-9 pr-3"
-            />
-            {searchQuery && (
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                onClick={() => {
-                  setSearchQuery('');
-                  setSearchResults([]);
-                  setHasSearched(false);
-                  setCurrentPage(1);
-                }}
-              >
-                <X size={16} />
-              </button>
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] p-0">
+        {/* Fixed height structure */}
+        <div className="flex flex-col h-full max-h-[85vh]">
+          {/* Fixed header section */}
+          <div className="p-6 pb-2">
+            <DialogHeader>
+              <DialogTitle>Add Plaques to Collection</DialogTitle>
+            </DialogHeader>
+            
+            <div className="mt-2 text-sm text-gray-500 bg-blue-50 p-4 rounded-md border border-blue-100">
+              <p className="flex items-center gap-2">
+                <MapPin size={16} className="text-blue-500" />
+                <span>You can also add plaques directly from the <strong>Discover</strong> page when browsing the map or list view.</span>
+              </p>
+            </div>
+            
+            {/* Tabs for Search and Selected */}
+            <div className="mt-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="search" className="flex items-center gap-1">
+                    <Search size={14} /> Search
+                  </TabsTrigger>
+                  <TabsTrigger value="selected" className="flex items-center gap-1">
+                    <Check size={14} /> Selected ({selectedPlaqueIds.length})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            
+            {activeTab === 'search' && (
+              <div className="flex justify-between items-center mt-4 mb-2">
+                <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <Input
+                    placeholder="Search plaques by any text..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    className="pl-9 pr-3"
+                  />
+                  {searchQuery && (
+                    <button
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      onClick={clearSearch}
+                      aria-label="Clear search"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleSearch}
+                  disabled={!searchQuery.trim() || isSearching}
+                  className="ml-2"
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader size={14} className="mr-1 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={14} className="mr-1" />
+                      Search
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            
+            {activeTab === 'selected' && selectedPlaqueIds.length > 0 && (
+              <div className="flex justify-between items-center mt-4 mb-2">
+                <div className="text-sm">
+                  <span className="font-medium">{selectedPlaqueIds.length}</span> plaques selected
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllSelections}
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                >
+                  <X size={14} className="mr-1" />
+                  Clear All
+                </Button>
+              </div>
+            )}
+            
+            {/* Status bar with counts and pagination info (Search tab only) */}
+            {activeTab === 'search' && searchResults.length > 0 && (
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-gray-500">
+                  {`Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, searchResults.length)} of ${searchResults.length} plaques`}
+                  {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
+                </div>
+              </div>
             )}
           </div>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleSearch}
-            disabled={!searchQuery.trim() || isSearching}
-            className="ml-2"
-          >
-            {isSearching ? (
-              <>
-                <Loader size={14} className="mr-1 animate-spin" />
-                Searching...
-              </>
-            ) : (
-              <>
-                <Search size={14} className="mr-1" />
-                Search
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {selectedPlaqueIds.length > 0 && (
-          <div className="flex justify-end">
-            <Badge variant="secondary">
-              {selectedPlaqueIds.length} selected
-            </Badge>
-          </div>
-        )}
-        
-        {/* Status bar with counts and pagination info */}
-        {searchResults.length > 0 && (
-          <div className="flex justify-between text-xs text-gray-500 mb-2">
-            <div>
-              Showing {searchResults.length > 0 ? 
-                `${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, searchResults.length)} of ${searchResults.length}` : 
-                '0'} plaques
-            </div>
-            {totalPages > 1 && (
-              <div>
-                Page {currentPage} of {totalPages}
-              </div>
-            )}
-          </div>
-        )}
-        
-        {isLoading ? (
-          <div className="flex-grow flex items-center justify-center py-8">
-            <div className="flex flex-col items-center gap-3">
-              <Loader className="animate-spin text-blue-500" size={24} />
-              <p className="text-gray-500 text-sm">Searching plaques...</p>
-            </div>
-          </div>
-        ) : !hasSearched ? (
-          <div className="flex-grow flex items-center justify-center py-8 text-center">
-            <div className="flex flex-col items-center gap-3 max-w-sm">
-              <Search size={32} className="text-gray-300" />
-              <p className="text-gray-500">Search for plaques to add to your collection</p>
-              <p className="text-xs text-gray-400">You can search by title, location, profession, or any other text related to the plaques</p>
-            </div>
-          </div>
-        ) : searchResults.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p className="mb-2">No plaques match your search.</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                setSearchQuery('');
-                setSearchResults([]);
-                setHasSearched(false);
-              }}
-            >
-              Clear Search
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-y-auto max-h-[400px] mt-2 pr-2">
-            {searchResults.length >= 100 && (
-              <div className="mb-3 text-xs flex gap-2 items-center bg-amber-50 p-2 rounded-md border border-amber-200">
-                <Info size={14} className="text-amber-500" />
-                <span>Showing up to 100 matching plaques. Refine your search to see more specific results.</span>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              {currentPlaques.map(plaque => (
-                <div
-                  key={plaque.id}
-                  className={`border rounded-lg overflow-hidden ${
-                    selectedPlaqueIds.includes(plaque.id) 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  } transition-colors cursor-pointer`}
-                  onClick={() => togglePlaque(plaque.id)}
-                >
-                  <div className="flex items-center p-3">
-                    <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 bg-gray-100">
-                      <PlaqueImage
-                        src={plaque.image || plaque.main_photo}
-                        alt={plaque.title}
-                        className="w-full h-full object-cover"
-                        plaqueColor={plaque.color}
-                      />
-                    </div>
-                    
-                    <div className="ml-3 flex-grow">
-                      <h4 className="font-medium text-sm">{plaque.title}</h4>
-                      <p className="text-xs text-gray-500">{plaque.location || plaque.address}</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {plaque.color && (
-                          <Badge variant="outline" className="text-xs py-0">
-                            {plaque.color}
-                          </Badge>
-                        )}
-                        {plaque.profession && (
-                          <Badge variant="outline" className="text-xs py-0">
-                            {plaque.profession}
-                          </Badge>
-                        )}
+          {/* Scrollable content area with fixed height */}
+          <div className="p-6 pt-2 pb-0 flex-grow overflow-hidden">
+            <div className="border-t pt-2 h-full max-h-[calc(85vh-280px)] overflow-y-auto pr-2">
+              {activeTab === 'search' && (
+                <>
+                  {isLoading ? (
+                    <div className="flex-grow flex items-center justify-center py-8">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader className="animate-spin text-blue-500" size={24} />
+                        <p className="text-gray-500 text-sm">Searching plaques...</p>
                       </div>
                     </div>
-                    
-                    <div className={`h-6 w-6 rounded-full flex items-center justify-center border ${
-                      selectedPlaqueIds.includes(plaque.id)
-                        ? 'bg-blue-500 border-blue-500 text-white'
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedPlaqueIds.includes(plaque.id) && <Check size={14} />}
+                  ) : !hasSearched ? (
+                    <div className="flex-grow flex items-center justify-center py-8 text-center">
+                      <div className="flex flex-col items-center gap-3 max-w-sm">
+                        <Search size={32} className="text-gray-300" />
+                        <p className="text-gray-500">Search for plaques to add to your collection</p>
+                        <p className="text-xs text-gray-400">You can search by title, location, profession, or any other text related to the plaques</p>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  ) : searchResults.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="mb-2">No plaques match your search.</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={clearSearch}
+                      >
+                        Clear Search
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {searchResults.length >= 100 && (
+                        <div className="mb-3 text-xs flex gap-2 items-center bg-amber-50 p-2 rounded-md border border-amber-200">
+                          <Info size={14} className="text-amber-500" />
+                          <span>Showing up to 100 matching plaques. Refine your search to see more specific results.</span>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-2">
+                        {currentPlaques.map(plaque => renderPlaqueItem(plaque))}
+                      </div>
+                      
+                      {/* Pagination controls */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center mt-4 gap-2 pb-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToPrevPage}
+                            disabled={currentPage === 1}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToNextPage}
+                            disabled={currentPage === totalPages}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+              
+              {activeTab === 'selected' && (
+                <>
+                  {selectedPlaqueIds.length === 0 ? (
+                    <div className="flex-grow flex items-center justify-center py-8 text-center">
+                      <div className="flex flex-col items-center gap-3 max-w-sm">
+                        <Check size={32} className="text-gray-300" />
+                        <p className="text-gray-500">No plaques selected yet</p>
+                        <p className="text-xs text-gray-400">Switch to the Search tab to find and select plaques to add to your collection</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setActiveTab('search')}
+                        >
+                          <Search size={14} className="mr-1" />
+                          Search Plaques
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedPlaques.map(plaque => renderPlaqueItem(plaque, true))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            
-            {/* Pagination controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-4 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
           </div>
-        )}
-        
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleAddPlaques} 
-            disabled={selectedPlaqueIds.length === 0 || isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader size={16} className="mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <Plus size={16} className="mr-2" />
-                Add {selectedPlaqueIds.length > 0 ? selectedPlaqueIds.length : ''} Plaques
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+          
+          {/* Fixed footer with action buttons - always visible */}
+          <div className="p-6 border-t mt-2 bg-white">
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddPlaques} 
+                disabled={selectedPlaqueIds.length === 0 || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader size={16} className="mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} className="mr-2" />
+                    Add {selectedPlaqueIds.length > 0 ? selectedPlaqueIds.length : ''} Plaques
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

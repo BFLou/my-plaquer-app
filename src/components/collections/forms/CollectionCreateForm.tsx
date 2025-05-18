@@ -263,61 +263,7 @@ const CollectionCreateForm: React.FC<CollectionCreateFormProps> = ({
               ))}
             </div>
           </div>
-          
-          {/* Tags */}
-          <div className="space-y-3">
-            <Label className="text-base">Tags (optional)</Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {formState.tags && formState.tags.length > 0 ? (
-                formState.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                    {tag}
-                    <button 
-                      type="button" 
-                      className="ml-1 hover:text-red-500"
-                      onClick={() => handleRemoveTag(tag)}
-                      disabled={isLoading}
-                    >
-                      <X size={12} />
-                    </button>
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-gray-400 text-sm">No tags added yet</span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Input 
-                placeholder="Add a tag..."
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                disabled={isLoading}
-              />
-              <Button 
-                type="button" 
-                onClick={handleAddTag}
-                disabled={!tagInput.trim() || isLoading}
-              >
-                Add
-              </Button>
-            </div>
-          </div>
-          
-          {/* Public/Private Toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="isPublic" className="text-base">Public Collection</Label>
-              <p className="text-sm text-gray-500">Anyone with the link can view this collection</p>
-            </div>
-            <Switch
-              id="isPublic"
-              checked={formState.isPublic}
-              onCheckedChange={(checked) => handleChange('isPublic', checked)}
-              disabled={isLoading}
-            />
-          </div>
-          
+                    
           {/* Preview */}
           <div className="pt-2 pb-4">
             <h3 className="text-sm font-medium text-gray-500 mb-3">Preview</h3>
