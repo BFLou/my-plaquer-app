@@ -1,14 +1,8 @@
 // src/components/collections/AddPlaquesModal.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter,
-  Button,
-  Input,
-} from '@/components/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Search, Check, X, Plus, MapPin, Loader } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Plaque } from '@/types/plaque';

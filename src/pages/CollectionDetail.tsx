@@ -102,59 +102,60 @@ const CollectionDetailPage: React.FC = () => {
   const [availablePlaques, setAvailablePlaques] = useState<Plaque[]>([]);
   const [loadingPlaques, setLoadingPlaques] = useState(false);
 
-  // Load collection data from Firebase
-  useEffect(() => {
+  // Define fetchCollection function
+  const fetchCollection = async () => {
     if (!id) {
       navigate('/collections');
       return;
     }
     
-    const fetchCollection = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const fetchedCollection = await getCollection(id);
-        if (!fetchedCollection) {
-          throw new Error('Collection not found');
-        }
-        
-        setCollection(fetchedCollection);
-        setEditNameValue(fetchedCollection.name);
-        
-        // Get plaques for this collection
-        const plaqueIds = fetchedCollection.plaques || [];
-        
-        // This is a placeholder - in a real app, you'd fetch the plaques data
-        // For demo purposes, we're creating empty arrays
-        // In your real implementation, you would fetch plaques from Firebase
-        const plaques: Plaque[] = [];
-        const allPlaquesData: Plaque[] = [];
-        
-        setCollectionPlaques(plaques);
-        setAllPlaques(allPlaquesData);
-        
-        // Get available plaques (ones not in this collection)
-        const available = allPlaquesData.filter(plaque => !plaqueIds.includes(plaque.id));
-        setAvailablePlaques(available);
-        
-        // Set initial favorites based on visited plaques
-        const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
-        setFavorites(visitedPlaqueIds);
-        
-        setLoading(false);
-      } catch (err: any) {
-        console.error('Error fetching collection:', err);
-        setError(err.message || 'Failed to load collection');
-        setLoading(false);
-        toast.error('Failed to load collection');
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const fetchedCollection = await getCollection(id);
+      if (!fetchedCollection) {
+        throw new Error('Collection not found');
       }
-    };
-    
+      
+      setCollection(fetchedCollection);
+      setEditNameValue(fetchedCollection.name);
+      
+      // Get plaques for this collection
+      const plaqueIds = fetchedCollection.plaques || [];
+      
+      // This is a placeholder - in a real app, you'd fetch the plaques data
+      // For demo purposes, we're creating empty arrays
+      // In your real implementation, you would fetch plaques from Firebase
+      const plaques: Plaque[] = [];
+      const allPlaquesData: Plaque[] = [];
+      
+      setCollectionPlaques(plaques);
+      setAllPlaques(allPlaquesData);
+      
+      // Get available plaques (ones not in this collection)
+      const available = allPlaquesData.filter(plaque => !plaqueIds.includes(plaque.id));
+      setAvailablePlaques(available);
+      
+      // Set initial favorites based on visited plaques
+      const visitedPlaqueIds = userVisits.map(visit => visit.plaque_id);
+      setFavorites(visitedPlaqueIds);
+      
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error fetching collection:', err);
+      setError(err.message || 'Failed to load collection');
+      setLoading(false);
+      toast.error('Failed to load collection');
+    }
+  };
+
+  // Load collection data from Firebase - SINGLE useEffect
+  useEffect(() => {
     fetchCollection();
   }, [id, getCollection, navigate, userVisits]);
   
-  // Get all unique tags from plaques - without useMemo to avoid the error
+  // Get all unique tags from plaques
   const getAllTags = () => {
     const tags = ['all', ...new Set(collectionPlaques
       .filter(plaque => plaque.profession)
@@ -165,7 +166,7 @@ const CollectionDetailPage: React.FC = () => {
   
   const allTags = getAllTags();
   
-  // Filter plaques based on search query and active tag - without useMemo
+  // Filter plaques based on search query and active tag
   const getFilteredPlaques = () => {
     return collectionPlaques
       .filter(plaque => {
@@ -809,10 +810,10 @@ const CollectionDetailPage: React.FC = () => {
             {viewMode === 'list' && (
               <div className="space-y-3">
                 {filteredPlaques.map((plaque) => (
-                  <PlaqueListItem 
-                    key={plaque.id}
+                  <PlaqueListItem
+                  key={plaque.id}
                     plaque={plaque}
-isFavorite={favorites.includes(plaque.id)}
+                    isFavorite={favorites.includes(plaque.id)}
                     isSelected={selectedPlaques.includes(plaque.id)}
                     onSelect={toggleSelectPlaque}
                     onFavoriteToggle={() => handleTogglePlaqueFavorite(plaque.id)}
