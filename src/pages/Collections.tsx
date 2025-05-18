@@ -6,7 +6,8 @@ import { useCollectionsList } from '../hooks/useCollectionsList';
 import { useCollectionActions } from '../hooks/useCollectionActions';
 
 // Collection Components
-import CollectionHeader from '../components';
+// Import CollectionHeader correctly - needs to be imported from its specific path
+import CollectionHeader from '../components/collections/CollectionHeader';
 import CollectionToolbar from '../components/collections/CollectionToolbar';
 import CollectionGrid from '../components/collections/CollectionGrid';
 import CollectionList from '../components/collections/CollectionList';
