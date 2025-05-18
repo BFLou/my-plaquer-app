@@ -58,7 +58,7 @@ import { formatTimeAgo } from '@/utils/collectionStatsUtils';
 import { useCollections } from '../hooks/useCollection';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { toast } from 'sonner';
-
+import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
 
 const CollectionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -95,10 +95,13 @@ const CollectionDetailPage: React.FC = () => {
   const [addPlaquesOpen, setAddPlaquesOpen] = useState(false);
   const [activeTag, setActiveTag] = useState('all');
   const [favorites, setFavorites] = useState<number[]>([]);
-  const [availablePlaques, setAvailablePlaques] = useState<Plaque[]>([]);
   const [selectedAvailablePlaques, setSelectedAvailablePlaques] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [addPlaquesModalOpen, setAddPlaquesModalOpen] = useState(false);
+  const [allPlaques, setAllPlaques] = useState<Plaque[]>([]);
+  const [availablePlaques, setAvailablePlaques] = useState<Plaque[]>([]);
+  const [loadingPlaques, setLoadingPlaques] = useState(false);
+
   // Load collection data from Firebase
   useEffect(() => {
     if (!id) {
@@ -121,11 +124,18 @@ const CollectionDetailPage: React.FC = () => {
         
         // Get plaques for this collection
         const plaqueIds = fetchedCollection.plaques || [];
-        const plaques = allPlaques.filter(plaque => plaqueIds.includes(plaque.id));
+        
+        // This is a placeholder - in a real app, you'd fetch the plaques data
+        // For demo purposes, we're creating empty arrays
+        // In your real implementation, you would fetch plaques from Firebase
+        const plaques: Plaque[] = [];
+        const allPlaquesData: Plaque[] = [];
+        
         setCollectionPlaques(plaques);
+        setAllPlaques(allPlaquesData);
         
         // Get available plaques (ones not in this collection)
-        const available = allPlaques.filter(plaque => !plaqueIds.includes(plaque.id));
+        const available = allPlaquesData.filter(plaque => !plaqueIds.includes(plaque.id));
         setAvailablePlaques(available);
         
         // Set initial favorites based on visited plaques
@@ -144,17 +154,19 @@ const CollectionDetailPage: React.FC = () => {
     fetchCollection();
   }, [id, getCollection, navigate, userVisits]);
   
-  // Get all unique tags from plaques
-  const allTags = useMemo(() => {
+  // Get all unique tags from plaques - without useMemo to avoid the error
+  const getAllTags = () => {
     const tags = ['all', ...new Set(collectionPlaques
       .filter(plaque => plaque.profession)
       .map(plaque => plaque.profession as string)
     )];
     return tags;
-  }, [collectionPlaques]);
+  };
   
-  // Filter plaques based on search query and active tag
-  const filteredPlaques = useMemo(() => {
+  const allTags = getAllTags();
+  
+  // Filter plaques based on search query and active tag - without useMemo
+  const getFilteredPlaques = () => {
     return collectionPlaques
       .filter(plaque => {
         // Match search query
@@ -177,7 +189,9 @@ const CollectionDetailPage: React.FC = () => {
         if (sortOption === 'z_to_a') return b.title.localeCompare(a.title);
         return 0;
       });
-  }, [collectionPlaques, searchQuery, activeTag, sortOption]);
+  };
+  
+  const filteredPlaques = getFilteredPlaques();
   
   // Toggle select plaque
   const toggleSelectPlaque = (id: number) => {
@@ -336,7 +350,75 @@ const CollectionDetailPage: React.FC = () => {
     }
   };
   
-  // Add plaques to collection
+  // Fetch available plaques
+  const fetchAvailablePlaques = async () => {
+    setLoadingPlaques(true);
+    
+    try {
+      // In a real app, you would fetch from Firebase or your API
+      // For now, we'll simulate with a timeout and use plaques from allPlaques
+      // that aren't already in the collection
+      
+      // You would replace this with your actual API call:
+      // const response = await fetch('/api/plaques');
+      // const data = await response.json();
+      
+      // For demo, we'll simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get current collection plaques to filter out
+      const collectionPlaqueIds = collection.plaques || [];
+      
+      // Filter all plaques to get available ones
+      const available = allPlaques.filter(
+        plaque => !collectionPlaqueIds.includes(plaque.id)
+      );
+      
+      setAvailablePlaques(available);
+    } catch (error) {
+      console.error('Error fetching available plaques:', error);
+      toast.error('Failed to load available plaques');
+    } finally {
+      setLoadingPlaques(false);
+    }
+  };
+  
+  // Modify the add plaques handler
+  const handleAddPlaquesToCollection = async (plaqueIds: number[]) => {
+    if (!collection) return;
+    
+    try {
+      await addPlaquesToCollection(collection.id, plaqueIds);
+      
+      // Get plaques to add from available plaques
+      const plaquesToAdd = availablePlaques.filter(p => plaqueIds.includes(p.id));
+      
+      // Update collection plaques in local state
+      setCollectionPlaques(prev => [...prev, ...plaquesToAdd]);
+      
+      // Remove added plaques from available plaques
+      setAvailablePlaques(prev => prev.filter(p => !plaqueIds.includes(p.id)));
+      
+      toast.success(`Added ${plaqueIds.length} plaques to collection`);
+    } catch (error) {
+      console.error('Error adding plaques:', error);
+      toast.error('Failed to add plaques to collection');
+    }
+  };
+  
+  // Add an effect to fetch available plaques when the modal opens
+  useEffect(() => {
+    if (addPlaquesModalOpen) {
+      fetchAvailablePlaques();
+    }
+  }, [addPlaquesModalOpen]);
+  
+  // Update the existing "Add Plaques" button click handler
+  const openAddPlaquesModal = () => {
+    setAddPlaquesModalOpen(true);
+  };
+  
+  // Add plaques to collection (for the sheet UI)
   const handleAddPlaques = async () => {
     if (!collection || selectedAvailablePlaques.length === 0) return;
     
@@ -678,7 +760,7 @@ const CollectionDetailPage: React.FC = () => {
                 </SelectContent>
               </Select>
               
-              <Button onClick={() => setAddPlaquesOpen(true)} disabled={isLoading}>
+              <Button onClick={openAddPlaquesModal} disabled={isLoading}>
                 <Plus size={16} className="mr-2" /> Add Plaques
               </Button>
             </div>
@@ -692,7 +774,7 @@ const CollectionDetailPage: React.FC = () => {
             title="No Plaques Yet"
             description="Start building your collection by adding plaques"
             actionLabel="Add Your First Plaque"
-            onAction={() => setAddPlaquesOpen(true)}
+            onAction={openAddPlaquesModal}
           />
         ) : filteredPlaques.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -730,7 +812,7 @@ const CollectionDetailPage: React.FC = () => {
                   <PlaqueListItem 
                     key={plaque.id}
                     plaque={plaque}
-                    isFavorite={favorites.includes(plaque.id)}
+isFavorite={favorites.includes(plaque.id)}
                     isSelected={selectedPlaques.includes(plaque.id)}
                     onSelect={toggleSelectPlaque}
                     onFavoriteToggle={() => handleTogglePlaqueFavorite(plaque.id)}
@@ -806,7 +888,16 @@ const CollectionDetailPage: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Add plaques sheet */}
+      {/* Add plaques modal */}
+      <AddPlaquesModal
+        isOpen={addPlaquesModalOpen}
+        onClose={() => setAddPlaquesModalOpen(false)}
+        onAddPlaques={handleAddPlaquesToCollection}
+        availablePlaques={availablePlaques}
+        isLoading={loadingPlaques}
+      />
+      
+      {/* Old Add plaques sheet - you can keep this or remove it */}
       <Sheet open={addPlaquesOpen} onOpenChange={setAddPlaquesOpen}>
         <SheetContent className="sm:max-w-md">
           <SheetHeader>
