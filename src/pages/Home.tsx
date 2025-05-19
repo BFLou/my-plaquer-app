@@ -1,9 +1,9 @@
-// src/pages/Home.tsx
+// src/pages/Home.tsx - Updated with EnhancedSearchBar
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   ChevronRight, Map, Camera, ListChecks, User, Navigation, 
-  Compass, Info, X, CheckCircle, Search, MapPin, Filter as FilterIcon 
+  Compass, Info, X, CheckCircle, MapPin, Filter as FilterIcon 
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   CategoryCard, PopularLocations, PopularFigures, 
   OnboardingStepContent, CategoriesSection
 } from "@/components/home/HomeComponents";
+import EnhancedSearchBar from "@/components/home/EnhancedSearchBar";
 import { usePlaqueCounts, getPlaqueCategories } from "@/utils/plaque-utils";
 import EnhancedHowItWorks from "@/components/home/EnhancedHowItWorks";
 
@@ -244,11 +245,8 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   // Get dynamic plaque counts from plaque_data.json
   const { counts, loading } = usePlaqueCounts();
@@ -267,9 +265,10 @@ const Home = () => {
     }
   }, []);
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      navigate(`/discover?search=${encodeURIComponent(searchQuery)}`);
+  // Handle search submission
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      navigate(`/discover?search=${encodeURIComponent(query)}`);
     } else {
       navigate('/discover');
     }
@@ -277,31 +276,6 @@ const Home = () => {
 
   // Navigation to the discover page with map view
   const navigateToMapView = (path = '/discover?view=map') => navigate(path);
-
-  // Enhanced search suggestions that appear as you type
-  const getSearchSuggestions = () => {
-    if (!searchQuery || searchQuery.length < 2) return [];
-    
-    // Simple mock implementation - in production, this would query your backend
-    const allSuggestions = [
-      { type: 'person', text: 'Charles Dickens', count: 1 },
-      { type: 'person', text: 'Ada Lovelace', count: 1 },
-      { type: 'person', text: 'Winston Churchill', count: 2 },
-      { type: 'person', text: 'Alan Turing', count: 1 },
-      { type: 'location', text: 'Kensington', count: 47 },
-      { type: 'location', text: 'Bloomsbury', count: 35 },
-      { type: 'profession', text: 'Scientist', count: 87 },
-      { type: 'profession', text: 'Architect', count: 64 },
-    ];
-    
-    // Filter suggestions based on search query
-    return allSuggestions.filter(suggestion => 
-      suggestion.text.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 5); // Limit to 5 results
-  };
-  
-  // Get search suggestions based on current query
-  const searchSuggestions = getSearchSuggestions();
 
   // Handle near me button click
   const handleNearMe = () => {
@@ -388,73 +362,12 @@ const Home = () => {
       <section className="py-8 px-4">
         <div className="container mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-6 -mt-12 relative z-20 max-w-3xl mx-auto">
-            <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Find Blue Plaques</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-center">Find Plaques</h2>
             
-            {/* Improved search input with better focus behavior */}
-            <div className="relative mb-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search by name, location, or profession..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                  className="w-full px-12 py-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  <Search size={20} />
-                </div>
-                <Button 
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10"
-                  onClick={handleSearch}
-                >
-                  Search
-                </Button>
-              </div>
+            {/* Using the EnhancedSearchBar component instead of the previous search input */}
+            <div className="mb-4">
+              <EnhancedSearchBar onSearch={handleSearch} />
             </div>
-            
-            {/* Search suggestions with improved UX */}
-            {(isSearchFocused || searchSuggestions.length > 0) && (
-              <div className="mb-5 bg-white rounded-md shadow-md border border-gray-100 divide-y">
-                {searchQuery.length < 2 ? (
-                  <>
-                    {/* Show popular searches using component */}
-                    <PopularFigures figures={counts.popularFigures} />
-                  </>
-                ) : (
-                  // Show filtered suggestions based on user input
-                  searchSuggestions.map((suggestion, index) => (
-                    <div 
-                      key={index}
-                      className="p-3 flex items-center hover:bg-gray-50 cursor-pointer"
-                      onClick={() => {
-                        setSearchQuery(suggestion.text);
-                        handleSearch();
-                      }}
-                    >
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center mr-3",
-                        suggestion.type === 'person' ? 'bg-amber-100 text-amber-600' :
-                        suggestion.type === 'location' ? 'bg-green-100 text-green-600' :
-                        'bg-purple-100 text-purple-600'
-                      )}>
-                        {suggestion.type === 'person' ? '👤' : 
-                        suggestion.type === 'location' ? '📍' : '🏷️'}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{suggestion.text}</div>
-                        <div className="text-xs text-gray-500 capitalize">
-                          {suggestion.type} • {suggestion.count} {suggestion.count === 1 ? 'plaque' : 'plaques'}
-                        </div>
-                      </div>
-                      <ChevronRight size={18} className="text-gray-400" />
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
             
             {/* Improved filter categories with clear sections */}
             <div className="space-y-3">
