@@ -207,7 +207,11 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       params.append('professions', suggestion.text);
     }
     
-    navigate(`/discover?${params.toString()}`);
+    if (onSearch) {
+      onSearch(suggestion.text);
+    } else {
+      navigate(`/discover?${params.toString()}`);
+    }
     setIsSearchFocused(false);
   };
   
@@ -237,6 +241,20 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   const displaySuggestions = searchQuery.length >= 2 
     ? suggestions 
     : getPopularSuggestions();
+  
+  // Function to get the appropriate background color for an icon based on type
+  const getIconBackgroundColor = (type: string) => {
+    switch(type) {
+      case 'person':
+        return 'bg-amber-100 text-amber-600';
+      case 'location':
+        return 'bg-green-100 text-green-600';
+      case 'profession':
+        return 'bg-purple-100 text-purple-600';
+      default:
+        return 'bg-gray-100 text-gray-600';
+    }
+  };
   
   return (
     <div className={cn("relative", className)}>
@@ -283,12 +301,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
                 className="p-3 flex items-center hover:bg-gray-50 cursor-pointer"
                 onClick={() => handleSuggestionClick(suggestion)}
               >
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center mr-3",
-                  suggestion.type === 'person' ? 'bg-amber-100 text-amber-600' :
-                  suggestion.type === 'location' ? 'bg-green-100 text-green-600' :
-                  'bg-purple-100 text-purple-600'
-                )}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${getIconBackgroundColor(suggestion.type)}`}>
                   {suggestion.type === 'person' ? <Users size={16} /> : 
                    suggestion.type === 'location' ? <MapPin size={16} /> : 
                    <Tag size={16} />}

@@ -1,3 +1,4 @@
+// src/components/home/EnhancedHowItWorks.tsx
 import React, { useState, useEffect } from 'react';
 import { Map, Camera, ListChecks, ChevronRight, MapPin, BookmarkPlus, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,38 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
     return () => clearInterval(interval);
   }, [isVisible, features.length]);
 
+  // Function to get border color class based on feature color
+  const getBorderClass = (featureColor, isActive) => {
+    if (!isActive) return "border-transparent";
+    
+    switch (featureColor) {
+      case "blue":
+        return "border-blue-500";
+      case "green":
+        return "border-green-500";
+      case "purple":
+        return "border-purple-500";
+      default:
+        return "border-gray-300";
+    }
+  };
+  
+  // Function to get background color class based on feature color
+  const getBackgroundClass = (featureColor, isActive) => {
+    if (!isActive) return "bg-white hover:bg-gray-50";
+    
+    switch (featureColor) {
+      case "blue":
+        return "bg-blue-50";
+      case "green":
+        return "bg-green-50";
+      case "purple":
+        return "bg-purple-50";
+      default:
+        return "bg-gray-50";
+    }
+  };
+
   return (
     <section 
       id="how-it-works-section" 
@@ -94,14 +127,22 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                 key={index}
                 className={cn(
                   "p-6 rounded-xl mb-4 cursor-pointer transition-all duration-500 border-l-4",
-                  activeFeature === index 
-                    ? `bg-${feature.color}-50 border-${feature.color}-500 shadow-md` 
-                    : "bg-white border-transparent hover:bg-gray-50"
+                  getBorderClass(feature.color, activeFeature === index),
+                  getBackgroundClass(feature.color, activeFeature === index),
+                  activeFeature === index ? "shadow-md" : ""
                 )}
                 onClick={() => setActiveFeature(index)}
               >
                 <div className="flex items-center mb-2">
-                  <div className={`w-10 h-10 rounded-full bg-${feature.color}-100 flex items-center justify-center mr-4 text-${feature.color}-600`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4`} 
+                       style={{ 
+                         backgroundColor: feature.color === 'blue' ? 'rgba(219, 234, 254, 1)' : 
+                                        feature.color === 'green' ? 'rgba(220, 252, 231, 1)' : 
+                                        'rgba(243, 232, 255, 1)',
+                         color: feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+                                feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
+                                'rgba(147, 51, 234, 1)'
+                       }}>
                     {feature.icon}
                   </div>
                   <div>
@@ -146,7 +187,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                         {index === 0 && (
                           <div className="h-full flex flex-col">
                             {/* Header bar - Updated to match blue color and layout in image 1 */}
-                            <div className="h-14 bg-blue-600 flex items-center px-4">
+                            <div className="h-14 flex items-center px-4" style={{ backgroundColor: 'rgba(37, 99, 235, 1)' }}>
                               <MapPin className="text-white h-5 w-5 mr-2" />
                               <span className="text-white text-base font-medium">Plaque Explorer</span>
                             </div>
@@ -178,7 +219,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                         {index === 1 && (
                           <div className="h-full flex flex-col">
                             {/* Header bar */}
-                            <div className="h-14 bg-green-600 flex items-center px-4">
+                            <div className="h-14 flex items-center px-4" style={{ backgroundColor: 'rgba(22, 163, 74, 1)' }}>
                               <CheckCircle className="text-white h-5 w-5 mr-2" />
                               <span className="text-white text-base font-medium">Visit Tracker</span>
                             </div>
@@ -214,7 +255,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                         {index === 2 && (
                           <div className="h-full flex flex-col">
                             {/* Header bar - Purple header matching image 2 */}
-                            <div className="h-14 bg-purple-600 flex items-center px-4">
+                            <div className="h-14 flex items-center px-4" style={{ backgroundColor: 'rgba(147, 51, 234, 1)' }}>
                               <BookmarkPlus className="text-white h-5 w-5 mr-2" />
                               <span className="text-white text-base font-medium">Collections</span>
                             </div>
@@ -257,23 +298,38 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
             
             {/* Feature text content */}
             <div className="p-8 relative z-10 max-w-xs">
-              <div 
-                className={`text-${features[activeFeature].color}-600 font-medium mb-2 transition-all duration-500 opacity-${isVisible ? '100' : '0'}`}
-              >
+              <div style={{ 
+                color: activeFeature === 0 ? 'rgba(37, 99, 235, 1)' : 
+                      activeFeature === 1 ? 'rgba(22, 163, 74, 1)' : 
+                      'rgba(147, 51, 234, 1)',
+                fontWeight: 'medium',
+                marginBottom: '0.5rem',
+                transition: 'all 0.5s ease',
+                opacity: isVisible ? '100' : '0'
+              }}>
                 Step {activeFeature + 1}
               </div>
               <h3 className="text-3xl font-bold mb-4 transition-all duration-500">
                 {features[activeFeature].title}
               </h3>
-              <p className="text-gray-600 mb-6 transition-all duration-500">
-                {features[activeFeature].description}
-              </p>
+              {/* Fixed height container for description to prevent jumping */}
+              <div className="h-24">
+                <p className="text-gray-600 transition-all duration-500">
+                  {features[activeFeature].description}
+                </p>
+              </div>
               
               {/* Feature stats */}
               <div className="flex gap-4 mb-8">
                 {features[activeFeature].stats.map((stat, i) => (
                   <div key={i} className="bg-gray-50 rounded-lg p-3 text-center flex-1">
-                    <div className={`text-${features[activeFeature].color}-600 font-bold text-xl`}>{stat.value}</div>
+                    <div style={{ 
+                      color: activeFeature === 0 ? 'rgba(37, 99, 235, 1)' : 
+                            activeFeature === 1 ? 'rgba(22, 163, 74, 1)' : 
+                            'rgba(147, 51, 234, 1)',
+                      fontWeight: 'bold',
+                      fontSize: '1.25rem'
+                    }}>{stat.value}</div>
                     <div className="text-gray-500 text-sm">{stat.label}</div>
                   </div>
                 ))}
@@ -281,7 +337,12 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
               
               <Button 
                 onClick={onStartJourney}
-                className={`bg-${features[activeFeature].color}-600 hover:bg-${features[activeFeature].color}-700 text-white transition-all px-6 py-2`}
+                className="text-white transition-all px-6 py-2"
+                style={{ 
+                  backgroundColor: activeFeature === 0 ? 'rgba(37, 99, 235, 1)' : 
+                                 activeFeature === 1 ? 'rgba(22, 163, 74, 1)' : 
+                                 'rgba(147, 51, 234, 1)',
+                }}
               >
                 Start Exploring
                 <ChevronRight className="ml-2 h-5 w-5" />
@@ -298,11 +359,21 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
               {features.map((feature, index) => (
                 <button
                   key={index}
-                  className={`flex-1 py-3 px-2 text-center text-sm font-medium transition-colors ${
-                    activeFeature === index 
-                      ? `text-${feature.color}-600 border-b-2 border-${feature.color}-500` 
-                      : 'text-gray-500'
-                  }`}
+                  className="flex-1 py-3 px-2 text-center text-sm font-medium transition-colors"
+                  style={{ 
+                    color: activeFeature === index 
+                      ? (feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+                         feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
+                         'rgba(147, 51, 234, 1)')
+                      : 'rgba(107, 114, 128, 1)',
+                    borderBottomWidth: activeFeature === index ? '2px' : '0',
+                    borderBottomColor: activeFeature === index 
+                      ? (feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+                         feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
+                         'rgba(147, 51, 234, 1)')
+                      : 'transparent',
+                    borderBottomStyle: 'solid'
+                  }}
                   onClick={() => setActiveFeature(index)}
                 >
                   {feature.title}
@@ -315,12 +386,10 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
               {features.map((feature, index) => (
                 <div
                   key={index}
-                  className={`p-6 transition-all duration-500 absolute w-full ${
-                    activeFeature === index 
-                      ? 'opacity-100 translate-x-0' 
-                      : 'opacity-0 pointer-events-none'
-                  }`}
+                  className="p-6 transition-all duration-500 absolute w-full"
                   style={{ 
+                    opacity: activeFeature === index ? 1 : 0,
+                    pointerEvents: activeFeature === index ? 'auto' : 'none',
                     transform: activeFeature === index 
                       ? 'translateX(0)' 
                       : activeFeature > index 
@@ -330,7 +399,15 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                 >
                   {/* Feature icon and title */}
                   <div className="flex items-center mb-4">
-                    <div className={`w-12 h-12 rounded-full bg-${feature.color}-100 flex items-center justify-center mr-4 text-${feature.color}-600`}>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4"
+                         style={{ 
+                           backgroundColor: feature.color === 'blue' ? 'rgba(219, 234, 254, 1)' : 
+                                          feature.color === 'green' ? 'rgba(220, 252, 231, 1)' : 
+                                          'rgba(243, 232, 255, 1)',
+                           color: feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+                                  feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
+                                  'rgba(147, 51, 234, 1)'
+                         }}>
                       {feature.icon}
                     </div>
                     <div>
@@ -340,13 +417,21 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                   </div>
                   
                   {/* Feature description */}
-                  <p className="text-gray-600 mb-6">{feature.description}</p>
+                  <div className="h-24 mb-6">
+                    <p className="text-gray-600">{feature.description}</p>
+                  </div>
                   
                   {/* Feature stats */}
                   <div className="flex gap-4 mb-6">
                     {feature.stats.map((stat, i) => (
                       <div key={i} className="bg-gray-50 rounded-lg p-3 text-center flex-1">
-                        <div className={`text-${feature.color}-600 font-bold text-lg`}>{stat.value}</div>
+                        <div style={{ 
+                          color: feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+                                feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
+                                'rgba(147, 51, 234, 1)',
+                          fontWeight: 'bold',
+                          fontSize: '1.125rem'
+                        }}>{stat.value}</div>
                         <div className="text-gray-500 text-xs">{stat.label}</div>
                       </div>
                     ))}
@@ -358,7 +443,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                       {/* First screen - Map */}
                       {index === 0 && (
                         <div className="h-full flex flex-col">
-                          <div className="h-10 bg-blue-600 flex items-center px-3">
+                          <div className="h-10 flex items-center px-3" style={{ backgroundColor: 'rgba(37, 99, 235, 1)' }}>
                             <MapPin className="text-white h-4 w-4 mr-1" />
                             <span className="text-white text-sm font-medium">Plaque Explorer</span>
                           </div>
@@ -369,7 +454,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                       {/* Second screen - Capture */}
                       {index === 1 && (
                         <div className="h-full flex flex-col">
-                          <div className="h-10 bg-green-600 flex items-center px-3">
+                          <div className="h-10 flex items-center px-3" style={{ backgroundColor: 'rgba(22, 163, 74, 1)' }}>
                             <CheckCircle className="text-white h-4 w-4 mr-1" />
                             <span className="text-white text-sm font-medium">Visit Tracker</span>
                           </div>
@@ -387,7 +472,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                       {/* Third screen - Collections */}
                       {index === 2 && (
                         <div className="h-full flex flex-col">
-                          <div className="h-10 bg-purple-600 flex items-center px-3">
+                          <div className="h-10 flex items-center px-3" style={{ backgroundColor: 'rgba(147, 51, 234, 1)' }}>
                             <BookmarkPlus className="text-white h-4 w-4 mr-1" />
                             <span className="text-white text-sm font-medium">Collections</span>
                           </div>
@@ -406,7 +491,12 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                   
                   <Button 
                     onClick={onStartJourney}
-                    className={`w-full bg-${feature.color}-600 hover:bg-${feature.color}-700 text-white transition-all py-2.5`}
+                    className="w-full text-white transition-all py-2.5"
+                    style={{ 
+                      backgroundColor: feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+                                    feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
+                                    'rgba(147, 51, 234, 1)'
+                    }}
                   >
                     Start Exploring
                     <ChevronRight className="ml-2 h-5 w-5" />
