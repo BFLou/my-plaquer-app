@@ -1,4 +1,4 @@
-// src/pages/Home.tsx - Updated version with enhanced map
+// src/pages/Home.tsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -85,173 +85,113 @@ const famousPlaques = [
 ];
 
 // Enhanced Map Preview component
+// Enhanced Map Preview component
 const EnhancedMapPreview = ({ navigateToDiscover }) => {
   const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [activeMarker, setActiveMarker] = useState(null);
-  const markersRef = useRef({});
-
+  
   // Initialize map
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
     
-    // Create simplified map
+    // Create simplified map with disabled controls for simplicity
     const map = window.L.map(mapContainerRef.current, {
       center: [51.51, -0.14], // Centered on London
       zoom: 13,
-      zoomControl: true,
-      dragging: true, // Enable dragging for better mobile experience
-      scrollWheelZoom: false,
-      attributionControl: true,
-      zoomSnap: 0.5
+      zoomControl: false,     // Disable zoom controls
+      dragging: false,        // Disable dragging
+      scrollWheelZoom: false, // Disable scroll zoom
+      doubleClickZoom: false, // Disable double-click zoom
+      attributionControl: true
     });
     
-    // Position zoom control for better mobile access
-    map.zoomControl.setPosition('bottomright');
-
     // Use a styled map tile layer
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    // Store the map reference
-    mapInstanceRef.current = map;
+    // Add famous plaques as simple markers
+    famousPlaques.forEach((plaque) => {
+      const icon = window.L.divIcon({
+        className: 'custom-marker',
+        html: `
+          <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md transition-all duration-200">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+              ${plaque.name.charAt(0)}
+            </div>
+          </div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const marker = window.L.marker([plaque.lat, plaque.lng], { 
+        icon,
+        interactive: true
+      }).addTo(map);
+      
+      // Add event listeners directly to the marker's DOM element for smoother interaction
+      marker.on('mouseover', () => {
+        setActiveMarker(plaque);
+      });
+      
+      marker.on('mouseout', () => {
+        setActiveMarker(null);
+      });
+      
+      marker.on('click', (e) => {
+        e.originalEvent.stopPropagation();
+        navigateToDiscover(`/discover?view=map&search=${encodeURIComponent(plaque.name)}`);
+      });
+    });
+
     setIsMapLoaded(true);
-
-    // Add plaques with staggered animation
-    famousPlaques.forEach((plaque, index) => {
-      setTimeout(() => {
-        createMarker(map, plaque);
-      }, index * 100);
-    });
-
-    // Add click handler for map background
-    map.on('click', () => {
-      navigateToDiscover('/discover?view=map');
-    });
-
+    
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+      if (map) {
+        map.remove();
       }
     };
   }, [navigateToDiscover]);
 
-  // Create an enhanced marker with rollover effect
-  const createMarker = (map, plaque) => {
-    if (!window.L) return null;
-    
-    // Create custom icon
-    const icon = window.L.divIcon({
-      className: 'custom-marker',
-      html: `
-        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md transition-all duration-300 hover:scale-110">
-          <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-            ${plaque.name.charAt(0)}
-          </div>
-        </div>
-      `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-
-    // Create marker
-    const marker = window.L.marker([plaque.lat, plaque.lng], { 
-      icon,
-      riseOnHover: true
-    }).addTo(map);
-
-    // Store reference to marker
-    markersRef.current[plaque.id] = marker;
-
-    // Enhanced tooltip with more information
-    const tooltipContent = `
-      <div class="font-medium">${plaque.name}</div>
-      <div class="text-xs text-gray-600">${plaque.profession}</div>
-    `;
-
-    marker.bindTooltip(tooltipContent, {
-      permanent: false,
-      direction: 'top',
-      className: 'bg-white px-3 py-2 rounded shadow-md text-sm border border-gray-200'
-    });
-
-    // Add click handler for this specific marker
-    marker.on('click', (e) => {
-      e.originalEvent.stopPropagation();
-      setActiveMarker(plaque);
-    });
-
-    // Hover effects
-    marker.on('mouseover', () => {
-      setActiveMarker(plaque);
-      marker._icon.classList.add('scale-125');
-      marker._icon.style.zIndex = 1000;
-    });
-
-    marker.on('mouseout', () => {
-      marker._icon.classList.remove('scale-125');
-      marker._icon.style.zIndex = '';
-    });
-
-    return marker;
-  };
-
-  // Navigate to discover page with the selected plaque
-  const navigateToPlaque = (plaque) => {
-    if (plaque) {
-      navigateToDiscover(`/discover?view=map&search=${encodeURIComponent(plaque.name)}`);
-    } else {
-      navigateToDiscover('/discover?view=map');
-    }
-  };
-
-  // Close the active marker info
-  const closeActiveMarker = () => {
-    setActiveMarker(null);
-  };
-
   return (
-    <div className="relative w-full h-full overflow-hidden rounded-xl">
+    <div className="relative w-full h-full rounded-xl overflow-hidden">
       {/* Map container */}
       <div 
         ref={mapContainerRef} 
-        className="w-full h-full bg-gray-100 transition duration-200"
+        className="w-full h-full bg-gray-100 cursor-pointer"
         style={{ minHeight: '280px' }}
+        onClick={() => navigateToDiscover('/discover?view=map')}
       />
       
-      {/* Active marker info */}
+      {/* Hover info panel - Fixed position at the bottom */}
       {activeMarker && (
-        <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 animate-in slide-in-from-bottom duration-300">
-          <button 
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-            onClick={closeActiveMarker}
-          >
-            <X size={16} />
-          </button>
+        <div className="absolute bottom-16 left-4 right-4 bg-white rounded-lg shadow-lg p-3 animate-in fade-in duration-200">
           <h3 className="font-bold text-lg">{activeMarker.name}</h3>
           <p className="text-gray-600 text-sm">{activeMarker.profession}</p>
           <p className="text-gray-500 text-xs mt-1">{activeMarker.location}</p>
-          <Button 
-            className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
-            onClick={() => navigateToPlaque(activeMarker)}
-          >
-            View Details
-          </Button>
         </div>
       )}
       
-      {/* Overlay button for map access */}
-      {!activeMarker && (
-        <div className="absolute bottom-4 right-4 left-4">
-          <Button 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-            onClick={() => navigateToPlaque(null)}
-          >
-            Explore Full Map
-          </Button>
+      {/* Fixed bottom button for better visibility */}
+      <div className="absolute bottom-4 right-4 left-4">
+        <Button 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+          onClick={() => navigateToDiscover('/discover?view=map')}
+        >
+          Explore Full Map
+        </Button>
+      </div>
+      
+      {/* Loading state */}
+      {!isMapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+            <p className="text-gray-500 text-sm">Loading map...</p>
+          </div>
         </div>
       )}
     </div>
@@ -438,7 +378,6 @@ const Home = () => {
                   <>
                     {/* Show popular searches using component */}
                     <PopularFigures figures={counts.popularFigures} />
-                    <PopularLocations locations={counts.popularLocations} />
                   </>
                 ) : (
                   // Show filtered suggestions based on user input

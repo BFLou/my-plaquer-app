@@ -242,28 +242,10 @@ export const getPlaqueCategories = (counts: PlaqueCounts, navigate: (path: strin
       onClick: () => navigate("/discover?professions=author,writer,novelist,poet,playwright&view=grid") 
     },
     { 
-      label: "Women in History", 
-      icon: "👑",
-      count: counts.women,
-      onClick: () => navigate("/discover?category=women&view=grid") 
-    },
-    { 
       label: "Scientists", 
       icon: "🧪",
       count: counts.scientists,
       onClick: () => navigate("/discover?professions=scientist,physicist,chemist,biologist,mathematician,engineer,astronomer,botanist,researcher,inventor&view=grid") 
-    },
-    { 
-      label: "19th Century", 
-      icon: "🕰️",
-      count: counts.nineteenthCentury,
-      onClick: () => navigate("/discover?period=19th-century&view=grid") 
-    },
-    { 
-      label: "Westminster", 
-      icon: "🏛️",
-      count: counts.westminster,
-      onClick: () => navigate("/discover?area=westminster&postcodes=SW1&view=map") 
     },
     {
       label: "Blue Plaques",
