@@ -1,4 +1,4 @@
-// src/pages/Home.tsx - Updated version
+// src/pages/Home.tsx - Updated version with enhanced map
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -12,9 +12,251 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/
 import { toast } from "sonner";
 import { 
   CategoryCard, PopularLocations, PopularFigures, 
-  MapPreview, OnboardingStepContent, CategoriesSection, FeatureItem 
+  OnboardingStepContent, CategoriesSection, FeatureItem 
 } from "@/components/home/HomeComponents";
 import { usePlaqueCounts, getPlaqueCategories } from "@/utils/plaque-utils";
+
+// Famous historical figures data for the map
+const famousPlaques = [
+  {
+    id: 730,
+    name: "Alan Turing",
+    profession: "Mathematician & Computer Scientist",
+    lat: 51.5233,
+    lng: -0.1849,
+    location: "2 Warrington Crescent, Maida Vale"
+  },
+  {
+    id: 487,
+    name: "Ada Lovelace",
+    profession: "Mathematician & Writer",
+    lat: 51.5079,
+    lng: -0.1364,
+    location: "12 St James's Square"
+  },
+  {
+    id: 656,
+    name: "Florence Nightingale",
+    profession: "Nurse & Statistician",
+    lat: 51.5083,
+    lng: -0.1502,
+    location: "10 South Street, Mayfair"
+  },
+  {
+    id: 302,
+    name: "Sir Isaac Newton",
+    profession: "Physicist & Mathematician",
+    lat: 51.50806,
+    lng: -0.13682,
+    location: "87 Jermyn Street, St James's"
+  },
+  {
+    id: 108,
+    name: "Charles Darwin",
+    profession: "Naturalist & Biologist",
+    lat: 51.5245,
+    lng: -0.1334,
+    location: "Biological Sciences Building, UCL"
+  },
+  {
+    id: 352,
+    name: "Sir Winston Churchill",
+    profession: "Prime Minister & Statesman",
+    lat: 51.50207, 
+    lng: -0.18019,
+    location: "28 Hyde Park Gate, Kensington"
+  },
+  {
+    id: 372,
+    name: "Charles Dickens",
+    profession: "Novelist",
+    lat: 51.5223, 
+    lng: -0.1146,
+    location: "48 Doughty Street, Holborn"
+  },
+  {
+    id: 296,
+    name: "Karl Marx",
+    profession: "Philosopher & Economist",
+    lat: 51.5137, 
+    lng: -0.1332,
+    location: "28 Dean Street, Soho"
+  }
+];
+
+// Enhanced Map Preview component
+const EnhancedMapPreview = ({ navigateToDiscover }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [activeMarker, setActiveMarker] = useState(null);
+  const markersRef = useRef({});
+
+  // Initialize map
+  useEffect(() => {
+    if (!window.L || !mapContainerRef.current) return;
+    
+    // Create simplified map
+    const map = window.L.map(mapContainerRef.current, {
+      center: [51.51, -0.14], // Centered on London
+      zoom: 13,
+      zoomControl: true,
+      dragging: true, // Enable dragging for better mobile experience
+      scrollWheelZoom: false,
+      attributionControl: true,
+      zoomSnap: 0.5
+    });
+    
+    // Position zoom control for better mobile access
+    map.zoomControl.setPosition('bottomright');
+
+    // Use a styled map tile layer
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Store the map reference
+    mapInstanceRef.current = map;
+    setIsMapLoaded(true);
+
+    // Add plaques with staggered animation
+    famousPlaques.forEach((plaque, index) => {
+      setTimeout(() => {
+        createMarker(map, plaque);
+      }, index * 100);
+    });
+
+    // Add click handler for map background
+    map.on('click', () => {
+      navigateToDiscover('/discover?view=map');
+    });
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+      }
+    };
+  }, [navigateToDiscover]);
+
+  // Create an enhanced marker with rollover effect
+  const createMarker = (map, plaque) => {
+    if (!window.L) return null;
+    
+    // Create custom icon
+    const icon = window.L.divIcon({
+      className: 'custom-marker',
+      html: `
+        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md transition-all duration-300 hover:scale-110">
+          <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+            ${plaque.name.charAt(0)}
+          </div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    // Create marker
+    const marker = window.L.marker([plaque.lat, plaque.lng], { 
+      icon,
+      riseOnHover: true
+    }).addTo(map);
+
+    // Store reference to marker
+    markersRef.current[plaque.id] = marker;
+
+    // Enhanced tooltip with more information
+    const tooltipContent = `
+      <div class="font-medium">${plaque.name}</div>
+      <div class="text-xs text-gray-600">${plaque.profession}</div>
+    `;
+
+    marker.bindTooltip(tooltipContent, {
+      permanent: false,
+      direction: 'top',
+      className: 'bg-white px-3 py-2 rounded shadow-md text-sm border border-gray-200'
+    });
+
+    // Add click handler for this specific marker
+    marker.on('click', (e) => {
+      e.originalEvent.stopPropagation();
+      setActiveMarker(plaque);
+    });
+
+    // Hover effects
+    marker.on('mouseover', () => {
+      setActiveMarker(plaque);
+      marker._icon.classList.add('scale-125');
+      marker._icon.style.zIndex = 1000;
+    });
+
+    marker.on('mouseout', () => {
+      marker._icon.classList.remove('scale-125');
+      marker._icon.style.zIndex = '';
+    });
+
+    return marker;
+  };
+
+  // Navigate to discover page with the selected plaque
+  const navigateToPlaque = (plaque) => {
+    if (plaque) {
+      navigateToDiscover(`/discover?view=map&search=${encodeURIComponent(plaque.name)}`);
+    } else {
+      navigateToDiscover('/discover?view=map');
+    }
+  };
+
+  // Close the active marker info
+  const closeActiveMarker = () => {
+    setActiveMarker(null);
+  };
+
+  return (
+    <div className="relative w-full h-full overflow-hidden rounded-xl">
+      {/* Map container */}
+      <div 
+        ref={mapContainerRef} 
+        className="w-full h-full bg-gray-100 transition duration-200"
+        style={{ minHeight: '280px' }}
+      />
+      
+      {/* Active marker info */}
+      {activeMarker && (
+        <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 animate-in slide-in-from-bottom duration-300">
+          <button 
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            onClick={closeActiveMarker}
+          >
+            <X size={16} />
+          </button>
+          <h3 className="font-bold text-lg">{activeMarker.name}</h3>
+          <p className="text-gray-600 text-sm">{activeMarker.profession}</p>
+          <p className="text-gray-500 text-xs mt-1">{activeMarker.location}</p>
+          <Button 
+            className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+            onClick={() => navigateToPlaque(activeMarker)}
+          >
+            View Details
+          </Button>
+        </div>
+      )}
+      
+      {/* Overlay button for map access */}
+      {!activeMarker && (
+        <div className="absolute bottom-4 right-4 left-4">
+          <Button 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+            onClick={() => navigateToPlaque(null)}
+          >
+            Explore Full Map
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -22,8 +264,6 @@ const Home = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   
   // Get dynamic plaque counts from plaque_data.json
@@ -41,16 +281,6 @@ const Home = () => {
       setShowOnboarding(true);
       localStorage.setItem('hasSeen_homepage', 'true');
     }
-
-    // Load simplified map for preview
-    initializeMapPreview();
-
-    return () => {
-      // Clean up map instance if needed
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-      }
-    };
   }, []);
 
   const handleSearch = () => {
@@ -61,90 +291,8 @@ const Home = () => {
     }
   };
 
-  // Function to initialize a simplified map preview
-  const initializeMapPreview = () => {
-    // Only initialize if Leaflet is available (via window.L)
-    if (!window.L || !mapContainerRef.current) return;
-
-    // Create simplified map
-    const map = window.L.map(mapContainerRef.current, {
-      center: [51.505, -0.09], // London coordinates
-      zoom: 12,
-      zoomControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      attributionControl: false
-    });
-
-    // Use a styled map tile layer
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
-    // Add sample plaque locations - fixed to prevent duplicate markers
-    const plaqueSamples = [
-      { lat: 51.511, lng: -0.119, title: "Charles Dickens", color: "blue" },
-      { lat: 51.518, lng: -0.142, title: "Ada Lovelace", color: "blue" },
-      { lat: 51.499, lng: -0.135, title: "Florence Nightingale", color: "blue" },
-      { lat: 51.523, lng: -0.158, title: "Alan Turing", color: "blue" },
-      { lat: 51.530, lng: -0.125, title: "Karl Marx", color: "blue" },
-      { lat: 51.507, lng: -0.165, title: "Winston Churchill", color: "blue" },
-      { lat: 51.496, lng: -0.145, title: "Charles Darwin", color: "blue" },
-    ];
-
-    // Create markers with a cleaner effect (no flashing on hover)
-    plaqueSamples.forEach((plaque, index) => {
-      // Stagger marker creation for visual effect
-      setTimeout(() => {
-        createMarker(map, plaque);
-      }, index * 200); // Reduced stagger time
-    });
-
-    // Add click handler to navigate to discover page
-    map.on('click', () => {
-      navigate('/discover?view=map');
-    });
-
-    // Store the map reference
-    mapInstanceRef.current = map;
-    setIsMapLoaded(true);
-  };
-
-  // Helper to create a marker (simplified, no flashing effect)
-  const createMarker = (map: any, plaque: any) => {
-    // Create icon with no animation/flashy effects
-    const icon = window.L.divIcon({
-      className: 'custom-marker',
-      html: `
-        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md">
-          <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-            ${plaque.title.charAt(0)}
-          </div>
-        </div>
-      `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
-    });
-
-    // Create marker
-    const marker = window.L.marker([plaque.lat, plaque.lng], { icon }).addTo(map);
-
-    // Add tooltip
-    marker.bindTooltip(plaque.title, {
-      permanent: false,
-      direction: 'top',
-      className: 'bg-white px-2 py-1 rounded shadow-md text-xs'
-    });
-
-    // Add click handler for this specific marker
-    marker.on('click', (e: any) => {
-      e.originalEvent.stopPropagation();
-      navigate(`/discover?search=${encodeURIComponent(plaque.title)}`);
-    });
-
-    return marker;
-  };
+  // Navigation to the discover page with map view
+  const navigateToMapView = (path = '/discover?view=map') => navigate(path);
 
   // Enhanced search suggestions that appear as you type
   const getSearchSuggestions = () => {
@@ -155,6 +303,7 @@ const Home = () => {
       { type: 'person', text: 'Charles Dickens', count: 1 },
       { type: 'person', text: 'Ada Lovelace', count: 1 },
       { type: 'person', text: 'Winston Churchill', count: 2 },
+      { type: 'person', text: 'Alan Turing', count: 1 },
       { type: 'location', text: 'Kensington', count: 47 },
       { type: 'location', text: 'Bloomsbury', count: 35 },
       { type: 'profession', text: 'Scientist', count: 87 },
@@ -210,9 +359,6 @@ const Home = () => {
     }
   ];
 
-  // Navigation to the discover page with map view
-  const navigateToMapView = () => navigate('/discover?view=map');
-
   return (
     <PageContainer activePage="home" containerClass="flex-grow pb-16 md:pb-0">
       {/* Hero Section - With map on the right */}
@@ -237,15 +383,14 @@ const Home = () => {
               </Button>
             </div>
             
-            {/* Right side with map */}
+            {/* Right side with enhanced map */}
             <div className="md:w-1/2 flex justify-center">
               <div className="relative w-72 h-72 md:w-96 md:h-80">
                 <div className="absolute inset-0 bg-blue-500 rounded-2xl rotate-6 transform"></div>
                 <div className="absolute inset-0 bg-blue-400 rounded-2xl -rotate-3 transform"></div>
                 <div className="absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden">
-                  <MapPreview 
-                    isMapLoaded={isMapLoaded}
-                    mapContainerRef={mapContainerRef}
+                  {/* Use the new enhanced map component */}
+                  <EnhancedMapPreview 
                     navigateToDiscover={navigateToMapView}
                   />
                 </div>
@@ -271,6 +416,7 @@ const Home = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                   className="w-full px-12 py-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
