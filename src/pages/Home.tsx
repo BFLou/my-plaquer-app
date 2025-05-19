@@ -5,16 +5,17 @@ import {
   ChevronRight, Map, Camera, ListChecks, User, Navigation, 
   Compass, Info, X, CheckCircle, Search, MapPin, Filter as FilterIcon 
 } from 'lucide-react';
-import { PageContainer, FeatureCard } from "@/components";
+import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   CategoryCard, PopularLocations, PopularFigures, 
-  OnboardingStepContent, CategoriesSection, FeatureItem 
+  OnboardingStepContent, CategoriesSection
 } from "@/components/home/HomeComponents";
 import { usePlaqueCounts, getPlaqueCategories } from "@/utils/plaque-utils";
+import EnhancedHowItWorks from "@/components/home/EnhancedHowItWorks";
 
 // Famous historical figures data for the map
 const famousPlaques = [
@@ -84,7 +85,6 @@ const famousPlaques = [
   }
 ];
 
-// Enhanced Map Preview component
 // Enhanced Map Preview component
 const EnhancedMapPreview = ({ navigateToDiscover }) => {
   const mapContainerRef = useRef(null);
@@ -373,7 +373,7 @@ const Home = () => {
                 <div className="absolute inset-0 bg-blue-500 rounded-2xl rotate-6 transform"></div>
                 <div className="absolute inset-0 bg-blue-400 rounded-2xl -rotate-3 transform"></div>
                 <div className="absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden">
-                  {/* Use the new enhanced map component */}
+                  {/* Use the enhanced map component */}
                   <EnhancedMapPreview 
                     navigateToDiscover={navigateToMapView}
                   />
@@ -489,63 +489,8 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-16 px-4">
-        <div className="container mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">How Plaquer Works</h2>
-          <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">Discover, collect and share London's fascinating blue plaques all in one place.</p>
-          
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
-            <FeatureCard 
-              icon={Map} 
-              title="Discover"
-              description="Find plaques around London with our interactive map. Uncover hidden stories nearby."
-            />
-            <FeatureCard 
-              icon={Camera} 
-              title="Capture"
-              description="Add plaques to your collection by taking a photo or checking in at the location."
-              color="green"
-            />
-            <FeatureCard 
-              icon={ListChecks} 
-              title="Build Lists"
-              description="Create custom collections of plaques based on themes, neighborhoods, or personal interests."
-              color="purple"
-            />
-          </div>
-          
-          {/* "Getting Started" section */}
-          <div className="mt-16 bg-blue-50 rounded-xl p-8 border border-blue-100">
-            <h3 className="text-xl font-bold text-center mb-8">Getting Started is Easy</h3>
-            <div className="grid md:grid-cols-3 gap-6">
-              <FeatureItem 
-                number={1} 
-                title="Explore the Map" 
-                description="Browse the interactive map to discover blue plaques near you or in areas of interest."
-              />
-              <FeatureItem 
-                number={2} 
-                title="Visit and Check In" 
-                description="When you find a plaque in person, mark it as visited and optionally add a photo."
-              />
-              <FeatureItem 
-                number={3} 
-                title="Create Collections" 
-                description="Organize your visited plaques into themed collections to track your explorations."
-              />
-            </div>
-            <div className="mt-8 text-center">
-              <Button 
-                onClick={() => navigate('/discover')}
-                className="px-6"
-              >
-                Start Your Journey
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Features Section - REPLACED with Enhanced How It Works Component */}
+      <EnhancedHowItWorks onStartJourney={() => navigate('/discover')} />
       
       {/* Mobile Nav (mobile only) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-40">
