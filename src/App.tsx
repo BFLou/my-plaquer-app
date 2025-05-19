@@ -42,6 +42,7 @@ function App() {
               </RequireAuth>
             } />
             
+            {/* Profile routes - Add the missing collections tab route */}
             <Route path="/profile" element={
               <RequireAuth>
                 <ProfilePage />
@@ -51,6 +52,12 @@ function App() {
             <Route path="/profile/visited" element={
               <RequireAuth>
                 <ProfilePage activeTab="visited" />
+              </RequireAuth>
+            } />
+            
+            <Route path="/profile/collections" element={
+              <RequireAuth>
+                <ProfilePage activeTab="collections" />
               </RequireAuth>
             } />
             

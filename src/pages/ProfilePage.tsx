@@ -27,9 +27,11 @@ import { toast } from 'sonner';
 
 // Profile components
 import VisitedPlaquesPanel from '@/components/profile/VisitedPlaquesPanel';
+import VisitedPlaquesPage from '../components/profile/VisitedPlaquesPage';
 import UserCollectionsPanel from '@/components/profile/UserCollectionsPanel';
 import UserRoutesPanel from '@/components/profile/UserRoutesPanel';
 import { StatCard } from '@/components/common/StatCard';
+// Add these to your imports
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -418,73 +420,22 @@ const ProfilePage = () => {
             </TabsContent>
             
             {/* Visited Tab */}
-            <TabsContent value="visited">
-              <div className="bg-white shadow-sm rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold">Visited Plaques</h2>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => navigate('/discover')}
-                  >
-                    Discover More
-                  </Button>
-                </div>
+<TabsContent value="visited">
+  <div className="bg-white shadow-sm rounded-xl p-6">
+    <div className="flex items-center justify-between mb-6">
+      <h2 className="text-xl font-bold">Visited Plaques</h2>
+      <Button 
+        variant="outline" 
+        onClick={() => navigate('/discover')}
+      >
+        Discover More
+      </Button>
+    </div>
                 
-                {visits.length === 0 ? (
-                  <div className="text-center py-16 bg-gray-50 rounded-lg">
-                    <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">No Visited Plaques Yet</h3>
-                    <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                      Start exploring and visiting plaques around London. Your visits will appear here.
-                    </p>
-                    <Button 
-                      onClick={() => navigate('/discover')}
-                    >
-                      Explore Plaques
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {visits.map(visit => {
-                      const visitDate = new Date(visit.visited_at instanceof Date 
-                        ? visit.visited_at 
-                        : visit.visited_at.toDate 
-                          ? visit.visited_at.toDate() 
-                          : visit.visited_at);
-                          
-                      return (
-                        <div 
-                          key={visit.id}
-                          className="border rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer transition-colors"
-                          onClick={() => navigate(`/discover/plaque/${visit.plaque_id}`)}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="bg-blue-100 text-blue-500 w-12 h-12 rounded-lg flex items-center justify-center">
-                              <MapPin size={20} />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">Plaque #{visit.plaque_id}</h4>
-                              <p className="text-sm text-gray-500">
-                                Visited on {visitDate.toLocaleDateString('en-US', { 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric' 
-                                })}
-                              </p>
-                              {visit.notes && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  "{visit.notes}"
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
+    {/* Replace the entire visits.map section with this: */}
+<VisitedPlaquesPage visits={visits} loading={visitsLoading} />
+  </div>
+</TabsContent>
             
             {/* Collections Tab */}
             <TabsContent value="collections">
