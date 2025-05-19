@@ -77,7 +77,7 @@ const UserRoutesPanel: React.FC<UserRoutesPanelProps> = ({
             <div 
               key={route.id}
               className="border rounded-lg p-3 hover:border-green-300 hover:bg-green-50/50 cursor-pointer transition-colors"
-              onClick={() => navigate(`/profile/routes/${route.id}`)}
+              onClick={() => navigate(`/routes/${route.id}`)}
             >
               <div className="flex items-center gap-3">
                 <div className="bg-green-100 text-green-500 w-10 h-10 flex items-center justify-center rounded-lg">
