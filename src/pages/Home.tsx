@@ -1,14 +1,20 @@
-// src/pages/Home.tsx
-import React, { useState, useEffect, useRef } from "react";
+// src/pages/Home.tsx - Updated version
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Map, Camera, ListChecks, User, Navigation, Compass, Info, X, CheckCircle, Search, MapPin, Filter as FilterIcon } from "lucide-react";
-import { PageContainer, FeatureCard, SearchHero } from "@/components";
+import { 
+  ChevronRight, Map, Camera, ListChecks, User, Navigation, 
+  Compass, Info, X, CheckCircle, Search, MapPin, Filter as FilterIcon 
+} from 'lucide-react';
+import { PageContainer, FeatureCard } from "@/components";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Autocomplete } from "@/components/common/Autocomplete";
+import { 
+  CategoryCard, PopularLocations, PopularFigures, 
+  MapPreview, OnboardingStepContent, CategoriesSection, FeatureItem 
+} from "@/components/home/HomeComponents";
+import { usePlaqueCounts, getPlaqueCategories } from "@/utils/plaque-utils";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -19,70 +25,14 @@ const Home = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  
+  // Get dynamic plaque counts from plaque_data.json
+  const { counts, loading } = usePlaqueCounts();
 
-  // Popular categories for quick access
-  const categories = [
-    { 
-      label: "Famous Authors", 
-      icon: "📚",
-      count: 124,
-      onClick: () => navigate("/discover?professions=author,writer&view=grid") 
-    },
-    { 
-      label: "Women in History", 
-      icon: "👑",
-      count: 87,
-      onClick: () => navigate("/discover?category=women&view=grid") 
-    },
-    { 
-      label: "Scientists", 
-      icon: "🧪",
-      count: 102,
-      onClick: () => navigate("/discover?professions=scientist,researcher,physicist&view=grid") 
-    },
-    { 
-      label: "19th Century", 
-      icon: "🕰️",
-      count: 156,
-      onClick: () => navigate("/discover?period=19th-century&view=grid") 
-    },
-    { 
-      label: "Westminster", 
-      icon: "🏛️",
-      count: 68,
-      onClick: () => navigate("/discover?postcodes=SW1&view=map") 
-    },
-    {
-      label: "Blue Plaques",
-      icon: "🔵",
-      count: 680,
-      onClick: () => navigate("/discover?colors=blue&view=grid")
-    },
-    {
-      label: "Green Plaques",
-      icon: "🟢",
-      count: 142,
-      onClick: () => navigate("/discover?colors=green&view=grid")
-    },
-  ];
-
-  // Popular locations for quick search
-  const popularLocations = [
-    { name: "Bloomsbury", count: 47 },
-    { name: "Westminster", count: 86 },
-    { name: "Chelsea", count: 53 },
-    { name: "Kensington", count: 61 },
-    { name: "Mayfair", count: 38 },
-  ];
-
-  // Popular historical figures
-  const popularFigures = [
-    { name: "Charles Dickens", profession: "Writer" },
-    { name: "Winston Churchill", profession: "Politician" },
-    { name: "Ada Lovelace", profession: "Mathematician" },
-    { name: "Florence Nightingale", profession: "Nurse" },
-    { name: "Alan Turing", profession: "Computer Scientist" },
-  ];
+  // Get categories from the utility function
+  const categories = useMemo(() => {
+    return getPlaqueCategories(counts, navigate);
+  }, [counts, navigate]);
 
   useEffect(() => {
     // Check if this is first visit to show onboarding
@@ -132,7 +82,7 @@ const Home = () => {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Add some sample plaque locations
+    // Add sample plaque locations - fixed to prevent duplicate markers
     const plaqueSamples = [
       { lat: 51.511, lng: -0.119, title: "Charles Dickens", color: "blue" },
       { lat: 51.518, lng: -0.142, title: "Ada Lovelace", color: "blue" },
@@ -141,15 +91,14 @@ const Home = () => {
       { lat: 51.530, lng: -0.125, title: "Karl Marx", color: "blue" },
       { lat: 51.507, lng: -0.165, title: "Winston Churchill", color: "blue" },
       { lat: 51.496, lng: -0.145, title: "Charles Darwin", color: "blue" },
-      // Add more sample plaques for visual effect
     ];
 
-    // Create markers with a pulsing effect
+    // Create markers with a cleaner effect (no flashing on hover)
     plaqueSamples.forEach((plaque, index) => {
       // Stagger marker creation for visual effect
       setTimeout(() => {
-        createPulsingMarker(map, plaque);
-      }, index * 300); // Stagger by 300ms
+        createMarker(map, plaque);
+      }, index * 200); // Reduced stagger time
     });
 
     // Add click handler to navigate to discover page
@@ -162,23 +111,20 @@ const Home = () => {
     setIsMapLoaded(true);
   };
 
-  // Helper to create a pulsing marker
-  const createPulsingMarker = (map: any, plaque: any) => {
-    // Create icon
+  // Helper to create a marker (simplified, no flashing effect)
+  const createMarker = (map: any, plaque: any) => {
+    // Create icon with no animation/flashy effects
     const icon = window.L.divIcon({
       className: 'custom-marker',
       html: `
-        <div class="relative">
-          <div class="absolute -top-2 -left-2 w-14 h-14 rounded-full bg-blue-500 opacity-20 animate-ping"></div>
-          <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-md">
-            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
-              ${plaque.title.charAt(0)}
-            </div>
+        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md">
+          <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+            ${plaque.title.charAt(0)}
           </div>
         </div>
       `,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
     });
 
     // Create marker
@@ -192,7 +138,7 @@ const Home = () => {
     });
 
     // Add click handler for this specific marker
-    marker.on('click', (e) => {
+    marker.on('click', (e: any) => {
       e.originalEvent.stopPropagation();
       navigate(`/discover?search=${encodeURIComponent(plaque.title)}`);
     });
@@ -264,20 +210,25 @@ const Home = () => {
     }
   ];
 
+  // Navigation to the discover page with map view
+  const navigateToMapView = () => navigate('/discover?view=map');
+
   return (
     <PageContainer activePage="home" containerClass="flex-grow pb-16 md:pb-0">
-      {/* Hero Section */}
+      {/* Hero Section - With map on the right */}
       <section className="relative py-16 md:py-20 px-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
           <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
           <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
         </div>
-        <div className="container mx-auto relative z-10 flex flex-col md:flex-row items-center">
-          <div className="md:w-1/2 mb-10 md:mb-0">
-            <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">Discover History Where You Stand</h1>
-            <p className="text-lg md:text-xl mb-8 opacity-90">Explore London's iconic blue plaques and build your personal collection of visited landmarks.</p>
-            <div className="flex flex-wrap gap-4">
+        
+        <div className="container mx-auto relative z-10">
+          <div className="flex flex-col md:flex-row items-center">
+            {/* Left side with content */}
+            <div className="md:w-1/2 mb-10 md:mb-0">
+              <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">Discover History Where You Stand</h1>
+              <p className="text-lg md:text-xl mb-8 opacity-90">Explore London's iconic blue plaques and build your personal collection of visited landmarks.</p>
               <Button 
                 onClick={() => navigate('/discover')} 
                 className="bg-white text-blue-600 px-5 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition duration-300 flex items-center gap-2"
@@ -285,36 +236,18 @@ const Home = () => {
                 Start Exploring <ChevronRight size={18} />
               </Button>
             </div>
-          </div>
-          <div className="md:w-1/2 flex justify-center">
-            <div className="relative w-72 h-72 md:w-96 md:h-80">
-              <div className="absolute inset-0 bg-blue-500 rounded-2xl rotate-6 transform"></div>
-              <div className="absolute inset-0 bg-blue-400 rounded-2xl -rotate-3 transform"></div>
-              <div className="absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden">
-                {/* Interactive Map Preview */}
-                <div 
-                  ref={mapContainerRef} 
-                  className="w-full h-full bg-gray-100 cursor-pointer transition duration-200 hover:opacity-95"
-                >
-                  {!isMapLoaded && (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                        <p className="text-gray-500 text-sm">Loading map preview...</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Overlay button to navigate to discover page - Make visibly distinct and always show */}
-                <div className="absolute bottom-4 right-4 left-4">
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                    onClick={() => navigate('/discover?view=map')}
-                  >
-                    <Map size={16} className="mr-2" />
-                    Open Map View
-                  </Button>
+            
+            {/* Right side with map */}
+            <div className="md:w-1/2 flex justify-center">
+              <div className="relative w-72 h-72 md:w-96 md:h-80">
+                <div className="absolute inset-0 bg-blue-500 rounded-2xl rotate-6 transform"></div>
+                <div className="absolute inset-0 bg-blue-400 rounded-2xl -rotate-3 transform"></div>
+                <div className="absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden">
+                  <MapPreview 
+                    isMapLoaded={isMapLoaded}
+                    mapContainerRef={mapContainerRef}
+                    navigateToDiscover={navigateToMapView}
+                  />
                 </div>
               </div>
             </div>
@@ -357,44 +290,9 @@ const Home = () => {
               <div className="mb-5 bg-white rounded-md shadow-md border border-gray-100 divide-y">
                 {searchQuery.length < 2 ? (
                   <>
-                    {/* Show popular searches when input is focused but no query yet */}
-                    <div className="p-3">
-                      <h3 className="font-medium text-sm text-gray-700 mb-2">Popular Historical Figures</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {popularFigures.map((figure, idx) => (
-                          <div 
-                            key={idx}
-                            className="px-3 py-1.5 bg-gray-50 rounded-md text-sm cursor-pointer hover:bg-blue-50 transition flex items-center"
-                            onClick={() => {
-                              setSearchQuery(figure.name);
-                              handleSearch();
-                            }}
-                          >
-                            <span className="font-medium">{figure.name}</span>
-                            <span className="text-xs text-gray-500 ml-1">({figure.profession})</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-medium text-sm text-gray-700 mb-2">Popular Locations</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {popularLocations.map((location, idx) => (
-                          <div 
-                            key={idx}
-                            className="px-3 py-1.5 bg-gray-50 rounded-md text-sm cursor-pointer hover:bg-blue-50 transition flex items-center"
-                            onClick={() => {
-                              setSearchQuery(location.name);
-                              handleSearch();
-                            }}
-                          >
-                            <MapPin size={14} className="mr-1 text-gray-400" />
-                            <span className="font-medium">{location.name}</span>
-                            <Badge variant="secondary" className="ml-1.5 text-xs">{location.count}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    {/* Show popular searches using component */}
+                    <PopularFigures figures={counts.popularFigures} />
+                    <PopularLocations locations={counts.popularLocations} />
                   </>
                 ) : (
                   // Show filtered suggestions based on user input
@@ -435,22 +333,17 @@ const Home = () => {
                 <FilterIcon size={14} className="text-gray-500 mr-2" />
                 <h3 className="text-sm font-medium text-gray-700">Explore by Category</h3>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-1">
-                {categories.slice(0, 6).map((category, index) => (
-                  <Button 
-                    key={index}
-                    variant="outline" 
-                    className="whitespace-nowrap flex items-center justify-start h-10 gap-1.5 shadow-sm bg-white hover:bg-gray-50 border text-left"
-                    onClick={category.onClick}
-                  >
-                    <span className="mr-1">{category.icon}</span>
-                    <div className="flex flex-col items-start">
-                      <span className="text-xs font-medium">{category.label}</span>
-                      <span className="text-xs text-gray-500">{category.count}</span>
-                    </div>
-                  </Button>
-                ))}
-              </div>
+              
+              {/* Use the CategoriesSection component with categories from plaque-utils */}
+              {loading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-1">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="h-10 bg-gray-100 animate-pulse rounded"></div>
+                  ))}
+                </div>
+              ) : (
+                <CategoriesSection categories={categories} />
+              )}
             </div>
             
             {/* Near me button - Prominently displayed */}
@@ -497,21 +390,21 @@ const Home = () => {
           <div className="mt-16 bg-blue-50 rounded-xl p-8 border border-blue-100">
             <h3 className="text-xl font-bold text-center mb-8">Getting Started is Easy</h3>
             <div className="grid md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg p-6 shadow-sm text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mx-auto mb-4">1</div>
-                <h4 className="font-bold mb-2">Explore the Map</h4>
-                <p className="text-gray-600 text-sm">Browse the interactive map to discover blue plaques near you or in areas of interest.</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mx-auto mb-4">2</div>
-                <h4 className="font-bold mb-2">Visit and Check In</h4>
-                <p className="text-gray-600 text-sm">When you find a plaque in person, mark it as visited and optionally add a photo.</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mx-auto mb-4">3</div>
-                <h4 className="font-bold mb-2">Create Collections</h4>
-                <p className="text-gray-600 text-sm">Organize your visited plaques into themed collections to track your explorations.</p>
-              </div>
+              <FeatureItem 
+                number={1} 
+                title="Explore the Map" 
+                description="Browse the interactive map to discover blue plaques near you or in areas of interest."
+              />
+              <FeatureItem 
+                number={2} 
+                title="Visit and Check In" 
+                description="When you find a plaque in person, mark it as visited and optionally add a photo."
+              />
+              <FeatureItem 
+                number={3} 
+                title="Create Collections" 
+                description="Organize your visited plaques into themed collections to track your explorations."
+              />
             </div>
             <div className="mt-8 text-center">
               <Button 
@@ -551,13 +444,7 @@ const Home = () => {
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <div className="flex flex-col items-center text-center">
-              {onboardingSteps[onboardingStep].icon}
-              <DialogTitle className="mt-4">{onboardingSteps[onboardingStep].title}</DialogTitle>
-              <DialogDescription className="mt-2">
-                {onboardingSteps[onboardingStep].description}
-              </DialogDescription>
-            </div>
+            <OnboardingStepContent step={onboardingStep} steps={onboardingSteps} />
           </DialogHeader>
           
           <div className="flex justify-between items-center mt-6">
