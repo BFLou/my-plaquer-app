@@ -89,7 +89,6 @@ const famousPlaques = [
 const EnhancedMapPreview = ({ navigateToDiscover }) => {
   const mapContainerRef = useRef(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [activeMarker, setActiveMarker] = useState(null);
   
   // Initialize map
   useEffect(() => {
@@ -112,12 +111,30 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
+    // Create a custom tooltip div directly in the DOM
+    const tooltipEl = document.createElement('div');
+    tooltipEl.className = 'custom-map-tooltip';
+    tooltipEl.style.display = 'none';
+    tooltipEl.style.position = 'absolute';
+    tooltipEl.style.zIndex = '9999';
+    tooltipEl.style.backgroundColor = '#3B82F6';
+    tooltipEl.style.color = 'white';
+    tooltipEl.style.padding = '10px';
+    tooltipEl.style.borderRadius = '8px';
+    tooltipEl.style.minWidth = '180px';
+    tooltipEl.style.maxWidth = '220px';
+    tooltipEl.style.textAlign = 'center';
+    tooltipEl.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+    tooltipEl.style.pointerEvents = 'none'; // Let clicks pass through
+    tooltipEl.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    mapContainerRef.current.appendChild(tooltipEl);
+
     // Add famous plaques as simple markers
     famousPlaques.forEach((plaque) => {
       const icon = window.L.divIcon({
         className: 'custom-marker',
         html: `
-          <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md transition-all duration-200">
+          <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110">
             <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
               ${plaque.name.charAt(0)}
             </div>
@@ -132,15 +149,48 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
         interactive: true
       }).addTo(map);
       
-      // Add event listeners directly to the marker's DOM element for smoother interaction
-      marker.on('mouseover', () => {
-        setActiveMarker(plaque);
+      // Manual tooltip handling for more control
+      marker.on('mouseover', function(e) {
+        // Set tooltip content
+        tooltipEl.innerHTML = `
+          <div style="font-weight: 600; font-size: 14px;">${plaque.name}</div>
+          <div style="font-size: 12px; opacity: 0.9;">${plaque.profession}</div>
+          <div style="font-size: 12px; opacity: 0.8; margin-top: 4px;">${plaque.location}</div>
+        `;
+        
+        // Get pixel coordinates of the marker
+        const point = map.latLngToContainerPoint(e.target.getLatLng());
+        
+        // Calculate safe position within map bounds
+        const tooltipWidth = 200; // Approximate width
+        const tooltipHeight = 80; // Approximate height
+        const mapWidth = mapContainerRef.current.clientWidth;
+        const mapHeight = mapContainerRef.current.clientHeight;
+        
+        // Default position above marker
+        let top = point.y - tooltipHeight - 10;
+        let left = point.x - (tooltipWidth / 2);
+        
+        // Adjust position to keep inside map
+        if (top < 10) top = point.y + 35; // Place below if too close to top
+        if (left < 10) left = 10;
+        if (left + tooltipWidth > mapWidth - 10) left = mapWidth - tooltipWidth - 10;
+        if (top + tooltipHeight > mapHeight - 60) top = mapHeight - tooltipHeight - 60; // Keep above button
+        
+        // Position tooltip
+        tooltipEl.style.left = `${left}px`;
+        tooltipEl.style.top = `${top}px`;
+        
+        // Show tooltip
+        tooltipEl.style.display = 'block';
       });
       
-      marker.on('mouseout', () => {
-        setActiveMarker(null);
+      marker.on('mouseout', function() {
+        // Hide tooltip
+        tooltipEl.style.display = 'none';
       });
       
+      // Make marker clickable to navigate to that specific plaque
       marker.on('click', (e) => {
         e.originalEvent.stopPropagation();
         navigateToDiscover(`/discover?view=map&search=${encodeURIComponent(plaque.name)}`);
@@ -152,6 +202,9 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
     return () => {
       if (map) {
         map.remove();
+      }
+      if (tooltipEl && tooltipEl.parentNode) {
+        tooltipEl.parentNode.removeChild(tooltipEl);
       }
     };
   }, [navigateToDiscover]);
@@ -165,15 +218,6 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
         style={{ minHeight: '280px' }}
         onClick={() => navigateToDiscover('/discover?view=map')}
       />
-      
-      {/* Hover info panel - Fixed position at the bottom */}
-      {activeMarker && (
-        <div className="absolute bottom-16 left-4 right-4 bg-white rounded-lg shadow-lg p-3 animate-in fade-in duration-200">
-          <h3 className="font-bold text-lg">{activeMarker.name}</h3>
-          <p className="text-gray-600 text-sm">{activeMarker.profession}</p>
-          <p className="text-gray-500 text-xs mt-1">{activeMarker.location}</p>
-        </div>
-      )}
       
       {/* Fixed bottom button for better visibility */}
       <div className="absolute bottom-4 right-4 left-4">
