@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
+
+// Import correct icons from Lucide React
 import { Loader } from 'lucide-react';
-import { GithubIcon } from 'lucide-react';
-import OAuthProviders from './OAuthProviders';
+// For Google icon and Github icon, we need to use Lucide's alternate imports
+// They're now part of the brand icons collection
+import { GithubIcon } from 'lucide-react'; 
 
 // Custom Google Icon since Lucide-React doesn't provide one
 const GoogleIcon = () => (
@@ -25,44 +28,44 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   
   const { signIn, signInWithGoogle, signInWithGithub } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setDebugInfo(null);
     setIsLoading(true);
     
     try {
-      const userCredential = await signIn(email, password);
-      console.log("Auth successful:", userCredential);
+      await signIn(email, password);
       onSuccess();
     } catch (err: any) {
-      console.error('Sign in error:', err);
-      
-      // Set user-friendly error message
-      let errorMessage = 'Failed to sign in. Please try again.';
-      
-      if (err.code === 'auth/invalid-credential') {
-        errorMessage = 'Invalid email or password. Please try again.';
-      } else if (err.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email. Please check your email or register.';
-      } else if (err.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password. Please try again.';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many unsuccessful login attempts. Please try again later.';
-      } else if (err.code === 'auth/network-request-failed') {
-        errorMessage = 'Network error. Please check your internet connection.';
-      } else if (err.code === 'auth/configuration-not-found') {
-        errorMessage = 'Authentication configuration error. Please contact support.';
-        setDebugInfo('This error typically occurs when Firebase does not recognize the domain. Check if localhost is added to authorized domains in Firebase console.');
-      }
-      
-      setError(errorMessage);
+      setError(err.message || 'Failed to sign in. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      await signInWithGoogle();
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleGithubSignIn = async () => {
+    setError(null);
+    try {
+      await signInWithGithub();
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with GitHub.');
     }
   };
 
@@ -104,11 +107,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
             {error}
-            {debugInfo && (
-              <div className="mt-2 pt-2 border-t border-red-200 text-xs">
-                <strong>Debug info:</strong> {debugInfo}
-              </div>
-            )}
           </div>
         )}
         
@@ -122,11 +120,37 @@ const LoginForm: React.FC<LoginFormProps> = ({ onForgotPassword, onSuccess }) =>
         </Button>
       </form>
       
-      {/* OAuth Providers */}
-      <OAuthProviders 
-        onSuccess={onSuccess}
-        setError={setError}
-      />
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t"></span>
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-white px-2 text-gray-500">or continue with</span>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-3">
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleGoogleSignIn}
+          className="flex items-center justify-center gap-2"
+          disabled={isLoading}
+        >
+          <GoogleIcon />
+          <span>Google</span>
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline"
+          onClick={handleGithubSignIn}
+          className="flex items-center justify-center gap-2"
+          disabled={isLoading}
+        >
+          <GithubIcon size={16} />
+          <span>GitHub</span>
+        </Button>
+      </div>
     </div>
   );
 };

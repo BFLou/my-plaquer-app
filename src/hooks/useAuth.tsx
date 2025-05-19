@@ -90,3 +90,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Make sure to export the hook as the default export as well
+export default useAuth;

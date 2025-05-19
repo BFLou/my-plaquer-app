@@ -1,6 +1,7 @@
 // src/contexts/UserContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+// Fix the import path - make sure it matches your project structure
+import { useAuth } from '../hooks/useAuth'; // Adjust path if needed
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -146,4 +147,4 @@ export const useUser = () => {
     throw new Error('useUser must be used within a UserProvider');
   }
   return context;
-};r
+};
