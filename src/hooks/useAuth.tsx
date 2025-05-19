@@ -4,6 +4,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { 
   auth, 
   signIn as firebaseSignIn,
+  signInWithGoogle as firebaseSignInWithGoogle,
   register as firebaseRegister,
   resetPassword as firebaseResetPassword,
   signOut as firebaseSignOut
@@ -18,7 +19,7 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<any>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  // Stubbed social auth methods - will implement later
+  // Social auth methods
   signInWithGoogle: () => Promise<any>;
   signInWithGithub: () => Promise<any>;
   signInWithFacebook: () => Promise<any>;
@@ -53,10 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
-  // For now, these social auth methods just return errors
-  // We'll implement them properly later
+  // For social auth methods that aren't implemented yet
   const socialAuthNotImplemented = async () => {
-    throw new Error('Social authentication will be implemented in a future update');
+    throw new Error('This authentication method will be implemented in a future update');
   };
 
   // Auth context value
@@ -68,8 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register: firebaseRegister,
     resetPassword: firebaseResetPassword,
     signOut: firebaseSignOut,
-    // Placeholder methods for social auth
-    signInWithGoogle: socialAuthNotImplemented,
+    // Social auth methods
+    signInWithGoogle: firebaseSignInWithGoogle,
     signInWithGithub: socialAuthNotImplemented,
     signInWithFacebook: socialAuthNotImplemented,
     signInWithTwitter: socialAuthNotImplemented

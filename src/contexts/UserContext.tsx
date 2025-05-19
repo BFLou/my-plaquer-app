@@ -1,5 +1,4 @@
-// src/contexts/UserContext.tsx - Updated version with fix for undefined values
-
+// src/contexts/UserContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -10,7 +9,7 @@ interface UserProfile {
   uid: string;
   displayName: string;
   email: string;
-  photoURL?: string | null; // Add null as possible type
+  photoURL?: string | null;
   bio?: string | null;
   location?: string | null;
   joinedAt: string;
@@ -57,7 +56,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
               displayName: user.displayName || 'User',
               email: user.email || '',
               // Convert undefined to null for Firestore
-              photoURL: user.photoURL || null, // Changed from undefined to null
+              photoURL: user.photoURL || null,
               joinedAt: new Date().toISOString(),
               lastActiveAt: new Date().toISOString(),
             };
@@ -147,4 +146,4 @@ export const useUser = () => {
     throw new Error('useUser must be used within a UserProvider');
   }
   return context;
-};
+};r
