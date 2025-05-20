@@ -120,48 +120,50 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
         
         {/* Main Feature Showcase - Desktop Layout */}
         <div className="hidden md:flex items-stretch gap-8">
-          {/* Feature selector sidebar */}
+          {/* Feature selector sidebar - Fixed height container */}
           <div className="w-1/3">
-            {features.map((feature, index) => (
-              <div 
-                key={index}
-                className={cn(
-                  "p-6 rounded-xl mb-4 cursor-pointer transition-all duration-500 border-l-4",
-                  getBorderClass(feature.color, activeFeature === index),
-                  getBackgroundClass(feature.color, activeFeature === index),
-                  activeFeature === index ? "shadow-md" : ""
-                )}
-                onClick={() => setActiveFeature(index)}
-              >
-                <div className="flex items-center mb-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4`} 
-                       style={{ 
-                         backgroundColor: feature.color === 'blue' ? 'rgba(219, 234, 254, 1)' : 
-                                        feature.color === 'green' ? 'rgba(220, 252, 231, 1)' : 
-                                        'rgba(243, 232, 255, 1)',
-                         color: feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
+            <div className="h-[420px] flex flex-col justify-between">
+              {features.map((feature, index) => (
+                <div 
+                  key={index}
+                  className={cn(
+                    "p-6 rounded-xl mb-4 cursor-pointer transition-all duration-500 border-l-4",
+                    getBorderClass(feature.color, activeFeature === index),
+                    getBackgroundClass(feature.color, activeFeature === index),
+                    activeFeature === index ? "shadow-md" : ""
+                  )}
+                  onClick={() => setActiveFeature(index)}
+                >
+                  <div className="flex items-center mb-2">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-4`} 
+                         style={{ 
+                           backgroundColor: feature.color === 'blue' ? 'rgba(219, 234, 254, 1)' : 
+                                          feature.color === 'green' ? 'rgba(220, 252, 231, 1)' : 
+                                          'rgba(243, 232, 255, 1)',
+                           color: feature.color === 'blue' ? 'rgba(37, 99, 235, 1)' : 
                                 feature.color === 'green' ? 'rgba(22, 163, 74, 1)' : 
                                 'rgba(147, 51, 234, 1)'
-                       }}>
-                    {feature.icon}
+                         }}>
+                      {feature.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">{feature.title}</h3>
+                      <p className="text-sm text-gray-500">{feature.subtitle}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold">{feature.title}</h3>
-                    <p className="text-sm text-gray-500">{feature.subtitle}</p>
+                  <div className={cn(
+                    "overflow-hidden transition-all duration-500",
+                    activeFeature === index ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+                  )}>
+                    <p className="text-gray-700 mt-2">{feature.description}</p>
                   </div>
                 </div>
-                <div className={cn(
-                  "overflow-hidden transition-all duration-500",
-                  activeFeature === index ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
-                )}>
-                  <p className="text-gray-700 mt-2">{feature.description}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
           
-          {/* Feature content area with phone mockup - Updated to match provided images */}
-          <div className="w-2/3 bg-white rounded-xl shadow-md overflow-hidden relative">
+          {/* Feature content area with phone mockup - Fixed height container */}
+          <div className="w-2/3 bg-white rounded-xl shadow-md overflow-hidden relative h-[500px]">
             <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white"></div>
             
             {/* Phone mockup */}
@@ -296,8 +298,8 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
               </div>
             </div>
             
-            {/* Feature text content */}
-            <div className="p-8 relative z-10 max-w-xs">
+            {/* Feature text content - Fixed height container */}
+            <div className="p-8 relative z-10 max-w-xs h-full flex flex-col">
               <div style={{ 
                 color: activeFeature === 0 ? 'rgba(37, 99, 235, 1)' : 
                       activeFeature === 1 ? 'rgba(22, 163, 74, 1)' : 
@@ -313,7 +315,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                 {features[activeFeature].title}
               </h3>
               {/* Fixed height container for description to prevent jumping */}
-              <div className="h-24">
+              <div className="h-24 mb-6">
                 <p className="text-gray-600 transition-all duration-500">
                   {features[activeFeature].description}
                 </p>
@@ -335,23 +337,25 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                 ))}
               </div>
               
-              <Button 
-                onClick={onStartJourney}
-                className="text-white transition-all px-6 py-2"
-                style={{ 
-                  backgroundColor: activeFeature === 0 ? 'rgba(37, 99, 235, 1)' : 
-                                 activeFeature === 1 ? 'rgba(22, 163, 74, 1)' : 
-                                 'rgba(147, 51, 234, 1)',
-                }}
-              >
-                Start Exploring
-                <ChevronRight className="ml-2 h-5 w-5" />
-              </Button>
+              <div className="mt-auto">
+                <Button 
+                  onClick={onStartJourney}
+                  className="text-white transition-all px-6 py-2"
+                  style={{ 
+                    backgroundColor: activeFeature === 0 ? 'rgba(37, 99, 235, 1)' : 
+                                  activeFeature === 1 ? 'rgba(22, 163, 74, 1)' : 
+                                  'rgba(147, 51, 234, 1)',
+                  }}
+                >
+                  Start Exploring
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
         
-        {/* Mobile Layout - Improved for better mobile responsiveness */}
+        {/* Mobile Layout - Improved for better mobile responsiveness - Fixed height */}
         <div className="md:hidden space-y-6">
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
             {/* Tabs for mobile feature selection */}
@@ -381,12 +385,12 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
               ))}
             </div>
             
-            {/* Mobile feature content with sliding animation */}
-            <div className="relative overflow-hidden" style={{ minHeight: '420px' }}>
+            {/* Mobile feature content with fixed height and sliding animation */}
+            <div className="relative h-[450px]">
               {features.map((feature, index) => (
                 <div
                   key={index}
-                  className="p-6 transition-all duration-500 absolute w-full"
+                  className="p-6 transition-all duration-500 absolute w-full h-full"
                   style={{ 
                     opacity: activeFeature === index ? 1 : 0,
                     pointerEvents: activeFeature === index ? 'auto' : 'none',
@@ -416,7 +420,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                     </div>
                   </div>
                   
-                  {/* Feature description */}
+                  {/* Feature description - fixed height */}
                   <div className="h-24 mb-6">
                     <p className="text-gray-600">{feature.description}</p>
                   </div>
@@ -437,9 +441,9 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                     ))}
                   </div>
                   
-                  {/* Phone UI preview - simplified for mobile */}
-                  <div className="bg-gray-50 rounded-lg p-2 mb-6">
-                    <div className="w-full h-[180px] bg-white overflow-hidden rounded-lg shadow-sm">
+                  {/* Phone UI preview - fixed height for mobile */}
+                  <div className="bg-gray-50 rounded-lg p-2 mb-6 h-[180px]">
+                    <div className="w-full h-full bg-white overflow-hidden rounded-lg shadow-sm">
                       {/* First screen - Map */}
                       {index === 0 && (
                         <div className="h-full flex flex-col">
