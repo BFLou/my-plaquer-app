@@ -155,15 +155,22 @@ const CollectionsPage = () => {
       activePage="collections"
       simplifiedFooter={true}
     >
-      {/* NEW: Compact Hero Section */}
-      <section className="bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4">
-        <div className="container mx-auto max-w-5xl">
-          <h1 className="text-2xl font-bold">My Collections</h1>
-          <p className="opacity-90 mt-1">
-            Organize and explore your favorite London plaques in personalized collections.
-          </p>
-        </div>
-      </section>
+{/* Hero Section with decorative background circles */}
+<section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
+  {/* Decorative background circles */}
+  <div className="absolute inset-0 opacity-10">
+    <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
+    <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
+    <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+  </div>
+  
+  <div className="container mx-auto max-w-5xl relative z-10">
+    <h1 className="text-2xl font-bold">My Collections</h1>
+    <p className="opacity-90 mt-1">
+      Organize and explore your favorite London plaques in personalized collections.
+    </p>
+  </div>
+</section>
       
       <div className="container mx-auto max-w-5xl px-4">
         {/* NEW: Stats Banner */}
