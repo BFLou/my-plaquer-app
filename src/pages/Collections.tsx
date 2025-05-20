@@ -1,17 +1,16 @@
-// src/pages/Collections.jsx
+// src/pages/Collections.tsx
 import React, { useState, useEffect } from 'react';
 import { 
-  MapPin, Star, Trash2, FolderOpen, BookOpen, Plus, 
-  Filter, Search, Grid, List, Check, X, 
-  CollectionIcon, LayoutGrid, Package
+  MapPin, Star, Trash2, FolderOpen, Plus, 
+  Filter, Search, Grid, List, X, 
+  CheckCircle, MoreHorizontal, Package
 } from 'lucide-react';
 import { PageContainer } from "@/components";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCollectionsList } from '../hooks/useCollectionsList';
 import { useCollectionActions } from '../hooks/useCollectionActions';
 
 // Collection Components
-import CollectionHeader from '../components/collections/CollectionHeader';
-import CollectionToolbar from '../components/collections/CollectionToolbar';
 import CollectionGrid from '../components/collections/CollectionGrid';
 import CollectionList from '../components/collections/CollectionList';
 import CollectionCreateForm from '../components/collections/forms/CollectionCreateForm';
@@ -22,7 +21,6 @@ import { ActionBar } from '@/components/common/ActionBar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -33,6 +31,7 @@ import {
 } from "@/components/ui/select";
 
 const CollectionsPage = () => {
+  const navigate = useNavigate();
   // Use existing hooks
   const {
     collections,
@@ -75,61 +74,43 @@ const CollectionsPage = () => {
     navigateToCollection
   } = useCollectionActions();
   
-  // Add state for featured collections
-  const [favoriteCollections, setFavoriteCollections] = useState([]);
-  const [recentCollections, setRecentCollections] = useState([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  // NEW: ActiveTab state for toggling between All/Favorites/Recent
+  const [activeTab, setActiveTab] = useState('all');
   
-  // Calculate collections stats
-  const [stats, setStats] = useState({
-    total: 0,
-    favorites: 0,
-    plaques: 0,
-    visited: 0,
-  });
-  
-  useEffect(() => {
-    if (collections.length > 0) {
-      // Set favorite collections
-      setFavoriteCollections(collections.filter(c => c.is_favorite));
-      
-      // Set recent collections (4 most recently updated)
-      const sorted = [...collections].sort((a, b) => {
-        const dateA = new Date(a.updated_at).getTime();
-        const dateB = new Date(b.updated_at).getTime();
-        return dateB - dateA;
-      });
-      setRecentCollections(sorted.slice(0, 4));
-      
-      // Calculate stats
-      const totalPlaques = collections.reduce((sum, c) => {
-        return sum + (Array.isArray(c.plaques) ? c.plaques.length : c.plaques || 0);
-      }, 0);
-      
-      // In a real app, you'd calculate visited plaques here
-      const visitedPlaques = Math.floor(totalPlaques * 0.4); // Just a placeholder
-      
-      setStats({
-        total: collections.length,
-        favorites: collections.filter(c => c.is_favorite).length,
-        plaques: totalPlaques,
-        visited: visitedPlaques
-      });
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'favorites') {
+      setShowOnlyFavorites(true);
+    } else {
+      setShowOnlyFavorites(false);
     }
-  }, [collections]);
-
-  // Handle edit form
+    
+    // If we select 'recent' tab, we need to set sort to 'recently_updated'
+    if (tab === 'recent') {
+      setSortOption('recently_updated');
+    }
+  };
+  
+  // Calculate collection stats
+  const totalPlaques = collections.reduce((sum, c) => {
+    return sum + (Array.isArray(c.plaques) ? c.plaques.length : c.plaques || 0);
+  }, 0);
+  
+  const favoriteCollections = collections.filter(c => c.is_favorite).length;
+  
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchQuery('');
+  };
+  
+  // Handle open edit form
   const handleOpenEditForm = (id) => {
     const collection = collections.find(c => c.id === id);
     if (collection) {
       setEditCollectionData(collection);
       setEditCollectionOpen(true);
     }
-  };
-
-  // Handle clear search
-  const handleClearSearch = () => {
-    setSearchQuery('');
   };
 
   // Show loading state
@@ -174,294 +155,187 @@ const CollectionsPage = () => {
       activePage="collections"
       simplifiedFooter={true}
     >
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-12 px-4 overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 w-40 h-40 rounded-full bg-white"></div>
-          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
-          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
-        </div>
-        
-        <div className="container mx-auto max-w-5xl relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-bold mb-3">My Collections</h1>
-              <p className="text-lg opacity-90 max-w-md">
-                Organize and explore your favorite London plaques in personalized collections.
-              </p>
-            </div>
-            
-            <Button 
-              size="lg"
-              className="bg-white text-blue-600 hover:bg-blue-50 gap-2"
-              onClick={() => setCreateCollectionOpen(true)}
-            >
-              <Plus size={20} />
-              Create Collection
-            </Button>
-          </div>
+      {/* NEW: Compact Hero Section */}
+      <section className="bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <h1 className="text-2xl font-bold">My Collections</h1>
+          <p className="opacity-90 mt-1">
+            Organize and explore your favorite London plaques in personalized collections.
+          </p>
         </div>
       </section>
       
-      {/* Stats Section */}
-      {collections.length > 0 && (
-        <section className="bg-white py-8 border-b">
-          <div className="container mx-auto max-w-5xl px-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-blue-50 rounded-lg p-4 text-center flex flex-col items-center">
-                <div className="bg-blue-100 p-3 rounded-full mb-3">
-                  <FolderOpen size={24} className="text-blue-600" />
-                </div>
-                <span className="text-3xl font-bold text-blue-600">{stats.total}</span>
-                <span className="text-blue-700">Total Collections</span>
-              </div>
-              
-              <div className="bg-amber-50 rounded-lg p-4 text-center flex flex-col items-center">
-                <div className="bg-amber-100 p-3 rounded-full mb-3">
-                  <Star size={24} className="text-amber-600" />
-                </div>
-                <span className="text-3xl font-bold text-amber-600">{stats.favorites}</span>
-                <span className="text-amber-700">Favorite Collections</span>
-              </div>
-              
-              <div className="bg-green-50 rounded-lg p-4 text-center flex flex-col items-center">
-                <div className="bg-green-100 p-3 rounded-full mb-3">
-                  <MapPin size={24} className="text-green-600" />
-                </div>
-                <span className="text-3xl font-bold text-green-600">{stats.plaques}</span>
-                <span className="text-green-700">Total Plaques</span>
-              </div>
-              
-              <div className="bg-purple-50 rounded-lg p-4 text-center flex flex-col items-center">
-                <div className="bg-purple-100 p-3 rounded-full mb-3">
-                  <Check size={24} className="text-purple-600" />
-                </div>
-                <span className="text-3xl font-bold text-purple-600">{stats.visited}</span>
-                <span className="text-purple-700">Plaques Visited</span>
-              </div>
+      <div className="container mx-auto max-w-5xl px-4">
+        {/* NEW: Stats Banner */}
+        <div className="bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
+          <div className="flex gap-4 items-center">
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-blue-600">{collections.length}</div>
+              <div className="text-xs text-gray-500">Collections</div>
             </div>
-          </div>
-        </section>
-      )}
-      
-      <div className="container mx-auto max-w-5xl px-4 py-8">
-        {/* Favorite Collections Section */}
-        {favoriteCollections.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Star size={20} className="text-amber-500" /> Favorite Collections
-              </h2>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowOnlyFavorites(true)}
-              >
-                View All
-              </Button>
+            <div className="h-8 w-px bg-gray-200"></div>
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-green-600">{totalPlaques}</div>
+              <div className="text-xs text-gray-500">Plaques</div>
             </div>
-            
-            <CollectionGrid
-              collections={favoriteCollections.slice(0, 3)}
-              selectedCollections={selectedCollections}
-              onToggleSelect={toggleSelect}
-              onEdit={handleOpenEditForm}
-              onDuplicate={handleDuplicateCollection}
-              onToggleFavorite={handleToggleFavorite}
-              onDelete={(id) => prepareForDelete([id])}
-              onClick={navigateToCollection}
-            />
-          </section>
-        )}
-        
-        {/* Recent Collections Section */}
-        {recentCollections.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <BookOpen size={20} /> Recent Collections
-              </h2>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setSortOption('recently_updated')}
-              >
-                View All
-              </Button>
-            </div>
-            
-            <CollectionGrid
-              collections={recentCollections}
-              selectedCollections={selectedCollections}
-              onToggleSelect={toggleSelect}
-              onEdit={handleOpenEditForm}
-              onDuplicate={handleDuplicateCollection}
-              onToggleFavorite={handleToggleFavorite}
-              onDelete={(id) => prepareForDelete([id])}
-              onClick={navigateToCollection}
-            />
-          </section>
-        )}
-        
-        {/* Main Collections Section */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Package size={20} /> All Collections
-            </h2>
-          </div>
-          
-          {/* Filter Bar */}
-          <div className="bg-white rounded-lg shadow-sm p-3 mb-6 flex flex-wrap gap-3 justify-between">
-            {/* Search and Filter Section */}
-            <div className="flex flex-grow items-center gap-3">
-              <div className="relative flex-grow max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <Input
-                  placeholder="Search collections..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9 w-full"
-                />
-                {searchQuery && (
-                  <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    onClick={handleClearSearch}
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-              
-              {/* Filter Button */}
-              <Button 
-                variant={activeFilters.length > 0 ? "default" : "outline"} 
-                className="gap-2"
-                onClick={() => setFiltersOpen(!filtersOpen)}
-              >
-                <Filter size={16} />
-                Filters
-                {activeFilters.length > 0 && (
-                  <Badge 
-                    variant="secondary" 
-                    className="ml-1 h-5 min-w-5 p-0 flex items-center justify-center"
-                  >
-                    {activeFilters.length}
-                  </Badge>
-                )}
-              </Button>
-            </div>
-            
-            {/* View Toggle and Sort Options */}
-            <div className="flex items-center gap-3">
-              <Select value={sortOption} onValueChange={setSortOption}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recently_updated">Recently Updated</SelectItem>
-                  <SelectItem value="oldest_updated">Oldest Updated</SelectItem>
-                  <SelectItem value="a_to_z">A to Z</SelectItem>
-                  <SelectItem value="z_to_a">Z to A</SelectItem>
-                  <SelectItem value="most_plaques">Most Plaques</SelectItem>
-                  <SelectItem value="least_plaques">Least Plaques</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Tabs value={viewMode} onValueChange={setViewMode} className="hidden sm:block">
-                <TabsList>
-                  <TabsTrigger value="grid" className="flex items-center gap-1">
-                    <LayoutGrid size={16} /> Grid
-                  </TabsTrigger>
-                  <TabsTrigger value="list" className="flex items-center gap-1">
-                    <List size={16} /> List
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+            <div className="h-8 w-px bg-gray-200"></div>
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-amber-600">{favoriteCollections}</div>
+              <div className="text-xs text-gray-500">Favorites</div>
             </div>
           </div>
           
-          {/* Active Filters Display */}
-          {activeFilters.length > 0 && (
-            <div className="bg-white shadow-sm rounded-lg p-2 flex flex-wrap items-center gap-2 mb-6">
-              <span className="text-sm font-medium px-2">Active filters:</span>
-              {activeFilters.map((filter, index) => (
-                <Badge 
-                  key={index} 
-                  variant="secondary"
-                  className="flex items-center gap-1"
+          <div className="flex items-center">
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recently_updated">Recently Updated</SelectItem>
+                <SelectItem value="oldest_updated">Oldest Updated</SelectItem>
+                <SelectItem value="a_to_z">A to Z</SelectItem>
+                <SelectItem value="z_to_a">Z to A</SelectItem>
+                <SelectItem value="most_plaques">Most Plaques</SelectItem>
+                <SelectItem value="least_plaques">Least Plaques</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        {/* NEW: Tab Bar and Search */}
+        <div className="bg-white rounded-lg shadow-sm mb-6">
+          {/* Tabs */}
+          <div className="flex border-b">
+            <button 
+              className={`px-4 py-3 font-medium text-sm ${activeTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              onClick={() => handleTabChange('all')}
+            >
+              All Collections
+            </button>
+            <button 
+              className={`px-4 py-3 font-medium text-sm ${activeTab === 'favorites' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              onClick={() => handleTabChange('favorites')}
+            >
+              Favorites
+            </button>
+            <button 
+              className={`px-4 py-3 font-medium text-sm ${activeTab === 'recent' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              onClick={() => handleTabChange('recent')}
+            >
+              Recently Updated
+            </button>
+          </div>
+          
+          {/* Search and View Toggle */}
+          <div className="p-3 flex items-center gap-3">
+            <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Input
+                type="text"
+                placeholder="Search collections..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={handleClearSearch}
                 >
-                  {filter}
-                  <button
-                    onClick={resetFilters}
-                    className="ml-1 text-gray-500 hover:text-gray-700"
-                  >
-                    <X size={12} />
-                  </button>
-                </Badge>
-              ))}
-              
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={resetFilters}
-                className="ml-auto text-xs"
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button 
+                className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                onClick={() => setViewMode('grid')}
               >
-                Clear all filters
-              </Button>
+                <Grid size={18} />
+              </button>
+              <button 
+                className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                onClick={() => setViewMode('list')}
+              >
+                <List size={18} />
+              </button>
             </div>
-          )}
-          
-          {/* Collections Content */}
-          {collections.length === 0 ? (
-            <EmptyState
-              icon={FolderOpen}
-              title="Start Your Collection Journey"
-              description="Create your first collection to organize plaques by theme, location, or any way you like!"
-              actionLabel="Create Your First Collection"
-              onAction={() => setCreateCollectionOpen(true)}
-              secondaryActionLabel="Explore Plaques"
-              onSecondaryAction={() => navigate('/discover')}
-            />
-          ) : filteredCollections.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <MapPin className="mx-auto text-gray-400 mb-3" size={32} />
-              <h3 className="text-lg font-medium text-gray-700 mb-1">No Results Found</h3>
-              <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
-              <Button variant="outline" onClick={resetFilters}>
-                Clear Filters
-              </Button>
-            </div>
-          ) : (
-            <>
-              {viewMode === 'grid' && (
-                <CollectionGrid
-                  collections={filteredCollections}
-                  selectedCollections={selectedCollections}
-                  onToggleSelect={toggleSelect}
-                  onEdit={handleOpenEditForm}
-                  onDuplicate={handleDuplicateCollection}
-                  onToggleFavorite={handleToggleFavorite}
-                  onDelete={(id) => prepareForDelete([id])}
-                  onClick={navigateToCollection}
-                />
+            
+            <button 
+              className={`p-2 rounded-lg ${activeFilters.length > 0 ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
+              onClick={() => {/* Show filter dialog */}}
+              title="Filter"
+            >
+              <Filter size={18} />
+              {activeFilters.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
+                  {activeFilters.length}
+                </span>
               )}
-              
-              {viewMode === 'list' && (
-                <CollectionList
-                  collections={filteredCollections}
-                  selectedCollections={selectedCollections}
-                  onToggleSelect={toggleSelect}
-                  onEdit={handleOpenEditForm}
-                  onDuplicate={handleDuplicateCollection}
-                  onToggleFavorite={handleToggleFavorite}
-                  onDelete={(id) => prepareForDelete([id])}
-                  onClick={navigateToCollection}
-                />
-              )}
-            </>
-          )}
-        </section>
+            </button>
+          </div>
+        </div>
+        
+        {/* Collections Grid/List */}
+        {collections.length === 0 ? (
+          <EmptyState
+            icon={FolderOpen}
+            title="Start Your Collection Journey"
+            description="Create your first collection to organize plaques by theme, location, or any way you like!"
+            actionLabel="Create Your First Collection"
+            onAction={() => setCreateCollectionOpen(true)}
+            secondaryActionLabel="Explore Plaques"
+            onSecondaryAction={() => navigate('/discover')}
+          />
+        ) : filteredCollections.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg">
+            <MapPin className="mx-auto text-gray-400 mb-3" size={32} />
+            <h3 className="text-lg font-medium text-gray-700 mb-1">No Results Found</h3>
+            <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
+            <Button variant="outline" onClick={resetFilters}>
+              Clear Filters
+            </Button>
+          </div>
+        ) : (
+          <>
+            {viewMode === 'grid' && (
+              <CollectionGrid
+                collections={filteredCollections}
+                selectedCollections={selectedCollections}
+                onToggleSelect={toggleSelect}
+                onEdit={handleOpenEditForm}
+                onDuplicate={handleDuplicateCollection}
+                onToggleFavorite={handleToggleFavorite}
+                onDelete={(id) => prepareForDelete([id])}
+                onClick={navigateToCollection}
+              />
+            )}
+            
+            {viewMode === 'list' && (
+              <CollectionList
+                collections={filteredCollections}
+                selectedCollections={selectedCollections}
+                onToggleSelect={toggleSelect}
+                onEdit={handleOpenEditForm}
+                onDuplicate={handleDuplicateCollection}
+                onToggleFavorite={handleToggleFavorite}
+                onDelete={(id) => prepareForDelete([id])}
+                onClick={navigateToCollection}
+              />
+            )}
+          </>
+        )}
+      </div>
+      
+      {/* NEW: Floating Action Button */}
+      <div className="fixed right-6 bottom-6">
+        <Button 
+          className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center p-0"
+          onClick={() => setCreateCollectionOpen(true)}
+        >
+          <Plus size={24} />
+        </Button>
       </div>
       
       {/* Action bar */}

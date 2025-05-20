@@ -1,4 +1,4 @@
-// Modern Clean Collection Card
+// src/components/collections/CollectionCard.tsx
 import React from 'react';
 import { MoreHorizontal, Star, CheckCircle, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ const CollectionCard = ({
       {/* Top color bar */}
       <div className={`h-2 w-full ${collection.color}`}></div>
       
-      <div className="p-5">
+      <div className="p-4">
         {/* Header */}
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ const CollectionCard = ({
         
         {/* Footer with info */}
         <div className="flex items-center justify-between mt-4">
-          <Badge variant="outline" className="flex items-center gap-1 bg-blue-50">
+          <Badge variant="outline" className="flex items-center gap-1 bg-gray-50 py-1 px-2">
             <MapPin size={12} /> {plaqueCount} {plaqueCount === 1 ? 'plaque' : 'plaques'}
           </Badge>
         </div>
