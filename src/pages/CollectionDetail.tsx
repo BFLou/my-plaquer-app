@@ -31,6 +31,7 @@ import { PageContainer } from "@/components";
 import { formatTimeAgo } from '../utils/timeUtils';
 
 
+
 const CollectionDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -372,9 +373,9 @@ const CollectionDetailPage = () => {
           
           {/* Collection metadata */}
           <div className="flex flex-wrap items-center gap-3 mt-4">
-            <Badge variant="outline" className="bg-white/10 text-white border-white/20">
-              <Clock size={12} className="mr-1" /> Updated {collection.updated_at}
-            </Badge>
+           <Badge variant="outline" className="bg-white/10 text-white border-white/20">
+  <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(collection.updated_at)}
+</Badge>
             <Badge variant="outline" className="bg-white/10 text-white border-white/20">
               {collection.plaques?.length || 0} plaques
             </Badge>
