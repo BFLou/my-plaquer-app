@@ -18,6 +18,7 @@ import { PlaqueListItem } from '@/components/plaques/PlaqueListItem';
 import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import { EmptyState } from '@/components/common/EmptyState';
 import { formatTimeAgo } from '@/utils/collectionStatsUtils';
+
 import {
   Dialog,
   DialogContent,
@@ -559,9 +560,9 @@ const confirmRemovePlaque = async () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 mt-3">
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Clock size={12} /> Updated {formatTimeAgo(collection.updated_at)}
-            </Badge>
+<Badge variant="outline" className="flex items-center gap-1">
+  <Clock size={12} /> Updated {formatTimeAgo(collection.updated_at)}
+</Badge>
             <Badge variant="outline">
               {collection.plaques?.length} plaques
             </Badge>

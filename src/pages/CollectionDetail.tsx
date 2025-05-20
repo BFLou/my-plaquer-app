@@ -28,7 +28,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import PlaqueMap from '../components/maps/PlaqueMap';
 import { useRoutes } from '@/hooks/useRoutes';
 import { PageContainer } from "@/components";
-import { formatTimeAgo } from '../../utils/collectionHelpers';
+import { formatTimeAgo } from '../utils/timeUtils';
 
 
 const CollectionDetailPage = () => {

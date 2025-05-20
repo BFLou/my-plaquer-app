@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatTimeAgo } from "@/utils/collectionHelpers";
+import { formatTimeAgo } from '@/utils/timeUtils';
 
 const CollectionDetailHeader = ({
   collection,
