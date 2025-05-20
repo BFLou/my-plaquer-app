@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   MapPin, Star, Trash2, FolderOpen, Plus, 
-  Filter, Search, Grid, List, X, 
+  Search, Grid, List, X, 
   CheckCircle, MoreHorizontal, Package
 } from 'lucide-react';
 import { PageContainer } from "@/components";
@@ -14,7 +14,6 @@ import { useCollectionActions } from '../hooks/useCollectionActions';
 import CollectionGrid from '../components/collections/CollectionGrid';
 import CollectionList from '../components/collections/CollectionList';
 import CollectionCreateForm from '../components/collections/forms/CollectionCreateForm';
-import CollectionEditForm from '../components/collections/forms/CollectionEditForm';
 import DeleteCollectionDialog from '../components/collections/DeleteCollectionDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ActionBar } from '@/components/common/ActionBar';
@@ -104,14 +103,24 @@ const CollectionsPage = () => {
     setSearchQuery('');
   };
   
-  // Handle open edit form
+  // Handle open edit form - Improved to ensure data is properly set
   const handleOpenEditForm = (id) => {
+    console.log("Opening edit form for collection ID:", id);
     const collection = collections.find(c => c.id === id);
+    console.log("Found collection for editing:", collection);
+    
     if (collection) {
       setEditCollectionData(collection);
       setEditCollectionOpen(true);
     }
   };
+
+  // For debugging purposes
+  useEffect(() => {
+    if (editCollectionData) {
+      console.log("Current editCollectionData:", editCollectionData);
+    }
+  }, [editCollectionData]);
 
   // Show loading state
   if (loading && collections.length === 0) {
@@ -155,25 +164,35 @@ const CollectionsPage = () => {
       activePage="collections"
       simplifiedFooter={true}
     >
-{/* Hero Section with decorative background circles */}
-<section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
-  {/* Decorative background circles */}
-  <div className="absolute inset-0 opacity-10">
-    <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
-    <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
-    <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
-  </div>
-  
-  <div className="container mx-auto max-w-5xl relative z-10">
-    <h1 className="text-2xl font-bold">My Collections</h1>
-    <p className="opacity-90 mt-1">
-      Organize and explore your favorite London plaques in personalized collections.
-    </p>
-  </div>
-</section>
+      {/* Hero Section with decorative background circles */}
+      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
+        {/* Decorative background circles */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
+          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
+          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+        </div>
+        
+        <div className="container mx-auto max-w-5xl relative z-10">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold">My Collections</h1>
+            
+            {/* Prominent Create New Collection Button */}
+            <Button 
+              onClick={() => setCreateCollectionOpen(true)}
+              className="bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+            >
+              <Plus size={16} className="mr-2" /> New Collection
+            </Button>
+          </div>
+          <p className="opacity-90 mt-1">
+            Organize and explore your favorite London plaques in personalized collections.
+          </p>
+        </div>
+      </section>
       
       <div className="container mx-auto max-w-5xl px-4">
-        {/* NEW: Stats Banner */}
+        {/* Stats Banner */}
         <div className="bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
           <div className="flex gap-4 items-center">
             <div className="text-center px-3 py-1">
@@ -209,7 +228,7 @@ const CollectionsPage = () => {
           </div>
         </div>
         
-        {/* NEW: Tab Bar and Search */}
+        {/* Tab Bar and Search */}
         <div className="bg-white rounded-lg shadow-sm mb-6">
           {/* Tabs */}
           <div className="flex border-b">
@@ -233,7 +252,7 @@ const CollectionsPage = () => {
             </button>
           </div>
           
-          {/* Search and View Toggle */}
+          {/* Search and View Toggle - Filter icon removed */}
           <div className="p-3 flex items-center gap-3">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -268,21 +287,21 @@ const CollectionsPage = () => {
                 <List size={18} />
               </button>
             </div>
-            
-            <button 
-              className={`p-2 rounded-lg ${activeFilters.length > 0 ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100'}`}
-              onClick={() => {/* Show filter dialog */}}
-              title="Filter"
-            >
-              <Filter size={18} />
-              {activeFilters.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                  {activeFilters.length}
-                </span>
-              )}
-            </button>
           </div>
         </div>
+        
+        {/* Secondary Create Collection Button for empty state */}
+        {collections.length === 0 && (
+          <div className="flex justify-center my-6">
+            <Button 
+              size="lg" 
+              onClick={() => setCreateCollectionOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus size={18} /> Create Your First Collection
+            </Button>
+          </div>
+        )}
         
         {/* Collections Grid/List */}
         {collections.length === 0 ? (
@@ -335,16 +354,6 @@ const CollectionsPage = () => {
         )}
       </div>
       
-      {/* NEW: Floating Action Button */}
-      <div className="fixed right-6 bottom-6">
-        <Button 
-          className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center p-0"
-          onClick={() => setCreateCollectionOpen(true)}
-        >
-          <Plus size={24} />
-        </Button>
-      </div>
-      
       {/* Action bar */}
       {selectedCollections.length > 0 && (
         <ActionBar
@@ -377,14 +386,29 @@ const CollectionsPage = () => {
         isLoading={isLoading}
       />
       
-      {/* Edit Collection Form */}
-      <CollectionEditForm
-        isOpen={editCollectionOpen}
-        onClose={() => setEditCollectionOpen(false)}
-        onSubmit={handleEditCollection}
-        isLoading={isLoading}
-        collection={editCollectionData}
-      />
+      {/* Edit Collection - Now using CollectionCreateForm instead of CollectionEditForm */}
+      {editCollectionData && (
+        <CollectionCreateForm
+          isOpen={editCollectionOpen}
+          onClose={() => {
+            setEditCollectionOpen(false);
+            // Reset the edit data when closing to prevent stale data issues
+            setTimeout(() => setEditCollectionData(null), 300);
+          }}
+          onSubmit={handleEditCollection}
+          isLoading={isLoading}
+          initialValues={{
+            name: editCollectionData.name || '',
+            description: editCollectionData.description || '',
+            icon: editCollectionData.icon || '🎭',
+            color: editCollectionData.color || 'bg-blue-500',
+            isPublic: editCollectionData.is_public || false,
+            tags: editCollectionData.tags || []
+          }}
+          submitLabel="Save Changes"
+          title="Edit Collection"
+        />
+      )}
       
       {/* Delete Confirmation Dialog */}
       <DeleteCollectionDialog
