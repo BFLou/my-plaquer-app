@@ -193,8 +193,10 @@ const AboutPage = () => {
   };
 
   return (
-    <PageContainer activePage="about" simplifiedFooter>
-      {/* Hero Section */}
+    <PageContainer 
+      activePage="about"
+      simplifiedFooter={false} // Use the full footer
+    >      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-16 px-4 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-40 h-40 rounded-full bg-white"></div>

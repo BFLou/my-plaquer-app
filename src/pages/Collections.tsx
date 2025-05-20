@@ -73,8 +73,10 @@ const CollectionsPage: React.FC = () => {
   // Show loading state
   if (loading && collections.length === 0) {
     return (
-      <PageContainer activePage="collections" containerClass="flex-grow">
-        <div className="container mx-auto px-4 py-6">
+    <PageContainer 
+      activePage="collections"
+      simplifiedFooter={true}
+    >        <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">My Collections</h1>
             <div className="h-10 w-40 bg-gray-200 animate-pulse rounded-md"></div>
@@ -94,8 +96,10 @@ const CollectionsPage: React.FC = () => {
   // Show error state
   if (error) {
     return (
-      <PageContainer activePage="collections" containerClass="flex-grow">
-        <div className="container mx-auto px-4 py-6">
+<PageContainer 
+      activePage="collections"
+      simplifiedFooter={true}
+    >        <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">My Collections</h1>
             <Button onClick={() => setCreateCollectionOpen(true)}>
@@ -116,8 +120,10 @@ const CollectionsPage: React.FC = () => {
   }
   
   return (
-    <PageContainer activePage="collections" containerClass="flex-grow">
-      <div className="container mx-auto px-4 py-6">
+<PageContainer 
+      activePage="collections"
+      simplifiedFooter={true}
+    >      <div className="container mx-auto px-4 py-6">
         {/* Header */}
         <CollectionHeader
           title="My Collections"

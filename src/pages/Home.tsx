@@ -318,8 +318,10 @@ const Home = () => {
   ];
 
   return (
-    <PageContainer activePage="home" containerClass="flex-grow pb-16 md:pb-0">
-      {/* Hero Section - With map on the right */}
+    <PageContainer 
+      activePage="home"
+      simplifiedFooter={false} // Use the full footer
+    >      {/* Hero Section - With map on the right */}
       <section className="relative py-16 md:py-20 px-4 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>

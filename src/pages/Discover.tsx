@@ -901,8 +901,13 @@ toast.success("Marked as visited", {
   const activeFiltersCount = activeFilters.length;
 
   return (
-    <PageContainer activePage="discover" containerClass="flex flex-col">
-      {/* View Mode Selection Tabs - Now prominently featured at the top */}
+ <PageContainer 
+      activePage="discover"
+      // Hide footer completely when in map view
+      hasFooter={viewMode !== 'map'}
+      // Use simplified footer when showing
+      simplifiedFooter={true}
+    >      {/* View Mode Selection Tabs - Now prominently featured at the top */}
       <div className="bg-white border-b border-gray-200 sticky top-[61px] z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">

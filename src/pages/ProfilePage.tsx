@@ -209,8 +209,10 @@ const ProfilePage = () => {
   
   if (!user) {
     return (
-      <PageContainer activePage="profile">
-        <div className="container mx-auto py-8 px-4 text-center">
+ <PageContainer 
+      activePage="profile"
+      simplifiedFooter={true}
+    >        <div className="container mx-auto py-8 px-4 text-center">
           <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
           <p className="mb-6">You need to sign in to view your profile.</p>
           <Button onClick={() => navigate('/')}>Back to Home</Button>
@@ -222,8 +224,10 @@ const ProfilePage = () => {
   const isLoading = collectionsLoading || visitsLoading || routesLoading;
   
   return (
-    <PageContainer activePage="profile">
-      <div className="container mx-auto py-8 px-4">
+ <PageContainer 
+      activePage="profile"
+      simplifiedFooter={true}
+    >      <div className="container mx-auto py-8 px-4">
         {/* Profile Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
           <div className="relative">

@@ -77,8 +77,10 @@ const SettingsPage = () => {
   
   if (!user) {
     return (
-      <PageContainer activePage="profile">
-        <div className="container mx-auto py-8 px-4 text-center">
+ <PageContainer 
+      activePage="profile" // Using profile as the active section
+      hasFooter={false} // No footer
+    >        <div className="container mx-auto py-8 px-4 text-center">
           <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
           <p className="mb-6">You need to sign in to view your settings.</p>
           <Button onClick={() => navigate('/')}>Back to Home</Button>
@@ -152,8 +154,10 @@ const SettingsPage = () => {
   };
   
   return (
-    <PageContainer activePage="profile">
-      <div className="container mx-auto py-8 px-4">
+ <PageContainer 
+      activePage="profile" // Using profile as the active section
+      hasFooter={false} // No footer
+    >      <div className="container mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Settings</h1>
           <Button 
