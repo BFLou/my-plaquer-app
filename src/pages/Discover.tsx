@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Updated with new filter components
+// src/pages/Discover.tsx
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
@@ -21,6 +21,7 @@ import Pagination from '@/components/plaques/Pagination';
 import PlaqueMap from '../components/maps/PlaqueMap';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useRoutes } from '@/hooks/useRoutes';
+import { useFavorites } from '@/hooks/useFavorites'; // Add this import
 import '../styles/map-styles.css';
 
 // Import our new filter components
@@ -48,7 +49,10 @@ const Discover = () => {
   const [viewMode, setViewMode] = useState('map'); // Default to map view
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
-  const [favorites, setFavorites] = useState([]);
+  // Remove the favorites state
+  // const [favorites, setFavorites] = useState([]);
+  // Replace with the useFavorites hook
+  const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [maintainMapView, setMaintainMapView] = useState(false);
@@ -218,8 +222,8 @@ const Discover = () => {
       // Match visited status - Use isPlaqueVisited hook
       const matchesVisited = !onlyVisited || plaque.visited || isPlaqueVisited(plaque.id);
       
-      // Match favorite status
-      const matchesFavorite = !onlyFavorites || favorites.includes(plaque.id);
+      // Match favorite status - Now use isFavorite from the hook
+      const matchesFavorite = !onlyFavorites || isFavorite(plaque.id);
 
       return matchesSearch && 
              matchesPostcode && 
@@ -237,7 +241,8 @@ const Discover = () => {
     onlyVisited, 
     onlyFavorites, 
     favorites, 
-    isPlaqueVisited
+    isPlaqueVisited,
+    isFavorite
   ]);
 
   // Calculate total active filters
@@ -332,18 +337,10 @@ const Discover = () => {
     setViewMode(mode);
   };
 
-  const toggleFavorite = (id) => {
-    setFavorites(prev => 
-      prev.includes(id) 
-        ? prev.filter(fav => fav !== id) 
-        : [...prev, id]
-    );
-    
-    toast({
-      title: favorites.includes(id) ? "Removed from favorites" : "Added to favorites",
-      description: "Your favorites have been updated",
-      duration: 2000,
-    });
+  // Updated to use the hook's toggleFavorite
+  const handleFavoriteToggle = (id) => {
+    toggleFavorite(id);
+    // No need for toast here as the hook handles it
   };
 
   const handlePlaqueClick = (plaque) => {
@@ -367,10 +364,7 @@ const Discover = () => {
         p.id === id ? { ...p, visited: true } : p
       ));
       
-      toast.success("Marked as visited", {
-        description: "This plaque has been marked as visited in your profile",
-        duration: 2000,
-      });
+      toast.success("Marked as visited");
     } catch (error) {
       console.error("Error marking as visited:", error);
       toast.error("Failed to mark as visited");
@@ -601,9 +595,9 @@ const Discover = () => {
                   <PlaqueCard 
                     key={plaque.id}
                     plaque={plaque}
-                    isFavorite={favorites.includes(plaque.id)}
+                    isFavorite={isFavorite(plaque.id)}
                     isVisited={plaque.visited || isPlaqueVisited(plaque.id)}
-                    onFavoriteToggle={() => toggleFavorite(plaque.id)}
+                    onFavoriteToggle={handleFavoriteToggle}
                     onClick={() => handlePlaqueClick(plaque)}
                   />
                 ))}
@@ -616,9 +610,9 @@ const Discover = () => {
                   <PlaqueListItem 
                     key={plaque.id}
                     plaque={plaque}
-                    isFavorite={favorites.includes(plaque.id)}
+                    isFavorite={isFavorite(plaque.id)}
                     isVisited={plaque.visited || isPlaqueVisited(plaque.id)}
-                    onFavoriteToggle={() => toggleFavorite(plaque.id)}
+                    onFavoriteToggle={handleFavoriteToggle}
                     onClick={() => handlePlaqueClick(plaque)}
                   />
                 ))}
@@ -677,9 +671,9 @@ const Discover = () => {
         plaque={selectedPlaque}
         isOpen={!!selectedPlaque}
         onClose={handleCloseDetail}
-        isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
+        isFavorite={selectedPlaque ? isFavorite(selectedPlaque.id) : false}
         isVisited={selectedPlaque ? (selectedPlaque.visited || isPlaqueVisited(selectedPlaque.id)) : false}
-        onFavoriteToggle={() => selectedPlaque && toggleFavorite(selectedPlaque.id)}
+        onFavoriteToggle={handleFavoriteToggle}
         onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
         nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
         onSelectNearbyPlaque={handlePlaqueClick}

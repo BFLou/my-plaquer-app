@@ -1,3 +1,4 @@
+// src/components/plaques/PlaqueCard.tsx
 import React from 'react';
 import { MapPin, Star, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage'; 
-import { useVisitedPlaques } from '@/hooks/useVisitedPlaques'; // Import the hook
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 
 type PlaqueCardProps = {
   plaque: Plaque;
@@ -37,6 +38,7 @@ export const PlaqueCard = ({
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onFavoriteToggle) onFavoriteToggle(plaque.id);
+    // Removed toast call - now handled by the useFavorites hook
   };
 
   const handleSelectClick = (e: React.MouseEvent) => {

@@ -51,7 +51,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   onSelectNearbyPlaque,
   className = '',
 }) => {
-  const { markAsVisited, isPlaqueVisited, getVisitInfo } = useVisitedPlaques();
+  const { isPlaqueVisited, getVisitInfo } = useVisitedPlaques();
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   
   // Date picker dialog state
@@ -70,6 +70,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
 
   const handleFavoriteToggle = () => {
     if (onFavoriteToggle) onFavoriteToggle(plaque.id);
+    // Removed toast call - now handled by the useFavorites hook
   };
 
   // Open date picker dialog
@@ -406,8 +407,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 
                 <Button 
                   className="flex-1" 
-                  variant="outline"
-                  onClick={() => {
+                  variant="outline"onClick={() => {
                     const location = plaque.latitude && plaque.longitude 
                       ? `${plaque.latitude},${plaque.longitude}`
                       : plaque.address;
