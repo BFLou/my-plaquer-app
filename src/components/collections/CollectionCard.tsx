@@ -1,4 +1,4 @@
-// src/components/collections/CollectionCard.jsx
+// Modern Clean Collection Card
 import React from 'react';
 import { MoreHorizontal, Star, CheckCircle, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatTimeAgo, getPlaqueCount } from '../../utils/collectionHelpers';
 
-export type Collection = {
-  id: string;
-  name: string;
-  description?: string;
-  icon: string;
-  color: string;
-  plaques: number[] | number;
-  updated_at: string;
-  is_favorite?: boolean;
-};
-
 const CollectionCard = ({
   collection,
   isSelected = false,
@@ -34,8 +23,6 @@ const CollectionCard = ({
   onClick,
   className = ''
 }) => {
-  // Extract color name for gradient
-  const colorName = collection.color.replace('bg-', '').split('-')[0];
   const plaqueCount = getPlaqueCount(collection);
   
   // Handle click events
@@ -56,105 +43,83 @@ const CollectionCard = ({
   
   return (
     <div 
-      className={`relative bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden h-full group ${
+      className={`relative bg-white rounded-lg shadow hover:shadow-md transition-all h-full ${
         isSelected ? 'ring-2 ring-blue-500' : ''
-      } ${className}`}
+      } ${className} group cursor-pointer overflow-hidden`}
       onClick={handleClick}
     >
-      {/* Header section with gradient and decorative elements */}
-      <div className="h-40 relative overflow-hidden">
-        {/* Gradient background */}
-        <div className={`absolute inset-0 bg-gradient-to-br from-${colorName}-50 to-white`}></div>
-        
-        {/* Decorative elements */}
-        <div className={`absolute top-4 right-4 w-24 h-24 rounded-full ${collection.color} opacity-10`}></div>
-        <div className={`absolute bottom-8 left-8 w-16 h-16 rounded-full ${collection.color} opacity-5`}></div>
-        
-        {/* Small map pins */}
-        <div className="absolute top-10 left-10 text-gray-200">
-          <MapPin size={12} />
-        </div>
-        <div className="absolute top-20 left-20 text-gray-200">
-          <MapPin size={14} />
-        </div>
-        <div className="absolute top-8 left-28 text-gray-200">
-          <MapPin size={10} />
-        </div>
-        
-        {/* Large icon */}
-        <div className="absolute right-6 bottom-6 text-5xl opacity-40">{collection.icon}</div>
-        
-        {/* Collection icon and color indicator */}
-        <div className={`absolute top-6 left-6 w-14 h-14 rounded-2xl flex items-center justify-center text-white text-3xl ${collection.color} shadow-md`}>
-          {collection.icon}
-        </div>
-
-        {/* Collection favorite indicator */}
-        {collection.is_favorite && (
-          <div className="absolute top-4 left-24">
-            <Star size={18} className="fill-amber-500 text-amber-500" />
-          </div>
-        )}
-        
-        {/* Top actions */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          {isSelected && (
-            <div className="bg-blue-100 text-blue-600 p-1 rounded-full">
-              <CheckCircle size={16} />
-            </div>
-          )}
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 rounded-full bg-white bg-opacity-80 backdrop-blur-sm shadow-sm p-0"
-              >
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal size={18} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onEdit)}>
-                Edit Collection
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onDuplicate)}>
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onToggleFavorite)}>
-                {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                onClick={(e) => handleMenuOperation(e, onDelete)}
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+      {/* Top color bar */}
+      <div className={`h-2 w-full ${collection.color}`}></div>
       
-      {/* Content section */}
-      <div className="p-6">
-        <h2 className="text-lg font-semibold mb-1 group-hover:text-blue-600 transition-colors">
-          {collection.name}
-        </h2>
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`h-12 w-12 rounded-lg ${collection.color} flex items-center justify-center text-white text-2xl`}>
+              {collection.icon}
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg text-gray-800 group-hover:text-blue-600 transition-colors line-clamp-1">
+                {collection.name}
+              </h3>
+              <p className="text-xs text-gray-500">
+                Updated {formatTimeAgo(collection.updated_at)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            {collection.is_favorite && (
+              <Star size={16} className="fill-amber-400 text-amber-400 mr-2" />
+            )}
+            {isSelected && (
+              <div className="bg-blue-100 text-blue-600 p-1 rounded-full mr-2">
+                <CheckCircle size={14} />
+              </div>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 rounded-full hover:bg-gray-100 p-0"
+                >
+                  <span className="sr-only">Options</span>
+                  <MoreHorizontal size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onEdit)}>
+                  Edit Collection
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onDuplicate)}>
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onToggleFavorite)}>
+                  {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  onClick={(e) => handleMenuOperation(e, onDelete)}
+                >
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
         
+        {/* Description */}
         {collection.description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{collection.description}</p>
+          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{collection.description}</p>
         )}
         
-        <div className="flex items-center justify-between mt-2">
-          <div className="text-sm text-gray-500 flex items-center">
-            <span className="font-medium">{plaqueCount}</span>
-            <span className="ml-1">{plaqueCount === 1 ? 'plaque' : 'plaques'}</span>
-          </div>
-          <div className="text-xs text-gray-400">
-            Updated {formatTimeAgo(collection.updated_at)}
-          </div>
+        {/* Footer with info */}
+        <div className="flex items-center justify-between mt-4">
+          <Badge variant="outline" className="flex items-center gap-1 bg-blue-50">
+            <MapPin size={12} /> {plaqueCount} {plaqueCount === 1 ? 'plaque' : 'plaques'}
+          </Badge>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-// src/components/collections/CollectionDetailHeader.jsx - More Compact Version
+// src/components/collections/CollectionDetailHeader.jsx
 import React, { useState } from 'react';
 import { 
   ArrowLeft, Star, Pencil, MoreHorizontal, 
@@ -53,7 +53,7 @@ const CollectionDetailHeader = ({
     : collection.plaques;
   
   return (
-    <div className={`relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-6 px-4 overflow-hidden ${className}`}>
+    <div className={`relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-4 px-4 overflow-hidden ${className}`}>
       {/* Decorative background elements - made smaller */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-8 w-24 h-24 rounded-full bg-white"></div>
@@ -130,8 +130,10 @@ const CollectionDetailHeader = ({
                 </Button>
               </div>
             )}
-            
-            {/* Badges - integrated with title for more compact layout */}
+          </div>
+          
+          {/* Right side: actions */}
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 ml-0.5">
               <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20 py-0.5">
                 <Clock size={10} className="mr-1" /> {formatTimeAgo(collection.updated_at)}
@@ -139,16 +141,8 @@ const CollectionDetailHeader = ({
               <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20 py-0.5">
                 {plaqueCount} {plaqueCount === 1 ? 'plaque' : 'plaques'}
               </Badge>
-              {collection.is_favorite && (
-                <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-100 border-amber-400/30 py-0.5">
-                  <Star size={10} className="mr-1 fill-amber-300" /> Favorite
-                </Badge>
-              )}
             </div>
-          </div>
-          
-          {/* Right side: actions */}
-          <div className="flex items-center gap-2">
+            
             <Button 
               variant={collection.is_favorite ? "secondary" : "outline"}
               size="sm"
@@ -166,12 +160,13 @@ const CollectionDetailHeader = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm" 
-                  className="h-8 w-8 p-0 bg-white/10 text-white border-white/20 hover:bg-white/20" 
+                  className="h-8 p-2 bg-white/10 text-white border-white/20 hover:bg-white/20" 
                   disabled={isLoading}
                 >
-                  <MoreHorizontal size={14} />
+                  <Pencil size={14} className="mr-1" />
+                  Edit
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
