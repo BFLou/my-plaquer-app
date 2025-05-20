@@ -1,4 +1,4 @@
-// src/features/collections/components/CollectionCard.tsx
+// Updated src/components/collections/CollectionCard.tsx with more visual styling
 import React from 'react';
 import { MoreHorizontal, Star, CheckCircle, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -23,19 +23,7 @@ export type Collection = {
   is_favorite?: boolean;
 };
 
-type CollectionCardProps = {
-  collection: Collection;
-  isSelected?: boolean;
-  onToggleSelect?: (id: string) => void;
-  onEdit?: (id: string) => void;
-  onDuplicate?: (id: string) => void;
-  onToggleFavorite?: (id: string) => void;
-  onDelete?: (id: string) => void;
-  onClick?: (id: string) => void;
-  className?: string;
-};
-
-const CollectionCard: React.FC<CollectionCardProps> = ({
+const CollectionCard = ({
   collection,
   isSelected = false,
   onToggleSelect,
@@ -46,75 +34,17 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
   onClick,
   className = ''
 }) => {
-  // Handle click events
-  const handleClick = (e: React.MouseEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      if (onToggleSelect) onToggleSelect(collection.id);
-    } else if (!e.target.closest('button') && onClick) {
-      onClick(collection.id);
-    }
-  };
-  
-  // Handle menu operations
-  const handleMenuOperation = (e: React.MouseEvent, operation?: (id: string) => void) => {
-    e.stopPropagation();
-    if (operation) operation(collection.id);
-  };
-  
-  // Get plaque count
-  const plaqueCount = getPlaqueCount(collection);
-  
   // Extract color name for gradient
   const colorName = collection.color.replace('bg-', '').split('-')[0];
+  const plaqueCount = getPlaqueCount(collection);
   
   return (
     <div 
-      className={`relative bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden group ${
+      className={`relative bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden h-full group ${
         isSelected ? 'ring-2 ring-blue-500' : ''
       } ${className}`}
       onClick={handleClick}
     >
-      {/* Top actions */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-        {isSelected && (
-          <div className="bg-blue-100 text-blue-600 p-1 rounded-full">
-            <CheckCircle size={16} />
-          </div>
-        )}
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 rounded-full bg-white bg-opacity-80 backdrop-blur-sm shadow-sm p-0"
-            >
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal size={18} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onEdit)}>
-              Edit Collection
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onDuplicate)}>
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onToggleFavorite)}>
-              {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              className="text-red-600 focus:text-red-600 focus:bg-red-50"
-              onClick={(e) => handleMenuOperation(e, onDelete)}
-            >
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      
       {/* Header section with gradient and decorative elements */}
       <div className="h-40 relative overflow-hidden">
         {/* Gradient background */}
@@ -149,6 +79,46 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
             <Star size={18} className="fill-amber-500 text-amber-500" />
           </div>
         )}
+        
+        {/* Top actions */}
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isSelected && (
+            <div className="bg-blue-100 text-blue-600 p-1 rounded-full">
+              <CheckCircle size={16} />
+            </div>
+          )}
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 rounded-full bg-white bg-opacity-80 backdrop-blur-sm shadow-sm p-0"
+              >
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onEdit)}>
+                Edit Collection
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onDuplicate)}>
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onToggleFavorite)}>
+                {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                onClick={(e) => handleMenuOperation(e, onDelete)}
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       {/* Content section */}
