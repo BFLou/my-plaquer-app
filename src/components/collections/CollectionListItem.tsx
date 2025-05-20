@@ -42,12 +42,59 @@ const CollectionListItem = ({
   // Get plaque count
   const plaqueCount = getPlaqueCount(collection);
   
+  // Function to get the left border color style directly
+  const getLeftBorderStyle = () => {
+    // Default color
+    let borderColor = '#3b82f6'; // blue-500
+    
+    // Extract color information from the collection.color class
+    if (collection.color) {
+      const colorClass = collection.color;
+      
+      // Map of common Tailwind color names to hex values
+      const colorMap = {
+        'blue': '#3b82f6',
+        'red': '#ef4444',
+        'green': '#10b981',
+        'yellow': '#eab308',
+        'purple': '#a855f7',
+        'pink': '#ec4899',
+        'indigo': '#6366f1',
+        'gray': '#6b7280',
+        'amber': '#f59e0b',
+        'lime': '#84cc16',
+        'emerald': '#10b981',
+        'teal': '#14b8a6',
+        'cyan': '#06b6d4',
+        'sky': '#0ea5e9',
+        'violet': '#8b5cf6',
+        'fuchsia': '#d946ef',
+        'rose': '#f43f5e',
+        'orange': '#f97316'
+      };
+      
+      // Extract the color name
+      for (const [colorName, hexValue] of Object.entries(colorMap)) {
+        if (colorClass.includes(colorName)) {
+          borderColor = hexValue;
+          break;
+        }
+      }
+    }
+    
+    return {
+      borderLeftColor: borderColor,
+      borderLeftWidth: '4px'
+    };
+  };
+  
   return (
     <div 
-      className={`bg-white rounded-lg shadow hover:shadow-md transition border-l-4 ${
-        collection.color ? collection.color.replace('bg-', 'border-') : 'border-blue-500'
-      } ${isSelected ? 'ring-2 ring-blue-500' : ''} overflow-hidden cursor-pointer group ${className}`}
+      className={`bg-white rounded-lg shadow hover:shadow-md transition ${
+        isSelected ? 'ring-2 ring-blue-500' : ''
+      } overflow-hidden cursor-pointer group ${className}`}
       onClick={handleClick}
+      style={getLeftBorderStyle()}
     >
       <div className="flex items-center p-3">
         <div className={`h-12 w-12 rounded-lg ${collection.color} flex items-center justify-center text-white text-2xl mr-4 flex-shrink-0`}>
