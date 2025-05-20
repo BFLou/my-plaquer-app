@@ -5,6 +5,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/hooks/useAuth';
 import UserMenu from '@/components/auth/UserMenu';
+import PlaquerLogo from '@/components/common/PlaquerLogo'; // Import the logo component
+
 
 type NavLinkProps = {
   to: string;
@@ -36,9 +38,8 @@ export const NavBar = ({ activePage }: NavBarProps) => {
     <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-            <MapPin className="text-white" size={16} />
-          </div>
+          <PlaquerLogo size={32} />
+
           <span className="text-xl font-bold text-blue-600">Plaquer</span>
         </Link>
         

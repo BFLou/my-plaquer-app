@@ -1,24 +1,12 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 257">
-  <defs>
-    <linearGradient id="blue-plaque-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#1E40AF"/>
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#0009" flood-opacity="0.3"/>
-    </filter>
-  </defs>
-  <!-- Blue plaque circle background -->
-  <circle cx="128" cy="128" r="120" fill="url(#blue-plaque-gradient)" filter="url(#shadow)"/>
+<!-- public/vite.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Rounded rectangle background -->
+  <rect x="0" y="0" width="32" height="32" rx="6" fill="#2563EB" />
   
-  <!-- Ring border around plaque -->
-  <circle cx="128" cy="128" r="116" fill="none" stroke="#fff" stroke-width="3"/>
-  
-  <!-- Map Pin Icon -->
-  <path d="M128,75 C107,75 90,92 90,113 C90,142 128,175 128,175 C128,175 166,142 166,113 C166,92 149,75 128,75 Z" 
-        fill="none" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Map pin icon (simplified path based on Lucide's MapPin) -->
+  <path d="M16,6 C11.6,6 8,9.6 8,14 C8,19.3 16,26 16,26 C16,26 24,19.3 24,14 C24,9.6 20.4,6 16,6 Z" 
+        fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   
   <!-- Center dot for map pin -->
-  <circle cx="128" cy="113" r="12" fill="white"/>
+  <circle cx="16" cy="14" r="2" fill="white"/>
 </svg>
