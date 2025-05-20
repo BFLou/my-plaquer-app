@@ -3,9 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
   Mail, 
-  Github, 
-  Twitter, 
-  Linkedin, 
   ChevronRight, 
   Users, 
   Database, 
@@ -14,21 +11,30 @@ import {
   Share2, 
   BookOpen,
   Route,
-  ExternalLink
+  ExternalLink,
+  Send
 } from 'lucide-react';
 import { PageContainer } from '@/components';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const AboutPage = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('mission');
   const [animationTriggered, setAnimationTriggered] = useState({});
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: ''
+  });
+  
+  // Updated to only include the sections we're keeping
   const sectionRefs = {
     mission: useRef(null),
     features: useRef(null),
     data: useRef(null),
-    team: useRef(null),
     contact: useRef(null)
   };
 
@@ -36,7 +42,7 @@ const AboutPage = () => {
   useEffect(() => {
     const observerOptions = {
       root: null,
-      rootMargin: '0px',
+      rootMargin: '-100px 0px 0px 0px', // Offset to account for sticky header
       threshold: 0.25
     };
 
@@ -70,29 +76,84 @@ const AboutPage = () => {
     };
   }, []);
 
-  // Team members data
-  const teamMembers = [
+  // Fixed scroll to section - adding offset for sticky header
+  const scrollToSection = (sectionId) => {
+    setActiveSection(sectionId);
+    const yOffset = -80; // Adjust this value based on your header height
+    const element = sectionRefs[sectionId].current;
+    const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+    
+    window.scrollTo({top: y, behavior: 'smooth'});
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Form submission logic would go here
+    alert('Thanks for your message! We\'ll get back to you soon.');
+    setFormData({
+      name: '',
+      email: '',
+      message: ''
+    });
+  };
+
+  // Feature cards data - updated with coming soon badges
+  const features = [
     {
-      name: 'Alex Thompson',
-      role: 'Founder & Lead Developer',
-      image: 'https://i.pravatar.cc/300?img=1',
-      bio: 'History enthusiast and software developer with a passion for making history accessible to everyone.'
+      icon: Map,
+      title: "Interactive Map",
+      description: "Explore London's blue plaques on our interactive map with filtering by historical period, profession, and location.",
+      color: "blue",
+      isComingSoon: false
     },
     {
-      name: 'Samantha Chen',
-      role: 'UI/UX Designer',
-      image: 'https://i.pravatar.cc/300?img=5',
-      bio: 'Crafting beautiful, intuitive user experiences that make exploring historical sites a joy.'
+      icon: Camera,
+      title: "Visit Tracking",
+      description: "Check in at plaques you visit and build your personal collection of historical discoveries.",
+      color: "green",
+      isComingSoon: false
     },
     {
-      name: 'Marcus Williams',
-      role: 'Historical Researcher',
-      image: 'https://i.pravatar.cc/300?img=3',
-      bio: 'PhD in London History, ensuring our data is accurate and our stories compelling.'
+      icon: Route,
+      title: "Custom Routes",
+      description: "Create walking routes connecting multiple plaques to discover history at your own pace.",
+      color: "amber",
+      isComingSoon: false
+    },
+    {
+      icon: BookOpen,
+      title: "Historical Context",
+      description: "Learn about the historical significance of each plaque with detailed information and related stories.",
+      color: "purple",
+      isComingSoon: false
+    },
+    {
+      icon: Share2,
+      title: "Share & Collect",
+      description: "Create themed collections and share your discoveries with friends and other history enthusiasts.",
+      color: "pink",
+      isComingSoon: true
+    },
+    {
+      icon: Users,
+      title: "Community",
+      description: "Join a community of history explorers, share photos, and contribute to our growing database.",
+      color: "indigo",
+      isComingSoon: true
     }
   ];
 
-  // Stats counter animation
+  // Stats counter animation - removed Active Explorers
   const CounterAnimation = ({ end, duration = 2000, label, icon: Icon }) => {
     const [count, setCount] = useState(0);
     const counterRef = useRef(null);
@@ -146,57 +207,12 @@ const AboutPage = () => {
     );
   };
 
-  // Feature cards data
-  const features = [
-    {
-      icon: Map,
-      title: "Interactive Map",
-      description: "Explore London's blue plaques on our interactive map with filtering by historical period, profession, and location.",
-      color: "blue"
-    },
-    {
-      icon: Camera,
-      title: "Visit Tracking",
-      description: "Check in at plaques you visit and build your personal collection of historical discoveries.",
-      color: "green"
-    },
-    {
-      icon: Route,
-      title: "Custom Routes",
-      description: "Create walking routes connecting multiple plaques to discover history at your own pace.",
-      color: "amber"
-    },
-    {
-      icon: BookOpen,
-      title: "Historical Context",
-      description: "Learn about the historical significance of each plaque with detailed information and related stories.",
-      color: "purple"
-    },
-    {
-      icon: Share2,
-      title: "Share & Collect",
-      description: "Create themed collections and share your discoveries with friends and other history enthusiasts.",
-      color: "pink"
-    },
-    {
-      icon: Users,
-      title: "Community",
-      description: "Join a community of history explorers, share photos, and contribute to our growing database.",
-      color: "indigo"
-    }
-  ];
-
-  // Scroll to section
-  const scrollToSection = (sectionId) => {
-    setActiveSection(sectionId);
-    sectionRefs[sectionId].current.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
     <PageContainer 
       activePage="about"
       simplifiedFooter={false} // Use the full footer
-    >      {/* Hero Section */}
+    >
+      {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-16 px-4 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-40 h-40 rounded-full bg-white"></div>
@@ -213,27 +229,12 @@ const AboutPage = () => {
             <p className="text-xl max-w-3xl mx-auto opacity-90 mb-8">
               Discover and explore London's rich history through its iconic blue plaques marking the homes and workplaces of remarkable people.
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button 
-                className="bg-white text-blue-600 hover:bg-blue-50"
-                onClick={() => navigate('/discover')}
-              >
-                Start Exploring <ChevronRight size={16} className="ml-1" />
-              </Button>
-              <Button 
-                variant="outline" 
-                className="border-white text-white hover:bg-white/20"
-                onClick={() => scrollToSection('contact')}
-              >
-                Contact Us
-              </Button>
-            </div>
           </div>
         </div>
       </section>
 
       {/* Navigation Pills - Sticky */}
-      <div className="sticky top-[61px] z-30 bg-white border-b border-gray-200 shadow-sm py-2">
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm py-2">
         <div className="container mx-auto px-4 overflow-x-auto">
           <div className="flex gap-2 max-w-5xl mx-auto">
             {Object.keys(sectionRefs).map((section) => (
@@ -293,7 +294,7 @@ const AboutPage = () => {
                 <div className="absolute -inset-4 bg-blue-200 rounded-xl transform rotate-3"></div>
                 <div className="relative aspect-video overflow-hidden rounded-lg">
                   <img
-                    src="/api/placeholder/800/450"
+                    src="/images/blue-plaque-explorers.jpg"
                     alt="People exploring London blue plaques"
                     className="object-cover w-full h-full"
                   />
@@ -334,8 +335,13 @@ const AboutPage = () => {
               >
                 <div className={`h-3 bg-${feature.color}-500`}></div>
                 <div className="p-6">
-                  <div className={`w-12 h-12 rounded-lg bg-${feature.color}-100 flex items-center justify-center mb-4`}>
-                    <feature.icon className={`text-${feature.color}-600`} size={24} />
+                  <div className="flex justify-between items-start">
+                    <div className={`w-12 h-12 rounded-lg bg-${feature.color}-100 flex items-center justify-center mb-4`}>
+                      <feature.icon className={`text-${feature.color}-600`} size={24} />
+                    </div>
+                    {feature.isComingSoon && (
+                      <Badge className="bg-amber-100 text-amber-700 border-none">Coming Soon</Badge>
+                    )}
                   </div>
                   <h3 className="text-lg font-bold mb-2">{feature.title}</h3>
                   <p className="text-gray-600">{feature.description}</p>
@@ -345,20 +351,19 @@ const AboutPage = () => {
           </div>
         </section>
 
-        {/* Stats Section */}
+        {/* Stats Section - Removed Active Explorers */}
         <section className={`py-12 transition-all duration-1000 ${
           animationTriggered.features 
             ? 'opacity-100 translate-y-0' 
             : 'opacity-0 translate-y-10'
         }`}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <CounterAnimation end={3000} label="Blue Plaques" icon={MapPin} />
             <CounterAnimation end={150} label="Years of History" icon={BookOpen} />
-            <CounterAnimation end={10000} label="Active Explorers" icon={Users} />
           </div>
         </section>
 
-        {/* Data Sources Section */}
+        {/* Data Sources Section - Updated to Open Plaques */}
         <section 
           id="data" 
           ref={sectionRefs.data}
@@ -414,7 +419,7 @@ const AboutPage = () => {
               <Badge className="mb-4 bg-green-100 text-green-700 border-none">Our Data</Badge>
               <h2 className="text-3xl font-bold mb-6">Accurate & Comprehensive</h2>
               <p className="text-gray-700 mb-4">
-                Plaquer's database includes information from various official sources, including English Heritage, the London Borough councils, and other historical organizations. We work to ensure our information is accurate and up-to-date.
+                Plaquer's database is powered by Open Plaques, a community-led project that catalogues commemorative plaques across the UK and beyond. We've enhanced this data with additional information and location accuracy.
               </p>
               <p className="text-gray-700 mb-6">
                 We also welcome contributions from our community. If you notice missing information or have photos of plaques to share, please let us know.
@@ -428,15 +433,15 @@ const AboutPage = () => {
                 <ul className="mt-2 space-y-1 text-amber-700">
                   <li className="flex items-center">
                     <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
+                    Open Plaques
+                  </li>
+                  <li className="flex items-center">
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
                     English Heritage
                   </li>
                   <li className="flex items-center">
                     <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
                     London Borough Archives
-                  </li>
-                  <li className="flex items-center">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
-                    Historical Society of London
                   </li>
                 </ul>
               </div>
@@ -452,53 +457,7 @@ const AboutPage = () => {
           </div>
         </section>
 
-        {/* Team Section */}
-        <section 
-          id="team" 
-          ref={sectionRefs.team}
-          className={`py-16 transition-all duration-1000 ${
-            animationTriggered.team 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-10'
-          }`}
-        >
-          <div className="text-center mb-12">
-            <Badge className="mb-4 bg-indigo-100 text-indigo-700 border-none">Our Team</Badge>
-            <h2 className="text-3xl font-bold">Meet the Plaque Enthusiasts</h2>
-            <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
-              A passionate team of historians, developers and explorers bringing London's history to life.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {teamMembers.map((member, index) => (
-              <div 
-                key={index}
-                className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-500 transform hover:-translate-y-1 hover:shadow-md ${
-                  animationTriggered.team 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 translate-y-10'
-                }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="h-48 bg-gray-200 overflow-hidden">
-                  <img 
-                    src={member.image} 
-                    alt={member.name} 
-                    className="w-full h-full object-cover transition-transform hover:scale-105"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-lg font-bold">{member.name}</h3>
-                  <p className="text-blue-600 text-sm mb-3">{member.role}</p>
-                  <p className="text-gray-600">{member.bio}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Contact Section */}
+        {/* Contact Section - Simplified to form and email only */}
         <section 
           id="contact" 
           ref={sectionRefs.contact}
@@ -523,38 +482,85 @@ const AboutPage = () => {
                 </p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-3xl mx-auto">
-                <Button 
-                  className="bg-white text-blue-600 hover:bg-blue-50 flex-col h-auto py-6"
-                  onClick={() => window.location.href = 'mailto:contact@plaquer.app'}
-                >
-                  <Mail className="mb-2" size={24} />
-                  <span>Email Us</span>
-                </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                {/* Contact Form */}
+                <div className="bg-white rounded-lg p-6 text-gray-800">
+                  <h3 className="text-xl font-bold mb-4">Send us a message</h3>
+                  
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                        Your Name
+                      </label>
+                      <Input
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                        Email Address
+                      </label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="john@example.com"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                        Message
+                      </label>
+                      <Textarea
+                        id="message"
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Your message here..."
+                        rows={4}
+                      />
+                    </div>
+                    
+                    <Button type="submit" className="w-full gap-2">
+                      <Send size={16} /> Send Message
+                    </Button>
+                  </form>
+                </div>
                 
-                <Button 
-                  className="bg-white text-blue-600 hover:bg-blue-50 flex-col h-auto py-6"
-                  onClick={() => window.open('https://github.com/plaquer', '_blank')}
-                >
-                  <Github className="mb-2" size={24} />
-                  <span>GitHub</span>
-                </Button>
-                
-                <Button 
-                  className="bg-white text-blue-600 hover:bg-blue-50 flex-col h-auto py-6"
-                  onClick={() => window.open('https://twitter.com/plaquer', '_blank')}
-                >
-                  <Twitter className="mb-2" size={24} />
-                  <span>Twitter</span>
-                </Button>
-                
-                <Button 
-                  className="bg-white text-blue-600 hover:bg-blue-50 flex-col h-auto py-6"
-                  onClick={() => window.open('https://linkedin.com/company/plaquer', '_blank')}
-                >
-                  <Linkedin className="mb-2" size={24} />
-                  <span>LinkedIn</span>
-                </Button>
+                {/* Direct Contact */}
+                <div className="flex flex-col justify-center">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-4">
+                    <h3 className="text-xl font-bold mb-4">Email Us Directly</h3>
+                    <p className="mb-4">
+                      Prefer to use your own email client? Feel free to reach out to us directly.
+                    </p>
+                    <Button 
+                      className="bg-white text-blue-600 hover:bg-blue-50 w-full"
+                      onClick={() => window.location.href = 'mailto:contact@plaquer.app'}
+                    >
+                      <Mail className="mr-2" size={18} />
+                      contact@plaquer.app
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                    <h3 className="text-xl font-bold mb-4">Response Time</h3>
+                    <p>
+                      We typically respond to all inquiries within 1-2 business days. For urgent matters, please mention this in your subject line.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
