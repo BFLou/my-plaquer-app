@@ -212,44 +212,43 @@ const AboutPage = () => {
       activePage="about"
       simplifiedFooter={false} // Use the full footer
     >
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-16 px-4 overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 w-40 h-40 rounded-full bg-white"></div>
-          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
-          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
-        </div>
-        
-        <div className="container mx-auto max-w-5xl relative z-10">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center mb-6 shadow-lg transform rotate-12">
-              <MapPin className="text-blue-600" size={36} />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">About Plaquer</h1>
-            <p className="text-xl max-w-3xl mx-auto opacity-90 mb-8">
-              Discover and explore London's rich history through its iconic blue plaques marking the homes and workplaces of remarkable people.
-            </p>
-          </div>
-        </div>
-      </section>
+{/* Hero Section with decorative background circles */}
+<section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
+  {/* Decorative background circles */}
+  <div className="absolute inset-0 opacity-10">
+    <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
+    <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
+    <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+  </div>
+  
+  <div className="container mx-auto max-w-5xl relative z-10">
+    <h1 className="text-2xl font-bold">About Plaquer</h1>
+    <p className="opacity-90 mt-1">
+      Discover and explore London's rich history through its iconic blue plaques marking historical locations.
+    </p>
+  </div>
+</section>
 
-      {/* Navigation Pills - Sticky */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm py-2">
-        <div className="container mx-auto px-4 overflow-x-auto">
-          <div className="flex gap-2 max-w-5xl mx-auto">
-            {Object.keys(sectionRefs).map((section) => (
-              <Button
-                key={section}
-                variant={activeSection === section ? "default" : "outline"}
-                className="whitespace-nowrap"
-                onClick={() => scrollToSection(section)}
-              >
-                {section.charAt(0).toUpperCase() + section.slice(1)}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
+{/* Navigation Pills - Sticky */}
+<div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm py-2">
+  <div className="container mx-auto px-4 overflow-x-auto">
+    <div className="flex gap-2 max-w-5xl mx-auto">
+      {Object.keys(sectionRefs).map((section) => (
+        <button 
+          key={section}
+          className={`px-4 py-3 font-medium text-sm ${
+            activeSection === section 
+              ? 'text-blue-600 border-b-2 border-blue-600' 
+              : 'text-gray-600 hover:text-gray-800'
+          }`}
+          onClick={() => scrollToSection(section)}
+        >
+          {section.charAt(0).toUpperCase() + section.slice(1)}
+        </button>
+      ))}
+    </div>
+  </div>
+</div>
 
       {/* Main Content */}
       <div className="container mx-auto max-w-5xl px-4 py-12">
@@ -273,21 +272,22 @@ const AboutPage = () => {
               <p className="text-gray-700 mb-6">
                 We believe that history becomes more meaningful when it's personal. By helping you discover, track, and share these historical markers, we hope to make London's past come alive in a way that's engaging and accessible for everyone.
               </p>
-              <div className="flex flex-wrap gap-4">
-                <Button 
-                  className="gap-2"
-                  onClick={() => navigate('/discover')}
-                >
-                  <Map size={16} /> Explore Map
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="gap-2"
-                  onClick={() => navigate('/collections')}
-                >
-                  <BookOpen size={16} /> View Collections
-                </Button>
-              </div>
+{/* Example button updates in the Mission section */}
+<div className="flex flex-wrap gap-4">
+  <Button 
+    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium shadow-sm flex items-center gap-2"
+    onClick={() => navigate('/discover')}
+  >
+    <Map size={16} /> Explore Map
+  </Button>
+  <Button 
+    variant="outline" 
+    className="border border-gray-200 text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-lg font-medium flex items-center gap-2"
+    onClick={() => navigate('/collections')}
+  >
+    <BookOpen size={16} /> View Collections
+  </Button>
+</div>
             </div>
             <div className="md:w-1/2 order-1 md:order-2">
               <div className="relative">
@@ -545,13 +545,13 @@ const AboutPage = () => {
                     <p className="mb-4">
                       Prefer to use your own email client? Feel free to reach out to us directly.
                     </p>
-                    <Button 
-                      className="bg-white text-blue-600 hover:bg-blue-50 w-full"
-                      onClick={() => window.location.href = 'mailto:contact@plaquer.app'}
-                    >
-                      <Mail className="mr-2" size={18} />
-                      contact@plaquer.app
-                    </Button>
+<Button 
+  className="bg-white text-blue-600 hover:bg-blue-50 w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2"
+  onClick={() => window.location.href = 'mailto:contact@plaquer.app'}
+>
+  <Mail className="mr-2" size={18} />
+  contact@plaquer.app
+</Button>
                   </div>
                   
                   <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
@@ -572,23 +572,21 @@ const AboutPage = () => {
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
             Join thousands of history enthusiasts discovering London's rich heritage one plaque at a time.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <Button 
-              size="lg"
-              className="gap-2"
-              onClick={() => navigate('/discover')}
-            >
-              <MapPin size={18} /> Start Exploring
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg"
-              className="gap-2"
-              onClick={() => navigate('/')}
-            >
-              <ExternalLink size={18} /> Learn More
-            </Button>
-          </div>
+<div className="flex flex-wrap justify-center gap-4">
+  <Button 
+    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium shadow-sm flex items-center gap-2"
+    onClick={() => navigate('/discover')}
+  >
+    <MapPin size={18} /> Start Exploring
+  </Button>
+  <Button 
+    variant="outline"
+    className="border border-gray-200 text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-lg font-medium flex items-center gap-2"
+    onClick={() => navigate('/')}
+  >
+    <ExternalLink size={18} /> Learn More
+  </Button>
+</div>
         </section>
       </div>
     </PageContainer>
