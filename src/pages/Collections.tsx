@@ -1,5 +1,10 @@
+// src/pages/Collections.jsx
 import React, { useState, useEffect } from 'react';
-import { MapPin, Star, Trash2, CollectionIcon, FolderOpen, BookOpen, Plus, Filter } from 'lucide-react';
+import { 
+  MapPin, Star, Trash2, FolderOpen, BookOpen, Plus, 
+  Filter, Search, Grid, List, Check, X, 
+  CollectionIcon, LayoutGrid, Package
+} from 'lucide-react';
 import { PageContainer } from "@/components";
 import { useCollectionsList } from '../hooks/useCollectionsList';
 import { useCollectionActions } from '../hooks/useCollectionActions';
@@ -18,8 +23,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const CollectionsPage: React.FC = () => {
+const CollectionsPage = () => {
   // Use existing hooks
   const {
     collections,
@@ -65,12 +78,14 @@ const CollectionsPage: React.FC = () => {
   // Add state for featured collections
   const [favoriteCollections, setFavoriteCollections] = useState([]);
   const [recentCollections, setRecentCollections] = useState([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Calculate collections stats
   const [stats, setStats] = useState({
     total: 0,
     favorites: 0,
     plaques: 0,
+    visited: 0,
   });
   
   useEffect(() => {
@@ -78,7 +93,7 @@ const CollectionsPage: React.FC = () => {
       // Set favorite collections
       setFavoriteCollections(collections.filter(c => c.is_favorite));
       
-      // Set recent collections (5 most recently updated)
+      // Set recent collections (4 most recently updated)
       const sorted = [...collections].sort((a, b) => {
         const dateA = new Date(a.updated_at).getTime();
         const dateB = new Date(b.updated_at).getTime();
@@ -91,10 +106,14 @@ const CollectionsPage: React.FC = () => {
         return sum + (Array.isArray(c.plaques) ? c.plaques.length : c.plaques || 0);
       }, 0);
       
+      // In a real app, you'd calculate visited plaques here
+      const visitedPlaques = Math.floor(totalPlaques * 0.4); // Just a placeholder
+      
       setStats({
         total: collections.length,
         favorites: collections.filter(c => c.is_favorite).length,
-        plaques: totalPlaques
+        plaques: totalPlaques,
+        visited: visitedPlaques
       });
     }
   }, [collections]);
@@ -106,6 +125,11 @@ const CollectionsPage: React.FC = () => {
       setEditCollectionData(collection);
       setEditCollectionOpen(true);
     }
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchQuery('');
   };
 
   // Show loading state
@@ -183,7 +207,7 @@ const CollectionsPage: React.FC = () => {
       {collections.length > 0 && (
         <section className="bg-white py-8 border-b">
           <div className="container mx-auto max-w-5xl px-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-blue-50 rounded-lg p-4 text-center flex flex-col items-center">
                 <div className="bg-blue-100 p-3 rounded-full mb-3">
                   <FolderOpen size={24} className="text-blue-600" />
@@ -206,6 +230,14 @@ const CollectionsPage: React.FC = () => {
                 </div>
                 <span className="text-3xl font-bold text-green-600">{stats.plaques}</span>
                 <span className="text-green-700">Total Plaques</span>
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-4 text-center flex flex-col items-center">
+                <div className="bg-purple-100 p-3 rounded-full mb-3">
+                  <Check size={24} className="text-purple-600" />
+                </div>
+                <span className="text-3xl font-bold text-purple-600">{stats.visited}</span>
+                <span className="text-purple-700">Plaques Visited</span>
               </div>
             </div>
           </div>
@@ -275,29 +307,39 @@ const CollectionsPage: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
-              <FolderOpen size={20} /> All Collections
+              <Package size={20} /> All Collections
             </h2>
-            
-            {/* Tabs for Grid/List view */}
-            <div className="flex items-center gap-3">
-              <div className="relative mr-4">
-                <input
-                  type="text"
+          </div>
+          
+          {/* Filter Bar */}
+          <div className="bg-white rounded-lg shadow-sm p-3 mb-6 flex flex-wrap gap-3 justify-between">
+            {/* Search and Filter Section */}
+            <div className="flex flex-grow items-center gap-3">
+              <div className="relative flex-grow max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <Input
                   placeholder="Search collections..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-sm rounded-md border border-gray-300"
+                  className="pl-9 pr-9 w-full"
                 />
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                {searchQuery && (
+                  <button
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={handleClearSearch}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
               
+              {/* Filter Button */}
               <Button 
-                variant="outline" 
-                size="sm" 
-                className={activeFilters.length > 0 ? "border-blue-500 text-blue-600" : ""}
-                onClick={() => setFiltersOpen(true)}
+                variant={activeFilters.length > 0 ? "default" : "outline"} 
+                className="gap-2"
+                onClick={() => setFiltersOpen(!filtersOpen)}
               >
-                <Filter size={16} className="mr-1" /> 
+                <Filter size={16} />
                 Filters
                 {activeFilters.length > 0 && (
                   <Badge 
@@ -308,50 +350,67 @@ const CollectionsPage: React.FC = () => {
                   </Badge>
                 )}
               </Button>
+            </div>
+            
+            {/* View Toggle and Sort Options */}
+            <div className="flex items-center gap-3">
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recently_updated">Recently Updated</SelectItem>
+                  <SelectItem value="oldest_updated">Oldest Updated</SelectItem>
+                  <SelectItem value="a_to_z">A to Z</SelectItem>
+                  <SelectItem value="z_to_a">Z to A</SelectItem>
+                  <SelectItem value="most_plaques">Most Plaques</SelectItem>
+                  <SelectItem value="least_plaques">Least Plaques</SelectItem>
+                </SelectContent>
+              </Select>
               
-              <Tabs value={viewMode} onValueChange={setViewMode}>
+              <Tabs value={viewMode} onValueChange={setViewMode} className="hidden sm:block">
                 <TabsList>
-                  <TabsTrigger value="grid">Grid</TabsTrigger>
-                  <TabsTrigger value="list">List</TabsTrigger>
+                  <TabsTrigger value="grid" className="flex items-center gap-1">
+                    <LayoutGrid size={16} /> Grid
+                  </TabsTrigger>
+                  <TabsTrigger value="list" className="flex items-center gap-1">
+                    <List size={16} /> List
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
           </div>
           
-          {/* Show sort options */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              {activeFilters.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Filters:</span>
-                  {activeFilters.map((filter, index) => (
-                    <Badge key={index} variant="secondary">{filter}</Badge>
-                  ))}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-xs" 
+          {/* Active Filters Display */}
+          {activeFilters.length > 0 && (
+            <div className="bg-white shadow-sm rounded-lg p-2 flex flex-wrap items-center gap-2 mb-6">
+              <span className="text-sm font-medium px-2">Active filters:</span>
+              {activeFilters.map((filter, index) => (
+                <Badge 
+                  key={index} 
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  {filter}
+                  <button
                     onClick={resetFilters}
+                    className="ml-1 text-gray-500 hover:text-gray-700"
                   >
-                    Clear All
-                  </Button>
-                </div>
-              )}
+                    <X size={12} />
+                  </button>
+                </Badge>
+              ))}
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={resetFilters}
+                className="ml-auto text-xs"
+              >
+                Clear all filters
+              </Button>
             </div>
-            <Select value={sortOption} onValueChange={setSortOption}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recently_updated">Recently Updated</SelectItem>
-                <SelectItem value="oldest_updated">Oldest Updated</SelectItem>
-                <SelectItem value="a_to_z">A to Z</SelectItem>
-                <SelectItem value="z_to_a">Z to A</SelectItem>
-                <SelectItem value="most_plaques">Most Plaques</SelectItem>
-                <SelectItem value="least_plaques">Least Plaques</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          )}
           
           {/* Collections Content */}
           {collections.length === 0 ? (

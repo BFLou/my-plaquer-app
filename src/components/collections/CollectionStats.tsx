@@ -1,45 +1,9 @@
-// src/components/collections/CollectionStats.tsx
+// src/components/collections/CollectionStats.jsx
 import React from 'react';
-import { Clock, CheckCircle, User, BrainCircuit } from 'lucide-react';
+import { Clock, CheckCircle, User, BrainCircuit, MapPin, Star } from 'lucide-react';
 import { capitalizeWords } from '@/utils/stringUtils';
 
-type Collection = {
-  id: number | string;
-  name: string;
-  description?: string;
-  icon: string;
-  color: string;
-  plaques: number[];
-  updated_at: any; // Can be Date, Timestamp, or string
-  is_favorite?: boolean;
-};
-
-type Plaque = {
-  id: number;
-  title: string;
-  profession?: string;
-  color?: string;
-  visited?: boolean;
-  [key: string]: any;
-};
-
-type Visit = {
-  plaque_id: number;
-  visited_at: string;
-  [key: string]: any;
-};
-
-type CollectionStatsProps = {
-  collection: Collection;
-  plaques: Plaque[];
-  userVisits: Visit[];
-  className?: string;
-};
-
-/**
- * CollectionStats component displays various statistics about a collection
- */
-export const CollectionStats: React.FC<CollectionStatsProps> = ({ 
+export const CollectionStats = ({ 
   collection, 
   plaques, 
   userVisits, 
@@ -63,9 +27,6 @@ export const CollectionStats: React.FC<CollectionStatsProps> = ({
     
     const visitedPercentage = Math.round((visitedCount / plaques.length) * 100);
     
-    // Debug log
-    console.log(`Stats: ${visitedCount} visited (${visitedByProperty} by property, ${visitedInArray} in visits array) out of ${plaques.length} (${visitedPercentage}%)`);
-    
     return { visitedCount, visitedPercentage };
   };
   
@@ -73,7 +34,7 @@ export const CollectionStats: React.FC<CollectionStatsProps> = ({
   const getProfessionStats = () => {
     if (!plaques.length) return [];
     
-    const professionCounts: Record<string, number> = {};
+    const professionCounts = {};
     
     plaques.forEach(plaque => {
       if (!plaque.profession) {
@@ -91,107 +52,152 @@ export const CollectionStats: React.FC<CollectionStatsProps> = ({
       .sort((a, b) => b.count - a.count);
   };
   
-  // Format time ago
-  const formatTimeAgo = (dateString: string): string => {
-    // If no date value is provided, return 'recently'
-    if (!dateString) return 'recently';
+  // Calculate color statistics
+  const getColorStats = () => {
+    if (!plaques.length) return [];
     
-    try {
-      let date: Date;
-      
-      // Handle different date formats
-      if (typeof dateString === 'string') {
-        date = new Date(dateString);
-      } else if (dateString instanceof Date) {
-        date = dateString;
-      } else if (dateString && typeof dateString === 'object' && 'toDate' in dateString) {
-        // Firebase Timestamp object with toDate method
-        date = dateString.toDate();
-      } else if (dateString && typeof dateString === 'object' && 'seconds' in dateString) {
-        // Firebase server timestamp object with seconds
-        date = new Date(dateString.seconds * 1000);
-      } else {
-        return 'recently';
+    const colorCounts = {};
+    
+    plaques.forEach(plaque => {
+      if (!plaque.color) {
+        colorCounts['Unknown'] = (colorCounts['Unknown'] || 0) + 1;
+        return;
       }
       
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.error("Invalid date:", dateString);
-        return 'recently';
-      }
+      // Capitalize the color before adding to counts
+      const capitalizedColor = capitalizeWords(plaque.color);
+      colorCounts[capitalizedColor] = (colorCounts[capitalizedColor] || 0) + 1;
+    });
+    
+    return Object.entries(colorCounts)
+      .map(([color, count]) => ({ color, count }))
+      .sort((a, b) => b.count - a.count);
+  };
+
+  // Get area/location statistics
+  const getAreaStats = () => {
+    if (!plaques.length) return [];
+    
+    const areaCounts = {};
+    
+    plaques.forEach(plaque => {
+      let area = plaque.area || plaque.postcode || 'Unknown';
       
-      const now = new Date();
-      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-      
-      // Format based on time difference
-      if (diffInSeconds < 60) return 'just now';
-      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-      
-      const diffInDays = Math.floor(diffInSeconds / 86400);
-      if (diffInDays === 1) return 'yesterday';
-      if (diffInDays < 7) return `${diffInDays} days ago`;
-      if (diffInDays < 30) {
-        const weeks = Math.floor(diffInDays / 7);
-        return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
-      }
-      
-      const diffInMonths = Math.floor(diffInDays / 30);
-      return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
-    } catch (error) {
-      console.error("Error formatting date:", error, dateString);
-      return 'recently';
-    }
+      areaCounts[area] = (areaCounts[area] || 0) + 1;
+    });
+    
+    return Object.entries(areaCounts)
+      .map(([area, count]) => ({ area, count }))
+      .sort((a, b) => b.count - a.count);
   };
 
   // Get stats
   const { visitedCount, visitedPercentage } = getVisitedStats();
   const professionStats = getProfessionStats();
+  const colorStats = getColorStats();
+  const areaStats = getAreaStats();
   
   return (
-    <div className={`bg-white rounded-lg shadow-sm p-4 ${className}`}>
-      <h3 className="font-medium mb-3">Collection Stats</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className={`${className}`}>
+      <h3 className="font-medium text-lg mb-4">Collection Stats</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Plaques */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <div className="text-sm text-gray-500 mb-1">Total Plaques</div>
-          <div className="text-2xl font-bold">{plaques.length}</div>
+        <div className="bg-blue-50 p-4 rounded-lg flex flex-col items-center">
+          <div className="p-3 bg-blue-100 rounded-full mb-2">
+            <MapPin className="text-blue-600" size={24} />
+          </div>
+          <div className="text-2xl font-bold text-blue-600">{plaques.length}</div>
+          <div className="text-blue-700 text-sm">Total Plaques</div>
         </div>
         
         {/* Visited */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <div className="text-sm text-gray-500 mb-1">Visited</div>
-          <div className="text-2xl font-bold">
+        <div className="bg-green-50 p-4 rounded-lg flex flex-col items-center">
+          <div className="p-3 bg-green-100 rounded-full mb-2">
+            <CheckCircle className="text-green-600" size={24} />
+          </div>
+          <div className="text-2xl font-bold text-green-600">
             {visitedCount} 
-            <span className="text-sm font-normal text-gray-500 ml-1">
+            <span className="text-sm font-normal text-green-500 ml-1">
               ({visitedPercentage}%)
             </span>
           </div>
+          <div className="text-green-700 text-sm">Visited</div>
         </div>
         
+        {/* Most Common Profession */}
+        <div className="bg-purple-50 p-4 rounded-lg flex flex-col items-center">
+          <div className="p-3 bg-purple-100 rounded-full mb-2">
+            <User className="text-purple-600" size={24} />
+          </div>
+          <div className="text-lg font-bold text-purple-600 text-center truncate max-w-full">
+            {professionStats.length > 0 ? professionStats[0].profession : 'None'}
+          </div>
+          <div className="text-purple-700 text-sm">Top Profession</div>
+        </div>
+        
+        {/* Most Common Color */}
+        <div className="bg-amber-50 p-4 rounded-lg flex flex-col items-center">
+          <div className="p-3 bg-amber-100 rounded-full mb-2">
+            <Star className="text-amber-600" size={24} />
+          </div>
+          <div className="text-lg font-bold text-amber-600 text-center truncate max-w-full">
+            {colorStats.length > 0 ? colorStats[0].color : 'None'}
+          </div>
+          <div className="text-amber-700 text-sm">Most Common Color</div>
+        </div>
+      </div>
+      
+      {/* Additional stats in expandable sections */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Top Professions */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <div className="text-sm text-gray-500 mb-1">Top Professions</div>
-          <div className="text-sm font-medium">
-            {professionStats.length > 0 ? (
-              professionStats.slice(0, 3).map(({ profession, count }, index) => (
-                <div key={profession || index} className="flex justify-between items-center">
-                  <span>{profession || 'Unknown'}</span>
-                  <span className="text-gray-500">{count}</span>
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h4 className="font-medium mb-3">Top Professions</h4>
+          {professionStats.length > 0 ? (
+            <div className="space-y-2">
+              {professionStats.slice(0, 5).map(({ profession, count }, index) => (
+                <div key={profession || index} className="flex justify-between items-center text-sm">
+                  <span className="truncate">{profession || 'Unknown'}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-purple-500" 
+                        style={{ width: `${(count / plaques.length) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-gray-500 w-6 text-right">{count}</span>
+                  </div>
                 </div>
-              ))
-            ) : (
-              <span className="text-gray-500">None</span>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No profession data available</p>
+          )}
         </div>
         
-        {/* Last Update */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <div className="text-sm text-gray-500 mb-1">Last Update</div>
-          <div className="text-sm font-medium">
-            {formatTimeAgo(collection.updated_at)}
-          </div>
+        {/* Locations */}
+        <div className="bg-white rounded-lg shadow-sm p-4">
+          <h4 className="font-medium mb-3">Locations</h4>
+          {areaStats.length > 0 ? (
+            <div className="space-y-2">
+              {areaStats.slice(0, 5).map(({ area, count }, index) => (
+                <div key={area || index} className="flex justify-between items-center text-sm">
+                  <span className="truncate">{area || 'Unknown'}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500" 
+                        style={{ width: `${(count / plaques.length) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-gray-500 w-6 text-right">{count}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No location data available</p>
+          )}
         </div>
       </div>
     </div>

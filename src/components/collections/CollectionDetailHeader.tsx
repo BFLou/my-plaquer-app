@@ -1,8 +1,8 @@
-// src/features/collections/components/CollectionDetailHeader.tsx
+// src/components/collections/CollectionDetailHeader.jsx - More Compact Version
 import React, { useState } from 'react';
 import { 
   ArrowLeft, Star, Pencil, MoreHorizontal, 
-  Copy, Trash2, Clock, Eye, X
+  Copy, Trash2, Clock, X, Check
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,22 +14,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Collection } from './CollectionCard';
-import { formatTimeAgo } from '../../utils/collectionHelpers';
+import { formatTimeAgo } from "@/utils/collectionHelpers";
 
-type CollectionDetailHeaderProps = {
-  collection: Collection;
-  onBack: () => void;
-  onEdit: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
-  onToggleFavorite: () => void;
-  onUpdateName: (name: string) => void;
-  isLoading: boolean;
-  className?: string;
-};
-
-const CollectionDetailHeader: React.FC<CollectionDetailHeaderProps> = ({
+const CollectionDetailHeader = ({
   collection,
   onBack,
   onEdit,
@@ -66,131 +53,151 @@ const CollectionDetailHeader: React.FC<CollectionDetailHeaderProps> = ({
     : collection.plaques;
   
   return (
-    <div className={`mb-6 ${className}`}>
-      <div className="flex items-center gap-2 mb-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={onBack} 
-          className="h-8 w-8 p-0"
-        >
-          <ArrowLeft size={18} />
-        </Button>
-        <a 
-          className="text-gray-500 hover:text-blue-600 text-sm cursor-pointer" 
-          onClick={onBack}
-        >
-          Collections
-        </a>
-        <span className="text-gray-400">/</span>
+    <div className={`relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-6 px-4 overflow-hidden ${className}`}>
+      {/* Decorative background elements - made smaller */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-8 w-24 h-24 rounded-full bg-white"></div>
+        <div className="absolute bottom-6 right-14 w-32 h-32 rounded-full bg-white"></div>
+        <div className="absolute top-16 right-20 w-12 h-12 rounded-full bg-white"></div>
       </div>
       
-      <div className="flex justify-between items-start flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-white text-2xl ${collection.color}`}>
-            {collection.icon}
-          </div>
-          
-          {editNameMode ? (
-            <div className="flex items-center gap-2">
-              <Input
-                value={editNameValue}
-                onChange={(e) => setEditNameValue(e.target.value)}
-                className="text-xl font-bold py-1 h-auto"
-                disabled={isLoading}
-                autoFocus
-              />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleSaveName} 
-                className="h-8 w-8 p-0 text-green-600"
-                disabled={isLoading}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleCancelEdit} 
-                className="h-8 w-8 p-0 text-red-600"
-                disabled={isLoading}
-              >
-                <X size={18} />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{collection.name}</h1>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setEditNameMode(true)} 
-                className="h-8 w-8 p-0"
-              >
-                <Pencil size={16} />
-              </Button>
-            </div>
-          )}
+      <div className="container mx-auto max-w-5xl relative z-10">
+        {/* Breadcrumb - made smaller and inline with title */}
+        <div className="flex items-center mb-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack} 
+            className="h-7 w-7 p-0 bg-white/20 text-white hover:bg-white/30 mr-1"
+          >
+            <ArrowLeft size={16} />
+          </Button>
+          <a 
+            className="text-white/80 hover:text-white text-xs cursor-pointer" 
+            onClick={onBack}
+          >
+            Collections
+          </a>
+          <span className="text-white/50 mx-1">/</span>
         </div>
         
-        <div className="flex gap-2">
-          <Button 
-            variant={collection.is_favorite ? "outline" : "ghost"}
-            size="sm"
-            onClick={onToggleFavorite}
-            className={collection.is_favorite ? "text-amber-500" : ""}
-            disabled={isLoading}
-          >
-            <Star 
-              size={16} 
-              className={`mr-2 ${collection.is_favorite ? "fill-amber-500" : ""}`} 
-            />
-            {collection.is_favorite ? "Favorited" : "Favorite"}
-          </Button>
+        {/* Main header content - more compact with flexible layout */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Left side: icon and title */}
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-xl ${collection.color} shadow-md`}>
+              {collection.icon}
+            </div>
+            
+            {editNameMode ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  className="bg-white/10 text-white text-lg font-bold h-8 py-1 px-2 rounded border border-white/20 backdrop-blur-sm w-72"
+                  disabled={isLoading}
+                  autoFocus
+                />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSaveName} 
+                  className="h-7 w-7 p-0 text-green-300 bg-white/10 hover:bg-white/20"
+                  disabled={isLoading}
+                >
+                  <Check size={16} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleCancelEdit} 
+                  className="h-7 w-7 p-0 text-red-300 bg-white/10 hover:bg-white/20"
+                  disabled={isLoading}
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xl font-bold">{collection.name}</h1>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onEdit} 
+                  className="h-7 w-7 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                >
+                  <Pencil size={14} />
+                </Button>
+              </div>
+            )}
+            
+            {/* Badges - integrated with title for more compact layout */}
+            <div className="flex items-center gap-2 ml-0.5">
+              <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20 py-0.5">
+                <Clock size={10} className="mr-1" /> {formatTimeAgo(collection.updated_at)}
+              </Badge>
+              <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20 py-0.5">
+                {plaqueCount} {plaqueCount === 1 ? 'plaque' : 'plaques'}
+              </Badge>
+              {collection.is_favorite && (
+                <Badge variant="outline" className="text-xs bg-amber-500/20 text-amber-100 border-amber-400/30 py-0.5">
+                  <Star size={10} className="mr-1 fill-amber-300" /> Favorite
+                </Badge>
+              )}
+            </div>
+          </div>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-9 w-9 p-0" disabled={isLoading}>
-                <MoreHorizontal size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>
-                <Pencil size={16} className="mr-2" /> Edit Collection
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDuplicate}>
-                <Copy size={16} className="mr-2" /> Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="text-red-600" 
-                onClick={onDelete}
-              >
-                <Trash2 size={16} className="mr-2" /> Delete Collection
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Right side: actions */}
+          <div className="flex items-center gap-2">
+            <Button 
+              variant={collection.is_favorite ? "secondary" : "outline"}
+              size="sm"
+              onClick={onToggleFavorite}
+              className={`h-8 ${collection.is_favorite ? "bg-amber-500/30 text-white border-amber-300/50" : "bg-white/10 text-white border-white/20 hover:bg-white/20"}`}
+              disabled={isLoading}
+            >
+              <Star 
+                size={14} 
+                className={`mr-1 ${collection.is_favorite ? "fill-amber-300" : ""}`} 
+              />
+              {collection.is_favorite ? "Favorited" : "Favorite"}
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0 bg-white/10 text-white border-white/20 hover:bg-white/20" 
+                  disabled={isLoading}
+                >
+                  <MoreHorizontal size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit()}>
+                  <Pencil size={14} className="mr-2" /> Edit Collection
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDuplicate()}>
+                  <Copy size={14} className="mr-2" /> Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="text-red-600" 
+                  onClick={() => onDelete()}
+                >
+                  <Trash2 size={14} className="mr-2" /> Delete Collection
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
-      
-      <div className="flex flex-wrap items-center gap-3 mt-3">
-        <Badge variant="outline" className="flex items-center gap-1">
-          <Clock size={12} /> Updated {formatTimeAgo(collection.updated_at)}
-        </Badge>
-        <Badge variant="outline">
-          {plaqueCount} {plaqueCount === 1 ? 'plaque' : 'plaques'}
-        </Badge>
-        {collection.is_favorite && (
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-            <Star size={12} className="mr-1 fill-amber-500" /> Favorite
-          </Badge>
+        
+        {/* Description - only show if present */}
+        {collection.description && (
+          <p className="text-white/80 mt-2 text-sm max-w-3xl">{collection.description}</p>
         )}
       </div>
-      
-      {collection.description && (
-        <p className="text-gray-600 mt-3">{collection.description}</p>
-      )}
     </div>
   );
 };

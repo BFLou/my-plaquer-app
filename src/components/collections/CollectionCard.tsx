@@ -1,4 +1,4 @@
-// Updated src/components/collections/CollectionCard.tsx with more visual styling
+// src/components/collections/CollectionCard.jsx
 import React from 'react';
 import { MoreHorizontal, Star, CheckCircle, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,22 @@ const CollectionCard = ({
   // Extract color name for gradient
   const colorName = collection.color.replace('bg-', '').split('-')[0];
   const plaqueCount = getPlaqueCount(collection);
+  
+  // Handle click events
+  const handleClick = (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      onToggleSelect(collection.id);
+    } else if (!e.target.closest('button') && onClick) {
+      onClick(collection.id);
+    }
+  };
+  
+  // Handle menu operations
+  const handleMenuOperation = (e, operation) => {
+    e.stopPropagation();
+    if (operation) operation(collection.id);
+  };
   
   return (
     <div 

@@ -1,11 +1,16 @@
-// src/pages/CollectionDetailPage.tsx
+// src/pages/CollectionDetail.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Filter, Map, Trash2, Plus, Grid, List, Navigation, Route as RouteIcon } from 'lucide-react';
+import { 
+  Check, Filter, Map, Trash2, Plus, Grid, List, Navigation, 
+  Route as RouteIcon, ArrowLeft, Star, Pencil, Share2, 
+  Copy, Edit, Trash, MapPin, X, Info, BookOpen, User, Clock
+} from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useCollectionDetail, ViewMode } from '../hooks/useCollectionDetail';
+import { useCollectionDetail } from '../hooks/useCollectionDetail';
 
 // UI Components
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ActionBar } from "@/components/common/ActionBar";
 import { toast } from 'sonner';
 
@@ -21,11 +26,13 @@ import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
 import CollectionFilterView from '@/components/collections/CollectionFilterView';
 import { EmptyState } from '@/components/common/EmptyState';
 import PlaqueMap from '../components/maps/PlaqueMap';
-import { calculateRouteDistance } from '../components/maps/utils/routeUtils';
 import { useRoutes } from '@/hooks/useRoutes';
+import { PageContainer } from "@/components";
+import { formatTimeAgo } from '../../utils/collectionHelpers';
 
-const CollectionDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+
+const CollectionDetailPage = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const collectionId = id || '';
   const mapRef = useRef(null);
@@ -41,8 +48,6 @@ const CollectionDetailPage: React.FC = () => {
     setViewMode,
     searchQuery,
     setSearchQuery,
-    sortOption,
-    setSortOption,
     isLoading,
     selectedPlaques,
     setSelectedPlaques,
@@ -74,7 +79,10 @@ const CollectionDetailPage: React.FC = () => {
     editNameMode,
     editNameValue,
     handleCancelEdit,
-    handleEditName
+    handleEditName,
+    editFormOpen,
+    setEditFormOpen,
+    handleUpdateCollection
   } = useCollectionDetail(collectionId);
 
   // State for filtered plaques
@@ -88,21 +96,11 @@ const CollectionDetailPage: React.FC = () => {
   const [useRoadRouting, setUseRoadRouting] = useState(true);
   const [maintainMapView, setMaintainMapView] = useState(false);
 
-  // Effect to calculate route distance when route points change
-  useEffect(() => {
-    if (routePoints.length >= 2) {
-      const distance = calculateRouteDistance(routePoints);
-      setRouteDistance(distance);
-    } else {
-      setRouteDistance(0);
-    }
-  }, [routePoints]);
-
   // Update filtered plaques when collection plaques change
   useEffect(() => {
     setFilteredPlaques(collectionPlaques);
   }, [collectionPlaques]);
-  
+
   // Add plaque to route
   const addPlaqueToRoute = (plaque) => {
     if (routePoints.some(p => p.id === plaque.id)) {
@@ -159,161 +157,242 @@ const CollectionDetailPage: React.FC = () => {
     setRoutePoints([]);
   };
 
-  // Export route as GeoJSON
-  const exportRoute = () => {
-    if (routePoints.length < 2) {
-      toast.error("Add at least two plaques to export a route");
-      return;
-    }
+  // Handle share collection
+  const handleShareCollection = async () => {
+    if (!collection) return;
     
-    // Create GeoJSON data with more detailed properties
-    const routeData = {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {
-            name: `${collection.name} Route`,
-            description: `Route with ${routePoints.length} plaques from ${collection.name}`,
-            distance: calculateRouteDistance(routePoints),
-            points: routePoints.map(p => ({
-              id: p.id,
-              title: p.title,
-              description: p.inscription || '',
-              address: p.address || p.location || ''
-            }))
-          },
-          geometry: {
-            type: "LineString",
-            coordinates: routePoints
-              .filter(p => p.latitude && p.longitude)
-              .map(p => [
-                parseFloat(p.longitude), 
-                parseFloat(p.latitude)
-              ])
-          }
-        },
-        // Add individual points as separate features
-        ...routePoints.map((p, index) => ({
-          type: "Feature",
-          properties: {
-            name: p.title,
-            id: p.id,
-            index: index + 1,
-            description: p.inscription || '',
-            address: p.address || p.location || '',
-            type: index === 0 ? 'start' : (index === routePoints.length - 1 ? 'end' : 'waypoint')
-          },
-          geometry: {
-            type: "Point",
-            coordinates: [
-              parseFloat(p.longitude),
-              parseFloat(p.latitude)
-            ]
-          }
-        }))
-      ]
-    };
+    // Get shareable URL
+    const shareUrl = `${window.location.origin}/collections/${collection.id}`;
     
-    // Convert to JSON string with formatting
-    const dataStr = JSON.stringify(routeData, null, 2);
-    
-    // Create download link
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `${collection.name}-route-${new Date().toISOString().slice(0, 10)}.geojson`);
-    a.click();
-    
-    toast.success("Route exported successfully as GeoJSON");
-  };
-
-  // Save route
-  const saveRoute = async () => {
-    if (routePoints.length < 2) {
-      toast.error("Add at least two plaques to save a route");
-      return;
-    }
-    
-    try {
-      // Generate a default name
-      const now = new Date();
-      const defaultName = `${collection.name} Route - ${now.toLocaleDateString()} (${routePoints.length} stops)`;
-      
-      // Save the route using the createRoute function from the useRoutes hook
-      const savedRoute = await createRoute(
-        defaultName,
-        routePoints,
-        routeDistance,
-        `A route visiting ${routePoints.length} plaques from "${collection.name}"`,
-        false // Not public by default
-      );
-      
-      if (savedRoute) {
-        toast.success(`Route "${savedRoute.name}" saved successfully!`);
+    // Check if Web Share API is available
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: collection.name,
+          text: `Check out my collection "${collection.name}" on Plaquer!`,
+          url: shareUrl
+        });
+        toast.success('Collection shared successfully');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Error sharing collection:', err);
+          // Fallback to copying link
+          copyToClipboard(shareUrl);
+        }
       }
-    } catch (error) {
-      console.error("Error saving route:", error);
-      toast.error("Failed to save route. Please make sure you're logged in.");
-    }
-  };
-
-  // Find user location
-  const findUserLocation = () => {
-    if (mapRef.current && mapRef.current.findUserLocation) {
-      mapRef.current.findUserLocation();
     } else {
-      toast.error("Map not ready. Please try again.");
+      // Fallback to copying link
+      copyToClipboard(shareUrl);
     }
   };
   
+  // Copy URL to clipboard
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Link copied to clipboard');
+    } catch (err) {
+      console.error('Error copying to clipboard:', err);
+      toast.error('Failed to copy link to clipboard');
+    }
+  };
+
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent mb-4"></div>
-          <p className="text-gray-500">Loading collection...</p>
+      <PageContainer
+        activePage="collections"
+        simplifiedFooter={true}
+      >
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent mb-4"></div>
+            <p className="text-gray-500">Loading collection...</p>
+          </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
   
   // Show error state
   if (error || !collection) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-6">
-        <div className="container mx-auto px-4">
-          <div className="bg-red-50 p-6 rounded-lg text-center">
-            <h3 className="text-red-600 font-medium mb-2">Error Loading Collection</h3>
-            <p className="text-red-500 mb-4">{error || 'Collection not found'}</p>
-            <Button variant="outline" onClick={() => navigate('/collections')}>
-              Back to Collections
-            </Button>
+      <PageContainer
+        activePage="collections"
+        simplifiedFooter={true}
+      >
+        <div className="min-h-screen bg-gray-50 pt-6">
+          <div className="container mx-auto px-4">
+            <div className="bg-red-50 p-6 rounded-lg text-center">
+              <h3 className="text-red-600 font-medium mb-2">Error Loading Collection</h3>
+              <p className="text-red-500 mb-4">{error || 'Collection not found'}</p>
+              <Button variant="outline" onClick={() => navigate('/collections')}>
+                Back to Collections
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
   
   // Collection exists - render the UI
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Main content */}
-      <div className="container mx-auto px-4 py-6">
-        {/* Collection header */}
-        <CollectionDetailHeader
-          collection={collection}
-          onBack={() => navigate('/collections')}
-          onEdit={handleEditName}
-          onDuplicate={handleDuplicateCollection}
-          onDelete={() => setConfirmDeleteOpen(true)}
-          onToggleFavorite={handleToggleFavorite}
-          onUpdateName={handleSaveName}
-          isLoading={isLoading}
-        />
+    <PageContainer
+      activePage="collections"
+      simplifiedFooter={true}
+    >
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-10 px-4 overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-10 w-40 h-40 rounded-full bg-white"></div>
+          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
+          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+        </div>
         
+        <div className="container mx-auto max-w-5xl relative z-10">
+          {/* Back to collections link */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/collections')} 
+              className="h-8 w-8 p-0 bg-white/20 text-white hover:bg-white/30"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+            <a 
+              className="text-white/80 hover:text-white text-sm cursor-pointer" 
+              onClick={() => navigate('/collections')}
+            >
+              Collections
+            </a>
+            <span className="text-white/50">/</span>
+          </div>
+          
+          {/* Collection header with title and actions */}
+          <div className="flex justify-between items-start flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-14 h-14 rounded-lg flex items-center justify-center text-white text-2xl ${collection.color} shadow-lg`}>
+                {collection.icon}
+              </div>
+              
+              {editNameMode ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={editNameValue}
+                    onChange={(e) => setEditNameValue(e.target.value)}
+                    className="bg-white/10 text-white text-xl font-bold py-1 px-2 rounded border border-white/20 backdrop-blur-sm"
+                    disabled={isLoading}
+                    autoFocus
+                  />
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleSaveName} 
+                    className="h-8 w-8 p-0 text-green-300 bg-white/10 hover:bg-white/20"
+                    disabled={isLoading}
+                  >
+                    <Check size={18} />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleCancelEdit} 
+                    className="h-8 w-8 p-0 text-red-300 bg-white/10 hover:bg-white/20"
+                    disabled={isLoading}
+                  >
+                    <X size={18} />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl md:text-3xl font-bold">{collection.name}</h1>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleEditName} 
+                    className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                  >
+                    <Pencil size={16} />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant={collection.is_favorite ? "secondary" : "outline"}
+                size="sm"
+                onClick={handleToggleFavorite}
+                className={collection.is_favorite ? "bg-amber-500/30 text-white border-amber-300/50" : "bg-white/10 text-white border-white/20 hover:bg-white/20"}
+                disabled={isLoading}
+              >
+                <Star 
+                  size={16} 
+                  className={`mr-2 ${collection.is_favorite ? "fill-amber-300" : ""}`} 
+                />
+                {collection.is_favorite ? "Favorited" : "Favorite"}
+              </Button>
+              
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={handleShareCollection}
+                disabled={isLoading}
+                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+              >
+                <Share2 size={16} className="mr-2" />
+                Share
+              </Button>
+              
+              <div className="dropdown">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-9 w-9 p-0 bg-white/10 text-white border-white/20 hover:bg-white/20" 
+                  disabled={isLoading}
+                >
+                  <Edit size={16} />
+                </Button>
+                <div className="dropdown-menu">
+                  <div className="dropdown-item" onClick={() => setEditFormOpen(true)}>
+                    <Pencil size={16} className="mr-2" /> Edit Collection
+                  </div>
+                  <div className="dropdown-item" onClick={handleDuplicateCollection}>
+                    <Copy size={16} className="mr-2" /> Duplicate
+                  </div>
+                  <div className="dropdown-item text-red-500" onClick={() => setConfirmDeleteOpen(true)}>
+                    <Trash2 size={16} className="mr-2" /> Delete Collection
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Collection metadata */}
+          <div className="flex flex-wrap items-center gap-3 mt-4">
+            <Badge variant="outline" className="bg-white/10 text-white border-white/20">
+              <Clock size={12} className="mr-1" /> Updated {collection.updated_at}
+            </Badge>
+            <Badge variant="outline" className="bg-white/10 text-white border-white/20">
+              {collection.plaques?.length || 0} plaques
+            </Badge>
+            {collection.is_favorite && (
+              <Badge variant="outline" className="bg-amber-500/20 text-amber-100 border-amber-400/30">
+                <Star size={12} className="mr-1 fill-amber-300" /> Favorite
+              </Badge>
+            )}
+          </div>
+          
+          {/* Collection description */}
+          {collection.description && (
+            <p className="text-white/80 mt-4 max-w-3xl">{collection.description}</p>
+          )}
+        </div>
+      </section>
+      
+      <div className="container mx-auto max-w-5xl px-4 py-6">
         {/* Collection Stats */}
         <CollectionStats 
           collection={collection}
@@ -322,7 +401,27 @@ const CollectionDetailPage: React.FC = () => {
           className="mb-6" 
         />
         
-        {/* Collection Content with Filters */}
+        {/* Additional Info Card */}
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+          <div className="flex gap-3 items-start">
+            <Info size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-medium text-blue-800 mb-1">About This Collection</h3>
+              <p className="text-blue-700 text-sm">
+                This collection contains {collectionPlaques.length} plaques. 
+                {collectionPlaques.filter(p => p.visited).length > 0 && 
+                  ` You've visited ${collectionPlaques.filter(p => p.visited).length} of them.`
+                }
+                {collection.is_favorite && ` This is one of your favorite collections.`}
+              </p>
+              <p className="text-blue-700 text-sm mt-2">
+                <span className="font-medium">Tip:</span> You can add more plaques to this collection from the Discover page.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Collection Filter View */}
         <CollectionFilterView
           plaques={collectionPlaques}
           viewMode={viewMode}
@@ -338,7 +437,7 @@ const CollectionDetailPage: React.FC = () => {
         >
           {collectionPlaques.length === 0 ? (
             <EmptyState
-              icon={Map}
+              icon={MapPin}
               title="No Plaques in this Collection"
               description="Start building your collection by adding plaques"
               actionLabel="Add Your First Plaque"
@@ -360,7 +459,7 @@ const CollectionDetailPage: React.FC = () => {
             </div>
           ) : viewMode === 'map' ? (
             <div className="relative">
-              <div className="h-[650px]">
+              <div className="h-[650px] rounded-lg overflow-hidden shadow-md">
                 <PlaqueMap
                   ref={mapRef}
                   plaques={filteredPlaques}
@@ -375,8 +474,6 @@ const CollectionDetailPage: React.FC = () => {
                   addPlaqueToRoute={addPlaqueToRoute}
                   removePlaqueFromRoute={removePlaqueFromRoute}
                   clearRoute={clearRoute}
-                  exportRoute={exportRoute}
-                  saveRoute={saveRoute}
                 />
               </div>
             </div>
@@ -498,13 +595,13 @@ const CollectionDetailPage: React.FC = () => {
       
       {/* Edit collection form */}
       <CollectionEditForm
-        isOpen={editNameMode}
-        onClose={handleCancelEdit}
-        onSubmit={handleSaveName}
+        isOpen={editFormOpen}
+        onClose={() => setEditFormOpen(false)}
+        onSubmit={handleUpdateCollection}
         isLoading={isLoading}
         collection={collection}
       />
-    </div>
+    </PageContainer>
   );
 };
 
