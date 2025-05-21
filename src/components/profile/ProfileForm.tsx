@@ -1,10 +1,11 @@
-// src/components/profile/ProfileForm.tsx
+// src/components/profile/ProfileForm.tsx (Enhanced version)
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Save, Loader, User } from 'lucide-react';
+import { Camera, Save, Loader, User, X } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   const [bio, setBio] = useState('');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -27,7 +29,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
     const file = e.target.files[0];
     
     // Validate file size and type
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
       toast.error('Image file size must be less than 5MB');
       return;
     }
@@ -37,22 +39,19 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
       return;
     }
     
-    setIsLoading(true);
-    
-    try {
-      // Here you would upload the image to Firebase Storage
-      // For now, we'll simulate it with a timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Create a local object URL for preview
-      const localUrl = URL.createObjectURL(file);
-      setPhotoURL(localUrl);
-      
-      toast.success('Profile photo updated');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to upload image');
-    } finally {
-      setIsLoading(false);
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhotoPreview(null);
+    setPhotoURL('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -63,8 +62,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
     setIsLoading(true);
     
     try {
-      // Here you would update the user profile in Firebase Auth and Firestore
-      // For now, we'll simulate it with a timeout
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast.success('Profile updated successfully');
@@ -81,44 +79,84 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Profile Photo */}
-      <div className="flex flex-col items-center gap-3">
-        <div className="relative">
-          {photoURL ? (
-            <img 
-              src={photoURL} 
-              alt={displayName || 'User'} 
-              className="h-24 w-24 rounded-full object-cover"
+      {/* Profile Photo Section - Enhanced */}
+      <div className="space-y-4">
+        <Label>Profile Photo</Label>
+        <div className="flex items-center gap-6">
+          <div className="relative group">
+            {photoPreview || photoURL ? (
+              <div className="relative">
+                <img 
+                  src={photoPreview || photoURL} 
+                  alt={displayName || 'User'} 
+                  className="h-24 w-24 rounded-full object-cover border-4 border-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center border-4 border-gray-100">
+                <User className="h-12 w-12 text-blue-600" />
+              </div>
+            )}
+            
+            <Button 
+              type="button"
+              variant="outline"
+              size="sm"
+              className="absolute bottom-0 right-0 h-8 w-8 p-0 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+            >
+              <Camera size={14} />
+            </Button>
+            
+            <input 
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
             />
-          ) : (
-            <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center">
-              <User className="h-12 w-12 text-blue-600" />
+          </div>
+          
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 mb-2">
+              Upload a new profile photo to personalize your account
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                Choose Photo
+              </Button>
+              {(photoPreview || photoURL) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={removePhoto}
+                  disabled={isLoading}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Remove
+                </Button>
+              )}
             </div>
-          )}
-          
-          <Button 
-            type="button"
-            variant="outline"
-            size="sm"
-            className="absolute bottom-0 right-0 h-8 w-8 p-0 rounded-full bg-white"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading}
-          >
-            <Camera size={14} />
-          </Button>
-          
-          <input 
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/*"
-            className="hidden"
-          />
+          </div>
         </div>
-        <p className="text-xs text-gray-500">Click the camera icon to upload a new photo</p>
       </div>
       
-      {/* Display Name */}
+      {/* Display Name - Enhanced */}
       <div className="space-y-2">
         <Label htmlFor="displayName">Display Name</Label>
         <Input 
@@ -127,51 +165,85 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Your name"
           disabled={isLoading}
+          className="bg-gray-50 focus:bg-white transition-colors"
         />
+        <p className="text-xs text-gray-500">
+          This is how your name will appear to other users
+        </p>
       </div>
       
-      {/* Bio */}
+      {/* Bio - Enhanced */}
       <div className="space-y-2">
-        <Label htmlFor="bio">Bio</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="bio">Bio</Label>
+          <span className="text-xs text-gray-500">{bio.length}/200</span>
+        </div>
         <Textarea
           id="bio"
           value={bio}
           onChange={(e) => setBio(e.target.value)}
-          placeholder="Tell us a bit about yourself..."
+          placeholder="Tell us a bit about yourself and your interest in history..."
           disabled={isLoading}
           rows={4}
+          maxLength={200}
+          className="bg-gray-50 focus:bg-white transition-colors resize-none"
         />
       </div>
       
-      {/* Email (read-only) */}
+      {/* Email - Enhanced */}
       <div className="space-y-2">
-        <Label htmlFor="email">Email Address</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="email">Email Address</Label>
+          <Badge variant="outline" className="bg-gray-50">
+            Verified
+          </Badge>
+        </div>
         <Input 
           id="email"
           value={user?.email || ''}
           readOnly
           disabled
-          className="bg-gray-50"
+          className="bg-gray-100 text-gray-600"
         />
         <p className="text-xs text-gray-500">
-          Email cannot be changed directly. Please contact support if you need to update your email.
+          Contact support to update your email address
         </p>
       </div>
       
-      {/* Submit Button */}
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? (
-          <>
-            <Loader size={16} className="mr-2 animate-spin" />
-            Saving...
-          </>
-        ) : (
-          <>
-            <Save size={16} className="mr-2" />
-            Save Changes
-          </>
-        )}
-      </Button>
+      {/* Member Since - New */}
+      <div className="space-y-2">
+        <Label>Member Since</Label>
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm font-medium">
+            {new Date(user?.metadata.creationTime || Date.now()).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long',
+              day: 'numeric'
+            })}
+          </p>
+        </div>
+      </div>
+      
+      {/* Submit Button - Enhanced */}
+      <div className="pt-4">
+        <Button 
+          type="submit" 
+          className="w-full h-11" 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader size={16} className="mr-2 animate-spin" />
+              Saving Changes...
+            </>
+          ) : (
+            <>
+              <Save size={16} className="mr-2" />
+              Save Profile Changes
+            </>
+          )}
+        </Button>
+      </div>
     </form>
   );
 };
