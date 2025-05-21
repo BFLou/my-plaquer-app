@@ -29,9 +29,10 @@ type NavBarProps = {
   activePage?: 'home' | 'discover' | 'collections' | 'about' | 'profile' | 'settings';
 };
 
+// src/components/layout/NavBar.tsx - Key changes only
 export const NavBar = ({ activePage }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user } = useAuth(); // Use the auth context instead of UserContext
+  const { user } = useAuth();
   const location = useLocation();
   
   return (
@@ -39,7 +40,6 @@ export const NavBar = ({ activePage }: NavBarProps) => {
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2">
           <PlaquerLogo size={32} />
-
           <span className="text-xl font-bold text-blue-600">Plaquer</span>
         </Link>
         
@@ -50,7 +50,7 @@ export const NavBar = ({ activePage }: NavBarProps) => {
           <NavLink to="/collections" isActive={activePage === 'collections' || location.pathname.includes('/collections')}>Collections</NavLink>
           <NavLink to="/about" isActive={activePage === 'about'}>About</NavLink>
           
-          {/* Replace the Avatar with UserMenu component */}
+          {/* User Menu with updated items */}
           <UserMenu />
         </nav>
         
@@ -68,7 +68,7 @@ export const NavBar = ({ activePage }: NavBarProps) => {
         </div>
       </div>
       
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Remove duplicate Profile/Settings links since they're in UserMenu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white absolute left-0 right-0 top-16 shadow-md p-4 z-50 border-t border-gray-100">
           <div className="flex flex-col space-y-4">
@@ -100,25 +100,6 @@ export const NavBar = ({ activePage }: NavBarProps) => {
             >
               About
             </Link>
-            
-            {user && (
-              <>
-                <Link 
-                  to="/profile" 
-                  className={`${activePage === 'profile' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  My Profile
-                </Link>
-                <Link 
-                  to="/settings" 
-                  className={`${activePage === 'settings' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Settings
-                </Link>
-              </>
-            )}
           </div>
         </div>
       )}
