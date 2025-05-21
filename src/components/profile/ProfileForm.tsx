@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Save, Loader, User, X } from 'lucide-react';
+import { Camera, Save, Loader, User, X, Upload } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { profileImageService } from '@/services/profileImageService';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface ProfileFormProps {
   onSuccess?: () => void;
@@ -19,13 +22,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   const [bio, setBio] = useState('');
   const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file selection for profile photo
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0]) return;
+    if (!e.target.files || !e.target.files[0] || !user) return;
     const file = e.target.files[0];
     
     // Validate file size and type
@@ -45,13 +49,62 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
       setPhotoPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
+    
+    // Upload to Firebase Storage
+    try {
+      setIsUploadingPhoto(true);
+      
+      // Delete old image if exists
+      if (user.photoURL) {
+        await profileImageService.deleteOldProfileImage(user.photoURL);
+      }
+      
+      // Upload new image
+      const downloadURL = await profileImageService.uploadProfileImage(user.uid, file);
+      
+      if (downloadURL) {
+        setPhotoURL(downloadURL);
+        toast.success('Profile photo uploaded successfully');
+      }
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      toast.error(error.message || 'Failed to upload photo');
+      setPhotoPreview(null);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
-  const removePhoto = () => {
-    setPhotoPreview(null);
-    setPhotoURL('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const removePhoto = async () => {
+    if (!user) return;
+    
+    try {
+      setIsUploadingPhoto(true);
+      
+      // Delete from Storage
+      if (photoURL || user.photoURL) {
+        await profileImageService.deleteOldProfileImage(photoURL || user.photoURL || '');
+      }
+      
+      // Update Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        photoURL: null,
+        lastUpdated: new Date().toISOString()
+      });
+      
+      setPhotoPreview(null);
+      setPhotoURL('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      toast.success('Profile photo removed');
+    } catch (error: any) {
+      console.error('Error removing photo:', error);
+      toast.error('Failed to remove photo');
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -59,11 +112,19 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) return;
+    
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Update user document in Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        displayName,
+        bio,
+        photoURL: photoURL || null,
+        lastUpdated: new Date().toISOString()
+      });
       
       toast.success('Profile updated successfully');
       
@@ -91,13 +152,15 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                   alt={displayName || 'User'} 
                   className="h-24 w-24 rounded-full object-cover border-4 border-gray-100"
                 />
-                <button
-                  type="button"
-                  onClick={removePhoto}
-                  className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                >
-                  <X size={14} />
-                </button>
+                {!isUploadingPhoto && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             ) : (
               <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center border-4 border-gray-100">
@@ -105,16 +168,22 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
               </div>
             )}
             
-            <Button 
-              type="button"
-              variant="outline"
-              size="sm"
-              className="absolute bottom-0 right-0 h-8 w-8 p-0 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-            >
-              <Camera size={14} />
-            </Button>
+            {isUploadingPhoto ? (
+              <div className="absolute inset-0 h-24 w-24 rounded-full bg-black/50 flex items-center justify-center">
+                <Loader className="h-6 w-6 text-white animate-spin" />
+              </div>
+            ) : (
+              <Button 
+                type="button"
+                variant="outline"
+                size="sm"
+                className="absolute bottom-0 right-0 h-8 w-8 p-0 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                <Camera size={14} />
+              </Button>
+            )}
             
             <input 
               type="file"
@@ -135,8 +204,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
+                disabled={isLoading || isUploadingPhoto}
               >
+                <Upload size={14} className="mr-2" />
                 Choose Photo
               </Button>
               {(photoPreview || photoURL) && (
@@ -145,13 +215,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                   variant="outline"
                   size="sm"
                   onClick={removePhoto}
-                  disabled={isLoading}
+                  disabled={isLoading || isUploadingPhoto}
                   className="text-red-600 hover:text-red-700"
                 >
                   Remove
                 </Button>
               )}
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
+            </p>
           </div>
         </div>
       </div>
@@ -166,6 +239,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
           placeholder="Your name"
           disabled={isLoading}
           className="bg-gray-50 focus:bg-white transition-colors"
+          required
         />
         <p className="text-xs text-gray-500">
           This is how your name will appear to other users
@@ -229,7 +303,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
         <Button 
           type="submit" 
           className="w-full h-11" 
-          disabled={isLoading}
+          disabled={isLoading || isUploadingPhoto}
         >
           {isLoading ? (
             <>

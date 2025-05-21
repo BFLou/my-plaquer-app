@@ -176,36 +176,55 @@ const ProfilePage = () => {
       fileInputRef.current.click();
     }
   };
+
+// Replace lines 186-203 with:
+const handleFileChange = async (e) => {
+  if (!e.target.files || !e.target.files[0] || !user) return;
   
-  const handleFileChange = async (e) => {
-    if (!e.target.files || !e.target.files[0]) return;
+  const file = e.target.files[0];
+  
+  // Validate file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Image too large', {
+      description: 'Please select an image under 5MB'
+    });
+    return;
+  }
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    toast.error('Invalid file type', {
+      description: 'Please select an image file'
+    });
+    return;
+  }
+  
+  try {
+    // Show loading state
+    toast.loading('Uploading profile photo...');
     
-    const file = e.target.files[0];
+    // Import and use the profile image service
+    const { profileImageService } = await import('@/services/profileImageService');
     
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image too large', {
-        description: 'Please select an image under 5MB'
-      });
-      return;
+    // Delete old image if exists
+    if (user.photoURL) {
+      await profileImageService.deleteOldProfileImage(user.photoURL);
     }
     
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Invalid file type', {
-        description: 'Please select an image file'
-      });
-      return;
-    }
+    // Upload new image
+    const downloadURL = await profileImageService.uploadProfileImage(user.uid, file);
     
-    try {
-      // In a real app, you would upload the image to Firebase Storage here
+    if (downloadURL) {
+      // The auth state will update automatically through onAuthStateChanged
+      toast.dismiss();
       toast.success('Profile photo updated');
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.error('Failed to upload photo');
     }
-  };
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    toast.dismiss();
+    toast.error('Failed to upload photo');
+  }
+};
   
   // Handle sign out
   const handleSignOut = async () => {
