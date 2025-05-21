@@ -589,35 +589,53 @@ const Discover = () => {
               </div>
             )}
 
-            {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedAndPaginatedPlaques.map((plaque) => (
-                  <PlaqueCard 
-                    key={plaque.id}
-                    plaque={plaque}
-                    isFavorite={isFavorite(plaque.id)}
-                    isVisited={plaque.visited || isPlaqueVisited(plaque.id)}
-                    onFavoriteToggle={handleFavoriteToggle}
-                    onClick={() => handlePlaqueClick(plaque)}
-                  />
-                ))}
-              </div>
-            )}
+{viewMode === 'grid' && (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {sortedAndPaginatedPlaques.map((plaque) => (
+      <PlaqueCard 
+        key={plaque.id}
+        plaque={plaque}
+        onClick={handlePlaqueClick}
+        onAddToRoute={(plaque) => {
+          if (routePoints.some(p => p.id === plaque.id)) {
+            toast.info("This plaque is already in your route.");
+            return;
+          }
+          
+          setMaintainMapView(true);
+          setRoutePoints(prev => [...prev, plaque]);
+          toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
+        }}
+        variant="discover"
+        className="h-full"
+      />
+    ))}
+  </div>
+)}
 
-            {viewMode === 'list' && (
-              <div className="space-y-3">
-                {sortedAndPaginatedPlaques.map((plaque) => (
-                  <PlaqueListItem 
-                    key={plaque.id}
-                    plaque={plaque}
-                    isFavorite={isFavorite(plaque.id)}
-                    isVisited={plaque.visited || isPlaqueVisited(plaque.id)}
-                    onFavoriteToggle={handleFavoriteToggle}
-                    onClick={() => handlePlaqueClick(plaque)}
-                  />
-                ))}
-              </div>
-            )}
+
+{viewMode === 'list' && (
+  <div className="space-y-3">
+    {sortedAndPaginatedPlaques.map((plaque) => (
+      <PlaqueListItem 
+        key={plaque.id}
+        plaque={plaque}
+        onClick={handlePlaqueClick}
+        onAddToRoute={(plaque) => {
+          if (routePoints.some(p => p.id === plaque.id)) {
+            toast.info("This plaque is already in your route.");
+            return;
+          }
+          
+          setMaintainMapView(true);
+          setRoutePoints(prev => [...prev, plaque]);
+          toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
+        }}
+        variant="discover"
+      />
+    ))}
+  </div>
+)}
 
             {/* Pagination for grid and list views */}
             {viewMode !== 'map' && totalPages > 1 && (

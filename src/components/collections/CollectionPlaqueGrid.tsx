@@ -19,6 +19,7 @@ type CollectionPlaqueGridProps = {
   onRemovePlaque: (id: number) => void;
   onPlaqueClick: (plaque: Plaque) => void;
   onAddPlaquesClick: () => void;
+  onAddToRoute?: (plaque: Plaque) => void;
   className?: string;
 };
 
@@ -35,6 +36,7 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
   onRemovePlaque,
   onPlaqueClick,
   onAddPlaquesClick,
+  onAddToRoute,
   className = '',
 }) => {
   if (isLoading) {
@@ -79,13 +81,14 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
         <PlaqueCard
           key={plaque.id}
           plaque={plaque}
-          isFavorite={favorites.includes(plaque.id)}
           isSelected={selectedPlaques.includes(plaque.id)}
           onSelect={onToggleSelect}
-          onFavoriteToggle={onToggleFavorite}
           onMarkVisited={onMarkVisited}
           onRemovePlaque={onRemovePlaque}
           onClick={onPlaqueClick}
+          onAddToRoute={onAddToRoute}
+          showSelection={true}
+          variant="collection"
         />
       ))}
     </div>

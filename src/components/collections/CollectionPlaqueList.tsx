@@ -1,4 +1,4 @@
-// src/features/collections/components/CollectionPlaqueList.tsx
+// src/components/collections/CollectionPlaqueList.tsx
 import React from 'react';
 import { Plaque } from '@/types/plaque';
 import { PlaqueListItem } from '@/components/plaques/PlaqueListItem';
@@ -15,8 +15,11 @@ type CollectionPlaqueListProps = {
   onClearSearch: () => void;
   onToggleSelect: (id: number) => void;
   onToggleFavorite: (id: number) => void;
+  onMarkVisited: (id: number) => void;
+  onRemovePlaque: (id: number) => void;
   onPlaqueClick: (plaque: Plaque) => void;
   onAddPlaquesClick: () => void;
+  onAddToRoute?: (plaque: Plaque) => void;
   className?: string;
 };
 
@@ -29,8 +32,11 @@ const CollectionPlaqueList: React.FC<CollectionPlaqueListProps> = ({
   onClearSearch,
   onToggleSelect,
   onToggleFavorite,
+  onMarkVisited,
+  onRemovePlaque,
   onPlaqueClick,
   onAddPlaquesClick,
+  onAddToRoute,
   className = '',
 }) => {
   if (isLoading) {
@@ -75,11 +81,14 @@ const CollectionPlaqueList: React.FC<CollectionPlaqueListProps> = ({
         <PlaqueListItem
           key={plaque.id}
           plaque={plaque}
-          isFavorite={favorites.includes(plaque.id)}
           isSelected={selectedPlaques.includes(plaque.id)}
-          onSelect={() => onToggleSelect(plaque.id)}
-          onFavoriteToggle={() => onToggleFavorite(plaque.id)}
-          onClick={() => onPlaqueClick(plaque)}
+          onSelect={onToggleSelect}
+          onMarkVisited={onMarkVisited}
+          onRemovePlaque={onRemovePlaque}
+          onClick={onPlaqueClick}
+          onAddToRoute={onAddToRoute}
+          showSelection={true}
+          variant="collection"
         />
       ))}
     </div>

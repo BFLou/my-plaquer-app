@@ -1,26 +1,28 @@
-// src/components/collections/CreateCollectionDialog.tsx
 import { useState } from 'react';
-import { useCollections } from '@/hooks/useCollections';
+import { useCollections } from '../../hooks/useCollection';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter,
-  Button,
-  Input,
-  Textarea,
-  Label,
-  Switch,
+  DialogFooter 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from '@/components/ui';
+} from "@/components/ui/select";
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
+
 
 // Create Collection dialog component that can optionally add plaques
 interface CreateCollectionDialogProps {
