@@ -1,4 +1,4 @@
-// src/features/collections/components/DeleteCollectionDialog.tsx
+// src/components/collections/DeleteCollectionDialog.tsx
 import React from 'react';
 import {
   Dialog,
@@ -15,7 +15,9 @@ type DeleteCollectionDialogProps = {
   onClose: () => void;
   onDelete: () => void;
   isLoading: boolean;
-  collectionNames: string[];
+  collectionNames?: string[];
+  itemType?: 'collection' | 'plaque';
+  plaqueTitle?: string;
 };
 
 const DeleteCollectionDialog: React.FC<DeleteCollectionDialogProps> = ({
@@ -23,23 +25,53 @@ const DeleteCollectionDialog: React.FC<DeleteCollectionDialogProps> = ({
   onClose,
   onDelete,
   isLoading,
-  collectionNames
+  collectionNames = [],
+  itemType = 'collection',
+  plaqueTitle
 }) => {
-  const isSingleCollection = collectionNames.length === 1;
-  const collectionName = isSingleCollection ? collectionNames[0] : `${collectionNames.length} collections`;
+  // Determine what we're deleting and how to display it
+  const getDialogContent = () => {
+    if (itemType === 'plaque' && plaqueTitle) {
+      return {
+        title: "Remove Plaque",
+        description: (
+          <span>
+            Are you sure you want to remove <strong>{plaqueTitle}</strong> from this collection? This action cannot be undone.
+          </span>
+        ),
+        buttonText: "Remove Plaque"
+      };
+    }
+    
+    // Default to collection deletion logic with null checks
+    const safeCollectionNames = collectionNames || [];
+    const isSingleCollection = safeCollectionNames.length === 1;
+    const collectionName = isSingleCollection ? safeCollectionNames[0] : `${safeCollectionNames.length} collections`;
+    
+    return {
+      title: isSingleCollection ? 'Delete Collection' : `Delete ${safeCollectionNames.length} Collections`,
+      description: isSingleCollection ? (
+        <span>
+          Are you sure you want to delete <strong>{collectionName}</strong>? This action cannot be undone.
+        </span>
+      ) : (
+        <span>
+          Are you sure you want to delete these <strong>{safeCollectionNames.length} collections</strong>? This action cannot be undone.
+        </span>
+      ),
+      buttonText: "Delete"
+    };
+  };
+
+  const { title, description, buttonText } = getDialogContent();
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            Delete {isSingleCollection ? 'Collection' : `${collectionNames.length} Collections`}
-          </DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {isSingleCollection 
-              ? `Are you sure you want to delete "${collectionName}"?`
-              : `Are you sure you want to delete these ${collectionNames.length} collections?`
-            } This action cannot be undone.
+            {description}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -58,9 +90,9 @@ const DeleteCollectionDialog: React.FC<DeleteCollectionDialogProps> = ({
             {isLoading ? (
               <>
                 <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
-                Deleting...
+                {itemType === 'plaque' ? 'Removing...' : 'Deleting...'}
               </>
-            ) : 'Delete'}
+            ) : buttonText}
           </Button>
         </DialogFooter>
       </DialogContent>

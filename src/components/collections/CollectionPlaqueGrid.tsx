@@ -1,17 +1,10 @@
-// src/features/collections/components/CollectionPlaqueGrid.tsx
+// src/components/collections/CollectionPlaqueGrid.tsx
 import React from 'react';
 import { Plaque } from '@/types/plaque';
 import { PlaqueCard } from '@/components/plaques/PlaqueCard';
 import { EmptyState } from '@/components/common/EmptyState';
-import { MapPin, Search, MoreHorizontal, Star, Check, Trash2 } from 'lucide-react';
+import { MapPin, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 type CollectionPlaqueGridProps = {
   plaques: Plaque[];
@@ -81,61 +74,19 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
   }
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 ${className}`}>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${className}`}>
       {plaques.map((plaque) => (
-        <div key={plaque.id} className="relative group">
-          <PlaqueCard
-            plaque={plaque}
-            isFavorite={favorites.includes(plaque.id)}
-            isSelected={selectedPlaques.includes(plaque.id)}
-            onSelect={() => onToggleSelect(plaque.id)}
-            onFavoriteToggle={() => onToggleFavorite(plaque.id)}
-            onClick={() => onPlaqueClick(plaque)}
-          />
-          
-          {/* Context menu for more actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/80 hover:bg-white shadow-sm"
-                onClick={(e) => e.stopPropagation()} // Prevent card click
-              >
-                <MoreHorizontal size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkVisited(plaque.id);
-                }}
-              >
-                <Check size={16} className="mr-2" /> Mark as Visited
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(plaque.id);
-                }}
-              >
-                <Star size={16} className={`mr-2 ${favorites.includes(plaque.id) ? "fill-amber-500" : ""}`} />
-                {favorites.includes(plaque.id) ? "Remove from Favorites" : "Add to Favorites"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                className="text-red-600"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemovePlaque(plaque.id);
-                }}
-              >
-                <Trash2 size={16} className="mr-2" /> Remove from Collection
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <PlaqueCard
+          key={plaque.id}
+          plaque={plaque}
+          isFavorite={favorites.includes(plaque.id)}
+          isSelected={selectedPlaques.includes(plaque.id)}
+          onSelect={onToggleSelect}
+          onFavoriteToggle={onToggleFavorite}
+          onMarkVisited={onMarkVisited}
+          onRemovePlaque={onRemovePlaque}
+          onClick={onPlaqueClick}
+        />
       ))}
     </div>
   );

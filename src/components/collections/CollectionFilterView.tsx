@@ -1,6 +1,6 @@
 // src/components/collections/CollectionFilterView.tsx
-import React from 'react';
-import { Search, Filter, X, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, X, Plus, Grid, List, Map } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,24 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { capitalizeWords } from '@/utils/stringUtils';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ViewToggle } from "@/components/common/ViewToggle";
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import AddPlaquesButton from './AddPlaquesButton';
 
 type ViewMode = 'grid' | 'list' | 'map';
-
-type ProfessionCount = {
-  profession: string;
-  count: number;
-};
 
 type CollectionFilterViewProps = {
   plaques: Plaque[];
@@ -38,7 +27,7 @@ type CollectionFilterViewProps = {
   children: React.ReactNode;
   onFilterChange?: (filtered: Plaque[]) => void;
   className?: string;
-  showMapView?: boolean; // Added parameter for enabling/disabling map view
+  showMapView?: boolean; 
 };
 
 const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
@@ -52,12 +41,10 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   children,
   onFilterChange,
   className = '',
-  showMapView = true, // Default to true to enable map view
+  showMapView = true,
 }) => {
-  // Filter state
-  const [selectedProfessions, setSelectedProfessions] = React.useState<string[]>([]);
-  const [professionDropdownOpen, setProfessionDropdownOpen] = React.useState(false);
-  const [mobileProfessionFilterOpen, setMobileProfessionFilterOpen] = React.useState(false);
+  const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   // Generate profession statistics
   const professionStats = React.useMemo(() => {
@@ -74,7 +61,7 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
       .sort((a, b) => b.count - a.count);
   }, [plaques]);
 
-  // Filter plaques based on search query and selected professions
+  // Filter plaques based on search query
   const filteredPlaques = React.useMemo(() => {
     return plaques.filter(plaque => {
       // Filter by search query
@@ -83,14 +70,9 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
         (plaque.location?.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (plaque.description?.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      // Filter by selected professions - capitalize profession for comparison
-      const plaqueProfession = plaque.profession ? capitalizeWords(plaque.profession) : 'Unknown';
-      const matchesProfession = selectedProfessions.length === 0 || 
-        selectedProfessions.includes(plaqueProfession);
-      
-      return matchesSearch && matchesProfession;
+      return matchesSearch;
     });
-  }, [plaques, searchQuery, selectedProfessions]);
+  }, [plaques, searchQuery]);
 
   // Update parent component when filtered plaques change
   React.useEffect(() => {
@@ -99,30 +81,18 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
     }
   }, [filteredPlaques, onFilterChange]);
 
-  // Toggle a profession filter
-  const toggleProfessionFilter = (profession: string) => {
-    setSelectedProfessions(prev =>
-      prev.includes(profession) 
-        ? prev.filter(p => p !== profession) 
-        : [...prev, profession]
-    );
-  };
-
-  // Clear all filters
-  const clearFilters = () => {
+  // Clear search
+  const clearSearch = () => {
     setSearchQuery('');
     setSelectedProfessions([]);
   };
 
-  // Check if any filters are active
-  const hasActiveFilters = searchQuery.trim() !== '' || selectedProfessions.length > 0;
-
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Mobile View */}
-      <div className="md:hidden flex flex-col gap-3">
+      {/* Mobile/Desktop View */}
+      <div className="bg-white rounded-lg shadow-sm p-3">
         {/* Search Input */}
-        <div className="relative w-full">
+        <div className="relative w-full mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <Input
             placeholder="Search plaques..."
@@ -140,227 +110,65 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
           )}
         </div>
 
-        {/* Mobile Filter Button & View Toggle */}
+        {/* View Toggle and Add Button */}
         <div className="flex justify-between items-center">
-          <Collapsible 
-            open={mobileProfessionFilterOpen} 
-            onOpenChange={setMobileProfessionFilterOpen}
-            className="w-full mr-2"
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} defaultValue="grid">
+            <TabsList>
+              <TabsTrigger value="grid" className="flex items-center gap-1.5">
+                <Grid size={14} />
+                <span className="hidden sm:inline">Grid</span>
+              </TabsTrigger>
+              <TabsTrigger value="list" className="flex items-center gap-1.5">
+                <List size={14} />
+                <span className="hidden sm:inline">List</span>
+              </TabsTrigger>
+              {showMapView && (
+                <TabsTrigger value="map" className="flex items-center gap-1.5">
+                  <Map size={14} />
+                  <span className="hidden sm:inline">Map</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </Tabs>
+          
+          <AddPlaquesButton 
+            onAddPlaques={onAddPlaquesClick} 
+            isLoading={isLoading}
+            className="hidden sm:flex"
+          />
+        </div>
+        
+        {/* Mobile Add Plaques Button */}
+        <div className="sm:hidden mt-3">
+          <AddPlaquesButton 
+            onAddPlaques={onAddPlaquesClick} 
+            isLoading={isLoading}
+            className="w-full"
+          />
+        </div>
+      </div>
+
+      {/* Active filters */}
+      {searchQuery && (
+        <div className="bg-blue-50 p-2 rounded-lg border border-blue-100 flex items-center justify-between">
+          <div className="flex items-center">
+            <Badge className="bg-blue-100 text-blue-700 border-none">
+              Search: {searchQuery}
+            </Badge>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearSearch}
+            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800"
           >
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant={selectedProfessions.length > 0 ? "default" : "outline"} 
-                size="sm" 
-                className="w-full justify-between"
-              >
-                <span className="flex items-center">
-                  <Filter size={16} className="mr-2" />
-                  Profession Filters
-                </span>
-                {selectedProfessions.length > 0 && (
-                  <Badge>{selectedProfessions.length}</Badge>
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent className="mt-2 bg-white p-3 rounded-md border shadow-sm">
-              <h4 className="text-sm font-medium mb-2">Filter by Profession</h4>
-              <ScrollArea className="h-48 pr-3">
-                {professionStats.map(({ profession, count }) => (
-                  <div 
-                    key={profession} 
-                    className={`flex items-center justify-between rounded-md px-2 py-1.5 text-sm cursor-pointer mb-1 ${
-                      selectedProfessions.includes(profession) 
-                        ? 'bg-blue-50 text-blue-600' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                    onClick={() => toggleProfessionFilter(profession)}
-                  >
-                    <span className="truncate">{profession}</span>
-                    <Badge variant="outline" className="text-xs bg-white">
-                      {count}
-                    </Badge>
-                  </div>
-                ))}
-              </ScrollArea>
-              
-              {selectedProfessions.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={clearFilters}
-                  className="w-full mt-2"
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
-
-          <div className="flex">
-            <ViewToggle
-              viewMode={viewMode}
-              onChange={setViewMode}
-              showMap={showMapView} // Use the showMapView prop
-            />
-          </div>
+            Clear
+          </Button>
         </div>
+      )}
 
-        {/* Display active filters */}
-        {selectedProfessions.length > 0 && (
-          <div className="flex flex-wrap gap-1 pb-1 overflow-x-auto">
-            {selectedProfessions.map(profession => (
-              <Badge 
-                key={profession} 
-                variant="secondary"
-                className="flex items-center gap-1"
-              >
-                {profession}
-                <button
-                  onClick={() => toggleProfessionFilter(profession)}
-                  className="ml-1 text-gray-500 hover:text-gray-700"
-                >
-                  <X size={12} />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Add Plaques Button (mobile) */}
-        <AddPlaquesButton 
-          onAddPlaques={onAddPlaquesClick} 
-          isLoading={isLoading}
-          className="w-full mt-2"
-        />
-      </div>
-
-      {/* Desktop View */}
-      <div className="hidden md:flex md:flex-col gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-3 flex flex-wrap gap-3 justify-between">
-          {/* Search and Filter Section */}
-          <div className="flex flex-grow items-center gap-3">
-            <div className="relative flex-grow max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <Input
-                placeholder="Search plaques..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9 w-full"
-              />
-              {searchQuery && (
-                <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  onClick={() => setSearchQuery('')}
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-            
-            {/* Profession filter dropdown */}
-            <Popover open={professionDropdownOpen} onOpenChange={setProfessionDropdownOpen}>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant={selectedProfessions.length > 0 ? "default" : "outline"} 
-                  className="flex items-center gap-2"
-                >
-                  <Filter size={16} />
-                  Professions
-                  {selectedProfessions.length > 0 && <Badge>{selectedProfessions.length}</Badge>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72" align="start">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Filter by Profession</h4>
-                    {selectedProfessions.length > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={clearFilters}
-                        className="h-8 px-2 text-xs"
-                      >
-                        Clear All
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Profession List with Scrolling */}
-                  <ScrollArea className="h-56">
-                    <div className="space-y-1 pr-3">
-                      {professionStats.map(({ profession, count }) => (
-                        <div 
-                          key={profession} 
-                          className={`flex items-center justify-between rounded-md px-2 py-1.5 text-sm cursor-pointer ${
-                            selectedProfessions.includes(profession) 
-                              ? 'bg-blue-50 text-blue-600' 
-                              : 'hover:bg-gray-50'
-                          }`}
-                          onClick={() => toggleProfessionFilter(profession)}
-                        >
-                          <span className="truncate">{profession}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {count}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* View Toggle and Add Button */}
-          <div className="flex items-center gap-3">
-            <ViewToggle
-              viewMode={viewMode}
-              onChange={setViewMode}
-              showMap={showMapView} // Use the showMapView prop
-            />
-            
-            <AddPlaquesButton 
-              onAddPlaques={onAddPlaquesClick} 
-              isLoading={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Active Filters Display */}
-        {selectedProfessions.length > 0 && (
-          <div className="bg-white shadow-sm rounded-lg p-2 flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium px-2">Active filters:</span>
-            {selectedProfessions.map(profession => (
-              <Badge 
-                key={profession} 
-                variant="secondary"
-                className="flex items-center gap-1"
-              >
-                {profession}
-                <button
-                  onClick={() => toggleProfessionFilter(profession)}
-                  className="ml-1 text-gray-500 hover:text-gray-700"
-                >
-                  <X size={12} />
-                </button>
-              </Badge>
-            ))}
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={clearFilters}
-              className="ml-auto text-xs"
-            >
-              Clear all filters
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Filter status message */}
-      {hasActiveFilters && (
+      {/* Display filter status if active */}
+      {searchQuery && filteredPlaques.length !== plaques.length && (
         <div className="text-sm text-gray-500 px-1">
           Showing {filteredPlaques.length} of {plaques.length} plaques
         </div>

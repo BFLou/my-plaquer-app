@@ -222,109 +222,110 @@ const CollectionDetailPage = () => {
         onUpdateName={handleSaveName}
         isLoading={isLoading}
       />
-      
-      <div className="container mx-auto max-w-5xl px-4 py-6">
-        {/* Collection Stats */}
-        <CollectionStats 
-          collection={collection}
-          plaques={collectionPlaques} 
-          userVisits={[]} // This would come from a visits hook 
-          className="mb-6" 
-        />
-        
-        {/* Collection Filter View */}
-        <CollectionFilterView
-          plaques={collectionPlaques}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          onAddPlaquesClick={() => {
-            setAddPlaquesModalOpen(true);
-            fetchAvailablePlaques();
-          }}
-          isLoading={isLoading}
-          onFilterChange={setFilteredPlaques}
+
+<div className="container mx-auto max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
+  {/* Collection Stats */}
+  <CollectionStats 
+    collection={collection}
+    plaques={collectionPlaques} 
+    userVisits={[]}
+    className="mb-4 sm:mb-6" 
+  />
+  
+  {/* Collection Filter View with improved mobile handling */}
+  <CollectionFilterView
+    plaques={collectionPlaques}
+    viewMode={viewMode}
+    setViewMode={setViewMode}
+    searchQuery={searchQuery}
+    setSearchQuery={setSearchQuery}
+    onAddPlaquesClick={() => {
+      setAddPlaquesModalOpen(true);
+      fetchAvailablePlaques();
+    }}
+    isLoading={isLoading}
+    onFilterChange={setFilteredPlaques}
+    showMapView={true}
+  >
+    {collectionPlaques.length === 0 ? (
+      <EmptyState
+        icon={MapPin}
+        title="No Plaques in this Collection"
+        description="Start building your collection by adding plaques"
+        actionLabel="Add Your First Plaque"
+        onAction={() => {
+          setAddPlaquesModalOpen(true);
+          fetchAvailablePlaques();
+        }}
+      />
+    ) : filteredPlaques.length === 0 ? (
+      <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
+        <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
+        <p className="text-gray-500 mb-4">Try adjusting your search criteria or clear filters</p>
+        <Button 
+          variant="outline" 
+          onClick={() => setSearchQuery('')}
         >
-          {collectionPlaques.length === 0 ? (
-            <EmptyState
-              icon={MapPin}
-              title="No Plaques in this Collection"
-              description="Start building your collection by adding plaques"
-              actionLabel="Add Your First Plaque"
-              onAction={() => {
-                setAddPlaquesModalOpen(true);
-                fetchAvailablePlaques();
-              }}
-            />
-          ) : filteredPlaques.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
-              <p className="text-gray-500 mb-4">Try adjusting your search criteria or clear filters</p>
-              <Button 
-                variant="outline" 
-                onClick={() => setSearchQuery('')}
-              >
-                Clear Filters
-              </Button>
-            </div>
-          ) : viewMode === 'map' ? (
-            <div className="relative">
-              <div className="h-[650px] rounded-lg overflow-hidden shadow-md">
-                <PlaqueMap
-                  ref={mapRef}
-                  plaques={filteredPlaques}
-                  onPlaqueClick={handleViewPlaque}
-                  favorites={favorites}
-                  selectedPlaqueId={selectedPlaque?.id}
-                  maintainView={maintainMapView}
-                  className="h-full w-full"
-                  isRoutingMode={isRoutingMode}
-                  setIsRoutingMode={setIsRoutingMode}
-                  routePoints={routePoints}
-                  addPlaqueToRoute={addPlaqueToRoute}
-                  removePlaqueFromRoute={removePlaqueFromRoute}
-                  clearRoute={clearRoute}
-                />
-              </div>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <CollectionPlaqueGrid 
-              plaques={filteredPlaques}
-              isLoading={isLoading}
-              favorites={favorites}
-              selectedPlaques={selectedPlaques}
-              searchQuery={searchQuery}
-              onClearSearch={() => setSearchQuery('')}
-              onToggleSelect={toggleSelectPlaque}
-              onToggleFavorite={handleTogglePlaqueFavorite}
-              onMarkVisited={handleMarkVisited}
-              onRemovePlaque={handleRemovePlaque}
-              onPlaqueClick={handleViewPlaque}
-              onAddPlaquesClick={() => {
-                setAddPlaquesModalOpen(true);
-                fetchAvailablePlaques();
-              }}
-            />
-          ) : (
-            <CollectionPlaqueList
-              plaques={filteredPlaques}
-              isLoading={isLoading}
-              favorites={favorites}
-              selectedPlaques={selectedPlaques}
-              searchQuery={searchQuery}
-              onClearSearch={() => setSearchQuery('')}
-              onToggleSelect={toggleSelectPlaque}
-              onToggleFavorite={handleTogglePlaqueFavorite}
-              onPlaqueClick={handleViewPlaque}
-              onAddPlaquesClick={() => {
-                setAddPlaquesModalOpen(true);
-                fetchAvailablePlaques();
-              }}
-            />
-          )}
-        </CollectionFilterView>
+          Clear Filters
+        </Button>
       </div>
+    ) : viewMode === 'map' ? (
+      <div className="relative">
+        <div className="h-[450px] sm:h-[650px] rounded-lg overflow-hidden shadow-md">
+          <PlaqueMap
+            ref={mapRef}
+            plaques={filteredPlaques}
+            onPlaqueClick={handleViewPlaque}
+            favorites={favorites}
+            selectedPlaqueId={selectedPlaque?.id}
+            maintainView={maintainMapView}
+            className="h-full w-full"
+            isRoutingMode={isRoutingMode}
+            setIsRoutingMode={setIsRoutingMode}
+            routePoints={routePoints}
+            addPlaqueToRoute={addPlaqueToRoute}
+            removePlaqueFromRoute={removePlaqueFromRoute}
+            clearRoute={clearRoute}
+          />
+        </div>
+      </div>
+    ) : viewMode === 'grid' ? (
+      <CollectionPlaqueGrid 
+        plaques={filteredPlaques}
+        isLoading={isLoading}
+        favorites={favorites}
+        selectedPlaques={selectedPlaques}
+        searchQuery={searchQuery}
+        onClearSearch={() => setSearchQuery('')}
+        onToggleSelect={toggleSelectPlaque}
+        onToggleFavorite={handleTogglePlaqueFavorite}
+        onMarkVisited={handleMarkVisited}
+        onRemovePlaque={handleRemovePlaque}
+        onPlaqueClick={handleViewPlaque}
+        onAddPlaquesClick={() => {
+          setAddPlaquesModalOpen(true);
+          fetchAvailablePlaques();
+        }}
+      />
+    ) : (
+      <CollectionPlaqueList
+        plaques={filteredPlaques}
+        isLoading={isLoading}
+        favorites={favorites}
+        selectedPlaques={selectedPlaques}
+        searchQuery={searchQuery}
+        onClearSearch={() => setSearchQuery('')}
+        onToggleSelect={toggleSelectPlaque}
+        onToggleFavorite={handleTogglePlaqueFavorite}
+        onPlaqueClick={handleViewPlaque}
+        onAddPlaquesClick={() => {
+          setAddPlaquesModalOpen(true);
+          fetchAvailablePlaques();
+        }}
+      />
+    )}
+  </CollectionFilterView>
+</div>
       
       {/* Action bar (visible when plaques are selected) */}
       {selectedPlaques.length > 0 && (
@@ -385,24 +386,27 @@ const CollectionDetailPage = () => {
       />
       
       {/* Remove single plaque confirmation */}
-      <DeleteCollectionDialog
-        isOpen={confirmRemovePlaqueOpen}
-        onClose={() => {
-          setConfirmRemovePlaqueOpen(false);
-        }}
-        onDelete={confirmRemovePlaque}
-        isLoading={isLoading}
-        collectionNames={['Remove this plaque']}
-      />
-      
+<DeleteCollectionDialog
+  isOpen={confirmRemovePlaqueOpen}
+  onClose={() => {
+    setConfirmRemovePlaqueOpen(false);
+    setPlaqueToRemove(null);
+  }}
+  onDelete={confirmRemovePlaque}
+  isLoading={isLoading}
+  collectionNames={[]} // Empty array since we're not deleting collections
+  itemType="plaque"
+  plaqueTitle={plaqueToRemove ? collectionPlaques.find(p => p.id === plaqueToRemove)?.title : undefined}
+/>
       {/* Delete collection confirmation */}
-      <DeleteCollectionDialog
-        isOpen={confirmDeleteOpen}
-        onClose={() => setConfirmDeleteOpen(false)}
-        onDelete={handleDeleteCollection}
-        isLoading={isLoading}
-        collectionNames={[collection.name]}
-      />
+<DeleteCollectionDialog
+  isOpen={confirmDeleteOpen}
+  onClose={() => setConfirmDeleteOpen(false)}
+  onDelete={handleDeleteCollection}
+  isLoading={isLoading}
+  collectionNames={[collection.name]}
+  itemType="collection"
+/>
       
       {/* Edit collection form - Now using CollectionCreateForm instead of CollectionEditForm */}
       <CollectionCreateForm

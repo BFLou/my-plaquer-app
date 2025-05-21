@@ -1,4 +1,4 @@
-// src/features/collections/components/AddPlaquesButton.tsx
+// src/components/collections/AddPlaquesButton.tsx
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { Button, ButtonProps } from "@/components/ui/button";
