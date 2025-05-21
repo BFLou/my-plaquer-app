@@ -9,7 +9,9 @@ import {
   Route,
   HelpCircle,
   Bell,
-  Trophy
+  Trophy,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from "@/components/ui/button";
@@ -24,14 +26,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import AuthModal from './AuthModal';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTheme } from '@/hooks/useTheme'; // You'll need to create this hook
 
 const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme(); // Add theme hook
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -53,6 +58,12 @@ const UserMenu: React.FC = () => {
     }
   };
 
+  const handleThemeToggle = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    toast.success(`Switched to ${newTheme} mode`);
+  };
+
   return (
     <>
       {user ? (
@@ -63,8 +74,6 @@ const UserMenu: React.FC = () => {
                 <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "User"} />
                 <AvatarFallback>{getUserInitials()}</AvatarFallback>
               </Avatar>
-              {/* Optional: Add notification indicator */}
-              {/* <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white" /> */}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
@@ -81,17 +90,15 @@ const UserMenu: React.FC = () => {
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => navigate('/profile')}>
                 <User className="mr-2 h-4 w-4" />
-                <span>My Profile</span>
+                <span>Profile</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/profile/visited')}>
                 <MapPin className="mr-2 h-4 w-4" />
-                <span>My Visits</span>
-                {/* Optional: Show count */}
-                {/* <Badge variant="secondary" className="ml-auto">12</Badge> */}
+                <span>Visits</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/profile/routes')}>
                 <Route className="mr-2 h-4 w-4" />
-                <span>My Routes</span>
+                <span>Routes</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/profile/achievements')}>
                 <Trophy className="mr-2 h-4 w-4" />
@@ -111,6 +118,26 @@ const UserMenu: React.FC = () => {
               <DropdownMenuItem onClick={() => navigate('/settings/notifications')}>
                 <Bell className="mr-2 h-4 w-4" />
                 <span>Notifications</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault(); // Prevent dropdown from closing
+                  handleThemeToggle();
+                }}
+                className="cursor-pointer"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="mr-2 h-4 w-4" />
+                ) : (
+                  <Moon className="mr-2 h-4 w-4" />
+                )}
+                <span>Dark Mode</span>
+                <Switch 
+                  checked={theme === 'dark'} 
+                  onCheckedChange={handleThemeToggle}
+                  onClick={(e) => e.stopPropagation()} // Prevent double toggle
+                  className="ml-auto"
+                />
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/help')}>
                 <HelpCircle className="mr-2 h-4 w-4" />
