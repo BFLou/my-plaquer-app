@@ -1,6 +1,6 @@
 // src/components/settings/SecuritySettings.tsx
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, AlertTriangle, Download, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle, Download, Trash2, Lock, Shield } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,14 +9,19 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import SettingsCard from './SettingsCard';
+import { useAuth } from '@/hooks/useAuth';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 const SecuritySettings: React.FC = () => {
+  const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (passwordError) {
@@ -24,7 +29,7 @@ const SecuritySettings: React.FC = () => {
     }
   }, [currentPassword, newPassword, confirmPassword]);
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!currentPassword) {
@@ -41,12 +46,44 @@ const SecuritySettings: React.FC = () => {
       setPasswordError('New passwords do not match');
       return;
     }
+
+    if (!user || !user.email) {
+      setPasswordError('User not authenticated properly');
+      return;
+    }
+
+    setIsLoading(true);
     
-    toast.success('Password updated successfully');
-    
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      // First, reauthenticate the user
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // Then update the password
+      await updatePassword(user, newPassword);
+      
+      toast.success('Password updated successfully');
+      
+      // Clear the form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      console.error('Password update error:', error);
+      
+      // Handle specific Firebase errors
+      if (error.code === 'auth/wrong-password') {
+        setPasswordError('Current password is incorrect');
+      } else if (error.code === 'auth/weak-password') {
+        setPasswordError('New password is too weak');
+      } else if (error.code === 'auth/requires-recent-login') {
+        setPasswordError('Please sign out and sign in again before changing your password');
+      } else {
+        setPasswordError(error.message || 'Failed to update password');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleExportData = () => {
@@ -90,6 +127,7 @@ const SecuritySettings: React.FC = () => {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="pr-10"
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -108,6 +146,7 @@ const SecuritySettings: React.FC = () => {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              disabled={isLoading}
             />
             <p className="text-xs text-gray-500">
               Must be at least 8 characters long
@@ -121,11 +160,12 @@ const SecuritySettings: React.FC = () => {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           
-          <Button type="submit" className="w-full">
-            Update Password
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? 'Updating Password...' : 'Update Password'}
           </Button>
         </form>
       </SettingsCard>
@@ -137,7 +177,7 @@ const SecuritySettings: React.FC = () => {
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Lock className="text-green-600" size={20} />
+              <Shield className="text-green-600" size={20} />
             </div>
             <div>
               <h4 className="font-medium">Two-Factor Authentication</h4>

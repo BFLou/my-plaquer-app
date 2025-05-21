@@ -1,5 +1,5 @@
 // src/components/profile/ProfileForm.tsx (Enhanced version)
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { profileImageService } from '@/services/profileImageService';
-import { doc, updateDoc } from 'firebase/firestore';
+import { profileService } from '@/services/profileService';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface ProfileFormProps {
@@ -27,19 +28,35 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load user profile data from Firestore on mount
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const userProfile = await profileService.getUserProfile(user.uid);
+        if (userProfile) {
+          setBio(userProfile.bio || '');
+          setDisplayName(userProfile.displayName || user.displayName || '');
+          setPhotoURL(userProfile.photoURL || user.photoURL || '');
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    };
+    
+    loadUserProfile();
+  }, [user]);
+
   // Handle file selection for profile photo
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !user) return;
     const file = e.target.files[0];
     
-    // Validate file size and type
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image file size must be less than 5MB');
-      return;
-    }
-    
-    if (!file.type.match('image.*')) {
-      toast.error('Only image files are allowed');
+    // Validate file
+    const validation = profileImageService.validateImageFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
       return;
     }
     
@@ -54,13 +71,18 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
     try {
       setIsUploadingPhoto(true);
       
+      // Compress image if needed
+      const fileToUpload = file.size > 1024 * 1024 ? // If larger than 1MB
+        await profileImageService.compressImage(file) : 
+        file;
+      
       // Delete old image if exists
       if (user.photoURL) {
         await profileImageService.deleteOldProfileImage(user.photoURL);
       }
       
       // Upload new image
-      const downloadURL = await profileImageService.uploadProfileImage(user.uid, file);
+      const downloadURL = await profileImageService.uploadProfileImage(user.uid, fileToUpload);
       
       if (downloadURL) {
         setPhotoURL(downloadURL);
@@ -81,17 +103,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
     try {
       setIsUploadingPhoto(true);
       
-      // Delete from Storage
-      if (photoURL || user.photoURL) {
-        await profileImageService.deleteOldProfileImage(photoURL || user.photoURL || '');
-      }
-      
-      // Update Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, {
-        photoURL: null,
-        lastUpdated: new Date().toISOString()
-      });
+      // Remove photo using profile service
+      await profileService.removeProfilePhoto(user.uid);
       
       setPhotoPreview(null);
       setPhotoURL('');
@@ -117,13 +130,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
     setIsLoading(true);
     
     try {
-      // Update user document in Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, {
+      // Update user profile using profile service
+      await profileService.updateProfile(user.uid, {
         displayName,
         bio,
-        photoURL: photoURL || null,
-        lastUpdated: new Date().toISOString()
+        photoURL: photoURL || null
       });
       
       toast.success('Profile updated successfully');
