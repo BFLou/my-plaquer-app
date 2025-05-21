@@ -13,25 +13,24 @@ import {
   TrendingUp,
   Camera,
   Route as RouteIcon,
-  LogOut
+  LogOut,
+  FolderOpen,
+  CheckCircle,
+  ArrowRight,
+  Clock
 } from 'lucide-react';
 import { PageContainer } from '@/components';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from '@/hooks/useAuth';
 import { useCollections } from '@/hooks/useCollection';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useRoutes } from '@/hooks/useRoutes';
+import { usePlaques } from '@/hooks/usePlaques';
 import { toast } from 'sonner';
-
-// Profile components
-import VisitedPlaquesPanel from '@/components/profile/VisitedPlaquesPanel';
+import { EmptyState } from '@/components/common/EmptyState';
 import VisitedPlaquesPage from '../components/profile/VisitedPlaquesPage';
-import UserCollectionsPanel from '@/components/profile/UserCollectionsPanel';
-import UserRoutesPanel from '@/components/profile/UserRoutesPanel';
-import { StatCard } from '@/components/common/StatCard';
-// Add these to your imports
+import { formatTimeAgo } from '@/utils/timeUtils';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -40,6 +39,7 @@ const ProfilePage = () => {
   const { collections, loading: collectionsLoading } = useCollections();
   const { visits, loading: visitsLoading } = useVisitedPlaques();
   const { routes, loading: routesLoading } = useRoutes();
+  const { plaques } = usePlaques();
   
   const [currentTab, setCurrentTab] = useState(params.tab || 'overview');
   const [visitsByMonth, setVisitsByMonth] = useState([]);
@@ -47,7 +47,7 @@ const ProfilePage = () => {
   
   // Update tab when URL param changes
   useEffect(() => {
-    if (params.tab && ['overview', 'visited', 'collections', 'routes'].includes(params.tab)) {
+    if (params.tab && ['overview', 'visited'].includes(params.tab)) {
       setCurrentTab(params.tab);
     }
   }, [params.tab]);
@@ -57,9 +57,28 @@ const ProfilePage = () => {
   const totalCollections = collections.length;
   const totalFavorites = collections.filter(c => c.is_favorite).length;
   const totalRoutes = routes.length;
+  const totalPlaquesInCollections = collections.reduce((sum, c) => 
+    sum + (Array.isArray(c.plaques) ? c.plaques.length : 0), 0
+  );
   
   // Calculate unique plaques visited
   const uniquePlaquesVisited = new Set(visits.map(v => v.plaque_id)).size;
+  
+  // Get plaque details for recent visits
+  const getRecentVisitsWithDetails = () => {
+    return visits.slice(0, 5).map(visit => {
+      const plaque = plaques.find(p => p.id === visit.plaque_id);
+      return {
+        ...visit,
+        plaque: plaque || {
+          id: visit.plaque_id,
+          title: `Plaque #${visit.plaque_id}`,
+          location: 'Location unknown',
+          address: ''
+        }
+      };
+    });
+  };
   
   // Calculate visit streak
   const calculateStreak = () => {
@@ -209,10 +228,11 @@ const ProfilePage = () => {
   
   if (!user) {
     return (
- <PageContainer 
-      activePage="profile"
-      simplifiedFooter={true}
-    >        <div className="container mx-auto py-8 px-4 text-center">
+      <PageContainer 
+        activePage="profile"
+        simplifiedFooter={true}
+      >
+        <div className="container mx-auto py-8 px-4 text-center">
           <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
           <p className="mb-6">You need to sign in to view your profile.</p>
           <Button onClick={() => navigate('/')}>Back to Home</Button>
@@ -223,83 +243,163 @@ const ProfilePage = () => {
   
   const isLoading = collectionsLoading || visitsLoading || routesLoading;
   
+  // Get recent collections and favorites
+  const recentCollections = [...collections]
+    .sort((a, b) => {
+      const dateA = a.updated_at?.toDate ? a.updated_at.toDate() : new Date(a.updated_at);
+      const dateB = b.updated_at?.toDate ? b.updated_at.toDate() : new Date(b.updated_at);
+      return dateB.getTime() - dateA.getTime();
+    })
+    .slice(0, 3);
+    
+  const favoriteCollections = collections.filter(c => c.is_favorite).slice(0, 3);
+  const recentVisitsWithDetails = getRecentVisitsWithDetails();
+  
+  // Get recent routes sorted by creation date
+  const recentRoutes = [...routes]
+    .sort((a, b) => {
+      const dateA = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at);
+      const dateB = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at);
+      return dateB.getTime() - dateA.getTime();
+    })
+    .slice(0, 3);
+  
   return (
- <PageContainer 
+    <PageContainer 
       activePage="profile"
       simplifiedFooter={true}
-    >      <div className="container mx-auto py-8 px-4">
-        {/* Profile Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8">
-          <div className="relative">
-            {user.photoURL ? (
-              <div className="bg-blue-100 w-24 h-24 rounded-full overflow-hidden">
-                <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
+    >
+      {/* Hero Section with decorative background circles */}
+      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
+        {/* Decorative background circles */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
+          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
+          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+        </div>
+        
+        <div className="container mx-auto max-w-5xl relative z-10">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-4">
+              {/* Profile Photo */}
+              <div className="relative">
+                {user.photoURL ? (
+                  <div className="bg-white/20 backdrop-blur-sm w-20 h-20 rounded-full overflow-hidden">
+                    <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="bg-white/20 backdrop-blur-sm w-20 h-20 rounded-full flex items-center justify-center">
+                    <User size={32} className="text-white" />
+                  </div>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="absolute bottom-0 right-0 h-7 w-7 p-0 rounded-full bg-white hover:bg-gray-100"
+                  onClick={handlePhotoUpload}
+                >
+                  <Camera size={12} className="text-gray-700" />
+                </Button>
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
               </div>
-            ) : (
-              <div className="bg-blue-100 w-24 h-24 rounded-full flex items-center justify-center">
-                <User size={40} className="text-blue-600" />
+              
+              {/* User Info */}
+              <div>
+                <h1 className="text-2xl font-bold">{user.displayName || 'User'}</h1>
+                <p className="opacity-90 mt-1">
+                  Member since {new Date(user.metadata.creationTime || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                </p>
               </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+                onClick={() => navigate('/settings')}
+              >
+                <Settings size={16} className="mr-2" /> Settings
+              </Button>
+              <Button 
+                variant="outline"
+                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+                onClick={handleSignOut}
+              >
+                <LogOut size={16} className="mr-2" /> Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <div className="container mx-auto max-w-5xl px-4">
+        {/* Stats Banner */}
+        <div className="bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
+          <div className="flex gap-4 items-center">
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-blue-600">{uniquePlaquesVisited}</div>
+              <div className="text-xs text-gray-500">Plaques Visited</div>
+            </div>
+            <div className="h-8 w-px bg-gray-200"></div>
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-purple-600">{totalCollections}</div>
+              <div className="text-xs text-gray-500">Collections</div>
+            </div>
+            <div className="h-8 w-px bg-gray-200"></div>
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-green-600">{totalRoutes}</div>
+              <div className="text-xs text-gray-500">Routes</div>
+            </div>
+            {streak > 0 && (
+              <>
+                <div className="h-8 w-px bg-gray-200"></div>
+                <div className="text-center px-3 py-1">
+                  <div className="text-lg font-bold text-amber-600">{streak}</div>
+                  <div className="text-xs text-gray-500">Day Streak</div>
+                </div>
+              </>
             )}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="absolute bottom-0 right-0 h-8 w-8 p-0 rounded-full bg-white"
-              onClick={handlePhotoUpload}
-            >
-              <Camera size={14} />
-            </Button>
-            <input 
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              className="hidden"
-            />
           </div>
           
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{user.displayName || 'User'}</h1>
-            <p className="text-gray-500 mb-3">
-              Member since {new Date(user.metadata.creationTime || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
-            </p>
-            
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <MapPin size={12} className="mr-1" /> {uniquePlaquesVisited} Unique Plaques
-              </Badge>
-              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                <List size={12} className="mr-1" /> {totalCollections} Collections
-              </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              <MapPin size={12} className="mr-1" /> Explorer
+            </Badge>
+            {totalFavorites > 0 && (
               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                 <Star size={12} className="mr-1" /> {totalFavorites} Favorites
               </Badge>
-              {streak > 0 && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <TrendingUp size={12} className="mr-1" /> {streak} Day Streak
-                </Badge>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2"
-              onClick={() => navigate('/settings')}
-            >
-              <Settings size={16} /> Settings
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-2"
-              onClick={handleSignOut}
-            >
-              <LogOut size={16} /> Sign Out
-            </Button>
+            )}
           </div>
         </div>
         
-        {/* Tabs Content */}
+        {/* Tab Bar */}
+        <div className="bg-white rounded-lg shadow-sm mb-6">
+          {/* Tabs */}
+          <div className="flex border-b">
+            <button 
+              className={`px-4 py-3 font-medium text-sm ${currentTab === 'overview' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              onClick={() => handleTabChange('overview')}
+            >
+              Overview
+            </button>
+            <button 
+              className={`px-4 py-3 font-medium text-sm ${currentTab === 'visited' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              onClick={() => handleTabChange('visited')}
+            >
+              Visited Plaques
+            </button>
+          </div>
+        </div>
+        
+        {/* Content */}
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="flex flex-col items-center gap-3">
@@ -308,92 +408,91 @@ const ProfilePage = () => {
             </div>
           </div>
         ) : (
-          <Tabs value={currentTab} onValueChange={handleTabChange} className="mb-6">
-            <TabsList className="grid grid-cols-4 w-full md:w-auto">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="visited">Visited</TabsTrigger>
-              <TabsTrigger value="collections">Collections</TabsTrigger>
-              <TabsTrigger value="routes">Routes</TabsTrigger>
-            </TabsList>
-
+          <>
             {/* Overview Tab */}
-            <TabsContent value="overview">
-              {/* Stats Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <StatCard 
-                  label="Total Visits" 
-                  value={totalVisits}
-                  icon={<MapPin className="text-blue-500" size={20} />} 
-                />
-                <StatCard 
-                  label="Collections" 
-                  value={totalCollections}
-                  icon={<List className="text-purple-500" size={20} />} 
-                />
-                <StatCard 
-                  label="Saved Routes" 
-                  value={totalRoutes} 
-                  icon={<RouteIcon className="text-green-500" size={20} />} 
-                />
-                <StatCard 
-                  label="Visit Streak" 
-                  value={streak} 
-                  subValue="days"
-                  icon={<Calendar className="text-amber-500" size={20} />} 
-                />
-              </div>
-              
-              {/* Main Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recent Visits */}
-                <div className="lg:col-span-2">
-                  <VisitedPlaquesPanel 
-                    visits={visits.slice(0, 5)} 
-                    showAll={() => handleTabChange('visited')} 
-                  />
+            {currentTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Recent Visits - Enhanced with plaque details */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Recent Visits</h2>
+                    {visits.length > 5 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleTabChange('visited')}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        View All
+                        <ArrowRight size={16} className="ml-1" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {visits.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <CheckCircle className="mx-auto text-gray-300 mb-3" size={32} />
+                      <p className="text-gray-500">No visits yet. Start exploring!</p>
+                      <Button 
+                        className="mt-4"
+                        onClick={() => navigate('/discover')}
+                      >
+                        Discover Plaques
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentVisitsWithDetails.map((visit, index) => (
+                        <div 
+                          key={index} 
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                          onClick={() => navigate('/discover')}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="bg-blue-100 text-blue-600 w-10 h-10 rounded-full flex items-center justify-center">
+                              <MapPin size={18} />
+                            </div>
+                            <div>
+                              <p className="font-medium">{visit.plaque.title}</p>
+                              <p className="text-sm text-gray-500">
+                                {visit.plaque.location || visit.plaque.address || 'Unknown location'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">
+                              {formatTimeAgo(visit.visited_at)}
+                            </p>
+                            {visit.notes && (
+                              <Badge variant="outline" className="text-xs mt-1">Has notes</Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
-                {/* Right Sidebar */}
-                <div className="space-y-6">
-                  {/* Favorite Collections */}
-                  <UserCollectionsPanel 
-                    collections={collections.filter(c => c.is_favorite).slice(0, 3)} 
-                    showFavoritesOnly={true}
-                    showAll={() => handleTabChange('collections')}
-                  />
-                  
-                  {/* Saved Routes */}
-                  <UserRoutesPanel 
-                    routes={routes.slice(0, 3)}
-                    showAll={() => handleTabChange('routes')}
-                  />
-                  
-                  {/* Visits By Month */}
-                  <div className="bg-white shadow-sm rounded-xl p-6">
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Activity Chart */}
+                  <div className="bg-white shadow-sm rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4">Visit Activity</h3>
                     <div className="flex items-end h-36 gap-2 mt-4">
                       {visitsByMonth.map((month, index) => (
                         <div key={index} className="flex flex-col items-center flex-1">
                           <div 
-                            className="w-full bg-blue-100 rounded-t" 
+                            className="w-full bg-blue-100 rounded-t transition-all duration-300" 
                             style={{ height: `${Math.max(month.count * 10, 4)}px` }}
                           ></div>
                           <div className="text-xs text-gray-500 mt-2">{month.month}</div>
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between mt-4">
-                      <span className="text-sm text-gray-500">
-                        {visitsByMonth[0]?.month} {visitsByMonth[0]?.year}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {visitsByMonth[5]?.month} {visitsByMonth[5]?.year}
-                      </span>
-                    </div>
                   </div>
                   
                   {/* Quick Actions */}
-                  <div className="bg-white shadow-sm rounded-xl p-6">
+                  <div className="bg-white shadow-sm rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4">Quick Actions</h3>
                     <div className="space-y-2">
                       <Button 
@@ -406,164 +505,199 @@ const ProfilePage = () => {
                       <Button 
                         variant="outline" 
                         className="w-full justify-start"
-                        onClick={() => navigate('/collections/new')}
+                        onClick={() => navigate('/collections')}
                       >
                         <PlusCircle className="mr-2" size={16} /> Create New Collection
                       </Button>
                       <Button 
                         variant="outline" 
                         className="w-full justify-start"
-                        onClick={() => navigate('/settings')}
+                        onClick={() => navigate('/discover?view=map')}
                       >
-                        <Edit className="mr-2" size={16} /> Edit Profile
+                        <RouteIcon className="mr-2" size={16} /> Plan a Route
                       </Button>
                     </div>
                   </div>
                 </div>
-              </div>
-            </TabsContent>
-            
-            {/* Visited Tab */}
-<TabsContent value="visited">
-  <div className="bg-white shadow-sm rounded-xl p-6">
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-xl font-bold">Visited Plaques</h2>
-      <Button 
-        variant="outline" 
-        onClick={() => navigate('/discover')}
-      >
-        Discover More
-      </Button>
-    </div>
                 
-    {/* Replace the entire visits.map section with this: */}
-<VisitedPlaquesPage visits={visits} loading={visitsLoading} />
-  </div>
-</TabsContent>
-            
-            {/* Collections Tab */}
-            <TabsContent value="collections">
-              <div className="bg-white shadow-sm rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold">My Collections</h2>
-                  <Button 
-                    onClick={() => navigate('/collections/new')}
-                    className="gap-2"
-                  >
-                    <PlusCircle size={16} /> New Collection
-                  </Button>
-                </div>
-                
-                {collections.length === 0 ? (
-                  <div className="text-center py-16 bg-gray-50 rounded-lg">
-                    <List className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">No Collections Yet</h3>
-                    <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                      Create collections to organize the plaques you discover and visit.
-                    </p>
+                {/* Collections Summary */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg">My Collections</h3>
+                      <p className="text-sm text-gray-500">
+                        {totalCollections} collections • {totalPlaquesInCollections} total plaques
+                      </p>
+                    </div>
                     <Button 
-                      onClick={() => navigate('/collections/new')}
+                      variant="outline"
+                      onClick={() => navigate('/collections')}
                     >
-                      Create Collection
+                      View All Collections
+                      <ArrowRight size={16} className="ml-2" />
                     </Button>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {collections.map(collection => (
-                      <div 
-                        key={collection.id}
-                        className="border rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer transition-colors"
-                        onClick={() => navigate(`/collections/${collection.id}`)}
+                  
+                  {collections.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <FolderOpen className="mx-auto text-gray-300 mb-3" size={32} />
+                      <p className="text-gray-500">No collections yet</p>
+                      <Button 
+                        className="mt-4"
+                        onClick={() => navigate('/collections')}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white bg-blue-500`}>
-                            {collection.icon}
-                          </div>
-                          <div>
-                            <h4 className="font-medium">{collection.name}</h4>
-                            <p className="text-sm text-gray-500">
-                              {collection.plaques.length} plaques
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {collection.is_favorite && (
-                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                                  Favorite
-                                </Badge>
-                              )}
-                              {collection.is_public && (
-                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                                  Public
-                                </Badge>
-                              )}
-                            </div>
+                        Create Your First Collection
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Favorite Collections */}
+                      {favoriteCollections.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Favorite Collections</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {favoriteCollections.map(collection => (
+                              <div 
+                                key={collection.id}
+                                className="border rounded-lg p-3 hover:shadow-md cursor-pointer transition-all bg-amber-50 border-amber-200"
+                                onClick={() => navigate(`/collections/${collection.id}`)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${collection.color}`}>
+                                    <span className="text-xl">{collection.icon}</span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-medium truncate">{collection.name}</h4>
+                                    <p className="text-xs text-gray-500">
+                                      {Array.isArray(collection.plaques) ? collection.plaques.length : 0} plaques
+                                    </p>
+                                  </div>
+                                  <Star size={14} className="text-amber-500 flex-shrink-0" />
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
+                      )}
+                      
+                      {/* Recent Collections */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Collections</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {recentCollections.map(collection => (
+                            <div 
+                              key={collection.id}
+                              className="border rounded-lg p-3 hover:shadow-md cursor-pointer transition-all"
+                              onClick={() => navigate(`/collections/${collection.id}`)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white ${collection.color}`}>
+                                  <span className="text-xl">{collection.icon}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium truncate">{collection.name}</h4>
+                                  <p className="text-xs text-gray-500">
+                                    {Array.isArray(collection.plaques) ? collection.plaques.length : 0} plaques
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            {/* Routes Tab */}
-            <TabsContent value="routes">
-              <div className="bg-white shadow-sm rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold">My Routes</h2>
-                  <Button 
-                    onClick={() => navigate('/discover?view=map')}
-                    className="gap-2"
-                  >
-                    <RouteIcon size={16} /> Create Route
-                  </Button>
+                    </div>
+                  )}
                 </div>
                 
-                {routes.length === 0 ? (
-                  <div className="text-center py-16 bg-gray-50 rounded-lg">
-                    <RouteIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">No Routes Yet</h3>
-                    <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                      Create walking routes to explore multiple plaques in one trip.
-                    </p>
+                {/* Routes Section - Enhanced */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-lg">My Routes</h3>
+                      <p className="text-sm text-gray-500">
+                        {totalRoutes} saved routes • {routes.reduce((sum, r) => sum + r.total_distance, 0).toFixed(1)} km total
+                      </p>
+                    </div>
                     <Button 
+                      variant="outline"
                       onClick={() => navigate('/discover?view=map')}
                     >
-                      Open Map
+                      Plan New Route
+                      <ArrowRight size={16} className="ml-2" />
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {routes.map(route => (
-                      <div 
-                        key={route.id}
-                        className="border rounded-lg p-4 hover:border-green-300 hover:bg-green-50/40 cursor-pointer transition-colors"
-                        onClick={() => navigate(`/routes/${route.id}`)}
+                  
+                  {routes.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <RouteIcon className="mx-auto text-gray-300 mb-3" size={32} />
+                      <p className="text-gray-500">No routes saved yet</p>
+                      <p className="text-xs text-gray-400 mt-1">Create walking routes to explore multiple plaques in one trip</p>
+                      <Button 
+                        className="mt-4"
+                        onClick={() => navigate('/discover?view=map')}
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="bg-green-100 text-green-500 w-12 h-12 rounded-lg flex items-center justify-center">
+                        Create Your First Route
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recentRoutes.map(route => (
+                        <div 
+                          key={route.id}
+                          className="flex items-center gap-4 p-4 border rounded-lg hover:shadow-md cursor-pointer transition-all bg-gradient-to-r from-green-50 to-white"
+                          onClick={() => navigate(`/routes/${route.id}`)}
+                        >
+                          <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center">
                             <RouteIcon size={20} />
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <h4 className="font-medium">{route.name}</h4>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-sm text-gray-500">
+                                {route.points.length} stops
+                              </span>
+                              <span className="text-sm text-gray-500">•</span>
+                              <span className="text-sm text-gray-500">
+                                {route.total_distance.toFixed(1)} km
+                              </span>
+                              <span className="text-sm text-gray-500">•</span>
+                              <span className="text-sm text-gray-500">
+                                ~{Math.ceil(route.total_distance * 12)} min walk
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
                             <p className="text-sm text-gray-500">
-                              {route.points.length} stops • {route.total_distance.toFixed(1)} km
+                              {formatTimeAgo(route.created_at)}
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Created on {new Date(route.created_at).toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'short', 
-                                day: 'numeric' 
-                              })}
-                            </p>
+                            {route.is_public && (
+                              <Badge variant="outline" className="text-xs mt-1 bg-green-50">Public</Badge>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </TabsContent>
-          </Tabs>
+            )}
+            
+            {/* Visited Tab */}
+            {currentTab === 'visited' && (
+              <div className="bg-white shadow-sm rounded-lg p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold">Visited Plaques ({visits.length})</h2>
+                  <Button 
+                    onClick={() => navigate('/discover')}
+                  >
+                    Discover More
+                  </Button>
+                </div>
+                
+                <VisitedPlaquesPage visits={visits} loading={visitsLoading} />
+              </div>
+            )}
+          </>
         )}
       </div>
     </PageContainer>
