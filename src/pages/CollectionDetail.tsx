@@ -20,7 +20,7 @@ import CollectionPlaqueList from '../components/collections/CollectionPlaqueList
 import { CollectionStats } from '@/components/collections/CollectionStats';
 import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import DeleteCollectionDialog from '../components/collections/DeleteCollectionDialog';
-import CollectionEditForm from '../components/collections/forms/CollectionEditForm';
+import CollectionCreateForm from '../components/collections/forms/CollectionCreateForm'; // Import the CollectionCreateForm instead
 import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
 import CollectionFilterView from '@/components/collections/CollectionFilterView';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -404,13 +404,22 @@ const CollectionDetailPage = () => {
         collectionNames={[collection.name]}
       />
       
-      {/* Edit collection form */}
-      <CollectionEditForm
+      {/* Edit collection form - Now using CollectionCreateForm instead of CollectionEditForm */}
+      <CollectionCreateForm
         isOpen={editFormOpen}
         onClose={() => setEditFormOpen(false)}
         onSubmit={handleUpdateCollection}
         isLoading={isLoading}
-        collection={collection}
+        initialValues={{
+          name: collection.name || '',
+          description: collection.description || '',
+          icon: collection.icon || '🎭',
+          color: collection.color || 'bg-blue-500',
+          isPublic: collection.is_public || false,
+          tags: collection.tags || []
+        }}
+        submitLabel="Save Changes"
+        title="Edit Collection"
       />
     </PageContainer>
   );

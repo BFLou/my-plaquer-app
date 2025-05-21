@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Check, X, Plus, MapPin, Loader, Info } from 'lucide-react';
+import { Search, Check, X, Plus, MapPin, Loader, Info, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
@@ -18,17 +18,36 @@ interface AddPlaquesModalProps {
   onAddPlaques: (plaqueIds: number[]) => Promise<void>;
   availablePlaques?: Plaque[];
   isLoading?: boolean;
+  existingPlaqueIds?: number[]; // Add this prop to track existing plaques
 }
 
 // Number of items to show per page
 const ITEMS_PER_PAGE = 20;
+
+// Debounce function to prevent excessive searches
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  
+  return debouncedValue;
+};
 
 const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   isOpen,
   onClose,
   onAddPlaques,
   availablePlaques: propAvailablePlaques,
-  isLoading: propIsLoading = false
+  isLoading: propIsLoading = false,
+  existingPlaqueIds = [] // Default to empty array if not provided
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlaqueIds, setSelectedPlaqueIds] = useState<number[]>([]);
@@ -40,6 +59,9 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   const [totalCount, setTotalCount] = useState(0);
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'selected'
   const [selectedPlaques, setSelectedPlaques] = useState<Plaque[]>([]); // Full plaque objects that are selected
+  
+  // Debounced search query to trigger searches while typing
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   
   // Reset selection when modal opens/closes
   useEffect(() => {
@@ -53,8 +75,18 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
       setActiveTab('search');
     }
   }, [isOpen]);
+  
+  // Handle search when input changes (via debounced value)
+  useEffect(() => {
+    if (debouncedSearchQuery.trim().length >= 2) {
+      handleSearch();
+    } else if (debouncedSearchQuery.trim() === '') {
+      setSearchResults([]);
+      setHasSearched(false);
+    }
+  }, [debouncedSearchQuery]);
 
-  // Handle search when button is clicked or Enter is pressed
+  // Handle search 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -157,8 +189,19 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   // Total pages calculation
   const totalPages = Math.ceil(searchResults.length / ITEMS_PER_PAGE);
   
+  // Check if plaque is already in collection
+  const isPlaqueInCollection = (plaqueId: number): boolean => {
+    return existingPlaqueIds.includes(plaqueId);
+  };
+  
   // Toggle selection of a plaque
   const togglePlaque = (plaque: Plaque) => {
+    // If plaque is already in collection, don't allow selection
+    if (isPlaqueInCollection(plaque.id)) {
+      toast.info(`${plaque.title} is already in this collection`);
+      return;
+    }
+    
     const plaqueId = plaque.id;
     
     if (selectedPlaqueIds.includes(plaqueId)) {
@@ -223,9 +266,10 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
     setSelectedPlaques([]);
   };
   
-  // Render a plaque item
+  // Render a plaque item with text wrapping fix
   const renderPlaqueItem = (plaque: Plaque, isInSelectedView = false) => {
     const isSelected = selectedPlaqueIds.includes(plaque.id);
+    const isAlreadyInCollection = isPlaqueInCollection(plaque.id);
     
     return (
       <div
@@ -233,11 +277,14 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
         className={`border rounded-lg overflow-hidden ${
           isSelected 
             ? 'border-blue-500 bg-blue-50' 
-            : 'border-gray-200 hover:border-gray-300'
-        } transition-colors cursor-pointer`}
-        onClick={() => !isInSelectedView && togglePlaque(plaque)}
+            : isAlreadyInCollection
+              ? 'border-green-200 bg-green-50'
+              : 'border-gray-200 hover:border-gray-300'
+        } transition-colors ${isAlreadyInCollection ? 'cursor-default' : 'cursor-pointer'}`}
+        onClick={() => !isInSelectedView && !isAlreadyInCollection && togglePlaque(plaque)}
       >
         <div className="flex items-center p-3">
+          {/* Plaque image */}
           <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 bg-gray-100">
             <PlaqueImage
               src={plaque.image || plaque.main_photo}
@@ -247,9 +294,28 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
             />
           </div>
           
-          <div className="ml-3 flex-grow">
-            <h4 className="font-medium text-sm">{plaque.title}</h4>
-            <p className="text-xs text-gray-500">{plaque.location || plaque.address}</p>
+          {/* Content with text wrapping for both title and location */}
+          <div className="ml-3 overflow-hidden pr-3" style={{ flexGrow: 1, minWidth: 0, maxWidth: "calc(100% - 60px)" }}>
+            {/* Title with line clamping */}
+            <h4 className="font-medium text-sm" style={{ 
+              display: '-webkit-box', 
+              WebkitLineClamp: 2, 
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}>
+              {plaque.title}
+            </h4>
+            
+            {/* Location/address with line clamping instead of truncation */}
+            <p className="text-xs text-gray-500" style={{ 
+              display: '-webkit-box', 
+              WebkitLineClamp: 2, 
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}>
+              {plaque.location || plaque.address}
+            </p>
+            
             <div className="flex flex-wrap gap-1 mt-1">
               {plaque.color && (
                 <Badge variant="outline" className="text-xs py-0">
@@ -261,30 +327,42 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
                   {plaque.profession}
                 </Badge>
               )}
+              {isAlreadyInCollection && (
+                <Badge variant="outline" className="text-xs py-0 bg-green-100 text-green-700 border-green-200">
+                  Added
+                </Badge>
+              )}
             </div>
           </div>
           
-          {isInSelectedView ? (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeFromSelection(plaque.id);
-              }}
-            >
-              <X size={18} />
-            </Button>
-          ) : (
-            <div className={`h-6 w-6 rounded-full flex items-center justify-center border ${
-              isSelected
-                ? 'bg-blue-500 border-blue-500 text-white'
-                : 'border-gray-300'
-            }`}>
-              {isSelected && <Check size={14} />}
-            </div>
-          )}
+          {/* Selection indicator or already-in-collection indicator */}
+          <div className="flex-shrink-0 ml-1" style={{ width: '24px' }}>
+            {isInSelectedView ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFromSelection(plaque.id);
+                }}
+              >
+                <X size={16} />
+              </Button>
+            ) : isAlreadyInCollection ? (
+              <div className="w-6 h-6 rounded-full flex items-center justify-center bg-green-100 text-green-600 border border-green-300">
+                <CheckCircle size={14} />
+              </div>
+            ) : (
+              <div className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ 
+                    border: isSelected ? 'none' : '1px solid #d1d5db',
+                    backgroundColor: isSelected ? '#3b82f6' : 'transparent'
+                  }}>
+                {isSelected && <Check size={14} className="text-white" />}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -303,7 +381,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
             
             <div className="mt-2 text-sm text-gray-500 bg-blue-50 p-4 rounded-md border border-blue-100">
               <p className="flex items-center gap-2">
-                <MapPin size={16} className="text-blue-500" />
+                <MapPin size={16} className="text-blue-500 flex-shrink-0" />
                 <span>You can also add plaques directly from the <strong>Discover</strong> page when browsing the map or list view.</span>
               </p>
             </div>
@@ -331,7 +409,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    className="pl-9 pr-3"
+                    className="pl-9 pr-9"
                   />
                   {searchQuery && (
                     <button
@@ -343,26 +421,6 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
                     </button>
                   )}
                 </div>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleSearch}
-                  disabled={!searchQuery.trim() || isSearching}
-                  className="ml-2"
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader size={14} className="mr-1 animate-spin" />
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <Search size={14} className="mr-1" />
-                      Search
-                    </>
-                  )}
-                </Button>
               </div>
             )}
             
@@ -429,7 +487,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
                     <>
                       {searchResults.length >= 100 && (
                         <div className="mb-3 text-xs flex gap-2 items-center bg-amber-50 p-2 rounded-md border border-amber-200">
-                          <Info size={14} className="text-amber-500" />
+                          <Info size={14} className="text-amber-500 flex-shrink-0" />
                           <span>Showing up to 100 matching plaques. Refine your search to see more specific results.</span>
                         </div>
                       )}

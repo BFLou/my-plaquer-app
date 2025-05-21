@@ -143,16 +143,19 @@ const CollectionDetailHeader = ({
               </Badge>
             </div>
             
+            {/* Favorite button with improved styling */}
             <Button 
-              variant={collection.is_favorite ? "secondary" : "outline"}
+              variant={collection.is_favorite ? "default" : "outline"}
               size="sm"
               onClick={onToggleFavorite}
-              className={`h-8 ${collection.is_favorite ? "bg-amber-500/30 text-white border-amber-300/50" : "bg-white/10 text-white border-white/20 hover:bg-white/20"}`}
+              className={collection.is_favorite 
+                ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400" 
+                : "bg-white/10 hover:bg-white/20 text-white border-white/20"}
               disabled={isLoading}
             >
               <Star 
                 size={14} 
-                className={`mr-1 ${collection.is_favorite ? "fill-amber-300" : ""}`} 
+                className={`mr-1 ${collection.is_favorite ? "fill-white" : ""}`} 
               />
               {collection.is_favorite ? "Favorited" : "Favorite"}
             </Button>
