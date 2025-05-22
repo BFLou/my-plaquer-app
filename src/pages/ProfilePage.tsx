@@ -17,7 +17,9 @@ import {
   FolderOpen,
   CheckCircle,
   ArrowRight,
-  Clock
+  Clock,
+  ChevronRight,
+  Plus
 } from 'lucide-react';
 import { PageContainer } from '@/components';
 import { Button } from "@/components/ui/button";
@@ -629,75 +631,109 @@ const handleFileChange = async (e) => {
                 </div>
                 
                 {/* Routes Section - Enhanced */}
-                <div className="bg-white shadow-sm rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-bold text-lg">My Routes</h3>
-                      <p className="text-sm text-gray-500">
-                        {totalRoutes} saved routes • {routes.reduce((sum, r) => sum + r.total_distance, 0).toFixed(1)} km total
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate('/discover?view=map')}
-                    >
-                      Plan New Route
-                      <ArrowRight size={16} className="ml-2" />
-                    </Button>
-                  </div>
-                  
-                  {routes.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg">
-                      <RouteIcon className="mx-auto text-gray-300 mb-3" size={32} />
-                      <p className="text-gray-500">No routes saved yet</p>
-                      <p className="text-xs text-gray-400 mt-1">Create walking routes to explore multiple plaques in one trip</p>
-                      <Button 
-                        className="mt-4"
-                        onClick={() => navigate('/discover?view=map')}
-                      >
-                        Create Your First Route
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {recentRoutes.map(route => (
-                        <div 
-                          key={route.id}
-                          className="flex items-center gap-4 p-4 border rounded-lg hover:shadow-md cursor-pointer transition-all bg-gradient-to-r from-green-50 to-white"
-                          onClick={() => navigate(`/routes/${route.id}`)}
-                        >
-                          <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center">
-                            <RouteIcon size={20} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium">{route.name}</h4>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-sm text-gray-500">
-                                {route.points.length} stops
-                              </span>
-                              <span className="text-sm text-gray-500">•</span>
-                              <span className="text-sm text-gray-500">
-                                {route.total_distance.toFixed(1)} km
-                              </span>
-                              <span className="text-sm text-gray-500">•</span>
-                              <span className="text-sm text-gray-500">
-                                ~{Math.ceil(route.total_distance * 12)} min walk
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-500">
-                              {formatTimeAgo(route.created_at)}
-                            </p>
-                            {route.is_public && (
-                              <Badge variant="outline" className="text-xs mt-1 bg-green-50">Public</Badge>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+// In src/pages/ProfilePage.tsx, update the routes section around line 600+
+
+// Replace the existing routes section with:
+{/* Routes Section - Enhanced */}
+<div className="bg-white shadow-sm rounded-lg p-6">
+  <div className="flex items-center justify-between mb-4">
+    <div>
+      <h3 className="font-bold text-lg">My Routes</h3>
+      <p className="text-sm text-gray-500">
+        {totalRoutes} saved routes • {routes.reduce((sum, r) => sum + r.total_distance, 0).toFixed(1)} km total
+      </p>
+    </div>
+    <div className="flex items-center gap-2">
+      <Button 
+        variant="outline"
+        onClick={() => navigate('/discover?view=map')}
+        className="gap-1"
+      >
+        <Plus size={16} />
+        Create Route
+      </Button>
+      <Button 
+        variant="outline"
+        onClick={() => navigate('/routes')} // This will go to the routes management page
+        className="gap-1"
+      >
+        Manage Routes
+        <ArrowRight size={16} />
+      </Button>
+    </div>
+  </div>
+  
+  {routes.length === 0 ? (
+    <div className="text-center py-8 bg-gray-50 rounded-lg">
+      <RouteIcon className="mx-auto text-gray-300 mb-3" size={32} />
+      <p className="text-gray-500">No routes saved yet</p>
+      <p className="text-xs text-gray-400 mt-1">Create walking routes to explore multiple plaques in one trip</p>
+      <Button 
+        className="mt-4"
+        onClick={() => navigate('/discover?view=map')}
+      >
+        Create Your First Route
+      </Button>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {recentRoutes.map(route => (
+        <div 
+          key={route.id}
+          className="flex items-center gap-4 p-4 border rounded-lg hover:shadow-md cursor-pointer transition-all bg-gradient-to-r from-green-50 to-white group"
+          onClick={() => navigate(`/routes/${route.id}`)}
+        >
+          <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center">
+            <RouteIcon size={20} />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-medium group-hover:text-green-600 transition-colors">{route.name}</h4>
+            <div className="flex items-center gap-4 mt-1">
+              <span className="text-sm text-gray-500">
+                {route.points.length} stops
+              </span>
+              <span className="text-sm text-gray-500">•</span>
+              <span className="text-sm text-gray-500">
+                {route.total_distance.toFixed(1)} km
+              </span>
+              <span className="text-sm text-gray-500">•</span>
+              <span className="text-sm text-gray-500">
+                ~{Math.ceil(route.total_distance * 12)} min walk
+              </span>
+            </div>
+            {route.description && (
+              <p className="text-sm text-gray-600 mt-1 line-clamp-1">{route.description}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">
+              {formatTimeAgo(route.created_at)}
+            </p>
+            <div className="flex items-center gap-1 mt-1">
+              {route.is_public && (
+                <Badge variant="outline" className="text-xs bg-green-50">Public</Badge>
+              )}
+              {route.views && route.views > 0 && (
+                <Badge variant="outline" className="text-xs bg-blue-50">{route.views} views</Badge>
+              )}
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-gray-400 group-hover:text-green-500 transition-colors" />
+        </div>
+      ))}
+      
+      {routes.length > 3 && (
+        <Button
+          variant="ghost"
+          className="w-full justify-center text-sm text-gray-600 hover:text-green-600"
+          onClick={() => navigate('/routes')}
+        >
+          View All {routes.length} Routes
+        </Button>
+      )}
+    </div>
+  )}
+</div>
               </div>
             )}
             

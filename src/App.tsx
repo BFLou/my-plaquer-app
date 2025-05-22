@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import About from './pages/About';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import RoutesManagementPage from './components/routes/RoutesManagementPage';
 import RequireAuth from './components/auth/RequireAuth';
 import { Toaster } from 'sonner';
 
@@ -42,40 +43,43 @@ function App() {
               </RequireAuth>
             } />
             
-            {/* Profile routes - Add the missing collections tab route */}
+            {/* Routes management */}
+            <Route path="/routes" element={
+              <RequireAuth>
+                <RoutesManagementPage />
+              </RequireAuth>
+            } />
+            
+            <Route path="/routes/:id" element={
+              <RequireAuth>
+                {/* This would be a RouteDetailPage component if you create one */}
+                <div>Route Detail Page - Coming Soon</div>
+              </RequireAuth>
+            } />
+            
+            {/* Profile routes */}
             <Route path="/profile" element={
               <RequireAuth>
                 <ProfilePage />
               </RequireAuth>
             } />
             
-            <Route path="/profile/visited" element={
+            <Route path="/profile/:tab" element={
               <RequireAuth>
-                <ProfilePage activeTab="visited" />
+                <ProfilePage />
               </RequireAuth>
             } />
             
-            <Route path="/profile/collections" element={
-              <RequireAuth>
-                <ProfilePage activeTab="collections" />
-              </RequireAuth>
-            } />
-            
-            <Route path="/profile/routes" element={
-              <RequireAuth>
-                <ProfilePage activeTab="routes" />
-              </RequireAuth>
-            } />
-            
+            {/* Settings routes */}
             <Route path="/settings" element={
               <RequireAuth>
                 <SettingsPage />
               </RequireAuth>
             } />
             
-            <Route path="/settings/profile" element={
+            <Route path="/settings/:tab" element={
               <RequireAuth>
-                <SettingsPage activeTab="profile" />
+                <SettingsPage />
               </RequireAuth>
             } />
           </Routes>
