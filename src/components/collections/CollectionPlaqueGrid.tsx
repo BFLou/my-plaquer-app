@@ -87,7 +87,7 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
           onRemovePlaque={onRemovePlaque}
           onClick={onPlaqueClick}
           onAddToRoute={onAddToRoute}
-          showSelection={true}
+  showSelection={false} // Changed from true to false
           variant="collection"
         />
       ))}
