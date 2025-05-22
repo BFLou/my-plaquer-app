@@ -1,8 +1,10 @@
-// src/components/maps/controls/LocationSearchPanel.tsx
+// src/components/maps/controls/LocationSearchPanel.tsx - Enhanced with London focus
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, MapPin, Loader } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface LocationSuggestion {
   id: string;
@@ -21,19 +23,23 @@ interface LocationSuggestion {
 }
 
 interface LocationSearchPanelProps {
-  onSearch: (address: string) => void;
+  onSearch: (address: string, coordinates?: [number, number]) => void;
   onClose: () => void;
   isLoading: boolean;
+  useImperial?: boolean;
+  setUseImperial?: (value: boolean) => void;
+  maxDistance?: number;
+  setMaxDistance?: (distance: number) => void;
 }
 
-/**
- * LocationSearchPanel Component with Autocomplete
- * Provides location search functionality for the map with autocomplete suggestions
- */
 const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
   onSearch,
   onClose,
-  isLoading
+  isLoading,
+  useImperial = false,
+  setUseImperial = () => {},
+  maxDistance = 1,
+  setMaxDistance = () => {}
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -71,22 +77,23 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
       return;
     }
     
-    // Debounce API calls to avoid excessive requests
+    // Debounce API calls
     debounceTimerRef.current = setTimeout(() => {
       fetchSuggestions(value);
     }, 300);
   };
   
-  // Fetch location suggestions from API
+  // Fetch London-focused location suggestions
   const fetchSuggestions = async (query: string) => {
     if (!query || query.length < 2) return;
     
     setIsFetching(true);
     
     try {
-      // Using Nominatim API for location suggestions (free and reliable)
+      // London bounding box: roughly -0.489,51.28,0.236,51.686
+      const londonBounds = 'viewbox=-0.489,51.28,0.236,51.686&bounded=1';
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', London')}&limit=8&addressdetails=1&${londonBounds}&countrycodes=gb`
       );
       
       if (!response.ok) {
@@ -95,23 +102,41 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
       
       const data = await response.json();
       
-      // Format suggestions for display
-      const formattedSuggestions = data.map((item: any) => ({
-        id: item.place_id,
-        display_name: item.display_name,
-        lat: parseFloat(item.lat),
-        lon: parseFloat(item.lon),
-        type: item.type,
-        address: item.address,
-        importance: item.importance,
-        boundingbox: item.boundingbox
-      }));
+      // Format and prioritize suggestions
+      const formattedSuggestions = data
+        .map((item: any) => ({
+          id: item.place_id,
+          display_name: item.display_name,
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon),
+          type: item.type,
+          address: item.address,
+          importance: item.importance || 0,
+          boundingbox: item.boundingbox
+        }))
+        .sort((a: LocationSuggestion, b: LocationSuggestion) => {
+          // Prioritize by type and importance
+          const typeOrder = { 
+            'street': 5, 
+            'road': 5, 
+            'suburb': 4, 
+            'neighbourhood': 4,
+            'postcode': 3,
+            'city_district': 2,
+            'borough': 2,
+            'city': 1 
+          };
+          
+          const aScore = (typeOrder[a.type as keyof typeof typeOrder] || 0) + (a.importance || 0);
+          const bScore = (typeOrder[b.type as keyof typeof typeOrder] || 0) + (b.importance || 0);
+          
+          return bScore - aScore;
+        });
       
       // Store in cache
       autocompleteCache.current.set(query, formattedSuggestions);
-      
-      // Update state
       setSuggestions(formattedSuggestions);
+      
     } catch (error) {
       console.error('Error fetching location suggestions:', error);
       setSuggestions([]);
@@ -134,7 +159,7 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
     e.preventDefault();
     if (searchValue.trim()) {
       onSearch(searchValue);
-      setSuggestions([]); // Clear suggestions after search
+      setSuggestions([]);
     }
   };
   
@@ -142,30 +167,11 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
   const selectSuggestion = (suggestion: LocationSuggestion) => {
     setSearchValue(suggestion.display_name);
     setSuggestions([]);
-    // Pass the full display name to the search function
-    onSearch(suggestion.display_name);
+    // Pass coordinates along with the search
+    onSearch(suggestion.display_name, [suggestion.lat, suggestion.lon]);
   };
 
-  // Function to render address with highlighted matching text
-  const renderHighlightedAddress = (suggestion: LocationSuggestion) => {
-    const fullAddress = suggestion.display_name;
-    const searchTerms = searchValue.toLowerCase().split(' ').filter(term => term.length > 1);
-    
-    if (searchTerms.length === 0) return fullAddress;
-    
-    // Create parts to highlight
-    let result = fullAddress;
-    searchTerms.forEach(term => {
-      const regex = new RegExp(`(${term})`, 'gi');
-      result = result.replace(regex, '<strong>$1</strong>');
-    });
-    
-    return (
-      <div dangerouslySetInnerHTML={{ __html: result }}></div>
-    );
-  };
-  
-  // Render location type icon based on suggestion type
+  // Render location type icon
   const renderLocationIcon = (type: string) => {
     switch(type) {
       case 'city':
@@ -176,26 +182,25 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
       case 'road':
       case 'path':
         return <MapPin size={14} className="text-green-500" />;
-      case 'building':
-      case 'house':
-      case 'apartment':
-        return <MapPin size={14} className="text-red-500" />;
+      case 'suburb':
+      case 'neighbourhood':
+        return <MapPin size={14} className="text-purple-500" />;
+      case 'postcode':
+        return <MapPin size={14} className="text-orange-500" />;
       default:
         return <MapPin size={14} className="text-gray-400" />;
     }
   };
 
-  // Handle keyboard navigation of suggestions
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (suggestions.length === 0) return;
-    
-    if (e.key === 'Escape') {
-      setSuggestions([]);
-    }
+  // Format display distance
+  const formatDistance = (distance: number) => {
+    return useImperial 
+      ? `${(distance * 0.621371).toFixed(1)} mi`
+      : `${distance.toFixed(1)} km`;
   };
 
   return (
-    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-72 sm:w-96">
+    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-80 sm:w-96">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-medium flex items-center gap-1.5">
           <MapPin size={16} className="text-gray-500" />
@@ -216,10 +221,9 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
           <Input
             ref={inputRef}
             type="text"
-            placeholder="Enter address or location..."
+            placeholder="Search for address or area in London..."
             value={searchValue}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
             className="pl-9 pr-4 py-2 w-full"
             disabled={isLoading}
             autoComplete="off"
@@ -262,10 +266,16 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
                   {renderLocationIcon(suggestion.type)}
                   <div className="flex-1 overflow-hidden">
                     <div className="text-gray-800 font-medium truncate">
-                      {renderHighlightedAddress(suggestion)}
+                      {suggestion.display_name.split(',').slice(0, 2).join(', ')}
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {suggestion.type} {suggestion.address?.country ? `• ${suggestion.address.country}` : ''}
+                    <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                      <span className="capitalize">{suggestion.type}</span>
+                      {suggestion.address?.postcode && (
+                        <>
+                          <span>•</span>
+                          <span>{suggestion.address.postcode}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -273,6 +283,41 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
             ))}
           </div>
         )}
+        
+        {/* Distance Settings */}
+        <div className="border-t pt-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="search-units" className="text-sm">
+              Units: {useImperial ? 'Miles' : 'Kilometers'}
+            </Label>
+            <Switch
+              id="search-units"
+              checked={useImperial}
+              onCheckedChange={setUseImperial}
+              size="sm"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm">Search Radius</Label>
+              <span className="text-sm font-medium">{formatDistance(maxDistance)}</span>
+            </div>
+            <input
+              type="range"
+              min={useImperial ? "0.3" : "0.5"}
+              max={useImperial ? "3.1" : "5"}
+              step="0.1"
+              value={useImperial ? (maxDistance * 0.621371) : maxDistance}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                const kmValue = useImperial ? (value / 0.621371) : value;
+                setMaxDistance(parseFloat(kmValue.toFixed(1)));
+              }}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+        </div>
         
         <div className="flex gap-2">
           <Button 
@@ -294,14 +339,14 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
                 Searching...
               </>
             ) : (
-              <>Search</>
+              <>Search Area</>
             )}
           </Button>
         </div>
       </form>
       
       <div className="mt-3 text-xs text-gray-500">
-        <p>Try searching for a city, address, or landmark to find plaques in that area.</p>
+        <p>Search for London locations. A distance filter will be applied automatically.</p>
       </div>
     </div>
   );

@@ -1,9 +1,11 @@
-// src/components/maps/controls/FilterPanel.tsx
+// src/components/maps/controls/FilterPanel.tsx - Enhanced with units toggle
 import React from 'react';
 import { X, CornerUpLeft, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface FilterPanelProps {
   maxDistance: number;
@@ -13,11 +15,12 @@ interface FilterPanelProps {
   closeFilters: () => void;
   resetFilters: () => void;
   hasUserLocation: boolean;
+  useImperial?: boolean;
+  setUseImperial?: (value: boolean) => void;
 }
 
 /**
- * FilterPanel Component
- * Provides distance-based filtering for plaques
+ * FilterPanel Component with units toggle
  */
 const FilterPanel: React.FC<FilterPanelProps> = ({
   maxDistance, 
@@ -26,10 +29,31 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   applyFilter,
   closeFilters,
   resetFilters,
-  hasUserLocation
+  hasUserLocation,
+  useImperial = false,
+  setUseImperial = () => {}
 }) => {
-  // Distance marker generator for the slider
-  const distanceMarkers = [0.5, 1, 2, 3, 5];
+  // Convert distance based on units
+  const displayDistance = useImperial ? (maxDistance * 0.621371) : maxDistance;
+  const unit = useImperial ? 'mi' : 'km';
+  
+  // Generate distance markers based on units
+  const distanceMarkers = useImperial 
+    ? [0.3, 0.6, 1.2, 1.9, 3.1] // miles
+    : [0.5, 1, 2, 3, 5]; // kilometers
+  
+  const handleDistanceChange = (values: number[]) => {
+    const newValue = values[0];
+    // Convert back to km for internal storage if using imperial
+    const kmValue = useImperial ? (newValue / 0.621371) : newValue;
+    setMaxDistance(parseFloat(kmValue.toFixed(1)));
+  };
+  
+  const formatDistance = (distance: number) => {
+    return useImperial 
+      ? `${(distance * 0.621371).toFixed(1)} mi`
+      : `${distance.toFixed(1)} km`;
+  };
   
   return (
     <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-72 sm:w-80">
@@ -67,8 +91,21 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           </div>
         ) : (
           <>
+            {/* Units Toggle */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-100">
+              <Label htmlFor="units-toggle" className="text-sm font-medium">
+                Units: {useImperial ? 'Miles' : 'Kilometers'}
+              </Label>
+              <Switch
+                id="units-toggle"
+                checked={useImperial}
+                onCheckedChange={setUseImperial}
+                size="sm"
+              />
+            </div>
+            
             <div className="flex justify-between items-center">
-              <span className="text-sm">Range: <span className="font-medium">{maxDistance} km</span></span>
+              <span className="text-sm">Range: <span className="font-medium">{formatDistance(maxDistance)}</span></span>
               <Badge 
                 variant={filteredPlaquesCount > 0 ? "secondary" : "outline"} 
                 className="text-xs"
@@ -81,11 +118,11 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
             
             <div className="pt-2 pb-6 px-1 relative">
               <Slider
-                value={[maxDistance]}
-                min={0.5}
-                max={5}
-                step={0.1}
-                onValueChange={(values) => setMaxDistance(parseFloat(values[0].toFixed(1)))}
+                value={[displayDistance]}
+                min={useImperial ? 0.3 : 0.5}
+                max={useImperial ? 3.1 : 5}
+                step={useImperial ? 0.1 : 0.1}
+                onValueChange={handleDistanceChange}
                 className="w-full"
               />
               
@@ -94,16 +131,16 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                 {distanceMarkers.map((marker) => (
                   <span 
                     key={marker} 
-                    className={`${maxDistance === marker ? 'text-blue-600 font-medium' : ''}`}
+                    className={`${Math.abs(displayDistance - marker) < 0.1 ? 'text-blue-600 font-medium' : ''}`}
                   >
-                    {marker}km
+                    {marker}{unit}
                   </span>
                 ))}
               </div>
             </div>
             
             <div className="text-xs text-gray-500 mt-6 mb-1">
-              <p>This filter will show plaques within {maxDistance} km of your current location.</p>
+              <p>This filter will show plaques within {formatDistance(maxDistance)} of your current location.</p>
             </div>
             
             <Button 

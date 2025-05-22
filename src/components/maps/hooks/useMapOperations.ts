@@ -1,11 +1,8 @@
-// src/components/maps/hooks/useMapOperations.ts
+// src/components/maps/hooks/useMapOperations.ts - Fixed double circle issue
 import { useCallback, useState, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from '../utils/routeUtils';
 
-/**
- * Custom hook for map operations like location finding, filtering, etc.
- */
 export default function useMapOperations(
   mapInstance: any,
   plaques: Plaque[],
@@ -13,12 +10,29 @@ export default function useMapOperations(
   setIsLoadingLocation: (loading: boolean) => void,
   setFilteredPlaquesCount: (count: number) => void,
   routePoints: Plaque[],
-  setUserLocation?: React.Dispatch<React.SetStateAction<[number, number] | null>>
+  setUserLocation?: React.Dispatch<React.SetStateAction<[number, number] | null>>,
+  useImperial: boolean = false
 ) {
   const [userLocationMarker, setUserLocationMarker] = useState<any>(null);
   const [accuracyCircle, setAccuracyCircle] = useState<any>(null);
   const [distanceCircle, setDistanceCircle] = useState<any>(null);
   const routeLineRef = useRef<any>(null);
+  
+  // Clear all location-related overlays
+  const clearLocationOverlays = useCallback(() => {
+    if (userLocationMarker) {
+      mapInstance.removeLayer(userLocationMarker);
+      setUserLocationMarker(null);
+    }
+    if (accuracyCircle) {
+      mapInstance.removeLayer(accuracyCircle);
+      setAccuracyCircle(null);
+    }
+    if (distanceCircle) {
+      mapInstance.removeLayer(distanceCircle);
+      setDistanceCircle(null);
+    }
+  }, [mapInstance, userLocationMarker, accuracyCircle, distanceCircle]);
   
   // Find user's location
   const findUserLocation = useCallback(() => {
@@ -34,17 +48,12 @@ export default function useMapOperations(
         (position) => {
           const { latitude, longitude } = position.coords;
           
-          // Clear previous location markers if exist
-          if (userLocationMarker) {
-            mapInstance.removeLayer(userLocationMarker);
-          }
-          if (accuracyCircle) {
-            mapInstance.removeLayer(accuracyCircle);
-          }
+          // Clear existing location overlays
+          clearLocationOverlays();
           
-          // Add user location marker
           const L = window.L;
           
+          // Add user location marker with improved styling
           const userMarker = L.marker([latitude, longitude], {
             icon: L.divIcon({
               className: 'user-location-marker',
@@ -58,19 +67,24 @@ export default function useMapOperations(
             })
           }).addTo(mapInstance);
           
-          // Add accuracy circle with better styling
-          const newAccuracyCircle = L.circle([latitude, longitude], {
-            radius: position.coords.accuracy,
-            fillColor: '#3b82f6',
-            fillOpacity: 0.1,
-            color: '#3b82f6',
-            weight: 1,
-            opacity: 0.5
-          }).addTo(mapInstance);
+          // Only add accuracy circle if it's significantly different from the distance filter
+          // and the accuracy is reasonable (less than 100m)
+          if (position.coords.accuracy < 100) {
+            const newAccuracyCircle = L.circle([latitude, longitude], {
+              radius: position.coords.accuracy,
+              fillColor: '#3b82f6',
+              fillOpacity: 0.1,
+              color: '#3b82f6',
+              weight: 1,
+              opacity: 0.3,
+              dashArray: '2, 4'
+            }).addTo(mapInstance);
+            
+            setAccuracyCircle(newAccuracyCircle);
+          }
           
           // Store references
           setUserLocationMarker(userMarker);
-          setAccuracyCircle(newAccuracyCircle);
           
           // Pan to location with smooth animation
           mapInstance.flyTo([latitude, longitude], 15, {
@@ -102,8 +116,7 @@ export default function useMapOperations(
     maxDistance, 
     setIsLoadingLocation, 
     setFilteredPlaquesCount, 
-    userLocationMarker, 
-    accuracyCircle, 
+    clearLocationOverlays,
     setUserLocation
   ]);
 
@@ -122,39 +135,44 @@ export default function useMapOperations(
     });
   }, [plaques]);
 
-  // Draw distance circle around user location
+  // Draw distance circle around user location - SINGLE CIRCLE ONLY
   const drawDistanceCircle = useCallback((center: [number, number], radiusKm: number) => {
     if (!window.L || !mapInstance) return;
     
     const L = window.L;
     
-    // Remove existing circle
+    // Remove existing distance circle
     if (distanceCircle) {
       mapInstance.removeLayer(distanceCircle);
     }
     
-    // Create new circle with improved styling
+    // Create new distance circle with clear styling
     const circle = L.circle(center, {
       radius: radiusKm * 1000, // Convert km to meters
-      fillColor: '#3b82f6',
-      fillOpacity: 0.08,
-      color: '#3b82f6',
+      fillColor: '#10b981', // Different color from accuracy circle
+      fillOpacity: 0.15,
+      color: '#10b981',
       weight: 2,
-      opacity: 0.6,
-      dashArray: '5, 5',
+      opacity: 0.8,
+      dashArray: '8, 4',
     }).addTo(mapInstance);
     
     // Show distance as label
+    const displayDistance = useImperial 
+      ? `${(radiusKm * 0.621371).toFixed(1)} mi`
+      : `${radiusKm.toFixed(1)} km`;
+      
     const label = L.marker(center, {
       icon: L.divIcon({
         className: 'distance-label',
-        html: `<div class="px-2 py-1 bg-white rounded-full shadow-md text-xs text-blue-600 font-medium">${radiusKm} km</div>`,
-        iconAnchor: [25, 0]
+        html: `<div class="px-2 py-1 bg-white rounded-full shadow-md text-xs text-green-600 font-medium border border-green-200">${displayDistance}</div>`,
+        iconAnchor: [25, -5]
       })
     }).addTo(mapInstance);
     
-    // Store references
-    setDistanceCircle(circle);
+    // Store references (combine circle and label as a group)
+    const distanceGroup = L.featureGroup([circle, label]);
+    setDistanceCircle(distanceGroup);
     
     // Fit bounds to show entire filter area
     mapInstance.fitBounds(circle.getBounds(), {
@@ -163,8 +181,8 @@ export default function useMapOperations(
       animate: true
     });
     
-    return circle;
-  }, [mapInstance, distanceCircle]);
+    return distanceGroup;
+  }, [mapInstance, distanceCircle, useImperial]);
 
   // Apply distance filter
   const applyDistanceFilter = useCallback(() => {
@@ -216,7 +234,7 @@ export default function useMapOperations(
   const resetFilters = useCallback(() => {
     if (!mapInstance) return;
     
-    // Clear distance circle
+    // Clear distance circle only, keep user location marker
     if (distanceCircle) {
       mapInstance.removeLayer(distanceCircle);
       setDistanceCircle(null);
@@ -231,9 +249,9 @@ export default function useMapOperations(
     if (!address.trim() || !mapInstance || !window.L) return false;
     
     try {
-      // Use OpenStreetMap's Nominatim service for geocoding
+      // Use OpenStreetMap's Nominatim service for geocoding (London-focused)
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', London, UK')}&limit=1&bounded=1&viewbox=-0.489,51.28,0.236,51.686`
       );
       
       if (!response.ok) {
@@ -243,7 +261,6 @@ export default function useMapOperations(
       const data = await response.json();
       
       if (data && data.length > 0) {
-        // Get first result
         const result = data[0];
         const lat = parseFloat(result.lat);
         const lon = parseFloat(result.lon);
@@ -257,17 +274,12 @@ export default function useMapOperations(
           setUserLocation([lat, lon]);
         }
         
-        // Remove previous location markers if they exist
-        if (userLocationMarker) {
-          mapInstance.removeLayer(userLocationMarker);
-        }
-        if (accuracyCircle) {
-          mapInstance.removeLayer(accuracyCircle);
-        }
+        // Clear previous location overlays
+        clearLocationOverlays();
         
         const L = window.L;
         
-        // Create marker for search location with improved styling
+        // Create marker for search location
         const searchLocationMarker = L.marker([lat, lon], {
           icon: L.divIcon({
             className: 'search-location-marker',
@@ -307,40 +319,23 @@ export default function useMapOperations(
         // Format address for display
         const displayAddress = result.display_name.split(',').slice(0, 3).join(', ');
         
-        // Add popup with improved location info
+        // Add popup with location info
         const popupContent = `
           <div class="p-3">
             <div class="font-medium text-sm">${displayAddress}</div>
             <div class="text-xs text-gray-500 mt-1">
               <span class="font-medium">Type:</span> ${result.type || 'Location'}
             </div>
-            ${result.boundingbox ? `
-              <div class="text-xs text-gray-500 mt-1">
-                <span class="font-medium">Area:</span> ${Math.round((result.boundingbox[2] - result.boundingbox[0]) * 111)} × ${Math.round((result.boundingbox[3] - result.boundingbox[1]) * 111)} km
-              </div>
-            ` : ''}
           </div>
         `;
         
         searchLocationMarker.bindPopup(popupContent).openPopup();
         
-        // Create accuracy circle with animation
-        const searchAccuracyCircle = L.circle([lat, lon], {
-          radius: result.importance ? Math.max(300, Math.min(2000, 2000 * (1 - result.importance))) : 300, // Scale radius based on importance
-          fillColor: '#ef4444',
-          fillOpacity: 0.08,
-          color: '#ef4444',
-          weight: 2,
-          opacity: 0.5
-        }).addTo(mapInstance);
-        
         // Store references
         setUserLocationMarker(searchLocationMarker);
-        setAccuracyCircle(searchAccuracyCircle);
         
-        // Calculate a good zoom level based on the type of location
-        let zoomLevel = 15; // Default zoom level
-        
+        // Calculate zoom level based on location type
+        let zoomLevel = 15;
         if (result.type === 'country') zoomLevel = 6;
         else if (result.type === 'state' || result.type === 'region') zoomLevel = 8;
         else if (result.type === 'county') zoomLevel = 10;
@@ -349,37 +344,11 @@ export default function useMapOperations(
         else if (result.type === 'street' || result.type === 'road') zoomLevel = 16;
         else if (result.type === 'building' || result.type === 'house') zoomLevel = 18;
         
-        // Use bounds if available for better view
-        if (result.boundingbox) {
-          try {
-            const bbox = result.boundingbox.map(parseFloat);
-            const bounds = L.latLngBounds([
-              [bbox[0], bbox[2]], // Southwest
-              [bbox[1], bbox[3]]  // Northeast
-            ]);
-            
-            if (bounds.isValid()) {
-              mapInstance.fitBounds(bounds, { padding: [50, 50] });
-            } else {
-              mapInstance.flyTo([lat, lon], zoomLevel, {
-                animate: true,
-                duration: 1.5
-              });
-            }
-          } catch (e) {
-            // Fallback to simple flyTo if bounds parsing fails
-            mapInstance.flyTo([lat, lon], zoomLevel, {
-              animate: true,
-              duration: 1.5
-            });
-          }
-        } else {
-          // No bounds available, use flyTo
-          mapInstance.flyTo([lat, lon], zoomLevel, {
-            animate: true,
-            duration: 1.5
-          });
-        }
+        // Fly to location
+        mapInstance.flyTo([lat, lon], zoomLevel, {
+          animate: true,
+          duration: 1.5
+        });
         
         // Calculate plaques in range
         const plaquesInRange = filterPlaquesInRange([lat, lon], maxDistance);
@@ -396,8 +365,7 @@ export default function useMapOperations(
   }, [
     mapInstance, 
     maxDistance, 
-    userLocationMarker, 
-    accuracyCircle, 
+    clearLocationOverlays,
     setUserLocation, 
     filterPlaquesInRange, 
     setFilteredPlaquesCount
@@ -411,14 +379,12 @@ export default function useMapOperations(
     }
   }, [mapInstance]);
 
-  // Draw basic route (without API - this is a simplified version)
+  // Draw basic route
+// Draw basic route
   const drawRoute = useCallback((points: Plaque[]) => {
     if (!window.L || !mapInstance || points.length < 2) return;
     
-    // Clear existing route
-    if (routeLineRef.current) {
-      mapInstance.removeLayer(routeLineRef.current);
-    }
+    clearRoute();
     
     try {
       const L = window.L;
@@ -456,7 +422,7 @@ export default function useMapOperations(
       console.error("Error creating route:", error);
       return null;
     }
-  }, [mapInstance]);
+  }, [mapInstance, clearRoute]);
 
   return {
     findUserLocation,

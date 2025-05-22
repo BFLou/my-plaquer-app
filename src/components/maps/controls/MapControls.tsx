@@ -1,12 +1,10 @@
-// src/components/maps/controls/MapControls.tsx - Updated with fullscreen and layer controls
+// src/components/maps/controls/MapControls.tsx - Updated reset icon
 import React from 'react';
 import { 
   Navigation, 
   Filter, 
   Route as RouteIcon, 
-  Map,
-  Maximize,
-  Minimize,
+  RotateCcw, // Changed from Map to RotateCcw for reset
   ZoomIn,
   ZoomOut,
   Layers
@@ -36,19 +34,12 @@ interface MapControlsProps {
   hasUserLocation: boolean;
   routePointsCount: number;
   resetMap: () => void;
-  // Remove these:
-  // isFullScreen?: boolean;
-  // toggleFullScreen?: () => void;
   zoomIn?: () => void;
   zoomOut?: () => void;
   activeBaseMap?: string;
   changeBaseMap?: (type: string) => void;
 }
 
-/**
- * MapControls Component
- * Provides control buttons for the map (location, filter, route, etc.)
- */
 const MapControls: React.FC<MapControlsProps> = ({
   isLoadingLocation,
   showFilters,
@@ -59,16 +50,12 @@ const MapControls: React.FC<MapControlsProps> = ({
   hasUserLocation,
   routePointsCount,
   resetMap,
-  // Remove these:
-  // isFullScreen = false,
-  // toggleFullScreen,
   zoomIn,
   zoomOut,
   activeBaseMap = 'street',
   changeBaseMap
 }) => {
 
-  // Map type names for display
   const mapTypeNames: Record<string, string> = {
     'street': 'Street',
     'satellite': 'Satellite',
@@ -220,7 +207,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             </Tooltip>
           )}
           
-          {/* Reset Button */}
+          {/* Reset Button - Updated with new icon */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
@@ -229,7 +216,7 @@ const MapControls: React.FC<MapControlsProps> = ({
                 className="h-10 w-10 p-0"
                 onClick={resetMap}
               >
-                <Map size={18} />
+                <RotateCcw size={18} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left">
