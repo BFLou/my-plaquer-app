@@ -1,12 +1,11 @@
-// src/components/layout/NavBar.tsx (Updated with auth integration)
+// src/components/layout/NavBar.tsx (Updated with Library navigation)
 import React, { useState } from 'react';
-import { MapPin, X, MoreHorizontal } from 'lucide-react';
+import { MapPin, X, MoreHorizontal, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/hooks/useAuth';
 import UserMenu from '@/components/auth/UserMenu';
-import PlaquerLogo from '@/components/common/PlaquerLogo'; // Import the logo component
-
+import PlaquerLogo from '@/components/common/PlaquerLogo';
 
 type NavLinkProps = {
   to: string;
@@ -26,14 +25,22 @@ const NavLink = ({ to, children, isActive = false }: NavLinkProps) => (
 );
 
 type NavBarProps = {
-  activePage?: 'home' | 'discover' | 'collections' | 'about' | 'profile' | 'settings';
+  activePage?: 'home' | 'discover' | 'library' | 'collections' | 'about' | 'profile' | 'settings';
 };
 
-// src/components/layout/NavBar.tsx - Key changes only
 export const NavBar = ({ activePage }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
+  
+  // Helper function to determine if library pages are active
+  const isLibraryActive = () => {
+    return activePage === 'library' || 
+           activePage === 'collections' || 
+           location.pathname.includes('/library') || 
+           location.pathname.includes('/collections') || 
+           location.pathname.includes('/routes');
+  };
   
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
@@ -45,12 +52,20 @@ export const NavBar = ({ activePage }: NavBarProps) => {
         
         {/* Desktop Navigation */}
         <nav className="hidden md:flex gap-6 items-center">
-          <NavLink to="/" isActive={activePage === 'home' || location.pathname === '/'}>Home</NavLink>
-          <NavLink to="/discover" isActive={activePage === 'discover' || location.pathname.includes('/discover')}>Discover</NavLink>
-          <NavLink to="/collections" isActive={activePage === 'collections' || location.pathname.includes('/collections')}>Collections</NavLink>
-          <NavLink to="/about" isActive={activePage === 'about'}>About</NavLink>
+          <NavLink to="/" isActive={activePage === 'home' || location.pathname === '/'}>
+            Home
+          </NavLink>
+          <NavLink to="/discover" isActive={activePage === 'discover' || location.pathname.includes('/discover')}>
+            Discover
+          </NavLink>
+          <NavLink to="/library" isActive={isLibraryActive()}>
+            My Library
+          </NavLink>
+          <NavLink to="/about" isActive={activePage === 'about'}>
+            About
+          </NavLink>
           
-          {/* User Menu with updated items */}
+          {/* User Menu */}
           <UserMenu />
         </nav>
         
@@ -68,7 +83,7 @@ export const NavBar = ({ activePage }: NavBarProps) => {
         </div>
       </div>
       
-      {/* Mobile Menu - Remove duplicate Profile/Settings links since they're in UserMenu */}
+      {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white absolute left-0 right-0 top-16 shadow-md p-4 z-50 border-t border-gray-100">
           <div className="flex flex-col space-y-4">
@@ -87,11 +102,12 @@ export const NavBar = ({ activePage }: NavBarProps) => {
               Discover
             </Link>
             <Link 
-              to="/collections" 
-              className={`${activePage === 'collections' ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition`}
+              to="/library" 
+              className={`${isLibraryActive() ? 'text-blue-600 font-medium' : 'text-gray-600'} hover:text-blue-600 py-2 transition flex items-center gap-2`}
               onClick={() => setIsMenuOpen(false)}
             >
-              Collections
+              <BookOpen size={16} />
+              My Library
             </Link>
             <Link 
               to="/about" 

@@ -1,9 +1,9 @@
-// src/pages/Collections.tsx
+// src/pages/Collections.tsx - Updated with breadcrumb navigation
 import React, { useState, useEffect } from 'react';
 import { 
   MapPin, Star, Trash2, FolderOpen, Plus, 
   Search, Grid, List, X, 
-  CheckCircle, MoreHorizontal, Package
+  CheckCircle, MoreHorizontal, Package, ArrowLeft
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -126,12 +126,12 @@ const CollectionsPage = () => {
   if (loading && collections.length === 0) {
     return (
       <PageContainer 
-        activePage="collections"
+        activePage="library"
         simplifiedFooter={true}
       >
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent mb-4"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-purple-500 border-r-transparent mb-4"></div>
             <p className="text-gray-500">Loading collections...</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ const CollectionsPage = () => {
   if (error) {
     return (
       <PageContainer 
-        activePage="collections"
+        activePage="library"
         simplifiedFooter={true}
       >
         <div className="container mx-auto px-4 py-6">
@@ -161,33 +161,57 @@ const CollectionsPage = () => {
   
   return (
     <PageContainer 
-      activePage="collections"
+      activePage="library"
       simplifiedFooter={true}
     >
-      {/* Hero Section with decorative background circles */}
-      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
-        {/* Decorative background circles */}
+      {/* Hero Section with breadcrumb */}
+      <section className="relative bg-gradient-to-br from-purple-600 to-purple-700 text-white py-6 px-4 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
-          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
-          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+          <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-white"></div>
+          <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
+          <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
         </div>
         
         <div className="container mx-auto max-w-5xl relative z-10">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/library')} 
+              className="text-white hover:bg-white/20 h-8 w-8 p-0"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+            <a 
+              className="text-white/80 hover:text-white text-sm cursor-pointer" 
+              onClick={() => navigate('/library')}
+            >
+              My Library
+            </a>
+            <span className="text-white/50">/</span>
+            <span className="text-white font-medium">Collections</span>
+          </div>
+
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">My Collections</h1>
+            <div className="flex items-center gap-3">
+              <FolderOpen size={24} className="text-white" />
+              <div>
+                <h1 className="text-2xl font-bold">My Collections</h1>
+                <p className="opacity-90 text-sm">
+                  Organize and explore your favorite London plaques in themed collections.
+                </p>
+              </div>
+            </div>
             
             {/* Prominent Create New Collection Button */}
             <Button 
               onClick={() => setCreateCollectionOpen(true)}
-              className="bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              className="bg-white text-purple-600 hover:bg-purple-50 hover:text-purple-700"
             >
               <Plus size={16} className="mr-2" /> New Collection
             </Button>
           </div>
-          <p className="opacity-90 mt-1">
-            Organize and explore your favorite London plaques in personalized collections.
-          </p>
         </div>
       </section>
       
@@ -196,7 +220,7 @@ const CollectionsPage = () => {
         <div className="bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
           <div className="flex gap-4 items-center">
             <div className="text-center px-3 py-1">
-              <div className="text-lg font-bold text-blue-600">{collections.length}</div>
+              <div className="text-lg font-bold text-purple-600">{collections.length}</div>
               <div className="text-xs text-gray-500">Collections</div>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
@@ -233,26 +257,26 @@ const CollectionsPage = () => {
           {/* Tabs */}
           <div className="flex border-b">
             <button 
-              className={`px-4 py-3 font-medium text-sm ${activeTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              className={`px-4 py-3 font-medium text-sm ${activeTab === 'all' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-gray-800'}`}
               onClick={() => handleTabChange('all')}
             >
               All Collections
             </button>
             <button 
-              className={`px-4 py-3 font-medium text-sm ${activeTab === 'favorites' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              className={`px-4 py-3 font-medium text-sm ${activeTab === 'favorites' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-gray-800'}`}
               onClick={() => handleTabChange('favorites')}
             >
               Favorites
             </button>
             <button 
-              className={`px-4 py-3 font-medium text-sm ${activeTab === 'recent' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-800'}`}
+              className={`px-4 py-3 font-medium text-sm ${activeTab === 'recent' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-gray-800'}`}
               onClick={() => handleTabChange('recent')}
             >
               Recently Updated
             </button>
           </div>
           
-          {/* Search and View Toggle - Filter icon removed */}
+          {/* Search and View Toggle */}
           <div className="p-3 flex items-center gap-3">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -334,7 +358,7 @@ const CollectionsPage = () => {
                 onDuplicate={handleDuplicateCollection}
                 onToggleFavorite={handleToggleFavorite}
                 onDelete={(id) => prepareForDelete([id])}
-                onClick={navigateToCollection}
+                onClick={(id) => navigate(`/library/collections/${id}`)} // Updated path
               />
             )}
             
@@ -347,7 +371,7 @@ const CollectionsPage = () => {
                 onDuplicate={handleDuplicateCollection}
                 onToggleFavorite={handleToggleFavorite}
                 onDelete={(id) => prepareForDelete([id])}
-                onClick={navigateToCollection}
+                onClick={(id) => navigate(`/library/collections/${id}`)} // Updated path
               />
             )}
           </>
@@ -386,13 +410,12 @@ const CollectionsPage = () => {
         isLoading={isLoading}
       />
       
-      {/* Edit Collection - Now using CollectionCreateForm instead of CollectionEditForm */}
+      {/* Edit Collection */}
       {editCollectionData && (
         <CollectionCreateForm
           isOpen={editCollectionOpen}
           onClose={() => {
             setEditCollectionOpen(false);
-            // Reset the edit data when closing to prevent stale data issues
             setTimeout(() => setEditCollectionData(null), 300);
           }}
           onSubmit={handleEditCollection}
@@ -401,7 +424,7 @@ const CollectionsPage = () => {
             name: editCollectionData.name || '',
             description: editCollectionData.description || '',
             icon: editCollectionData.icon || '🎭',
-            color: editCollectionData.color || 'bg-blue-500',
+            color: editCollectionData.color || 'bg-purple-500',
             isPublic: editCollectionData.is_public || false,
             tags: editCollectionData.tags || []
           }}
