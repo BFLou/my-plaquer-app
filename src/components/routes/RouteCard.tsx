@@ -9,9 +9,7 @@ import {
   Trash2, 
   Star,
   MapPin,
-  Clock,
-  Globe,
-  Lock
+  Clock
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,16 +58,16 @@ const RouteCard: React.FC<RouteCardProps> = ({
       onClick={() => onView(route)}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3 flex-1">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center shrink-0">
             <RouteIcon size={20} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg truncate group-hover:text-green-600 transition-colors">
+            <h3 className="font-semibold text-lg group-hover:text-green-600 transition-colors line-clamp-1" title={route.name}>
               {route.name}
             </h3>
             {route.description && (
-              <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+              <p className="text-sm text-gray-600 line-clamp-2 mt-1" title={route.description}>
                 {route.description}
               </p>
             )}
@@ -81,7 +79,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical size={16} />
@@ -150,32 +148,6 @@ const RouteCard: React.FC<RouteCardProps> = ({
             <Clock size={14} />
             <span>~{walkingTime} min</span>
           </div>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {route.is_public ? (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <Globe size={12} className="mr-1" />
-                Public
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                <Lock size={12} className="mr-1" />
-                Private
-              </Badge>
-            )}
-            {route.views && route.views > 0 && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <Eye size={12} className="mr-1" />
-                {route.views} views
-              </Badge>
-            )}
-          </div>
-          
-          <span className="text-xs text-gray-500">
-            {formatTimeAgo(route.updated_at || route.created_at)}
-          </span>
         </div>
       </div>
     </div>

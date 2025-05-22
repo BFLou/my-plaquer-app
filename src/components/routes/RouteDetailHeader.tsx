@@ -8,9 +8,7 @@ import {
   Edit, 
   Copy, 
   Trash2, 
-  Share, 
-  Globe,
-  Lock,
+  Share,
   MapPin,
   Clock,
   Route as RouteIcon
@@ -65,18 +63,18 @@ const RouteDetailHeader: React.FC<RouteDetailHeaderProps> = ({
       <div className="container mx-auto max-w-5xl relative z-10">
         <div className="flex items-start justify-between mb-4">
           {/* Back button and title */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
             <Button 
               variant="ghost" 
               size="sm"
               onClick={onBack}
-              className="text-white hover:bg-white/20 h-10 w-10 p-0"
+              className="text-white hover:bg-white/20 h-10 w-10 p-0 shrink-0"
             >
               <ArrowLeft size={20} />
             </Button>
             
-            <div>
-              <h1 className="text-2xl font-bold">{route.name}</h1>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold truncate" title={route.name}>{route.name}</h1>
               <div className="flex items-center gap-4 mt-2 text-sm opacity-90">
                 <div className="flex items-center gap-1">
                   <RouteIcon size={14} />
@@ -95,7 +93,7 @@ const RouteDetailHeader: React.FC<RouteDetailHeaderProps> = ({
           </div>
           
           {/* Action buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -157,23 +155,6 @@ const RouteDetailHeader: React.FC<RouteDetailHeaderProps> = ({
         
         {/* Route metadata */}
         <div className="flex flex-wrap items-center gap-3">
-          <Badge 
-            variant="outline" 
-            className={`${route.is_public ? 'bg-white/20 text-white border-white/30' : 'bg-gray-600/20 text-white border-gray-300/30'}`}
-          >
-            {route.is_public ? (
-              <>
-                <Globe size={12} className="mr-1" />
-                Public
-              </>
-            ) : (
-              <>
-                <Lock size={12} className="mr-1" />
-                Private
-              </>
-            )}
-          </Badge>
-          
           {route.views && route.views > 0 && (
             <Badge variant="outline" className="bg-white/20 text-white border-white/30">
               {route.views} views

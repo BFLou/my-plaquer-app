@@ -1,5 +1,4 @@
-// Create src/components/routes/SaveRouteDialog.tsx
-
+// src/components/routes/SaveRouteDialog.tsx
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -13,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Check, Globe, RouteIcon } from 'lucide-react';
+import { Check, RouteIcon } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
 import { formatDistance, calculateWalkingTime } from '../maps/utils/routeUtils';
 
@@ -24,7 +22,6 @@ interface SaveRouteDialogProps {
   onSave: (data: {
     name: string;
     description: string;
-    isPublic: boolean;
   }) => Promise<void>;
   routePoints: Plaque[];
   routeDistance: number;
@@ -48,14 +45,12 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
   // State
   const [routeName, setRouteName] = useState(defaultName);
   const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
   
   // Handle save
   const handleSave = async () => {
     await onSave({
       name: routeName,
-      description,
-      isPublic
+      description
     });
   };
 
@@ -89,23 +84,6 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your route..."
               className="col-span-3 h-20"
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="public-route" className="flex items-center gap-1.5">
-                <Globe size={14} className="text-blue-500" />
-                Make Public
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Allow other users to view this route
-              </p>
-            </div>
-            <Switch 
-              id="public-route" 
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
             />
           </div>
           

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { 
   Dialog,
   DialogContent,
@@ -12,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Save, X, Globe, Lock } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 import { RouteData } from '@/hooks/useRoutes';
 
 interface EditRouteFormProps {
@@ -21,7 +20,6 @@ interface EditRouteFormProps {
   onSave: (data: {
     name: string;
     description: string;
-    isPublic: boolean;
   }) => Promise<void>;
   route: RouteData | null;
   isSaving: boolean;
@@ -36,14 +34,12 @@ const EditRouteForm: React.FC<EditRouteFormProps> = ({
 }) => {
   const [routeName, setRouteName] = useState('');
   const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
 
   // Populate form when route changes
   useEffect(() => {
     if (route) {
       setRouteName(route.name || '');
       setDescription(route.description || '');
-      setIsPublic(route.is_public || false);
     }
   }, [route]);
 
@@ -52,7 +48,6 @@ const EditRouteForm: React.FC<EditRouteFormProps> = ({
     if (!isOpen) {
       setRouteName('');
       setDescription('');
-      setIsPublic(false);
     }
   }, [isOpen]);
 
@@ -65,8 +60,7 @@ const EditRouteForm: React.FC<EditRouteFormProps> = ({
 
     await onSave({
       name: routeName.trim(),
-      description: description.trim(),
-      isPublic
+      description: description.trim()
     });
   };
 
@@ -74,7 +68,6 @@ const EditRouteForm: React.FC<EditRouteFormProps> = ({
     if (route) {
       setRouteName(route.name || '');
       setDescription(route.description || '');
-      setIsPublic(route.is_public || false);
     }
     onClose();
   };
@@ -107,28 +100,6 @@ const EditRouteForm: React.FC<EditRouteFormProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your route (optional)"
               rows={3}
-              disabled={isSaving}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="public-route" className="flex items-center gap-1.5">
-                {isPublic ? (
-                  <Globe size={14} className="text-green-500" />
-                ) : (
-                  <Lock size={14} className="text-gray-500" />
-                )}
-                Make Public
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Allow other users to view and use this route
-              </p>
-            </div>
-            <Switch
-              id="public-route"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
               disabled={isSaving}
             />
           </div>

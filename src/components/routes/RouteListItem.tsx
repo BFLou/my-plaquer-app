@@ -9,10 +9,7 @@ import {
   Trash2, 
   Star,
   MapPin,
-  Clock,
-  Globe,
-  Lock,
-  CheckCircle
+  Clock
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,11 +84,11 @@ const RouteListItem: React.FC<RouteListItemProps> = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate group-hover:text-green-600 transition-colors">
+              <h3 className="font-semibold text-lg group-hover:text-green-600 transition-colors line-clamp-1" title={route.name}>
                 {route.name}
               </h3>
               {route.description && (
-                <p className="text-sm text-gray-600 line-clamp-1 mt-1">
+                <p className="text-sm text-gray-600 line-clamp-1 mt-1" title={route.description}>
                   {route.description}
                 </p>
               )}
@@ -106,7 +103,7 @@ const RouteListItem: React.FC<RouteListItemProps> = ({
                   e.stopPropagation();
                   onToggleFavorite(route);
                 }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
               >
                 <Star 
                   size={16} 
@@ -135,17 +132,6 @@ const RouteListItem: React.FC<RouteListItemProps> = ({
           {/* Badges and metadata */}
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center gap-2">
-              {route.is_public ? (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <Globe size={12} className="mr-1" />
-                  Public
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                  <Lock size={12} className="mr-1" />
-                  Private
-                </Badge>
-              )}
               {route.views && route.views > 0 && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                   <Eye size={12} className="mr-1" />
