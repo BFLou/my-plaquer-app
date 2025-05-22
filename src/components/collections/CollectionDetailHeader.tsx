@@ -1,11 +1,9 @@
-// src/components/collections/CollectionDetailHeader.jsx
-import React, { useState } from 'react';
+// src/components/collections/CollectionDetailHeader.tsx
+import React from 'react';
 import { 
-  ArrowLeft, Star, Pencil, MoreHorizontal, 
-  Copy, Trash2, Clock, X, Check
+  ArrowLeft, Star, Pencil, Copy, Trash2, Clock
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -23,30 +21,9 @@ const CollectionDetailHeader = ({
   onDuplicate,
   onDelete,
   onToggleFavorite,
-  onUpdateName,
   isLoading,
   className = ''
 }) => {
-  const [editNameMode, setEditNameMode] = useState(false);
-  const [editNameValue, setEditNameValue] = useState(collection.name);
-  
-  // Handle saving name
-  const handleSaveName = () => {
-    if (!editNameValue.trim() || editNameValue === collection.name) {
-      setEditNameMode(false);
-      return;
-    }
-    
-    onUpdateName(editNameValue);
-    setEditNameMode(false);
-  };
-  
-  // Handle canceling edit
-  const handleCancelEdit = () => {
-    setEditNameValue(collection.name);
-    setEditNameMode(false);
-  };
-  
   // Get plaque count
   const plaqueCount = Array.isArray(collection.plaques) 
     ? collection.plaques.length 
@@ -89,47 +66,9 @@ const CollectionDetailHeader = ({
               {collection.icon}
             </div>
             
-            {editNameMode ? (
-              <div className="flex items-center gap-1">
-                <Input
-                  value={editNameValue}
-                  onChange={(e) => setEditNameValue(e.target.value)}
-                  className="bg-white/10 text-white text-lg font-bold h-8 py-1 px-2 rounded border border-white/20 backdrop-blur-sm w-72"
-                  disabled={isLoading}
-                  autoFocus
-                />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleSaveName} 
-                  className="h-7 w-7 p-0 text-green-300 bg-white/10 hover:bg-white/20"
-                  disabled={isLoading}
-                >
-                  <Check size={16} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleCancelEdit} 
-                  className="h-7 w-7 p-0 text-red-300 bg-white/10 hover:bg-white/20"
-                  disabled={isLoading}
-                >
-                  <X size={16} />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-bold">{collection.name}</h1>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={onEdit} 
-                  className="h-7 w-7 p-0 text-white/70 hover:text-white hover:bg-white/10"
-                >
-                  <Pencil size={14} />
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-bold">{collection.name}</h1>
+            </div>
           </div>
           
           {/* Right side: actions */}
