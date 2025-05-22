@@ -1,18 +1,24 @@
-// src/components/plaques/PlaqueCard.tsx - Updated sections
-import React, { useState, useRef, useEffect } from 'react';
+// src/components/plaques/PlaqueCard.tsx - Improved and refactored
+import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage'; 
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import AddToCollectionDialog from './AddToCollectionDialog';
+import EditVisitDialog from './EditVisitDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -20,12 +26,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 type PlaqueCardProps = {
   plaque: Plaque;
@@ -52,16 +60,18 @@ export const PlaqueCard = ({
   variant = 'discover',
   className = ''
 }: PlaqueCardProps) => {
+  // State for various dialogs and actions
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAddToCollection, setShowAddToCollection] = useState(false);
-  const [showVisitDialog, setShowVisitDialog] = useState(false);
+  const [showQuickVisitDialog, setShowQuickVisitDialog] = useState(false);
   const [showEditVisitDialog, setShowEditVisitDialog] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteVisitConfirm, setShowDeleteVisitConfirm] = useState(false);
+  
+  // Quick visit form state
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [visitNotes, setVisitNotes] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Use hooks for consistent state management
   const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo, updateVisit } = useVisitedPlaques();
@@ -72,33 +82,61 @@ export const PlaqueCard = ({
   const isFav = isFavorite(plaque.id);
   const visitInfo = getVisitInfo(plaque.id);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-
-    if (showDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+  // Event handlers
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent card click when interacting with buttons or dropdowns
+    if (e.target instanceof Element && (
+      e.target.closest('button') ||
+      e.target.closest('[role="menuitem"]') ||
+      e.target.closest('.dropdown-menu') ||
+      e.target.closest('[data-radix-portal]')
+    )) {
+      return;
     }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showDropdown]);
-
-  const handleClick = () => {
-    if (onClick) onClick(plaque);
+    
+    if (onClick) {
+      onClick(plaque);
+    }
   };
 
-  const handleMarkVisited = async () => {
-    setShowVisitDialog(true);
+  const handleFavoriteToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(plaque.id);
     setShowDropdown(false);
   };
 
-  const handleConfirmVisit = async () => {
+  const handleSelectClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSelect) onSelect(plaque.id);
+  };
+
+  const handleQuickMarkVisited = () => {
+    setShowQuickVisitDialog(true);
+    setShowDropdown(false);
+  };
+
+  const handleEditVisit = () => {
+    setShowEditVisitDialog(true);
+    setShowDropdown(false);
+  };
+
+  const handleDeleteVisit = () => {
+    setShowDeleteVisitConfirm(true);
+    setShowDropdown(false);
+  };
+
+  const handleRemove = () => {
+    if (onRemovePlaque) onRemovePlaque(plaque.id);
+    setShowDropdown(false);
+  };
+
+  const handleAddToCollection = () => {
+    setShowAddToCollection(true);
+    setShowDropdown(false);
+  };
+
+  // Quick visit form submission
+  const handleQuickVisitSubmit = async () => {
     setIsProcessing(true);
     try {
       await markAsVisited(plaque.id, {
@@ -108,7 +146,7 @@ export const PlaqueCard = ({
       
       if (onMarkVisited) onMarkVisited(plaque.id);
       toast.success("Marked as visited");
-      setShowVisitDialog(false);
+      setShowQuickVisitDialog(false);
       setVisitNotes('');
       setVisitDate(new Date());
     } catch (error) {
@@ -119,43 +157,15 @@ export const PlaqueCard = ({
     }
   };
 
-  const handleEditVisit = () => {
-    if (visitInfo) {
-      setVisitDate(visitInfo.visited_at.toDate ? visitInfo.visited_at.toDate() : new Date(visitInfo.visited_at));
-      setVisitNotes(visitInfo.notes || '');
-      setShowEditVisitDialog(true);
-    }
-    setShowDropdown(false);
-  };
-
-  const handleUpdateVisit = async () => {
-    if (!visitInfo) return;
-    
-    setIsProcessing(true);
-    try {
-      await updateVisit(visitInfo.id, {
-        visitedAt: visitDate.toISOString(),
-        notes: visitNotes,
-      });
-      
-      toast.success("Visit updated");
-      setShowEditVisitDialog(false);
-    } catch (error) {
-      console.error("Error updating visit:", error);
-      toast.error("Failed to update visit");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleDeleteVisit = async () => {
+  // Delete visit confirmation
+  const handleConfirmDeleteVisit = async () => {
     if (!visitInfo) return;
     
     setIsProcessing(true);
     try {
       await removeVisit(visitInfo.id);
       toast.success("Visit deleted");
-      setShowDeleteConfirm(false);
+      setShowDeleteVisitConfirm(false);
     } catch (error) {
       console.error("Error deleting visit:", error);
       toast.error("Failed to delete visit");
@@ -164,278 +174,179 @@ export const PlaqueCard = ({
     }
   };
 
-  const handleFavoriteToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleFavorite(plaque.id);
-    setShowDropdown(false);
+  // Helper functions for display
+  const getLocationDisplay = () => plaque.location || plaque.address || '';
+  const getPlaqueColor = () => plaque.color || plaque.colour || 'unknown';
+  const getImageUrl = () => plaque.image || plaque.main_photo;
+
+  const formatVisitDate = () => {
+    if (!visitInfo?.visited_at) return '';
+    try {
+      const date = visitInfo.visited_at.toDate ? visitInfo.visited_at.toDate() : new Date(visitInfo.visited_at);
+      return format(date, 'MMM d');
+    } catch (error) {
+      return 'Unknown date';
+    }
   };
-
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onRemovePlaque) onRemovePlaque(plaque.id);
-    setShowDropdown(false);
-  };
-
-  const handleSelectClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onSelect) onSelect(plaque.id);
-  };
-
-  const handleAddToCollection = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowAddToCollection(true);
-    setShowDropdown(false);
-  };
-
-  // Handle color for display (merging color and colour fields)
-  const plaqueColor = plaque.color || plaque.colour || 'unknown';
-  
-  // Handle location display (address or custom formatted location)
-  const locationDisplay = plaque.location || plaque.address || '';
-
-  // Image source with fallback
-  const imageUrl = plaque.image || plaque.main_photo;
 
   return (
-    <Card 
-      className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer group relative h-full ${
-        isSelected ? 'ring-2 ring-blue-500' : ''
-      } ${className}`}
-      onClick={handleClick}
-    >
-      {/* Selection indicator */}
-      {isSelected && (
-        <div className="absolute top-0 left-0 w-full h-full ring-2 ring-blue-500 rounded-lg z-10 pointer-events-none"></div>
-      )}
-      
-      {/* Image container with responsive height */}
-      <div className="relative h-32 sm:h-40 bg-blue-50">
-        <PlaqueImage 
-          src={imageUrl}
-          alt={plaque.title} 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          placeholderClassName="bg-blue-50"
-          plaqueColor={plaqueColor}
-        />
-        
-        {/* Corner Action Menu */}
-        <div className="absolute top-2 right-2 z-20" ref={dropdownRef}>
-          <button 
-            className="h-8 w-8 rounded-full bg-black/30 hover:bg-black/40 text-white flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDropdown(!showDropdown);
-            }}
-          >
-            <MoreVertical size={16} />
-          </button>
+    <>
+      <Card 
+        className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer group relative h-full ${
+          isSelected ? 'ring-2 ring-blue-500' : ''
+        } ${className}`}
+        onClick={handleCardClick}
+      >
+        {/* Image container */}
+        <div className="relative h-32 sm:h-40 bg-blue-50">
+          <PlaqueImage 
+            src={getImageUrl()}
+            alt={plaque.title} 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            placeholderClassName="bg-blue-50"
+            plaqueColor={getPlaqueColor()}
+          />
           
-          {showDropdown && (
-            <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-30 border">
-              {/* Mark as Visited or Edit Visit */}
-              {!isVisited ? (
-                <button 
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMarkVisited();
-                  }}
+          {/* Actions menu */}
+          <div className="absolute top-2 right-2 z-20">
+            <DropdownMenu open={showDropdown} onOpenChange={setShowDropdown}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-full bg-black/30 hover:bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity p-0"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <CheckCircle size={14} className="mr-2 text-green-600" />
-                  Mark as visited
-                </button>
-              ) : (
-                <>
-                  <button 
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditVisit();
-                    }}
-                  >
-                    <Edit size={14} className="mr-2 text-blue-600" />
-                    Edit visit
-                  </button>
-                  <button 
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteConfirm(true);
-                      setShowDropdown(false);
-                    }}
-                  >
-                    <X size={14} className="mr-2" />
-                    Delete visit
-                  </button>
-                </>
-              )}
-              
-              {/* Favorite */}
-              <button 
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                onClick={handleFavoriteToggle}
-              >
-                <Star size={14} className={`mr-2 ${isFav ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
-                {isFav ? 'Remove from favorites' : 'Add to favorites'}
-              </button>
+                  <MoreVertical size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {/* Visit actions */}
+                {!isVisited ? (
+                  <DropdownMenuItem onSelect={handleQuickMarkVisited}>
+                    <CheckCircle size={14} className="mr-2 text-green-600" />
+                    Mark as visited
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    <DropdownMenuItem onSelect={handleEditVisit}>
+                      <Edit size={14} className="mr-2 text-blue-600" />
+                      Edit visit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleDeleteVisit}>
+                      <X size={14} className="mr-2 text-red-600" />
+                      Delete visit
+                    </DropdownMenuItem>
+                  </>
+                )}
+                
+                {/* Favorite action */}
+                <DropdownMenuItem onSelect={handleFavoriteToggle}>
+                  <Star size={14} className={`mr-2 ${isFav ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
+                  {isFav ? 'Remove from favorites' : 'Add to favorites'}
+                </DropdownMenuItem>
 
-              {/* Add to Collection (only in discover mode) */}
-              {variant === 'discover' && (
-                <button 
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                  onClick={handleAddToCollection}
-                >
-                  <Plus size={14} className="mr-2 text-blue-600" />
-                  Add to collection
-                </button>
-              )}
-              
-              {/* Remove from Collection (only in collection mode) */}
-              {variant === 'collection' && onRemovePlaque && (
-                <button 
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                  onClick={handleRemove}
-                >
-                  <Trash2 size={14} className="mr-2" />
-                  Remove from collection
-                </button>
-              )}
+                {/* Context-specific actions */}
+                {variant === 'discover' && (
+                  <DropdownMenuItem onSelect={handleAddToCollection}>
+                    <Plus size={14} className="mr-2 text-blue-600" />
+                    Add to collection
+                  </DropdownMenuItem>
+                )}
+                
+                {variant === 'collection' && onRemovePlaque && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleRemove}>
+                      <Trash2 size={14} className="mr-2 text-red-600" />
+                      Remove from collection
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          {/* Status badges */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {isVisited && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                <CheckCircle size={10} className="mr-1" /> 
+                {formatVisitDate()}
+              </Badge>
+            )}
+            {isFav && (
+              <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
+                <Star size={10} className="mr-1 fill-amber-600" /> Favorite
+              </Badge>
+            )}
+          </div>
+        </div>
+        
+        {/* Content */}
+        <CardHeader className="pb-2 px-3 sm:px-6">
+          <CardTitle className="text-base sm:text-lg font-bold group-hover:text-blue-600 transition-colors line-clamp-2">
+            {plaque.title}
+          </CardTitle>
+          <CardDescription className="flex items-start text-gray-500 text-sm">
+            <MapPin size={12} className="mr-1 mt-0.5 shrink-0" /> 
+            <span className="line-clamp-2">{getLocationDisplay()}</span>
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="pt-0 px-3 sm:px-6 pb-3">
+          {/* Badges */}
+          <div className="flex flex-wrap gap-1 mb-3">
+            {getPlaqueColor() && getPlaqueColor() !== "Unknown" && (
+              <Badge 
+                variant="outline" 
+                className={`text-xs ${
+                  getPlaqueColor() === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                  getPlaqueColor() === 'green' ? 'bg-green-50 text-green-700 border-green-200' :
+                  getPlaqueColor() === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                  getPlaqueColor() === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' :
+                  'bg-gray-100 text-gray-700 border-gray-300'
+                }`}
+              >
+                {getPlaqueColor().charAt(0).toUpperCase() + getPlaqueColor().slice(1)} Plaque
+              </Badge>
+            )}
+            
+            {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
+              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs">
+                {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
+                 (plaque.lead_subject_primary_role as string).slice(1)}
+              </Badge>
+            )}
+          </div>
+          
+          {/* Description preview */}
+          {plaque.inscription && (
+            <p className="mt-2 text-xs sm:text-sm text-gray-600 line-clamp-2">
+              {plaque.inscription}
+            </p>
+          )}
+          
+          {/* Selection checkbox */}
+          {showSelection && onSelect && (
+            <div className="mt-3 flex items-center">
+              <label className="flex items-center cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={handleSelectClick}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="ml-2 text-gray-600">Select</span>
+              </label>
             </div>
           )}
-        </div>
-        
-        {/* Status badges - repositioned for mobile */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {isVisited && (
-            <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-              <CheckCircle size={10} className="mr-1" /> 
-              {visitInfo && format(
-                visitInfo.visited_at.toDate ? visitInfo.visited_at.toDate() : new Date(visitInfo.visited_at), 
-                'MMM d'
-              )}
-            </Badge>
-          )}
-          {isFav && (
-            <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
-              <Star size={10} className="mr-1 fill-amber-600" /> Favorite
-            </Badge>
-          )}
-          {isSelected && (
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
-              <CheckCircle size={10} className="mr-1" /> Selected
-            </Badge>
-          )}
-        </div>
-      </div>
-      
-      <CardHeader className="pb-2 px-3 sm:px-6">
-        <CardTitle className="text-base sm:text-lg font-bold group-hover:text-blue-600 transition-colors line-clamp-2">
-          {plaque.title}
-        </CardTitle>
-        <CardDescription className="flex items-start text-gray-500 text-sm">
-          <MapPin size={12} className="mr-1 mt-0.5 shrink-0" /> 
-          <span className="line-clamp-2">{locationDisplay}</span>
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-        <div className="flex flex-wrap gap-1 mb-3">
-          {plaqueColor && plaqueColor !== "Unknown" && (
-            <Badge 
-              variant="outline" 
-              className={`text-xs
-                ${plaqueColor === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                ${plaqueColor === 'green' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                ${plaqueColor === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
-                ${plaqueColor === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
-                ${plaqueColor === 'grey' ? 'bg-gray-100 text-gray-700 border-gray-300' : ''}
-              `}
-            >
-              {plaqueColor.charAt(0).toUpperCase() + plaqueColor.slice(1)} Plaque
-            </Badge>
-          )}
-          
-          {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
-            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs">
-              {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
-               (plaque.lead_subject_primary_role as string).slice(1)}
-            </Badge>
-          )}
-        </div>
-        
-        {/* Short description preview with line clamping */}
-        {plaque.inscription && (
-          <p className="mt-2 text-xs sm:text-sm text-gray-600 line-clamp-2">
-            {plaque.inscription}
-          </p>
-        )}
-        
-        {/* Selection checkbox - only show when needed */}
-        {showSelection && onSelect && (
-          <div className="mt-3 flex items-center">
-            <label className="flex items-center cursor-pointer text-sm">
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={handleSelectClick}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="ml-2 text-gray-600">Select</span>
-            </label>
-          </div>
-        )}
+        </CardContent>
+      </Card>
 
-        {/* Mobile-friendly action buttons */}
-        <div className="mt-3 flex gap-2 sm:hidden">
-          {!isVisited ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMarkVisited();
-              }}
-            >
-              <CheckCircle size={12} className="mr-1" />
-              Visit
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditVisit();
-              }}
-            >
-              <Edit size={12} className="mr-1" />
-              Edit
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs"
-            onClick={handleFavoriteToggle}
-          >
-            <Star size={12} className={`mr-1 ${isFav ? 'fill-amber-500 text-amber-500' : ''}`} />
-            {isFav ? 'Unfav' : 'Fav'}
-          </Button>
-        </div>
-      </CardContent>
-
-      {/* Add to Collection Dialog */}
-      <AddToCollectionDialog
-        isOpen={showAddToCollection}
-        onClose={() => setShowAddToCollection(false)}
-        plaque={plaque}
-      />
-
-      {/* Visit Dialog */}
-      <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
-        <DialogContent className="sm:max-w-md">
+      {/* Quick visit dialog */}
+      <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>Mark as Visited</DialogTitle>
           </DialogHeader>
@@ -448,6 +359,7 @@ export const PlaqueCard = ({
                   <Button
                     variant="outline"
                     className="w-full justify-start text-left font-normal"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Calendar className="mr-2 h-4 w-4" />
                     {format(visitDate, "PPP")}
@@ -477,6 +389,7 @@ export const PlaqueCard = ({
                 value={visitNotes}
                 onChange={(e) => setVisitNotes(e.target.value)}
                 rows={3}
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           </div>
@@ -484,13 +397,13 @@ export const PlaqueCard = ({
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowVisitDialog(false)}
+              onClick={() => setShowQuickVisitDialog(false)}
               disabled={isProcessing}
             >
               Cancel
             </Button>
             <Button 
-              onClick={handleConfirmVisit}
+              onClick={handleQuickVisitSubmit}
               disabled={isProcessing}
             >
               {isProcessing ? 'Saving...' : 'Mark as Visited'}
@@ -499,101 +412,62 @@ export const PlaqueCard = ({
         </DialogContent>
       </Dialog>
 
-      {/* Edit Visit Dialog */}
-      <Dialog open={showEditVisitDialog} onOpenChange={setShowEditVisitDialog}>
+      {/* Edit visit dialog */}
+      <EditVisitDialog
+        isOpen={showEditVisitDialog}
+        onClose={() => setShowEditVisitDialog(false)}
+        plaque={plaque}
+        visitId={visitInfo?.id || null}
+        onVisitUpdated={() => {
+          // Refresh visit info if needed
+          if (onMarkVisited) onMarkVisited(plaque.id);
+        }}
+        onVisitDeleted={() => {
+          // Handle visit deletion
+          if (onMarkVisited) onMarkVisited(plaque.id);
+        }}
+      />
+
+      {/* Delete visit confirmation */}
+      <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Visit</DialogTitle>
+            <DialogTitle>Delete Visit</DialogTitle>
           </DialogHeader>
           
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Visit Date</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {format(visitDate, "PPP")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={visitDate}
-                    onSelect={(date) => date && setVisitDate(date)}
-                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes</label>
-              <Textarea
-                placeholder="Any thoughts about your visit?"
-                value={visitNotes}
-                onChange={(e) => setVisitNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
+          <div className="py-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete your visit to this plaque? This action cannot be undone.
+            </p>
           </div>
           
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowEditVisitDialog(false)}
+              onClick={() => setShowDeleteVisitConfirm(false)}
               disabled={isProcessing}
             >
               Cancel
             </Button>
             <Button 
-              onClick={handleUpdateVisit}
+              variant="destructive"
+              onClick={handleConfirmDeleteVisit}
               disabled={isProcessing}
             >
-              {isProcessing ? 'Updating...' : 'Update Visit'}
+              {isProcessing ? 'Deleting...' : 'Delete Visit'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Visit Confirmation */}
-{/* Delete Visit Confirmation */}
-     <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-       <DialogContent className="sm:max-w-md">
-         <DialogHeader>
-           <DialogTitle>Delete Visit</DialogTitle>
-         </DialogHeader>
-         
-         <div className="py-4">
-           <p className="text-sm text-gray-600">
-             Are you sure you want to delete your visit to this plaque? This action cannot be undone.
-           </p>
-         </div>
-         
-         <DialogFooter>
-           <Button
-             variant="outline"
-             onClick={() => setShowDeleteConfirm(false)}
-             disabled={isProcessing}
-           >
-             Cancel
-           </Button>
-           <Button 
-             variant="destructive"
-             onClick={handleDeleteVisit}
-             disabled={isProcessing}
-           >
-             {isProcessing ? 'Deleting...' : 'Delete Visit'}
-           </Button>
-         </DialogFooter>
-       </DialogContent>
-     </Dialog>
-   </Card>
- );
+      {/* Add to collection dialog */}
+      <AddToCollectionDialog
+        isOpen={showAddToCollection}
+        onClose={() => setShowAddToCollection(false)}
+        plaque={plaque}
+      />
+    </>
+  );
 };
 
 export default PlaqueCard;
