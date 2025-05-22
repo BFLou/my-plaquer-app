@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from 'sonner';
 
 const AboutPage = () => {
   const navigate = useNavigate();
@@ -96,15 +97,56 @@ const AboutPage = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Form submission logic would go here
-    alert('Thanks for your message! We\'ll get back to you soon.');
-    setFormData({
-      name: '',
-      email: '',
-      message: ''
-    });
+    
+    // Basic validation
+    if (!formData.name.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+    
+    if (!formData.email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    
+    if (!formData.message.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+    
+    try {
+      // Show loading state
+      const submitButton = e.target.querySelector('button[type="submit"]');
+      const originalText = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = 'Sending...';
+      
+      // Simulate API call (replace with actual form submission)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Success
+      toast.success('Thank you! Your message has been sent successfully.');
+      setFormData({
+        name: '',
+        email: '',
+        message: ''
+      });
+      
+      // Reset button
+      submitButton.disabled = false;
+      submitButton.innerHTML = originalText;
+      
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast.error('Failed to send message. Please try again.');
+      
+      // Reset button
+      const submitButton = e.target.querySelector('button[type="submit"]');
+      submitButton.disabled = false;
+      submitButton.innerHTML = originalText;
+    }
   };
 
   // Feature cards data - updated with coming soon badges
@@ -410,6 +452,14 @@ const AboutPage = () => {
                       </div>
                       <p className="text-sm text-gray-600 ml-6 mt-1">Historic buildings and sites</p>
                     </div>
+                    
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 bg-gray-600 rounded-full mr-2"></div>
+                        <span className="font-medium">Other Plaques</span>
+                      </div>
+                      <p className="text-sm text-gray-600 ml-6 mt-1">Various commemorative plaques and markers</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -424,27 +474,6 @@ const AboutPage = () => {
               <p className="text-gray-700 mb-6">
                 We also welcome contributions from our community. If you notice missing information or have photos of plaques to share, please let us know.
               </p>
-              
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                <h4 className="font-medium flex items-center text-amber-800">
-                  <BookOpen className="mr-2" size={18} />
-                  Data Partners
-                </h4>
-                <ul className="mt-2 space-y-1 text-amber-700">
-                  <li className="flex items-center">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
-                    Open Plaques
-                  </li>
-                  <li className="flex items-center">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
-                    English Heritage
-                  </li>
-                  <li className="flex items-center">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-2"></div>
-                    London Borough Archives
-                  </li>
-                </ul>
-              </div>
               
               <Button 
                 variant="outline" 
@@ -495,7 +524,7 @@ const AboutPage = () => {
                       <Input
                         id="name"
                         name="name"
-                        value={formData.name}
+value={formData.name}
                         onChange={handleInputChange}
                         required
                         placeholder="John Doe"
@@ -545,20 +574,13 @@ const AboutPage = () => {
                     <p className="mb-4">
                       Prefer to use your own email client? Feel free to reach out to us directly.
                     </p>
-<Button 
-  className="bg-white text-blue-600 hover:bg-blue-50 w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2"
-  onClick={() => window.location.href = 'mailto:contact@plaquer.app'}
->
-  <Mail className="mr-2" size={18} />
-  contact@plaquer.app
-</Button>
-                  </div>
-                  
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                    <h3 className="text-xl font-bold mb-4">Response Time</h3>
-                    <p>
-                      We typically respond to all inquiries within 1-2 business days. For urgent matters, please mention this in your subject line.
-                    </p>
+                    <Button 
+                      className="bg-white text-blue-600 hover:bg-blue-50 w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2"
+                      onClick={() => window.location.href = 'mailto:contact@plaquer.app'}
+                    >
+                      <Mail className="mr-2" size={18} />
+                      contact@plaquer.app
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -572,21 +594,14 @@ const AboutPage = () => {
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
             Join thousands of history enthusiasts discovering London's rich heritage one plaque at a time.
           </p>
-<div className="flex flex-wrap justify-center gap-4">
-  <Button 
-    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium shadow-sm flex items-center gap-2"
-    onClick={() => navigate('/discover')}
-  >
-    <MapPin size={18} /> Start Exploring
-  </Button>
-  <Button 
-    variant="outline"
-    className="border border-gray-200 text-gray-700 hover:bg-gray-50 py-2 px-4 rounded-lg font-medium flex items-center gap-2"
-    onClick={() => navigate('/')}
-  >
-    <ExternalLink size={18} /> Learn More
-  </Button>
-</div>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium shadow-sm flex items-center gap-2"
+              onClick={() => navigate('/discover')}
+            >
+              <MapPin size={18} /> Start Exploring
+            </Button>
+          </div>
         </section>
       </div>
     </PageContainer>
