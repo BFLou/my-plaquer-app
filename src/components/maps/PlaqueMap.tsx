@@ -1,4 +1,4 @@
-// src/components/maps/PlaqueMap.tsx - Updated without fullscreen functionality
+// src/components/maps/PlaqueMap.tsx - Fixed version with visible search bar
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import useMapOperations from './hooks/useMapOperations';
 import useRouteManagement from './hooks/useRouteManagement';
 
 // API key - use environment variable with fallback
-// Safely access environment variables or fallback to default API key
 const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_ORS_API_KEY) 
   ? process.env.REACT_APP_ORS_API_KEY 
   : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
@@ -106,7 +105,6 @@ const PlaqueMap = React.forwardRef(({
     API_KEY: ORS_API_KEY,
     onRouteChange: (newRoute) => {
       // This callback should update the parent component's route state
-      // You'll need to pass this from the parent
     }
   });
   
@@ -158,6 +156,12 @@ const PlaqueMap = React.forwardRef(({
     const success = await searchPlaceByAddress(searchQuery);
     if (!success) {
       showToast("Couldn't find that location. Please try a different search.", "error");
+    } else {
+      // Apply distance filter automatically after location search
+      setTimeout(() => {
+        applyDistanceFilter();
+        showToast(`Applied ${formatDistance(maxDistance)} filter around the location`, "success");
+      }, 1000);
     }
   };
 
@@ -232,16 +236,16 @@ const PlaqueMap = React.forwardRef(({
         isRoutingMode={isRoutingMode}
       />
       
-      {/* Search location button */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+      {/* Search location button - FIXED POSITIONING */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000]">
         <Button 
           variant="default" 
           size="sm" 
-          className="h-9 shadow-md flex items-center gap-2 px-4 bg-white text-gray-700 border-0 hover:bg-gray-50"
+          className="h-10 shadow-lg flex items-center gap-2 px-4 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:shadow-xl transition-all duration-200"
           onClick={() => setShowLocationSearch(true)}
         >
           <Search size={16} />
-          <span>Search location</span>
+          <span className="font-medium">Search location</span>
           <MapPin size={16} className="text-gray-400" />
         </Button>
       </div>
@@ -292,6 +296,8 @@ const PlaqueMap = React.forwardRef(({
           closeFilters={() => setShowFilters(false)}
           resetFilters={resetFilters}
           hasUserLocation={!!userLocation}
+          useImperial={useImperial}
+          setUseImperial={setUseImperial}
         />
       )}
       
@@ -301,24 +307,32 @@ const PlaqueMap = React.forwardRef(({
           onSearch={handleLocationSearch}
           onClose={() => setShowLocationSearch(false)}
           isLoading={isLoadingLocation}
+          useImperial={useImperial}
+          setUseImperial={setUseImperial}
+          maxDistance={maxDistance}
+          setMaxDistance={setMaxDistance}
         />
       )}
       
       {/* Map attribution */}
-      <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-1 rounded">
+      <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-2 py-1 rounded">
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors | <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">OpenRouteService</a>
       </div>
       
       {/* Toast notifications */}
       {toast && (
-        <div className={`map-toast ${toast.type}`}>
-          <div className="text-sm">
-            {toast.message}
-          </div>
+        <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] px-4 py-2 rounded-lg shadow-lg text-sm font-medium ${
+          toast.type === 'success' ? 'bg-green-500 text-white' :
+          toast.type === 'error' ? 'bg-red-500 text-white' :
+          'bg-blue-500 text-white'
+        }`}>
+          {toast.message}
         </div>
       )}
     </div>
   );
 });
+
+PlaqueMap.displayName = 'PlaqueMap';
 
 export default PlaqueMap;
