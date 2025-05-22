@@ -36,8 +36,9 @@ interface MapControlsProps {
   hasUserLocation: boolean;
   routePointsCount: number;
   resetMap: () => void;
-  isFullScreen?: boolean;
-  toggleFullScreen?: () => void;
+  // Remove these:
+  // isFullScreen?: boolean;
+  // toggleFullScreen?: () => void;
   zoomIn?: () => void;
   zoomOut?: () => void;
   activeBaseMap?: string;
@@ -58,18 +59,14 @@ const MapControls: React.FC<MapControlsProps> = ({
   hasUserLocation,
   routePointsCount,
   resetMap,
-  isFullScreen = false,
-  toggleFullScreen,
+  // Remove these:
+  // isFullScreen = false,
+  // toggleFullScreen,
   zoomIn,
   zoomOut,
   activeBaseMap = 'street',
   changeBaseMap
 }) => {
-  // Check if fullscreen is supported
-  const isFullScreenSupported = document.fullscreenEnabled || 
-    (document as any).webkitFullscreenEnabled || 
-    (document as any).mozFullScreenEnabled || 
-    (document as any).msFullscreenEnabled;
 
   // Map type names for display
   const mapTypeNames: Record<string, string> = {
@@ -240,24 +237,6 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* Fullscreen Button - conditionally rendered if supported & provided */}
-          {isFullScreenSupported && toggleFullScreen && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-10 w-10 p-0"
-                  onClick={toggleFullScreen}
-                >
-                  {isFullScreen ? <Minimize size={18} /> : <Maximize size={18} />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>{isFullScreen ? 'Exit fullscreen' : 'Fullscreen'}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
         </div>
       </div>
     </TooltipProvider>

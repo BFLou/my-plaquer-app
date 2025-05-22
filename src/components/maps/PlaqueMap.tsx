@@ -1,8 +1,8 @@
-// src/components/maps/PlaqueMap.tsx - Updated with fullscreen, enhanced zoom and layer controls
+// src/components/maps/PlaqueMap.tsx - Updated without fullscreen functionality
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Maximize, Minimize, Layers } from 'lucide-react';
+import { Search, MapPin, Layers } from 'lucide-react';
 
 // Import sub-components
 import MapContainer from './containers/MapContainer';
@@ -56,9 +56,8 @@ const PlaqueMap = React.forwardRef(({
   const [useRoadRouting, setUseRoadRouting] = useState(true);
   const [filteredPlaquesCount, setFilteredPlaquesCount] = useState(0);
   const [toast, setToastMessage] = useState(null);
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const [activeBaseMap, setActiveBaseMap] = useState('street');
-  const [maxDistance, setMaxDistance] = useState(1); // Added missing state declaration
+  const [maxDistance, setMaxDistance] = useState(1);
   
   // Initialize map using the custom hook
   const { 
@@ -92,24 +91,24 @@ const PlaqueMap = React.forwardRef(({
   
   // Use route management hook
   const {
-  isDrawingRoute,
-  drawWalkingRoute,
-  optimizeRouteForWalking,
-  calculateRouteDistance,
-  formatDistance,
-  calculateWalkingTime,
-  clearRoute: clearRouteFromHook
-} = useRouteManagement({
-  mapInstance,
-  routePoints,
-  useRoadRouting,
-  useImperial,
-  API_KEY: ORS_API_KEY,
-  onRouteChange: (newRoute) => {
-    // This callback should update the parent component's route state
-    // You'll need to pass this from the parent
-  }
-});
+    isDrawingRoute,
+    drawWalkingRoute,
+    optimizeRouteForWalking,
+    calculateRouteDistance,
+    formatDistance,
+    calculateWalkingTime,
+    clearRoute: clearRouteFromHook
+  } = useRouteManagement({
+    mapInstance,
+    routePoints,
+    useRoadRouting,
+    useImperial,
+    API_KEY: ORS_API_KEY,
+    onRouteChange: (newRoute) => {
+      // This callback should update the parent component's route state
+      // You'll need to pass this from the parent
+    }
+  });
   
   // Use map operations hook for location search, filtering, etc.
   const {
@@ -162,104 +161,6 @@ const PlaqueMap = React.forwardRef(({
     }
   };
 
-  // Toggle fullscreen mode
-  const toggleFullScreen = useCallback(() => {
-    const mapContainer = mapContainerRef.current;
-    if (!mapContainer) return;
-
-    if (!document.fullscreenElement) {
-      // Request fullscreen
-      try {
-        if (mapContainer.requestFullscreen) {
-          mapContainer.requestFullscreen();
-        } else if ((mapContainer as any).webkitRequestFullscreen) {
-          (mapContainer as any).webkitRequestFullscreen();
-        } else if ((mapContainer as any).mozRequestFullScreen) {
-          (mapContainer as any).mozRequestFullScreen();
-        } else if ((mapContainer as any).msRequestFullscreen) {
-          (mapContainer as any).msRequestFullscreen();
-        }
-        setIsFullScreen(true);
-        
-        // Force map to recalculate dimensions after entering fullscreen
-        setTimeout(() => {
-          if (mapInstance) {
-            mapInstance.invalidateSize();
-          }
-        }, 300);
-      } catch (error) {
-        console.error("Error entering fullscreen mode:", error);
-        showToast("Couldn't enter fullscreen mode. Please try again.", "error");
-      }
-    } else {
-      // Exit fullscreen
-      try {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozCancelFullScreen) {
-          (document as any).mozCancelFullScreen();
-        } else if ((document as any).msExitFullscreen) {
-          (document as any).msExitFullscreen();
-        }
-        setIsFullScreen(false);
-        
-        // Force map to recalculate dimensions after exiting fullscreen
-        setTimeout(() => {
-          if (mapInstance) {
-            mapInstance.invalidateSize();
-          }
-        }, 300);
-      } catch (error) {
-        console.error("Error exiting fullscreen mode:", error);
-        showToast("Couldn't exit fullscreen mode. Please refresh the page.", "error");
-      }
-    }
-  }, [mapInstance]);
-
-  // Handle fullscreen change events
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      const isFullScreenActive = !!document.fullscreenElement;
-      setIsFullScreen(isFullScreenActive);
-      
-      // Force map to recalculate dimensions when fullscreen state changes
-      if (mapInstance) {
-        setTimeout(() => {
-          mapInstance.invalidateSize();
-          
-          // Redraw markers to ensure they're properly positioned
-          redrawMarkers();
-          
-          // If the user has selected a plaque, make sure it's still visible
-          if (selectedPlaqueId && !maintainView) {
-            const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
-            if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
-              const lat = parseFloat(selectedPlaque.latitude as unknown as string);
-              const lng = parseFloat(selectedPlaque.longitude as unknown as string);
-              if (!isNaN(lat) && !isNaN(lng)) {
-                mapInstance.setView([lat, lng], mapInstance.getZoom() || 15);
-              }
-            }
-          }
-        }, 300);
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullScreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullScreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullScreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullScreenChange);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullScreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullScreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullScreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullScreenChange);
-    };
-  }, [mapInstance, selectedPlaqueId, plaques, maintainView, redrawMarkers]);
-
   // Custom zoom controls
   const zoomIn = useCallback(() => {
     if (mapInstance) {
@@ -301,7 +202,6 @@ const PlaqueMap = React.forwardRef(({
         if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
       }
     },
-    toggleFullScreen,
     zoomIn,
     zoomOut,
     changeBaseMap
@@ -323,14 +223,13 @@ const PlaqueMap = React.forwardRef(({
   };
   
   return (
-    <div className={`relative ${className} ${isFullScreen ? 'fixed inset-0 z-50 bg-white' : ''}`}>
+    <div className={`relative ${className}`}>
       {/* Map Container */}
       <MapContainer
         ref={mapContainerRef}
         mapLoaded={mapLoaded}
         isDrawingRoute={isDrawingRoute}
         isRoutingMode={isRoutingMode}
-        isFullScreen={isFullScreen}
       />
       
       {/* Search location button */}
@@ -358,8 +257,6 @@ const PlaqueMap = React.forwardRef(({
         hasUserLocation={!!userLocation}
         routePointsCount={routePoints.length}
         resetMap={resetMap}
-        isFullScreen={isFullScreen}
-        toggleFullScreen={toggleFullScreen}
         zoomIn={zoomIn}
         zoomOut={zoomOut}
         activeBaseMap={activeBaseMap}

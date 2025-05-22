@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Enhanced route functionality
+// src/pages/Discover.tsx - Complete fixed version
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
@@ -53,7 +53,6 @@ const Discover = () => {
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routeDistance, setRouteDistance] = useState(0);
   const [useImperial, setUseImperial] = useState(false);
-  const [useRoadRouting, setUseRoadRouting] = useState(true);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,6 +73,72 @@ const Discover = () => {
   const [colorOptions, setColorOptions] = useState([]);
   const [professionOptions, setProfessionOptions] = useState([]);
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Helper functions for distance and time calculation
+  const formatDistance = useCallback((distanceKm) => {
+    if (useImperial) {
+      const miles = distanceKm * 0.621371;
+      return `${miles.toFixed(1)} mi`;
+    }
+    return `${distanceKm.toFixed(1)} km`;
+  }, [useImperial]);
+
+  const formatWalkingTime = useCallback((distanceKm) => {
+    if (distanceKm <= 0) return "0 min";
+    
+    const minutes = useImperial 
+      ? Math.round(distanceKm * 0.621371 * 20) // 20 minutes per mile
+      : Math.round(distanceKm * 12); // 12 minutes per km
+    
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+  }, [useImperial]);
+
+  const calculateRouteDistance = useCallback((points = routePoints) => {
+    if (!points || points.length < 2) return 0;
+    
+    let total = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const start = points[i];
+      const end = points[i + 1];
+      
+      if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
+      
+      const startLat = parseFloat(start.latitude);
+      const startLng = parseFloat(start.longitude);
+      const endLat = parseFloat(end.latitude);
+      const endLng = parseFloat(end.longitude);
+      
+      if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
+      
+      total += calculateDistance(startLat, startLng, endLat, endLng);
+    }
+    
+    return total;
+  }, [routePoints]);
+
+  // Update route distance when route points change
+  useEffect(() => {
+    const distance = calculateRouteDistance(routePoints);
+    setRouteDistance(distance);
+  }, [routePoints, calculateRouteDistance]);
+
   // Enhanced route management functions
   const handleToggleRoutingMode = useCallback(() => {
     const newRoutingMode = !isRoutingMode;
@@ -88,8 +153,6 @@ const Discover = () => {
       toast.info("Route planning mode deactivated.");
     }
   }, [isRoutingMode]);
-
- // src/pages/Discover.tsx - Enhanced route functionality (continued)
 
   const handleAddPlaqueToRoute = useCallback((plaque) => {
     // Check if plaque is already in route
@@ -161,10 +224,10 @@ const Discover = () => {
         if (!current.latitude || !current.longitude || !point.latitude || !point.longitude) continue;
         
         const distance = calculateDistance(
-          parseFloat(current.latitude as string),
-          parseFloat(current.longitude as string),
-          parseFloat(point.latitude as string),
-          parseFloat(point.longitude as string)
+          parseFloat(current.latitude),
+          parseFloat(current.longitude),
+          parseFloat(point.latitude),
+          parseFloat(point.longitude)
         );
         
         if (distance < bestDistance) {
@@ -209,44 +272,7 @@ const Discover = () => {
       return;
     }
     
-    // Calculate total distance
-    let totalDistance = 0;
-    for (let i = 0; i < routePoints.length - 1; i++) {
-      const start = routePoints[i];
-      const end = routePoints[i + 1];
-      
-      if (start.latitude && start.longitude && end.latitude && end.longitude) {
-        const startLat = parseFloat(start.latitude as string);
-        const startLng = parseFloat(start.longitude as string);
-        const endLat = parseFloat(end.latitude as string);
-        const endLng = parseFloat(end.longitude as string);
-        
-        if (!isNaN(startLat) && !isNaN(startLng) && !isNaN(endLat) && !isNaN(endLng)) {
-          totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
-        }
-      }
-    }
-    
-    const formatDistance = (km) => {
-      if (useImperial) {
-        const miles = km * 0.621371;
-        return `${miles.toFixed(1)} mi`;
-      }
-      return `${km.toFixed(1)} km`;
-    };
-    
-    const formatWalkingTime = (km) => {
-      const minutes = useImperial 
-        ? Math.round(km * 0.621371 * 20) // 20 minutes per mile
-        : Math.round(km * 12); // 12 minutes per km
-      
-      if (minutes < 60) {
-        return `${minutes} min`;
-      }
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-    };
+    const totalDistance = calculateRouteDistance(routePoints);
     
     // Generate GPX content
     const waypoints = routePoints.map((point, index) => `
@@ -274,32 +300,17 @@ const Discover = () => {
     URL.revokeObjectURL(url);
     
     toast.success("Route exported as GPX file");
-  }, [routePoints, useImperial]);
+  }, [routePoints, formatDistance, formatWalkingTime, calculateRouteDistance]);
 
   const handleReorderRoute = useCallback((startIndex: number, endIndex: number) => {
-  setRoutePoints(prev => {
-    const newRoute = [...prev];
-    const [removed] = newRoute.splice(startIndex, 1);
-    newRoute.splice(endIndex, 0, removed);
-    toast.success("Route reordered");
-    return newRoute;
-  });
-}, []);
-
-
-const [isMobile, setIsMobile] = useState(false);
-
-useEffect(() => {
-  const checkMobile = () => {
-    setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
-  };
-  
-  checkMobile();
-  window.addEventListener('resize', checkMobile);
-  return () => window.removeEventListener('resize', checkMobile);
-}, []);
-
-
+    setRoutePoints(prev => {
+      const newRoute = [...prev];
+      const [removed] = newRoute.splice(startIndex, 1);
+      newRoute.splice(endIndex, 0, removed);
+      toast.success("Route reordered");
+      return newRoute;
+    });
+  }, []);
 
   const handleSaveRoute = useCallback(async (routeData) => {
     try {
@@ -313,8 +324,6 @@ useEffect(() => {
       
       if (savedRoute) {
         toast.success("Route saved successfully!");
-        // Optionally navigate to the saved route
-        // navigate(`/library/routes/${savedRoute.id}`);
       }
     } catch (error) {
       console.error("Error saving route:", error);
@@ -333,8 +342,6 @@ useEffect(() => {
     if (search) {
       setSearchQuery(search);
     }
-    
-    // ... other URL param initialization
   }, []);
 
   // Load plaque data
@@ -359,7 +366,7 @@ useEffect(() => {
       
       setPostcodeOptions(postcodes);
       
-      // Similar for colors and professions...
+      // Colors
       const colorCount = {};
       adaptedData.forEach(plaque => {
         const color = plaque.color?.toLowerCase();
@@ -378,6 +385,7 @@ useEffect(() => {
       
       setColorOptions(colors);
       
+      // Professions
       const professionCount = {};
       adaptedData.forEach(plaque => {
         if (plaque.profession && plaque.profession !== "Unknown") {
@@ -639,34 +647,34 @@ useEffect(() => {
       <div className="container mx-auto px-4 py-4 flex-grow relative">
         {/* Status bar */}
         <div className="flex justify-between items-center mb-4">
- <h2 className="text-base font-medium text-gray-600">
-    {loading ? "Loading plaques..." : (
-      <>
-        {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-        {isRoutingMode && routePoints.length > 0 && (
-          <span className="ml-2">
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
-              Route: {routePoints.length} stops • {formatDistance(totalDistance)} • {formatWalkingTime(totalDistance)}
-            </Badge>
-          </span>
-        )}
-      </>
-    )}
-  </h2>
-  
-   {/* Mobile route toggle button */}
-  {isMobile && (
-    <Button
-      variant={isRoutingMode ? "default" : "outline"}
-      size="sm"
-      onClick={handleToggleRoutingMode}
-      className="shrink-0"
-    >
-      <RouteIcon size={16} className="mr-1" />
-      {isRoutingMode ? 'Exit Route' : 'Plan Route'}
-    </Button>
-  )}
+          <h2 className="text-base font-medium text-gray-600">
+            {loading ? "Loading plaques..." : (
+              <>
+                {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
+                {isRoutingMode && routePoints.length > 0 && (
+                  <span className="ml-2">
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      Route: {routePoints.length} stops • {formatDistance(routeDistance)} • {formatWalkingTime(routeDistance)}
+                    </Badge>
+                  </span>
+                )}
+              </>
+            )}
+          </h2>
           
+          {/* Mobile route toggle button */}
+          {isMobile && (
+            <Button
+              variant={isRoutingMode ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggleRoutingMode}
+              className="shrink-0"
+            >
+              <RouteIcon size={16} className="mr-1" />
+              {isRoutingMode ? 'Exit Route' : 'Plan Route'}
+            </Button>
+          )}
+              
           {viewMode !== 'map' && (
             <div className="flex items-center gap-2">
               <select
@@ -700,35 +708,35 @@ useEffect(() => {
           )
         ) : filteredPlaques.length > 0 ? (
           <>
-{viewMode === 'map' && (
-  <div className="relative">
-    <div className="h-[650px]">
-      <PlaqueMap
-        ref={mapRef}
-        plaques={filteredPlaques}
-        onPlaqueClick={handlePlaqueClick}
-        favorites={favorites}
-        selectedPlaqueId={selectedPlaque?.id}
-        maintainView={maintainMapView}
-        className="h-full w-full"
-        isRoutingMode={isRoutingMode}
-        setIsRoutingMode={setIsRoutingMode}
-        routePoints={routePoints}
-        addPlaqueToRoute={handleAddPlaqueToRoute}
-        removePlaqueFromRoute={handleRemovePlaqueFromRoute}
-        clearRoute={handleClearRoute}
-        exportRoute={handleExportRoute}
-        saveRoute={handleSaveRoute}
-        moveRoutePointUp={handleMoveRoutePointUp}
-        moveRoutePointDown={handleMoveRoutePointDown}
-        onReorderRoute={handleReorderRoute}
-        useImperial={useImperial}
-        setUseImperial={setUseImperial}
-        isMobile={isMobile}
-      />
-    </div>
-  </div>
-)}
+            {viewMode === 'map' && (
+              <div className="relative">
+                <div className="h-[650px]">
+                  <PlaqueMap
+                    ref={mapRef}
+                    plaques={filteredPlaques}
+                    onPlaqueClick={handlePlaqueClick}
+                    favorites={favorites}
+                    selectedPlaqueId={selectedPlaque?.id}
+                    maintainView={maintainMapView}
+                    className="h-full w-full"
+                    isRoutingMode={isRoutingMode}
+                    setIsRoutingMode={setIsRoutingMode}
+                    routePoints={routePoints}
+                    addPlaqueToRoute={handleAddPlaqueToRoute}
+                    removePlaqueFromRoute={handleRemovePlaqueFromRoute}
+                    clearRoute={handleClearRoute}
+                    exportRoute={handleExportRoute}
+                    saveRoute={handleSaveRoute}
+                    moveRoutePointUp={handleMoveRoutePointUp}
+                    moveRoutePointDown={handleMoveRoutePointDown}
+                    onReorderRoute={handleReorderRoute}
+                    useImperial={useImperial}
+                    setUseImperial={setUseImperial}
+                    isMobile={isMobile}
+                  />
+                </div>
+              </div>
+            )}
 
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
