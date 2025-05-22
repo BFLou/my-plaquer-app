@@ -337,11 +337,11 @@ const AboutPage = () => {
               <div className="relative">
                 <div className="absolute -inset-4 bg-blue-200 rounded-xl transform rotate-3"></div>
                 <div className="relative aspect-video overflow-hidden rounded-lg">
-                  <img
-                    src={plaqueExplorers}
-                    alt="People exploring London blue plaques"
-                    className="object-cover w-full h-full"
-                  />
+<img
+  src="/images/plaquer-explorer.png"
+  alt="People exploring London blue plaques"
+  className="object-contain w-full h-full"  // Changed from object-cover
+/>
                 </div>
               </div>
             </div>
