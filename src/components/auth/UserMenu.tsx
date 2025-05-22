@@ -1,28 +1,51 @@
-// src/components/auth/UserMenu.tsx (Simplified)
-import React, { useState, useRef, useEffect } from 'react';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
+// src/components/auth/UserMenu.tsx
+import React, { useState } from 'react';
+import { 
+  User, 
+  LogOut, 
+  Settings, 
+  MapPin, 
+  Star, 
+  Route,
+  HelpCircle,
+  Bell,
+  Trophy,
+  Moon,
+  Sun
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import AuthModal from './AuthModal';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTheme } from '@/hooks/useTheme'; // You'll need to create this hook
 
 const UserMenu: React.FC = () => {
-  const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const navigate = useNavigate();
+  const { theme, setTheme } = useTheme(); // Add theme hook
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user || !user.displayName) return 'U';
+    
+    const names = user.displayName.split(' ');
+    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
 
   const handleSignOut = async () => {
     try {
@@ -31,110 +54,100 @@ const UserMenu: React.FC = () => {
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
-      toast.error('Failed to sign out');
+      toast.error('There was a problem signing out');
     }
-    setIsOpen(false);
   };
 
-  const handleMenuAction = (action: () => void) => {
-    action();
-    setIsOpen(false);
+  const handleThemeToggle = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    toast.success(`Switched to ${newTheme} mode`);
   };
-
-  if (!user) {
-    return (
-      <Button 
-        onClick={() => navigate('/')}
-        variant="outline"
-        size="sm"
-      >
-        Sign In
-      </Button>
-    );
-  }
 
   return (
-    <div className="relative" ref={menuRef}>
-      <Button 
-        variant="ghost" 
-        className="flex items-center gap-2 h-9 px-2"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {user.photoURL ? (
-          <img 
-            src={user.photoURL} 
-            alt={user.displayName || 'User'} 
-            className="w-7 h-7 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
-            <User size={16} className="text-blue-600" />
-          </div>
-        )}
-        <span className="hidden sm:block font-medium text-sm">
-          {user.displayName || 'User'}
-        </span>
-        <ChevronDown 
-          size={14} 
-          className={`text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
-        />
-      </Button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-          {/* User Info Header */}
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              {user.photoURL ? (
-                <img 
-                  src={user.photoURL} 
-                  alt={user.displayName || 'User'} 
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <User size={20} className="text-blue-600" />
-                </div>
-              )}
-              <div>
-                <p className="font-medium text-sm">{user.displayName || 'User'}</p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+    <>
+      {user ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "User"} />
+                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                <p className="text-xs leading-none text-gray-500">{user.email}</p>
               </div>
-            </div>
-          </div>
-
-          {/* Menu Items */}
-          <div className="py-1">
-            <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3"
-              onClick={() => handleMenuAction(() => navigate('/profile'))}
-            >
-              <User size={16} className="text-gray-500" />
-              Profile
-            </button>
-
-            <button
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-3"
-              onClick={() => handleMenuAction(() => navigate('/settings'))}
-            >
-              <Settings size={16} className="text-gray-500" />
-              Settings
-            </button>
-          </div>
-
-          {/* Sign Out */}
-          <div className="border-t border-gray-100 pt-1">
-            <button
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-              onClick={handleSignOut}
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
-          </div>
-        </div>
+            </DropdownMenuLabel>
+            
+            <DropdownMenuSeparator />
+            
+            {/* Personal Content Group */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            
+            <DropdownMenuSeparator />
+            
+            {/* Settings Group */}
+            <DropdownMenuGroup>
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault(); // Prevent dropdown from closing
+                  handleThemeToggle();
+                }}
+                className="cursor-pointer"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="mr-2 h-4 w-4" />
+                ) : (
+                  <Moon className="mr-2 h-4 w-4" />
+                )}
+                <span>Dark Mode</span>
+                <Switch 
+                  checked={theme === 'dark'} 
+                  onCheckedChange={handleThemeToggle}
+                  onClick={(e) => e.stopPropagation()} // Prevent double toggle
+                  className="ml-auto"
+                />
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            
+            <DropdownMenuSeparator />
+            
+            <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sign Out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <Button 
+          variant="default" 
+          onClick={() => setIsAuthModalOpen(true)}
+          className="gap-2"
+        >
+          <User size={16} />
+          Sign In
+        </Button>
       )}
-    </div>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+      />
+    </>
   );
 };
 
