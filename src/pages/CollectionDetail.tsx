@@ -308,21 +308,23 @@ const CollectionDetailPage = () => {
         }}
       />
     ) : (
-      <CollectionPlaqueList
-        plaques={filteredPlaques}
-        isLoading={isLoading}
-        favorites={favorites}
-        selectedPlaques={selectedPlaques}
-        searchQuery={searchQuery}
-        onClearSearch={() => setSearchQuery('')}
-        onToggleSelect={toggleSelectPlaque}
-        onToggleFavorite={handleTogglePlaqueFavorite}
-        onPlaqueClick={handleViewPlaque}
-        onAddPlaquesClick={() => {
-          setAddPlaquesModalOpen(true);
-          fetchAvailablePlaques();
-        }}
-      />
+<CollectionPlaqueList
+    plaques={filteredPlaques}
+    isLoading={isLoading}
+    favorites={favorites}
+    selectedPlaques={selectedPlaques}
+    searchQuery={searchQuery}
+    onClearSearch={() => setSearchQuery('')}
+    onToggleSelect={toggleSelectPlaque}
+    onToggleFavorite={handleTogglePlaqueFavorite}
+    onMarkVisited={handleMarkVisited}
+    onRemovePlaque={handleRemovePlaque}
+    onPlaqueClick={handleViewPlaque}
+    onAddPlaquesClick={() => {
+      setAddPlaquesModalOpen(true);
+      fetchAvailablePlaques();
+    }}
+  />
     )}
   </CollectionFilterView>
 </div>

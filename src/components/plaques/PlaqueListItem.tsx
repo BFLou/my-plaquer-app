@@ -1,4 +1,4 @@
-// src/components/plaques/PlaqueListItem.tsx - Improved to match PlaqueCard
+// src/components/plaques/PlaqueListItem.tsx - Fixed dropdown menu
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar } from 'lucide-react';
 import { Card } from "@/components/ui/card";
@@ -282,8 +282,6 @@ export const PlaqueListItem = ({
                         </>
                       )}
                       
-// Continue from where it was cut off...
-
                       {/* Context-specific actions */}
                       {variant === 'discover' && (
                         <DropdownMenuItem onSelect={handleAddToCollection}>
