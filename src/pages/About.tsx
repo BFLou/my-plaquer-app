@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
+import plaqueExplorers from '@/assets/images/plaquer-explorer.jpg';
+
 
 const AboutPage = () => {
   const navigate = useNavigate();
@@ -336,7 +338,7 @@ const AboutPage = () => {
                 <div className="absolute -inset-4 bg-blue-200 rounded-xl transform rotate-3"></div>
                 <div className="relative aspect-video overflow-hidden rounded-lg">
                   <img
-                    src="/images/blue-plaque-explorers.jpg"
+                    src={plaqueExplorers}
                     alt="People exploring London blue plaques"
                     className="object-cover w-full h-full"
                   />
