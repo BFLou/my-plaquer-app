@@ -486,3 +486,148 @@ _::-webkit-full-page-media, _:future, :root .map-container-fullscreen {
 .pulse-animation {
   animation: pulse 1.5s infinite;
 }
+
+/* src/styles/map-styles.css - Add mobile optimizations */
+
+@media (max-width: 768px) {
+  .route-planner {
+    position: fixed !important;
+    left: 8px !important;
+    top: 80px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: 350px !important;
+    max-height: calc(100vh - 160px) !important;
+    z-index: 1000 !important;
+  }
+  
+  .route-point-item {
+    padding: 12px !important;
+    touch-action: manipulation;
+  }
+  
+  .route-point-item .grip-handle {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+  .route-point-item .stop-marker {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+  }
+  
+  .route-actions {
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+  
+  .route-actions button {
+    min-height: 44px !important; /* Touch-friendly */
+  }
+}
+/* src/styles/map-styles.css - Continue mobile optimizations */
+
+/* Drag and drop visual feedback */
+.route-point-dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.route-point-drag-over {
+  border-color: #3b82f6 !important;
+  border-width: 2px !important;
+  background-color: #eff6ff !important;
+}
+
+/* Improved touch targets for mobile */
+@media (max-width: 768px) {
+  .route-planner-collapsed {
+    height: 60px !important;
+  }
+  
+  .route-planner-expanded {
+    height: auto !important;
+    max-height: calc(100vh - 120px) !important;
+  }
+  
+  /* Better spacing for touch */
+  .route-point-list {
+    padding: 8px !important;
+  }
+  
+  .route-point-item {
+    margin-bottom: 8px !important;
+    min-height: 56px !important; /* Better touch target */
+  }
+  
+  /* Larger dropdown trigger for mobile */
+  .route-point-menu-trigger {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  /* Fixed positioning adjustments for different mobile sizes */
+  @media (max-height: 600px) {
+    .route-planner {
+      max-height: calc(100vh - 100px) !important;
+    }
+  }
+  
+  @media (max-height: 500px) {
+    .route-planner {
+      max-height: calc(100vh - 80px) !important;
+    }
+    
+    .route-planner-stats {
+      padding: 8px 12px !important;
+    }
+  }
+}
+
+/* Enhanced route line styling */
+.walking-route-line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
+}
+
+.walking-route-line:hover {
+  stroke-width: 6px;
+  transition: stroke-width 0.2s ease;
+}
+
+/* Loading spinner for route calculation */
+.route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.route-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Better visual hierarchy for route stops */
+.route-stop-start {
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+}
+
+.route-stop-end {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+}
+
+.route-stop-waypoint {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}

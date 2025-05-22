@@ -92,22 +92,24 @@ const PlaqueMap = React.forwardRef(({
   
   // Use route management hook
   const {
-    isDrawingRoute,
-    drawWalkingRoute,
-    optimizeRouteForWalking,
-    calculateRouteDistance,
-    formatDistance,
-    calculateWalkingTime
-  } = useRouteManagement({
-    mapInstance,
-    routePoints,
-    useRoadRouting,
-    useImperial,
-    API_KEY: ORS_API_KEY,
-    onRouteChange: (newRoute) => {
-      // This would be handled by the parent component via the existing props
-    }
-  });
+  isDrawingRoute,
+  drawWalkingRoute,
+  optimizeRouteForWalking,
+  calculateRouteDistance,
+  formatDistance,
+  calculateWalkingTime,
+  clearRoute: clearRouteFromHook
+} = useRouteManagement({
+  mapInstance,
+  routePoints,
+  useRoadRouting,
+  useImperial,
+  API_KEY: ORS_API_KEY,
+  onRouteChange: (newRoute) => {
+    // This callback should update the parent component's route state
+    // You'll need to pass this from the parent
+  }
+});
   
   // Use map operations hook for location search, filtering, etc.
   const {

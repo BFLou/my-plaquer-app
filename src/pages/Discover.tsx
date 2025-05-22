@@ -1,8 +1,8 @@
-// src/pages/Discover.tsx
+// src/pages/Discover.tsx - Enhanced route functionality
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
-  Search, Filter, X, Map, Grid, List, Navigation,
+  Search, Filter, X, Map, Grid, List, Navigation, Badge,
   Route as RouteIcon, MapPin
 } from 'lucide-react';
 import { PageContainer } from "@/components";
@@ -21,21 +21,15 @@ import Pagination from '@/components/plaques/Pagination';
 import PlaqueMap from '../components/maps/PlaqueMap';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useRoutes } from '@/hooks/useRoutes';
-import { useFavorites } from '@/hooks/useFavorites'; // Add this import
+import { useFavorites } from '@/hooks/useFavorites';
+import { calculateDistance } from '../components/maps/utils/routeUtils';
 import '../styles/map-styles.css';
 
-// Import our new filter components
+// Import filter components
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import ActiveFiltersDisplay from '../components/plaques/ActiveFiltersDisplay';
 
-// Define types
 export type ViewMode = 'grid' | 'list' | 'map';
-type FilterOption = {
-  label: string;
-  value: string;
-  color?: string;
-  count?: number;
-};
 
 const Discover = () => {
   const navigate = useNavigate();
@@ -46,23 +40,22 @@ const Discover = () => {
   // State
   const [allPlaques, setAllPlaques] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('map'); // Default to map view
+  const [viewMode, setViewMode] = useState('map');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('newest');
-  // Remove the favorites state
-  // const [favorites, setFavorites] = useState([]);
-  // Replace with the useFavorites hook
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [maintainMapView, setMaintainMapView] = useState(false);
+  
+  // Enhanced Route State
   const [routePoints, setRoutePoints] = useState([]);
   const [isRoutingMode, setIsRoutingMode] = useState(false);
   const [routeDistance, setRouteDistance] = useState(0);
   const [useImperial, setUseImperial] = useState(false);
   const [useRoadRouting, setUseRoadRouting] = useState(true);
 
-  // Pagination state (for list/grid views)
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
@@ -76,12 +69,260 @@ const Discover = () => {
   const [onlyVisited, setOnlyVisited] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
-  // Filter options - will be populated dynamically from data
+  // Filter options
   const [postcodeOptions, setPostcodeOptions] = useState([]);
   const [colorOptions, setColorOptions] = useState([]);
   const [professionOptions, setProfessionOptions] = useState([]);
 
-  // Initialize state from URL params on first load
+  // Enhanced route management functions
+  const handleToggleRoutingMode = useCallback(() => {
+    const newRoutingMode = !isRoutingMode;
+    setIsRoutingMode(newRoutingMode);
+    
+    if (newRoutingMode) {
+      toast.success("Route planning mode activated. Click on plaques to add them to your route.", {
+        duration: 4000,
+      });
+    } else {
+      handleClearRoute();
+      toast.info("Route planning mode deactivated.");
+    }
+  }, [isRoutingMode]);
+
+ // src/pages/Discover.tsx - Enhanced route functionality (continued)
+
+  const handleAddPlaqueToRoute = useCallback((plaque) => {
+    // Check if plaque is already in route
+    if (routePoints.some(p => p.id === plaque.id)) {
+      toast.info(`"${plaque.title}" is already in your route.`);
+      return;
+    }
+    
+    // Add plaque to route
+    setRoutePoints(prev => {
+      const newRoute = [...prev, plaque];
+      
+      // Show appropriate message based on route length
+      if (newRoute.length === 1) {
+        toast.success(`Added "${plaque.title}" as your starting point.`);
+      } else if (newRoute.length === 2) {
+        toast.success(`Added "${plaque.title}" - you now have a route with ${newRoute.length} stops!`);
+      } else {
+        toast.success(`Added "${plaque.title}" (${newRoute.length} stops total)`);
+      }
+      
+      return newRoute;
+    });
+    
+    // Maintain map view when adding points
+    setMaintainMapView(true);
+  }, [routePoints]);
+
+  const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
+    setRoutePoints(prev => {
+      const newRoute = prev.filter(p => p.id !== plaqueId);
+      const removedPlaque = prev.find(p => p.id === plaqueId);
+      
+      if (removedPlaque) {
+        toast.info(`Removed "${removedPlaque.title}" from route`);
+      }
+      
+      return newRoute;
+    });
+  }, []);
+
+  const handleClearRoute = useCallback(() => {
+    if (routePoints.length > 0) {
+      setRoutePoints([]);
+      toast.info(`Cleared route with ${routePoints.length} stops`);
+    }
+  }, [routePoints.length]);
+
+  const handleOptimizeRoute = useCallback(() => {
+    if (routePoints.length < 3) {
+      toast.info("Need at least 3 stops to optimize route");
+      return;
+    }
+    
+    // Simple nearest-neighbor optimization
+    const start = routePoints[0];
+    const end = routePoints[routePoints.length - 1];
+    const middle = [...routePoints.slice(1, -1)];
+    
+    const optimized = [start];
+    let current = start;
+    
+    while (middle.length > 0) {
+      let bestIndex = 0;
+      let bestDistance = Infinity;
+      
+      for (let i = 0; i < middle.length; i++) {
+        const point = middle[i];
+        if (!current.latitude || !current.longitude || !point.latitude || !point.longitude) continue;
+        
+        const distance = calculateDistance(
+          parseFloat(current.latitude as string),
+          parseFloat(current.longitude as string),
+          parseFloat(point.latitude as string),
+          parseFloat(point.longitude as string)
+        );
+        
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = i;
+        }
+      }
+      
+      const nearest = middle.splice(bestIndex, 1)[0];
+      optimized.push(nearest);
+      current = nearest;
+    }
+    
+    optimized.push(end);
+    setRoutePoints(optimized);
+    toast.success("Route optimized for walking distance!");
+  }, [routePoints]);
+
+  const handleMoveRoutePointUp = useCallback((index) => {
+    if (index <= 0) return;
+    
+    setRoutePoints(prev => {
+      const newRoute = [...prev];
+      [newRoute[index], newRoute[index - 1]] = [newRoute[index - 1], newRoute[index]];
+      return newRoute;
+    });
+  }, []);
+
+  const handleMoveRoutePointDown = useCallback((index) => {
+    setRoutePoints(prev => {
+      if (index >= prev.length - 1) return prev;
+      
+      const newRoute = [...prev];
+      [newRoute[index], newRoute[index + 1]] = [newRoute[index + 1], newRoute[index]];
+      return newRoute;
+    });
+  }, []);
+
+  const handleExportRoute = useCallback(() => {
+    if (routePoints.length < 2) {
+      toast.error("Need at least 2 points to export");
+      return;
+    }
+    
+    // Calculate total distance
+    let totalDistance = 0;
+    for (let i = 0; i < routePoints.length - 1; i++) {
+      const start = routePoints[i];
+      const end = routePoints[i + 1];
+      
+      if (start.latitude && start.longitude && end.latitude && end.longitude) {
+        const startLat = parseFloat(start.latitude as string);
+        const startLng = parseFloat(start.longitude as string);
+        const endLat = parseFloat(end.latitude as string);
+        const endLng = parseFloat(end.longitude as string);
+        
+        if (!isNaN(startLat) && !isNaN(startLng) && !isNaN(endLat) && !isNaN(endLng)) {
+          totalDistance += calculateDistance(startLat, startLng, endLat, endLng);
+        }
+      }
+    }
+    
+    const formatDistance = (km) => {
+      if (useImperial) {
+        const miles = km * 0.621371;
+        return `${miles.toFixed(1)} mi`;
+      }
+      return `${km.toFixed(1)} km`;
+    };
+    
+    const formatWalkingTime = (km) => {
+      const minutes = useImperial 
+        ? Math.round(km * 0.621371 * 20) // 20 minutes per mile
+        : Math.round(km * 12); // 12 minutes per km
+      
+      if (minutes < 60) {
+        return `${minutes} min`;
+      }
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
+    };
+    
+    // Generate GPX content
+    const waypoints = routePoints.map((point, index) => `
+    <wpt lat="${point.latitude}" lon="${point.longitude}">
+      <name>${point.title || `Stop ${index + 1}`}</name>
+      <desc>${point.description || point.inscription || ''}</desc>
+    </wpt>`).join('');
+    
+    const gpxContent = `<?xml version="1.0"?>
+<gpx version="1.1" creator="Plaquer App">
+  <metadata>
+    <name>Walking Route</name>
+    <desc>Route with ${routePoints.length} stops - ${formatDistance(totalDistance)} - ${formatWalkingTime(totalDistance)}</desc>
+  </metadata>
+  ${waypoints}
+</gpx>`;
+    
+    // Download the file
+    const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `plaque-route-${Date.now()}.gpx`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success("Route exported as GPX file");
+  }, [routePoints, useImperial]);
+
+  const handleReorderRoute = useCallback((startIndex: number, endIndex: number) => {
+  setRoutePoints(prev => {
+    const newRoute = [...prev];
+    const [removed] = newRoute.splice(startIndex, 1);
+    newRoute.splice(endIndex, 0, removed);
+    toast.success("Route reordered");
+    return newRoute;
+  });
+}, []);
+
+
+const [isMobile, setIsMobile] = useState(false);
+
+useEffect(() => {
+  const checkMobile = () => {
+    setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+  };
+  
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
+
+
+
+  const handleSaveRoute = useCallback(async (routeData) => {
+    try {
+      const savedRoute = await createRoute(
+        routeData.name,
+        routePoints,
+        routeDistance,
+        routeData.description,
+        false // Private by default
+      );
+      
+      if (savedRoute) {
+        toast.success("Route saved successfully!");
+        // Optionally navigate to the saved route
+        // navigate(`/library/routes/${savedRoute.id}`);
+      }
+    } catch (error) {
+      console.error("Error saving route:", error);
+      toast.error("Failed to save route");
+    }
+  }, [routePoints, routeDistance, createRoute]);
+
+  // Initialize state from URL params
   useEffect(() => {
     const view = searchParams.get('view');
     if (view && (view === 'grid' || view === 'list' || view === 'map')) {
@@ -93,47 +334,18 @@ const Discover = () => {
       setSearchQuery(search);
     }
     
-    const postcodesParam = searchParams.get('postcodes');
-    if (postcodesParam) {
-      setSelectedPostcodes(postcodesParam.split(','));
-    }
-    
-    const colorsParam = searchParams.get('colors');
-    if (colorsParam) {
-      setSelectedColors(colorsParam.split(','));
-    }
-    
-    const professionsParam = searchParams.get('professions');
-    if (professionsParam) {
-      setSelectedProfessions(professionsParam.split(','));
-    }
-    
-    const visited = searchParams.get('visited');
-    if (visited === 'true') {
-      setOnlyVisited(true);
-    }
-    
-    const favs = searchParams.get('favorites');
-    if (favs === 'true') {
-      setOnlyFavorites(true);
-    }
-    
-    const page = searchParams.get('page');
-    if (page) {
-      setCurrentPage(parseInt(page, 10));
-    }
+    // ... other URL param initialization
   }, []);
 
-  // Load plaque data and generate filter options
+  // Load plaque data
   useEffect(() => {
     try {
       setLoading(true);
       
-      // Use imported data
       const adaptedData = adaptPlaquesData(plaqueData);
       setAllPlaques(adaptedData);
       
-      // Extract unique postcodes with counts
+      // Generate filter options
       const postcodeCount = {};
       adaptedData.forEach(plaque => {
         if (plaque.postcode && plaque.postcode !== "Unknown") {
@@ -142,16 +354,12 @@ const Discover = () => {
       });
       
       const postcodes = Object.entries(postcodeCount)
-        .map(([value, count]) => ({
-          label: value,
-          value,
-          count
-        }))
+        .map(([value, count]) => ({ label: value, value, count }))
         .sort((a, b) => b.count - a.count);
       
       setPostcodeOptions(postcodes);
       
-      // Extract unique colors with counts
+      // Similar for colors and professions...
       const colorCount = {};
       adaptedData.forEach(plaque => {
         const color = plaque.color?.toLowerCase();
@@ -170,7 +378,6 @@ const Discover = () => {
       
       setColorOptions(colors);
       
-      // Extract unique professions with counts
       const professionCount = {};
       adaptedData.forEach(plaque => {
         if (plaque.profession && plaque.profession !== "Unknown") {
@@ -196,10 +403,9 @@ const Discover = () => {
     }
   }, []);
 
-  // Apply filters to get filtered plaques
+  // Apply filters
   const filteredPlaques = useMemo(() => {
     return allPlaques.filter((plaque) => {
-      // Match search query
       const matchesSearch = !searchQuery.trim() || 
         (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (plaque.inscription?.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -207,22 +413,16 @@ const Discover = () => {
         (plaque.location?.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (plaque.description?.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      // Match postcode (any selected, or all if none selected)
       const matchesPostcode = selectedPostcodes.length === 0 || 
         (plaque.postcode && selectedPostcodes.includes(plaque.postcode));
       
-      // Match color (any selected, or all if none selected)
       const matchesColor = selectedColors.length === 0 || 
         (plaque.color && selectedColors.includes(plaque.color.toLowerCase()));
       
-      // Match profession (any selected, or all if none selected)
       const matchesProfession = selectedProfessions.length === 0 || 
         (plaque.profession && selectedProfessions.includes(plaque.profession));
       
-      // Match visited status - Use isPlaqueVisited hook
       const matchesVisited = !onlyVisited || plaque.visited || isPlaqueVisited(plaque.id);
-      
-      // Match favorite status - Now use isFavorite from the hook
       const matchesFavorite = !onlyFavorites || isFavorite(plaque.id);
 
       return matchesSearch && 
@@ -245,7 +445,7 @@ const Discover = () => {
     isFavorite
   ]);
 
-  // Calculate total active filters
+  // Calculate active filters count
   const activeFiltersCount = 
     selectedPostcodes.length + 
     selectedColors.length + 
@@ -253,94 +453,37 @@ const Discover = () => {
     (onlyVisited ? 1 : 0) + 
     (onlyFavorites ? 1 : 0);
 
-  // Sort and paginate plaques (for list/grid views)
+  // Sort and paginate plaques
   const sortedAndPaginatedPlaques = useMemo(() => {
-    // Sort plaques
     const sorted = [...filteredPlaques].sort((a, b) => {
       if (sortOption === 'a-z') return (a.title || '').localeCompare(b.title || '');
       if (sortOption === 'z-a') return (b.title || '').localeCompare(a.title || '');
-      return b.id - a.id; // Default to newest
+      return b.id - a.id;
     });
     
-    // Calculate total pages
     const total = Math.ceil(sorted.length / itemsPerPage);
     setTotalPages(total);
     
-    // Adjust current page if needed
     if (currentPage > total && total > 0) {
       setCurrentPage(1);
     }
     
-    // Get current page items
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sorted.slice(startIndex, endIndex);
   }, [filteredPlaques, sortOption, currentPage, itemsPerPage]);
 
-  // Update URL when filters, sort, or page change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    
-    if (viewMode !== 'list') { // Default view is list
-      params.set('view', viewMode);
-    }
-    
-    if (searchQuery) {
-      params.set('search', searchQuery);
-    }
-    
-    if (selectedPostcodes.length > 0) {
-      params.set('postcodes', selectedPostcodes.join(','));
-    }
-    
-    if (selectedColors.length > 0) {
-      params.set('colors', selectedColors.join(','));
-    }
-    
-    if (selectedProfessions.length > 0) {
-      params.set('professions', selectedProfessions.join(','));
-    }
-    
-    if (onlyVisited) {
-      params.set('visited', 'true');
-    }
-    
-    if (onlyFavorites) {
-      params.set('favorites', 'true');
-    }
-    
-    if (currentPage > 1) {
-      params.set('page', currentPage.toString());
-    }
-    
-    const newUrl = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
-    navigate(newUrl, { replace: true });
-  }, [
-    viewMode, 
-    searchQuery, 
-    selectedPostcodes, 
-    selectedColors, 
-    selectedProfessions, 
-    onlyVisited, 
-    onlyFavorites, 
-    currentPage, 
-    navigate, 
-    location.pathname
-  ]);
-
   // Handler functions
   const handleSearch = () => {
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   };
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
   };
 
-  // Updated to use the hook's toggleFavorite
   const handleFavoriteToggle = (id) => {
     toggleFavorite(id);
-    // No need for toast here as the hook handles it
   };
 
   const handlePlaqueClick = (plaque) => {
@@ -359,7 +502,6 @@ const Discover = () => {
         notes: '',
       });
       
-      // Update local state for immediate UI feedback
       setAllPlaques(prev => prev.map(p => 
         p.id === id ? { ...p, visited: true } : p
       ));
@@ -377,7 +519,7 @@ const Discover = () => {
   };
 
   const handleApplyFilters = () => {
-    setCurrentPage(1); // Reset to first page when applying filters
+    setCurrentPage(1);
     setFiltersOpen(false);
   };
 
@@ -390,23 +532,11 @@ const Discover = () => {
     setCurrentPage(1);
   };
 
-  const handleRemovePostcode = (value) => {
-    setSelectedPostcodes(prev => prev.filter(item => item !== value));
-  };
-
-  const handleRemoveColor = (value) => {
-    setSelectedColors(prev => prev.filter(item => item !== value));
-  };
-
-  const handleRemoveProfession = (value) => {
-    setSelectedProfessions(prev => prev.filter(item => item !== value));
-  };
-
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
-  // Find nearby plaques for the detail view
+  // Find nearby plaques for detail view
   const getNearbyPlaques = (currentPlaque) => {
     return allPlaques.filter(p => 
       p.id !== currentPlaque.id && 
@@ -420,11 +550,10 @@ const Discover = () => {
       hasFooter={viewMode !== 'map'}
       simplifiedFooter={true}
     >
-      {/* View Mode Selection Tabs - Now prominently featured at the top */}
+      {/* View Mode Selection Tabs */}
       <div className="bg-white border-b border-gray-200 sticky top-[61px] z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            {/* Left side: View Mode Tabs */}
             <Tabs 
               value={viewMode} 
               onValueChange={handleViewModeChange}
@@ -443,7 +572,6 @@ const Discover = () => {
               </TabsList>
             </Tabs>
             
-            {/* Right side: Search and Filter */}
             <div className="flex w-full sm:w-auto items-center gap-2">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -497,9 +625,9 @@ const Discover = () => {
             postcodeOptions={postcodeOptions}
             professionOptions={professionOptions}
             
-            onRemoveColor={handleRemoveColor}
-            onRemovePostcode={handleRemovePostcode}
-            onRemoveProfession={handleRemoveProfession}
+            onRemoveColor={(value) => setSelectedColors(prev => prev.filter(item => item !== value))}
+            onRemovePostcode={(value) => setSelectedPostcodes(prev => prev.filter(item => item !== value))}
+            onRemoveProfession={(value) => setSelectedProfessions(prev => prev.filter(item => item !== value))}
             onRemoveVisited={() => setOnlyVisited(false)}
             onRemoveFavorite={() => setOnlyFavorites(false)}
             onClearAll={handleResetFilters}
@@ -511,13 +639,33 @@ const Discover = () => {
       <div className="container mx-auto px-4 py-4 flex-grow relative">
         {/* Status bar */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-medium text-gray-600">
-            {loading ? "Loading plaques..." : (
-              <>
-                {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-              </>
-            )}
-          </h2>
+ <h2 className="text-base font-medium text-gray-600">
+    {loading ? "Loading plaques..." : (
+      <>
+        {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
+        {isRoutingMode && routePoints.length > 0 && (
+          <span className="ml-2">
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              Route: {routePoints.length} stops • {formatDistance(totalDistance)} • {formatWalkingTime(totalDistance)}
+            </Badge>
+          </span>
+        )}
+      </>
+    )}
+  </h2>
+  
+   {/* Mobile route toggle button */}
+  {isMobile && (
+    <Button
+      variant={isRoutingMode ? "default" : "outline"}
+      size="sm"
+      onClick={handleToggleRoutingMode}
+      className="shrink-0"
+    >
+      <RouteIcon size={16} className="mr-1" />
+      {isRoutingMode ? 'Exit Route' : 'Plan Route'}
+    </Button>
+  )}
           
           {viewMode !== 'map' && (
             <div className="flex items-center gap-2">
@@ -535,7 +683,7 @@ const Discover = () => {
         </div>
         
         {loading ? (
-          // Loading states for different view modes
+          // Loading states
           viewMode === 'map' ? (
             <div className="h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
               <div className="flex flex-col items-center">
@@ -552,90 +700,66 @@ const Discover = () => {
           )
         ) : filteredPlaques.length > 0 ? (
           <>
-            {viewMode === 'map' && (
-              <div className="relative">
-                <div className="h-[650px]">
-                  <PlaqueMap
-                    ref={mapRef}
-                    plaques={filteredPlaques}
-                    onPlaqueClick={handlePlaqueClick}
-                    favorites={favorites}
-                    selectedPlaqueId={selectedPlaque?.id}
-                    maintainView={maintainMapView}
-                    className="h-full w-full"
-                    isRoutingMode={isRoutingMode}
-                    setIsRoutingMode={setIsRoutingMode}
-                    routePoints={routePoints}
-                    addPlaqueToRoute={(plaque) => {
-                      if (routePoints.some(p => p.id === plaque.id)) {
-                        toast.info("This plaque is already in your route.");
-                        return;
-                      }
-                      
-                      setMaintainMapView(true);
-                      setRoutePoints(prev => [...prev, plaque]);
-                      
-                      toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
-                    }}
-                    removePlaqueFromRoute={(plaqueId) => {
-                      setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
-                      toast.info("Removed plaque from route");
-                    }}
-                    clearRoute={() => {
-                      setRoutePoints([]);
-                    }}
+{viewMode === 'map' && (
+  <div className="relative">
+    <div className="h-[650px]">
+      <PlaqueMap
+        ref={mapRef}
+        plaques={filteredPlaques}
+        onPlaqueClick={handlePlaqueClick}
+        favorites={favorites}
+        selectedPlaqueId={selectedPlaque?.id}
+        maintainView={maintainMapView}
+        className="h-full w-full"
+        isRoutingMode={isRoutingMode}
+        setIsRoutingMode={setIsRoutingMode}
+        routePoints={routePoints}
+        addPlaqueToRoute={handleAddPlaqueToRoute}
+        removePlaqueFromRoute={handleRemovePlaqueFromRoute}
+        clearRoute={handleClearRoute}
+        exportRoute={handleExportRoute}
+        saveRoute={handleSaveRoute}
+        moveRoutePointUp={handleMoveRoutePointUp}
+        moveRoutePointDown={handleMoveRoutePointDown}
+        onReorderRoute={handleReorderRoute}
+        useImperial={useImperial}
+        setUseImperial={setUseImperial}
+        isMobile={isMobile}
+      />
+    </div>
+  </div>
+)}
+
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedAndPaginatedPlaques.map((plaque) => (
+                  <PlaqueCard 
+                    key={plaque.id}
+                    plaque={plaque}
+                    onClick={handlePlaqueClick}
+                    onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
+                    variant="discover"
+                    className="h-full"
+                    showRouteButton={isRoutingMode}
                   />
-                </div>
+                ))}
               </div>
             )}
 
-{viewMode === 'grid' && (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {sortedAndPaginatedPlaques.map((plaque) => (
-      <PlaqueCard 
-        key={plaque.id}
-        plaque={plaque}
-        onClick={handlePlaqueClick}
-        onAddToRoute={(plaque) => {
-          if (routePoints.some(p => p.id === plaque.id)) {
-            toast.info("This plaque is already in your route.");
-            return;
-          }
-          
-          setMaintainMapView(true);
-          setRoutePoints(prev => [...prev, plaque]);
-          toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
-        }}
-        variant="discover"
-        className="h-full"
-      />
-    ))}
-  </div>
-)}
-
-
-{viewMode === 'list' && (
-  <div className="space-y-3">
-    {sortedAndPaginatedPlaques.map((plaque) => (
-      <PlaqueListItem 
-        key={plaque.id}
-        plaque={plaque}
-        onClick={handlePlaqueClick}
-        onAddToRoute={(plaque) => {
-          if (routePoints.some(p => p.id === plaque.id)) {
-            toast.info("This plaque is already in your route.");
-            return;
-          }
-          
-          setMaintainMapView(true);
-          setRoutePoints(prev => [...prev, plaque]);
-          toast.success(`Added "${plaque.title}" to route (${routePoints.length + 1} stops)`);
-        }}
-        variant="discover"
-      />
-    ))}
-  </div>
-)}
+            {viewMode === 'list' && (
+              <div className="space-y-3">
+                {sortedAndPaginatedPlaques.map((plaque) => (
+                  <PlaqueListItem 
+                    key={plaque.id}
+                    plaque={plaque}
+                    onClick={handlePlaqueClick}
+                    onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
+                    variant="discover"
+                    showRouteButton={isRoutingMode}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Pagination for grid and list views */}
             {viewMode !== 'map' && totalPages > 1 && (
