@@ -1,10 +1,8 @@
-// src/components/maps/controls/LocationSearchPanel.tsx - Enhanced with London focus
+// src/components/maps/controls/LocationSearchPanel.tsx - Fixed autocomplete and improved UX
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, MapPin, Loader } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 interface LocationSuggestion {
   id: string;
@@ -26,20 +24,12 @@ interface LocationSearchPanelProps {
   onSearch: (address: string, coordinates?: [number, number]) => void;
   onClose: () => void;
   isLoading: boolean;
-  useImperial?: boolean;
-  setUseImperial?: (value: boolean) => void;
-  maxDistance?: number;
-  setMaxDistance?: (distance: number) => void;
 }
 
 const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
   onSearch,
   onClose,
-  isLoading,
-  useImperial = false,
-  setUseImperial = () => {},
-  maxDistance = 1,
-  setMaxDistance = () => {}
+  isLoading
 }) => {
   const [searchValue, setSearchValue] = useState('');
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
@@ -163,11 +153,11 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
     }
   };
   
-  // Handle suggestion selection
-  const selectSuggestion = (suggestion: LocationSuggestion) => {
+  // Handle suggestion selection - FIXED
+  const handleSuggestionClick = (suggestion: LocationSuggestion) => {
     setSearchValue(suggestion.display_name);
     setSuggestions([]);
-    // Pass coordinates along with the search
+    // Pass coordinates along with the search - this was missing!
     onSearch(suggestion.display_name, [suggestion.lat, suggestion.lon]);
   };
 
@@ -192,19 +182,12 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
     }
   };
 
-  // Format display distance
-  const formatDistance = (distance: number) => {
-    return useImperial 
-      ? `${(distance * 0.621371).toFixed(1)} mi`
-      : `${distance.toFixed(1)} km`;
-  };
-
   return (
-    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-80 sm:w-96">
+    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-[1000] w-80 sm:w-96">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-medium flex items-center gap-1.5">
           <MapPin size={16} className="text-gray-500" />
-          Location Search
+          Search Location
         </h3>
         <Button 
           variant="ghost" 
@@ -260,7 +243,7 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
                 key={suggestion.id}
                 type="button"
                 className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors text-sm"
-                onClick={() => selectSuggestion(suggestion)}
+                onClick={() => handleSuggestionClick(suggestion)}
               >
                 <div className="flex items-start gap-2">
                   {renderLocationIcon(suggestion.type)}
@@ -284,41 +267,6 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
           </div>
         )}
         
-        {/* Distance Settings */}
-        <div className="border-t pt-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="search-units" className="text-sm">
-              Units: {useImperial ? 'Miles' : 'Kilometers'}
-            </Label>
-            <Switch
-              id="search-units"
-              checked={useImperial}
-              onCheckedChange={setUseImperial}
-              size="sm"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="text-sm">Search Radius</Label>
-              <span className="text-sm font-medium">{formatDistance(maxDistance)}</span>
-            </div>
-            <input
-              type="range"
-              min={useImperial ? "0.3" : "0.5"}
-              max={useImperial ? "3.1" : "5"}
-              step="0.1"
-              value={useImperial ? (maxDistance * 0.621371) : maxDistance}
-              onChange={(e) => {
-                const value = parseFloat(e.target.value);
-                const kmValue = useImperial ? (value / 0.621371) : value;
-                setMaxDistance(parseFloat(kmValue.toFixed(1)));
-              }}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-            />
-          </div>
-        </div>
-        
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -339,14 +287,14 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
                 Searching...
               </>
             ) : (
-              <>Search Area</>
+              <>Search</>
             )}
           </Button>
         </div>
       </form>
       
       <div className="mt-3 text-xs text-gray-500">
-        <p>Search for London locations. A distance filter will be applied automatically.</p>
+        <p>Search for London locations. Distance filter will be applied automatically.</p>
       </div>
     </div>
   );

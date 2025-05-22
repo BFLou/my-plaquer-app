@@ -1,11 +1,9 @@
-// src/components/maps/controls/FilterPanel.tsx - Enhanced with units toggle
+// src/components/maps/controls/FilterPanel.tsx - Compact version without distance settings
 import React from 'react';
 import { X, CornerUpLeft, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 interface FilterPanelProps {
   maxDistance: number;
@@ -16,11 +14,10 @@ interface FilterPanelProps {
   resetFilters: () => void;
   hasUserLocation: boolean;
   useImperial?: boolean;
-  setUseImperial?: (value: boolean) => void;
 }
 
 /**
- * FilterPanel Component with units toggle
+ * Compact FilterPanel Component - just shows distance slider and apply button
  */
 const FilterPanel: React.FC<FilterPanelProps> = ({
   maxDistance, 
@@ -30,8 +27,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   closeFilters,
   resetFilters,
   hasUserLocation,
-  useImperial = false,
-  setUseImperial = () => {}
+  useImperial = false
 }) => {
   // Convert distance based on units
   const displayDistance = useImperial ? (maxDistance * 0.621371) : maxDistance;
@@ -56,13 +52,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   };
   
   return (
-    <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-20 w-72 sm:w-80">
+    <div className="absolute top-16 right-4 bg-white rounded-lg shadow-lg p-4 z-[1000] w-72">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-medium flex items-center gap-1.5">
           <MapPin size={16} className="text-gray-500" />
           Distance Filter
         </h3>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -70,7 +66,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
             onClick={resetFilters}
             title="Reset filters"
           >
-            <CornerUpLeft size={16} />
+            <CornerUpLeft size={14} />
           </Button>
           <Button 
             variant="ghost" 
@@ -87,23 +83,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         {!hasUserLocation ? (
           <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-700 text-sm">
             <p className="font-medium mb-1">Location needed</p>
-            <p className="text-xs">Please find your location first using the locate button to use distance filtering.</p>
+            <p className="text-xs">Please find your location or search for an address to use distance filtering.</p>
           </div>
         ) : (
-          <>
-            {/* Units Toggle */}
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <Label htmlFor="units-toggle" className="text-sm font-medium">
-                Units: {useImperial ? 'Miles' : 'Kilometers'}
-              </Label>
-              <Switch
-                id="units-toggle"
-                checked={useImperial}
-                onCheckedChange={setUseImperial}
-                size="sm"
-              />
-            </div>
-            
+          <>            
             <div className="flex justify-between items-center">
               <span className="text-sm">Range: <span className="font-medium">{formatDistance(maxDistance)}</span></span>
               <Badge 
@@ -140,7 +123,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
             </div>
             
             <div className="text-xs text-gray-500 mt-6 mb-1">
-              <p>This filter will show plaques within {formatDistance(maxDistance)} of your current location.</p>
+              <p>Show plaques within {formatDistance(maxDistance)} of your location.</p>
             </div>
             
             <Button 

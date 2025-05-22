@@ -1,4 +1,4 @@
-// src/components/maps/PlaqueMap.tsx - Fixed version with visible search bar
+// src/components/maps/PlaqueMap.tsx - Final version with proper location handling
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,7 @@ const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.en
   : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
 
 /**
- * PlaqueMap Component
- * A comprehensive map component for displaying plaques with routing functionality
+ * PlaqueMap Component with proper location and filter handling
  */
 const PlaqueMap = React.forwardRef(({
   plaques = [],
@@ -111,10 +110,13 @@ const PlaqueMap = React.forwardRef(({
   // Use map operations hook for location search, filtering, etc.
   const {
     findUserLocation,
+    setSearchLocation,
     applyDistanceFilter,
     resetFilters,
     drawRoute,
-    searchPlaceByAddress
+    searchPlaceByAddress,
+    activeLocation,
+    locationType
   } = useMapOperations(
     mapInstance,
     plaques,
@@ -122,7 +124,8 @@ const PlaqueMap = React.forwardRef(({
     setIsLoadingLocation,
     setFilteredPlaquesCount,
     routePoints,
-    setUserLocation
+    setUserLocation,
+    useImperial
   );
   
   // Toggle routing mode
@@ -146,24 +149,48 @@ const PlaqueMap = React.forwardRef(({
     }
   };
   
-  // Handle location search
-  const handleLocationSearch = async (searchQuery) => {
+  // Handle location search with proper coordinate handling
+  const handleLocationSearch = useCallback(async (searchQuery, coordinates) => {
     if (!searchQuery.trim()) return;
     
     setShowLocationSearch(false);
-    showToast("Searching for location...", "info");
+    showToast("Setting location...", "info");
     
-    const success = await searchPlaceByAddress(searchQuery);
+    let success = false;
+    
+    if (coordinates) {
+      // Direct coordinates from autocomplete selection
+      try {
+        setSearchLocation(coordinates, searchQuery);
+        success = true;
+        
+        showToast("Location set! Distance filter is now available.", "success");
+        
+        // Show filter panel after a short delay
+        setTimeout(() => {
+          setShowFilters(true);
+        }, 1500);
+        
+      } catch (error) {
+        console.error('Error setting search location:', error);
+        success = false;
+      }
+    } else {
+      // Fallback to address search
+      success = await searchPlaceByAddress(searchQuery);
+      
+      if (success) {
+        showToast("Location found! Distance filter is now available.", "success");
+        setTimeout(() => {
+          setShowFilters(true);
+        }, 1500);
+      }
+    }
+    
     if (!success) {
       showToast("Couldn't find that location. Please try a different search.", "error");
-    } else {
-      // Apply distance filter automatically after location search
-      setTimeout(() => {
-        applyDistanceFilter();
-        showToast(`Applied ${formatDistance(maxDistance)} filter around the location`, "success");
-      }, 1000);
     }
-  };
+  }, [setSearchLocation, searchPlaceByAddress, setShowLocationSearch, setShowFilters]);
 
   // Custom zoom controls
   const zoomIn = useCallback(() => {
@@ -187,6 +214,17 @@ const PlaqueMap = React.forwardRef(({
       setBaseMap(mapInstance, mapType);
     }
   }, [mapInstance, setBaseMap]);
+  
+  // Enhanced find user location with proper state management
+  const handleFindUserLocation = useCallback(() => {
+    findUserLocation();
+    // Show filter panel after location is found
+    setTimeout(() => {
+      if (activeLocation && locationType === 'user') {
+        setShowFilters(true);
+      }
+    }, 2000);
+  }, [findUserLocation, activeLocation, locationType]);
   
   // Expose methods to the parent component via ref
   React.useImperativeHandle(ref, () => ({
@@ -236,7 +274,7 @@ const PlaqueMap = React.forwardRef(({
         isRoutingMode={isRoutingMode}
       />
       
-      {/* Search location button - FIXED POSITIONING */}
+      {/* Search location button */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000]">
         <Button 
           variant="default" 
@@ -246,9 +284,15 @@ const PlaqueMap = React.forwardRef(({
         >
           <Search size={16} />
           <span className="font-medium">Search location</span>
-          <MapPin size={16} className="text-gray-400" />
         </Button>
       </div>
+      
+      {/* Active location indicator */}
+      {activeLocation && (
+        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-[999] bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
+          {locationType === 'user' ? '📍 Current Location' : '🔍 Search Location'} • Filter Available
+        </div>
+      )}
       
       {/* Map Controls */}
       <MapControls
@@ -257,8 +301,8 @@ const PlaqueMap = React.forwardRef(({
         setShowFilters={setShowFilters}
         isRoutingMode={isRoutingMode}
         toggleRoutingMode={handleToggleRoutingMode}
-        findUserLocation={findUserLocation}
-        hasUserLocation={!!userLocation}
+        findUserLocation={handleFindUserLocation}
+        hasUserLocation={!!activeLocation}
         routePointsCount={routePoints.length}
         resetMap={resetMap}
         zoomIn={zoomIn}
@@ -286,8 +330,8 @@ const PlaqueMap = React.forwardRef(({
         />
       )}
       
-      {/* Filter Panel */}
-      {showFilters && (
+      {/* Filter Panel - Only shows when we have an active location */}
+      {showFilters && activeLocation && (
         <FilterPanel
           maxDistance={maxDistance}
           setMaxDistance={setMaxDistance}
@@ -295,9 +339,8 @@ const PlaqueMap = React.forwardRef(({
           applyFilter={applyDistanceFilter}
           closeFilters={() => setShowFilters(false)}
           resetFilters={resetFilters}
-          hasUserLocation={!!userLocation}
+          hasUserLocation={!!activeLocation}
           useImperial={useImperial}
-          setUseImperial={setUseImperial}
         />
       )}
       
@@ -307,21 +350,17 @@ const PlaqueMap = React.forwardRef(({
           onSearch={handleLocationSearch}
           onClose={() => setShowLocationSearch(false)}
           isLoading={isLoadingLocation}
-          useImperial={useImperial}
-          setUseImperial={setUseImperial}
-          maxDistance={maxDistance}
-          setMaxDistance={setMaxDistance}
         />
       )}
       
       {/* Map attribution */}
       <div className="absolute bottom-1 right-1 z-10 text-xs text-gray-500 bg-white bg-opacity-75 px-2 py-1 rounded">
-        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors | <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">OpenRouteService</a>
+        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors
       </div>
       
       {/* Toast notifications */}
       {toast && (
-        <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] px-4 py-2 rounded-lg shadow-lg text-sm font-medium ${
+        <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] px-4 py-2 rounded-lg shadow-lg text-sm font-medium max-w-xs text-center ${
           toast.type === 'success' ? 'bg-green-500 text-white' :
           toast.type === 'error' ? 'bg-red-500 text-white' :
           'bg-blue-500 text-white'
