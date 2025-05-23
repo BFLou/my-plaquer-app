@@ -1,4 +1,4 @@
-// src/components/maps/PlaqueMap.tsx - Final version with proper location handling
+// src/components/maps/PlaqueMap.tsx - Complete version with all filtering functionality
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.en
   : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
 
 /**
- * PlaqueMap Component with proper location and filter handling
+ * PlaqueMap Component with complete filtering functionality
  */
 const PlaqueMap = React.forwardRef(({
   plaques = [],
@@ -57,6 +57,10 @@ const PlaqueMap = React.forwardRef(({
   const [activeBaseMap, setActiveBaseMap] = useState('street');
   const [maxDistance, setMaxDistance] = useState(1);
   
+  // NEW: Distance filtering state
+  const [hideOutsidePlaques, setHideOutsidePlaques] = useState(false);
+  const [filteredPlaques, setFilteredPlaques] = useState(plaques);
+  
   // Initialize map using the custom hook
   const { 
     mapLoaded, 
@@ -72,13 +76,55 @@ const PlaqueMap = React.forwardRef(({
     setTimeout(() => setToastMessage(null), 3000);
   };
   
-  // Use map markers management hook
+  // Use map operations hook for location search, filtering, etc.
+  const {
+    findUserLocation,
+    setSearchLocation,
+    applyDistanceFilter,
+    resetFilters,
+    drawRoute,
+    searchPlaceByAddress,
+    activeLocation,
+    locationType,
+    filterPlaquesInRange  // NEW: Get the filtering function
+  } = useMapOperations(
+    mapInstance,
+    plaques,
+    maxDistance,
+    setIsLoadingLocation,
+    setFilteredPlaquesCount,
+    routePoints,
+    setUserLocation,
+    useImperial
+  );
+  
+  // NEW: Effect to filter plaques when distance toggle is changed
+  useEffect(() => {
+    if (hideOutsidePlaques && activeLocation) {
+      // Filter plaques to only show those within the distance
+      const plaquesInRange = filterPlaquesInRange(activeLocation, maxDistance);
+      setFilteredPlaques(plaquesInRange);
+      console.log(`Filtering plaques: showing ${plaquesInRange.length} of ${plaques.length} plaques`);
+    } else {
+      // Show all plaques
+      setFilteredPlaques(plaques);
+    }
+  }, [hideOutsidePlaques, activeLocation, maxDistance, plaques, filterPlaquesInRange]);
+  
+  // NEW: Reset filtered plaques when plaques prop changes
+  useEffect(() => {
+    if (!hideOutsidePlaques) {
+      setFilteredPlaques(plaques);
+    }
+  }, [plaques, hideOutsidePlaques]);
+  
+  // Use map markers management hook with FILTERED plaques
   const { 
     markersMap,
     redrawMarkers
   } = useMapMarkers(
     mapInstance,
-    plaques,
+    filteredPlaques, // Use filtered plaques instead of all plaques
     favorites,
     selectedPlaqueId,
     isRoutingMode,
@@ -107,27 +153,6 @@ const PlaqueMap = React.forwardRef(({
     }
   });
   
-  // Use map operations hook for location search, filtering, etc.
-  const {
-    findUserLocation,
-    setSearchLocation,
-    applyDistanceFilter,
-    resetFilters,
-    drawRoute,
-    searchPlaceByAddress,
-    activeLocation,
-    locationType
-  } = useMapOperations(
-    mapInstance,
-    plaques,
-    maxDistance,
-    setIsLoadingLocation,
-    setFilteredPlaquesCount,
-    routePoints,
-    setUserLocation,
-    useImperial
-  );
-  
   // Toggle routing mode
   const handleToggleRoutingMode = () => {
     const newRoutingMode = !isRoutingMode;
@@ -148,6 +173,13 @@ const PlaqueMap = React.forwardRef(({
       mapInstance.setView([51.505, -0.09], 13);
     }
   };
+  
+  // NEW: Enhanced reset filters function
+  const handleResetFilters = useCallback(() => {
+    resetFilters();
+    setHideOutsidePlaques(false);
+    setFilteredPlaques(plaques);
+  }, [resetFilters, plaques]);
   
   // Handle location search with proper coordinate handling
   const handleLocationSearch = useCallback(async (searchQuery, coordinates) => {
@@ -233,8 +265,8 @@ const PlaqueMap = React.forwardRef(({
     clearRoute,
     findUserLocation,
     fitToMarkers: () => {
-      if (mapInstance && plaques.length > 0) {
-        const bounds = getBoundsFromPlaques(plaques);
+      if (mapInstance && filteredPlaques.length > 0) {
+        const bounds = getBoundsFromPlaques(filteredPlaques);
         if (bounds) mapInstance.fitBounds(bounds, { padding: [50, 50] });
       }
     },
@@ -246,7 +278,10 @@ const PlaqueMap = React.forwardRef(({
     },
     zoomIn,
     zoomOut,
-    changeBaseMap
+    changeBaseMap,
+    // NEW: Expose filtered plaques for parent component
+    getFilteredPlaques: () => filteredPlaques,
+    isFilteringActive: () => hideOutsidePlaques
   }));
   
   // Helper to get bounds from plaque points
@@ -291,6 +326,11 @@ const PlaqueMap = React.forwardRef(({
       {activeLocation && (
         <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-[999] bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
           {locationType === 'user' ? '📍 Current Location' : '🔍 Search Location'} • Filter Available
+          {hideOutsidePlaques && (
+            <span className="ml-2 bg-green-200 px-2 py-0.5 rounded">
+              Showing {filteredPlaques.length}/{plaques.length}
+            </span>
+          )}
         </div>
       )}
       
@@ -330,7 +370,7 @@ const PlaqueMap = React.forwardRef(({
         />
       )}
       
-      {/* Filter Panel - Only shows when we have an active location */}
+      {/* Filter Panel - Enhanced with hide toggle */}
       {showFilters && activeLocation && (
         <FilterPanel
           maxDistance={maxDistance}
@@ -338,9 +378,12 @@ const PlaqueMap = React.forwardRef(({
           filteredPlaquesCount={filteredPlaquesCount}
           applyFilter={applyDistanceFilter}
           closeFilters={() => setShowFilters(false)}
-          resetFilters={resetFilters}
+          resetFilters={handleResetFilters}
           hasUserLocation={!!activeLocation}
           useImperial={useImperial}
+          hideOutsidePlaques={hideOutsidePlaques}
+          setHideOutsidePlaques={setHideOutsidePlaques}
+          totalPlaques={plaques.length}
         />
       )}
       

@@ -1,10 +1,10 @@
-// src/components/maps/controls/MapControls.tsx - Updated reset icon
+// src/components/maps/controls/MapControls.tsx - Updated with better filter icon
 import React from 'react';
 import { 
   Navigation, 
-  Filter, 
+  Target, // Changed from Filter to Target for distance filter
   Route as RouteIcon, 
-  RotateCcw, // Changed from Map to RotateCcw for reset
+  RotateCcw,
   ZoomIn,
   ZoomOut,
   Layers
@@ -90,24 +90,24 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* Filter Button */}
+          {/* Distance Filter Button - Changed icon to Target */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-blue-50 border-blue-200' : ''}`}
+                className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-green-50 border-green-200' : ''}`}
                 onClick={() => setShowFilters(!showFilters)}
                 disabled={!hasUserLocation}
               >
-                <Filter size={18} className={showFilters ? 'text-blue-600' : ''} />
+                <Target size={18} className={showFilters ? 'text-green-600' : ''} />
                 {hasUserLocation && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
                 )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left">
-              <p>Distance filter{!hasUserLocation ? " (find location first)" : ""}</p>
+              <p>Distance filter{!hasUserLocation ? " (set location first)" : ""}</p>
             </TooltipContent>
           </Tooltip>
           
@@ -207,7 +207,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             </Tooltip>
           )}
           
-          {/* Reset Button - Updated with new icon */}
+          {/* Reset Button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button 

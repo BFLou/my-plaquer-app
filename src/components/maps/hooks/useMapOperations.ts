@@ -1,4 +1,4 @@
-// src/components/maps/hooks/useMapOperations.ts - Fixed to handle both search and current location
+// src/components/maps/hooks/useMapOperations.ts - Complete version with all fixes
 import { useCallback, useState, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from '../utils/routeUtils';
@@ -41,6 +41,14 @@ export default function useMapOperations(
     }
   }, [mapInstance, userLocationMarker, searchLocationMarker, accuracyCircle, distanceCircle]);
   
+  // Clear only distance circle (for redraws)
+  const clearDistanceCircle = useCallback(() => {
+    if (distanceCircle) {
+      mapInstance.removeLayer(distanceCircle);
+      setDistanceCircle(null);
+    }
+  }, [mapInstance, distanceCircle]);
+  
   // Find user's current location
   const findUserLocation = useCallback(() => {
     if (!mapInstance || !window.L) {
@@ -79,8 +87,8 @@ export default function useMapOperations(
             })
           }).addTo(mapInstance);
           
-          // Add accuracy circle if reasonable
-          if (position.coords.accuracy < 100) {
+          // Add accuracy circle if reasonable (and not too large)
+          if (position.coords.accuracy < 50) {
             const newAccuracyCircle = L.circle([latitude, longitude], {
               radius: position.coords.accuracy,
               fillColor: '#3b82f6',
@@ -225,18 +233,16 @@ export default function useMapOperations(
     });
   }, [plaques]);
 
-  // Draw distance circle around active location
+  // Draw distance circle around active location - FIXED to prevent overlapping
   const drawDistanceCircle = useCallback((center: [number, number], radiusKm: number) => {
     if (!window.L || !mapInstance) return;
     
     const L = window.L;
     
-    // Remove existing distance circle
-    if (distanceCircle) {
-      mapInstance.removeLayer(distanceCircle);
-    }
+    // ALWAYS remove existing distance circle first
+    clearDistanceCircle();
     
-    // Create new distance circle
+    // Create new distance circle WITHOUT distance text
     const circle = L.circle(center, {
       radius: radiusKm * 1000, // Convert km to meters
       fillColor: '#10b981', // Green color
@@ -247,22 +253,8 @@ export default function useMapOperations(
       dashArray: '8, 4',
     }).addTo(mapInstance);
     
-    // Show distance as label
-    const displayDistance = useImperial 
-      ? `${(radiusKm * 0.621371).toFixed(1)} mi`
-      : `${radiusKm.toFixed(1)} km`;
-      
-    const label = L.marker(center, {
-      icon: L.divIcon({
-        className: 'distance-label',
-        html: `<div class="px-2 py-1 bg-white rounded-full shadow-md text-xs text-green-600 font-medium border border-green-200">${displayDistance}</div>`,
-        iconAnchor: [25, -5]
-      })
-    }).addTo(mapInstance);
-    
-    // Store references (combine circle and label as a group)
-    const distanceGroup = L.featureGroup([circle, label]);
-    setDistanceCircle(distanceGroup);
+    // Store reference - NO LABEL/TEXT
+    setDistanceCircle(circle);
     
     // Fit bounds to show entire filter area
     mapInstance.fitBounds(circle.getBounds(), {
@@ -271,8 +263,8 @@ export default function useMapOperations(
       animate: true
     });
     
-    return distanceGroup;
-  }, [mapInstance, distanceCircle, useImperial]);
+    return circle;
+  }, [mapInstance, clearDistanceCircle]);
 
   // Apply distance filter using active location
   const applyDistanceFilter = useCallback(() => {
@@ -297,14 +289,11 @@ export default function useMapOperations(
     if (!mapInstance) return;
     
     // Clear distance circle only, keep location markers
-    if (distanceCircle) {
-      mapInstance.removeLayer(distanceCircle);
-      setDistanceCircle(null);
-    }
+    clearDistanceCircle();
     
     // Reset filter count
     setFilteredPlaquesCount(0);
-  }, [mapInstance, distanceCircle, setFilteredPlaquesCount]);
+  }, [mapInstance, clearDistanceCircle, setFilteredPlaquesCount]);
 
   // Search for a place by address with geocoding
   const searchPlaceByAddress = useCallback(async (address: string): Promise<boolean> => {
@@ -412,6 +401,7 @@ export default function useMapOperations(
     clearRoute,
     searchPlaceByAddress,
     activeLocation,
-    locationType
+    locationType,
+    filterPlaquesInRange  // Export this function so it can be used in the main component
   };
 }

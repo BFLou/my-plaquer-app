@@ -1,9 +1,11 @@
-// src/components/maps/controls/FilterPanel.tsx - Compact version without distance settings
-import React from 'react';
-import { X, CornerUpLeft, MapPin } from 'lucide-react';
+// src/components/maps/controls/FilterPanel.tsx - Auto-updating version without Apply button
+import React, { useEffect } from 'react';
+import { X, CornerUpLeft, Target, Eye, EyeOff } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface FilterPanelProps {
   maxDistance: number;
@@ -14,10 +16,13 @@ interface FilterPanelProps {
   resetFilters: () => void;
   hasUserLocation: boolean;
   useImperial?: boolean;
+  hideOutsidePlaques?: boolean;
+  setHideOutsidePlaques?: (hide: boolean) => void;
+  totalPlaques?: number;
 }
 
 /**
- * Compact FilterPanel Component - just shows distance slider and apply button
+ * Auto-updating FilterPanel - no manual apply needed
  */
 const FilterPanel: React.FC<FilterPanelProps> = ({
   maxDistance, 
@@ -27,7 +32,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   closeFilters,
   resetFilters,
   hasUserLocation,
-  useImperial = false
+  useImperial = false,
+  hideOutsidePlaques = false,
+  setHideOutsidePlaques = () => {},
+  totalPlaques = 0
 }) => {
   // Convert distance based on units
   const displayDistance = useImperial ? (maxDistance * 0.621371) : maxDistance;
@@ -45,6 +53,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
     setMaxDistance(parseFloat(kmValue.toFixed(1)));
   };
   
+  // Auto-apply filter when distance changes
+  useEffect(() => {
+    if (hasUserLocation && maxDistance > 0) {
+      applyFilter();
+    }
+  }, [maxDistance, hasUserLocation, applyFilter]);
+  
   const formatDistance = (distance: number) => {
     return useImperial 
       ? `${(distance * 0.621371).toFixed(1)} mi`
@@ -52,10 +67,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   };
   
   return (
-    <div className="absolute top-16 right-4 bg-white rounded-lg shadow-lg p-4 z-[1000] w-72">
+    <div className="absolute top-16 right-4 bg-white rounded-lg shadow-lg p-4 z-[1000] w-80">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-medium flex items-center gap-1.5">
-          <MapPin size={16} className="text-gray-500" />
+          <Target size={16} className="text-green-500" />
           Distance Filter
         </h3>
         <div className="flex items-center gap-1">
@@ -88,14 +103,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         ) : (
           <>            
             <div className="flex justify-between items-center">
-              <span className="text-sm">Range: <span className="font-medium">{formatDistance(maxDistance)}</span></span>
+              <span className="text-sm">Range: <span className="font-medium text-green-600">{formatDistance(maxDistance)}</span></span>
               <Badge 
-                variant={filteredPlaquesCount > 0 ? "secondary" : "outline"} 
-                className="text-xs"
+                variant={filteredPlaquesCount > 0 ? "default" : "outline"} 
+                className="text-xs bg-green-100 text-green-800"
               >
-                {filteredPlaquesCount > 0 
-                  ? `${filteredPlaquesCount} plaques` 
-                  : "Set range"}
+                {filteredPlaquesCount} found
               </Badge>
             </div>
             
@@ -114,7 +127,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                 {distanceMarkers.map((marker) => (
                   <span 
                     key={marker} 
-                    className={`${Math.abs(displayDistance - marker) < 0.1 ? 'text-blue-600 font-medium' : ''}`}
+                    className={`${Math.abs(displayDistance - marker) < 0.1 ? 'text-green-600 font-medium' : ''}`}
                   >
                     {marker}{unit}
                   </span>
@@ -122,18 +135,34 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               </div>
             </div>
             
-            <div className="text-xs text-gray-500 mt-6 mb-1">
-              <p>Show plaques within {formatDistance(maxDistance)} of your location.</p>
+            {/* Toggle to hide plaques outside circle */}
+            <div className="flex items-center justify-between py-3 border-t border-gray-100 mt-6">
+              <div className="flex items-center gap-2">
+                {hideOutsidePlaques ? <EyeOff size={14} className="text-gray-500" /> : <Eye size={14} className="text-gray-500" />}
+                <Label htmlFor="hide-outside" className="text-sm font-medium">
+                  Hide distant plaques
+                </Label>
+              </div>
+              <Switch
+                id="hide-outside"
+                checked={hideOutsidePlaques}
+                onCheckedChange={setHideOutsidePlaques}
+                size="sm"
+              />
             </div>
             
-            <Button 
-              size="sm" 
-              className="w-full"
-              onClick={applyFilter}
-              disabled={!hasUserLocation}
-            >
-              Apply Filter
-            </Button>
+            {hideOutsidePlaques && filteredPlaquesCount > 0 && (
+              <div className="text-xs text-gray-600 bg-green-50 p-3 rounded border border-green-200">
+                <div className="flex justify-between items-center">
+                  <span>Showing nearby plaques only</span>
+                  <span className="font-medium text-green-700">{filteredPlaquesCount}/{totalPlaques}</span>
+                </div>
+              </div>
+            )}
+            
+            <div className="text-xs text-gray-500">
+              <p>Circle updates automatically as you adjust the range.</p>
+            </div>
           </>
         )}
       </div>
