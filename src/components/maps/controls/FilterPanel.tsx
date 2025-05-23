@@ -1,6 +1,6 @@
-// src/components/maps/controls/FilterPanel.tsx - Auto-updating version without Apply button
+// src/components/maps/controls/FilterPanel.tsx - Auto-updating version
 import React, { useEffect } from 'react';
-import { X, CornerUpLeft, Target, Eye, EyeOff } from 'lucide-react';
+import { X, CornerUpLeft, Target, Eye, EyeOff, MapPin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -22,7 +22,7 @@ interface FilterPanelProps {
 }
 
 /**
- * Auto-updating FilterPanel - no manual apply needed
+ * Auto-updating FilterPanel - updates circle and counts in real-time
  */
 const FilterPanel: React.FC<FilterPanelProps> = ({
   maxDistance, 
@@ -53,12 +53,17 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
     setMaxDistance(parseFloat(kmValue.toFixed(1)));
   };
   
-  // Auto-apply filter when distance changes
+  // Auto-apply filter immediately when distance or hide toggle changes
   useEffect(() => {
     if (hasUserLocation && maxDistance > 0) {
-      applyFilter();
+      // Small delay to prevent too many rapid updates
+      const timeoutId = setTimeout(() => {
+        applyFilter();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [maxDistance, hasUserLocation, applyFilter]);
+  }, [maxDistance, hideOutsidePlaques, hasUserLocation, applyFilter]);
   
   const formatDistance = (distance: number) => {
     return useImperial 
@@ -97,13 +102,18 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       <div className="space-y-4">
         {!hasUserLocation ? (
           <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-700 text-sm">
-            <p className="font-medium mb-1">Location needed</p>
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin size={14} />
+              <p className="font-medium">Location needed</p>
+            </div>
             <p className="text-xs">Please find your location or search for an address to use distance filtering.</p>
           </div>
         ) : (
           <>            
             <div className="flex justify-between items-center">
-              <span className="text-sm">Range: <span className="font-medium text-green-600">{formatDistance(maxDistance)}</span></span>
+              <span className="text-sm">
+                Range: <span className="font-medium text-green-600">{formatDistance(maxDistance)}</span>
+              </span>
               <Badge 
                 variant={filteredPlaquesCount > 0 ? "default" : "outline"} 
                 className="text-xs bg-green-100 text-green-800"
@@ -160,8 +170,11 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
               </div>
             )}
             
-            <div className="text-xs text-gray-500">
-              <p>Circle updates automatically as you adjust the range.</p>
+            <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+              <p className="flex items-center gap-1">
+                <Target size={12} className="text-blue-600" />
+                Circle and results update automatically
+              </p>
             </div>
           </>
         )}

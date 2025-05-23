@@ -1,9 +1,9 @@
-// src/pages/Discover.tsx - Complete fixed version
+// src/pages/Discover.tsx - Enhanced with distance filtering integration
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Search, Filter, X, Map, Grid, List, Navigation, Badge,
-  Route as RouteIcon, MapPin
+  Route as RouteIcon, MapPin, Target
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { PlaqueCard } from "@/components/plaques/PlaqueCard";
@@ -68,6 +68,12 @@ const Discover = () => {
   const [onlyVisited, setOnlyVisited] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
+  // NEW: Distance filter states
+  const [activeLocation, setActiveLocation] = useState(null);
+  const [distanceFilterActive, setDistanceFilterActive] = useState(false);
+  const [maxDistance, setMaxDistance] = useState(1); // km
+  const [hideOutsidePlaques, setHideOutsidePlaques] = useState(false);
+
   // Filter options
   const [postcodeOptions, setPostcodeOptions] = useState([]);
   const [colorOptions, setColorOptions] = useState([]);
@@ -85,6 +91,18 @@ const Discover = () => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Helper function to calculate distance between two points
+  const getDistanceFromActiveLocation = useCallback((plaque) => {
+    if (!activeLocation || !plaque.latitude || !plaque.longitude) return Infinity;
+    
+    const lat = parseFloat(plaque.latitude);
+    const lng = parseFloat(plaque.longitude);
+    
+    if (isNaN(lat) || isNaN(lng)) return Infinity;
+    
+    return calculateDistance(activeLocation[0], activeLocation[1], lat, lng);
+  }, [activeLocation]);
 
   // Helper functions for distance and time calculation
   const formatDistance = useCallback((distanceKm) => {
@@ -138,198 +156,6 @@ const Discover = () => {
     const distance = calculateRouteDistance(routePoints);
     setRouteDistance(distance);
   }, [routePoints, calculateRouteDistance]);
-
-  // Enhanced route management functions
-  const handleToggleRoutingMode = useCallback(() => {
-    const newRoutingMode = !isRoutingMode;
-    setIsRoutingMode(newRoutingMode);
-    
-    if (newRoutingMode) {
-      toast.success("Route planning mode activated. Click on plaques to add them to your route.", {
-        duration: 4000,
-      });
-    } else {
-      handleClearRoute();
-      toast.info("Route planning mode deactivated.");
-    }
-  }, [isRoutingMode]);
-
-  const handleAddPlaqueToRoute = useCallback((plaque) => {
-    // Check if plaque is already in route
-    if (routePoints.some(p => p.id === plaque.id)) {
-      toast.info(`"${plaque.title}" is already in your route.`);
-      return;
-    }
-    
-    // Add plaque to route
-    setRoutePoints(prev => {
-      const newRoute = [...prev, plaque];
-      
-      // Show appropriate message based on route length
-      if (newRoute.length === 1) {
-        toast.success(`Added "${plaque.title}" as your starting point.`);
-      } else if (newRoute.length === 2) {
-        toast.success(`Added "${plaque.title}" - you now have a route with ${newRoute.length} stops!`);
-      } else {
-        toast.success(`Added "${plaque.title}" (${newRoute.length} stops total)`);
-      }
-      
-      return newRoute;
-    });
-    
-    // Maintain map view when adding points
-    setMaintainMapView(true);
-  }, [routePoints]);
-
-  const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
-    setRoutePoints(prev => {
-      const newRoute = prev.filter(p => p.id !== plaqueId);
-      const removedPlaque = prev.find(p => p.id === plaqueId);
-      
-      if (removedPlaque) {
-        toast.info(`Removed "${removedPlaque.title}" from route`);
-      }
-      
-      return newRoute;
-    });
-  }, []);
-
-  const handleClearRoute = useCallback(() => {
-    if (routePoints.length > 0) {
-      setRoutePoints([]);
-      toast.info(`Cleared route with ${routePoints.length} stops`);
-    }
-  }, [routePoints.length]);
-
-  const handleOptimizeRoute = useCallback(() => {
-    if (routePoints.length < 3) {
-      toast.info("Need at least 3 stops to optimize route");
-      return;
-    }
-    
-    // Simple nearest-neighbor optimization
-    const start = routePoints[0];
-    const end = routePoints[routePoints.length - 1];
-    const middle = [...routePoints.slice(1, -1)];
-    
-    const optimized = [start];
-    let current = start;
-    
-    while (middle.length > 0) {
-      let bestIndex = 0;
-      let bestDistance = Infinity;
-      
-      for (let i = 0; i < middle.length; i++) {
-        const point = middle[i];
-        if (!current.latitude || !current.longitude || !point.latitude || !point.longitude) continue;
-        
-        const distance = calculateDistance(
-          parseFloat(current.latitude),
-          parseFloat(current.longitude),
-          parseFloat(point.latitude),
-          parseFloat(point.longitude)
-        );
-        
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = i;
-        }
-      }
-      
-      const nearest = middle.splice(bestIndex, 1)[0];
-      optimized.push(nearest);
-      current = nearest;
-    }
-    
-    optimized.push(end);
-    setRoutePoints(optimized);
-    toast.success("Route optimized for walking distance!");
-  }, [routePoints]);
-
-  const handleMoveRoutePointUp = useCallback((index) => {
-    if (index <= 0) return;
-    
-    setRoutePoints(prev => {
-      const newRoute = [...prev];
-      [newRoute[index], newRoute[index - 1]] = [newRoute[index - 1], newRoute[index]];
-      return newRoute;
-    });
-  }, []);
-
-  const handleMoveRoutePointDown = useCallback((index) => {
-    setRoutePoints(prev => {
-      if (index >= prev.length - 1) return prev;
-      
-      const newRoute = [...prev];
-      [newRoute[index], newRoute[index + 1]] = [newRoute[index + 1], newRoute[index]];
-      return newRoute;
-    });
-  }, []);
-
-  const handleExportRoute = useCallback(() => {
-    if (routePoints.length < 2) {
-      toast.error("Need at least 2 points to export");
-      return;
-    }
-    
-    const totalDistance = calculateRouteDistance(routePoints);
-    
-    // Generate GPX content
-    const waypoints = routePoints.map((point, index) => `
-    <wpt lat="${point.latitude}" lon="${point.longitude}">
-      <name>${point.title || `Stop ${index + 1}`}</name>
-      <desc>${point.description || point.inscription || ''}</desc>
-    </wpt>`).join('');
-    
-    const gpxContent = `<?xml version="1.0"?>
-<gpx version="1.1" creator="Plaquer App">
-  <metadata>
-    <name>Walking Route</name>
-    <desc>Route with ${routePoints.length} stops - ${formatDistance(totalDistance)} - ${formatWalkingTime(totalDistance)}</desc>
-  </metadata>
-  ${waypoints}
-</gpx>`;
-    
-    // Download the file
-    const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `plaque-route-${Date.now()}.gpx`;
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    toast.success("Route exported as GPX file");
-  }, [routePoints, formatDistance, formatWalkingTime, calculateRouteDistance]);
-
-  const handleReorderRoute = useCallback((startIndex: number, endIndex: number) => {
-    setRoutePoints(prev => {
-      const newRoute = [...prev];
-      const [removed] = newRoute.splice(startIndex, 1);
-      newRoute.splice(endIndex, 0, removed);
-      toast.success("Route reordered");
-      return newRoute;
-    });
-  }, []);
-
-  const handleSaveRoute = useCallback(async (routeData) => {
-    try {
-      const savedRoute = await createRoute(
-        routeData.name,
-        routePoints,
-        routeDistance,
-        routeData.description,
-        false // Private by default
-      );
-      
-      if (savedRoute) {
-        toast.success("Route saved successfully!");
-      }
-    } catch (error) {
-      console.error("Error saving route:", error);
-      toast.error("Failed to save route");
-    }
-  }, [routePoints, routeDistance, createRoute]);
 
   // Initialize state from URL params
   useEffect(() => {
@@ -411,9 +237,10 @@ const Discover = () => {
     }
   }, []);
 
-  // Apply filters
+  // Enhanced filter logic that includes distance filtering
   const filteredPlaques = useMemo(() => {
-    return allPlaques.filter((plaque) => {
+    let filtered = allPlaques.filter((plaque) => {
+      // Standard filters
       const matchesSearch = !searchQuery.trim() || 
         (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (plaque.inscription?.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -440,6 +267,16 @@ const Discover = () => {
              matchesVisited && 
              matchesFavorite;
     });
+
+    // Apply distance filter if active
+    if (distanceFilterActive && activeLocation && hideOutsidePlaques) {
+      filtered = filtered.filter(plaque => {
+        const distance = getDistanceFromActiveLocation(plaque);
+        return distance <= maxDistance;
+      });
+    }
+
+    return filtered;
   }, [
     allPlaques, 
     searchQuery, 
@@ -450,22 +287,33 @@ const Discover = () => {
     onlyFavorites, 
     favorites, 
     isPlaqueVisited,
-    isFavorite
+    isFavorite,
+    distanceFilterActive,
+    activeLocation,
+    hideOutsidePlaques,
+    maxDistance,
+    getDistanceFromActiveLocation
   ]);
 
-  // Calculate active filters count
+  // Calculate active filters count (including distance filter)
   const activeFiltersCount = 
     selectedPostcodes.length + 
     selectedColors.length + 
     selectedProfessions.length + 
     (onlyVisited ? 1 : 0) + 
-    (onlyFavorites ? 1 : 0);
+    (onlyFavorites ? 1 : 0) +
+    (distanceFilterActive && hideOutsidePlaques ? 1 : 0); // Include distance filter
 
   // Sort and paginate plaques
   const sortedAndPaginatedPlaques = useMemo(() => {
     const sorted = [...filteredPlaques].sort((a, b) => {
       if (sortOption === 'a-z') return (a.title || '').localeCompare(b.title || '');
       if (sortOption === 'z-a') return (b.title || '').localeCompare(a.title || '');
+      if (sortOption === 'distance' && distanceFilterActive && activeLocation) {
+        const distA = getDistanceFromActiveLocation(a);
+        const distB = getDistanceFromActiveLocation(b);
+        return distA - distB;
+      }
       return b.id - a.id;
     });
     
@@ -479,7 +327,86 @@ const Discover = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sorted.slice(startIndex, endIndex);
-  }, [filteredPlaques, sortOption, currentPage, itemsPerPage]);
+  }, [filteredPlaques, sortOption, currentPage, itemsPerPage, distanceFilterActive, activeLocation, getDistanceFromActiveLocation]);
+
+  // Enhanced route management functions
+  const handleToggleRoutingMode = useCallback(() => {
+    const newRoutingMode = !isRoutingMode;
+    setIsRoutingMode(newRoutingMode);
+    
+    if (newRoutingMode) {
+      toast.success("Route planning mode activated. Click on plaques to add them to your route.", {
+        duration: 4000,
+      });
+    } else {
+      handleClearRoute();
+      toast.info("Route planning mode deactivated.");
+    }
+  }, [isRoutingMode]);
+
+  const handleAddPlaqueToRoute = useCallback((plaque) => {
+    if (routePoints.some(p => p.id === plaque.id)) {
+      toast.info(`"${plaque.title}" is already in your route.`);
+      return;
+    }
+    
+    setRoutePoints(prev => {
+      const newRoute = [...prev, plaque];
+      
+      if (newRoute.length === 1) {
+        toast.success(`Added "${plaque.title}" as your starting point.`);
+      } else if (newRoute.length === 2) {
+        toast.success(`Added "${plaque.title}" - you now have a route with ${newRoute.length} stops!`);
+      } else {
+        toast.success(`Added "${plaque.title}" (${newRoute.length} stops total)`);
+      }
+      
+      return newRoute;
+    });
+    
+    setMaintainMapView(true);
+  }, [routePoints]);
+
+  const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
+    setRoutePoints(prev => {
+      const newRoute = prev.filter(p => p.id !== plaqueId);
+      const removedPlaque = prev.find(p => p.id === plaqueId);
+      
+      if (removedPlaque) {
+        toast.info(`Removed "${removedPlaque.title}" from route`);
+      }
+      
+      return newRoute;
+    });
+  }, []);
+
+  const handleClearRoute = useCallback(() => {
+    if (routePoints.length > 0) {
+      setRoutePoints([]);
+      toast.info(`Cleared route with ${routePoints.length} stops`);
+    }
+  }, [routePoints.length]);
+
+  // Distance filter handlers
+  const handleLocationSet = useCallback((location) => {
+    setActiveLocation(location);
+    setDistanceFilterActive(true);
+    toast.success("Location set! Distance filter is now available.", "success");
+  }, []);
+
+  const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
+    setMaxDistance(newDistance);
+    setHideOutsidePlaques(hideOutside);
+    
+    if (hideOutside && activeLocation) {
+      const count = allPlaques.filter(plaque => {
+        const distance = getDistanceFromActiveLocation(plaque);
+        return distance <= newDistance;
+      }).length;
+      
+      console.log(`Distance filter: showing ${count} of ${allPlaques.length} plaques within ${formatDistance(newDistance)}`);
+    }
+  }, [activeLocation, allPlaques, getDistanceFromActiveLocation, formatDistance]);
 
   // Handler functions
   const handleSearch = () => {
@@ -537,6 +464,10 @@ const Discover = () => {
     setSelectedProfessions([]);
     setOnlyVisited(false);
     setOnlyFavorites(false);
+    // Reset distance filter
+    setDistanceFilterActive(false);
+    setHideOutsidePlaques(false);
+    setActiveLocation(null);
     setCurrentPage(1);
   };
 
@@ -619,27 +550,99 @@ const Discover = () => {
         </div>
       </div>
       
-      {/* Active Filters Display */}
+      {/* Enhanced Active Filters Display - now includes distance filter */}
       {activeFiltersCount > 0 && (
         <div className="container mx-auto px-4 mt-3">
-          <ActiveFiltersDisplay
-            selectedColors={selectedColors}
-            selectedPostcodes={selectedPostcodes}
-            selectedProfessions={selectedProfessions}
-            onlyVisited={onlyVisited}
-            onlyFavorites={onlyFavorites}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Active filters:</span>
             
-            colorOptions={colorOptions}
-            postcodeOptions={postcodeOptions}
-            professionOptions={professionOptions}
+            {/* Distance filter badge */}
+            {distanceFilterActive && hideOutsidePlaques && (
+              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                <Target size={12} />
+                <span>Within {formatDistance(maxDistance)}</span>
+                <button
+                  onClick={() => {
+                    setDistanceFilterActive(false);
+                    setHideOutsidePlaques(false);
+                  }}
+                  className="ml-1 hover:bg-green-200 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
             
-            onRemoveColor={(value) => setSelectedColors(prev => prev.filter(item => item !== value))}
-            onRemovePostcode={(value) => setSelectedPostcodes(prev => prev.filter(item => item !== value))}
-            onRemoveProfession={(value) => setSelectedProfessions(prev => prev.filter(item => item !== value))}
-            onRemoveVisited={() => setOnlyVisited(false)}
-            onRemoveFavorite={() => setOnlyFavorites(false)}
-            onClearAll={handleResetFilters}
-          />
+            {/* Other filter badges */}
+            {selectedColors.map((color) => (
+              <div key={color} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                <span>{capitalizeWords(color)}</span>
+                <button
+                  onClick={() => setSelectedColors(prev => prev.filter(c => c !== color))}
+                  className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+            
+            {selectedPostcodes.map((postcode) => (
+              <div key={postcode} className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                <span>{postcode}</span>
+                <button
+                  onClick={() => setSelectedPostcodes(prev => prev.filter(p => p !== postcode))}
+                  className="ml-1 hover:bg-purple-200 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+            
+            {selectedProfessions.map((profession) => (
+              <div key={profession} className="flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs">
+                <span>{capitalizeWords(profession)}</span>
+                <button
+                  onClick={() => setSelectedProfessions(prev => prev.filter(p => p !== profession))}
+                  className="ml-1 hover:bg-amber-200 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+            
+            {onlyVisited && (
+              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                <span>Visited only</span>
+                <button
+                  onClick={() => setOnlyVisited(false)}
+                  className="ml-1 hover:bg-green-200 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+            
+            {onlyFavorites && (
+              <div className="flex items-center gap-1 bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">
+                <span>Favorites only</span>
+                <button
+                  onClick={() => setOnlyFavorites(false)}
+                  className="ml-1 hover:bg-red-200 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            )}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="text-xs h-6 px-2"
+            >
+              Clear all
+            </Button>
+          </div>
         </div>
       )}
       
@@ -651,6 +654,11 @@ const Discover = () => {
             {loading ? "Loading plaques..." : (
               <>
                 {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
+                {distanceFilterActive && activeLocation && (
+                  <span className="ml-2 text-sm text-green-600">
+                    • Distance filter active
+                  </span>
+                )}
                 {isRoutingMode && routePoints.length > 0 && (
                   <span className="ml-2">
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -685,6 +693,9 @@ const Discover = () => {
                 <option value="newest">Newest</option>
                 <option value="a-z">A to Z</option>
                 <option value="z-a">Z to A</option>
+                {distanceFilterActive && activeLocation && (
+                  <option value="distance">Distance</option>
+                )}
               </select>
             </div>
           )}
@@ -713,7 +724,7 @@ const Discover = () => {
                 <div className="h-[650px]">
                   <PlaqueMap
                     ref={mapRef}
-                    plaques={filteredPlaques}
+                    plaques={filteredPlaques} // Use filtered plaques for map
                     onPlaqueClick={handlePlaqueClick}
                     favorites={favorites}
                     selectedPlaqueId={selectedPlaque?.id}
@@ -725,11 +736,13 @@ const Discover = () => {
                     addPlaqueToRoute={handleAddPlaqueToRoute}
                     removePlaqueFromRoute={handleRemovePlaqueFromRoute}
                     clearRoute={handleClearRoute}
-                    exportRoute={handleExportRoute}
-                    saveRoute={handleSaveRoute}
-                    moveRoutePointUp={handleMoveRoutePointUp}
-                    moveRoutePointDown={handleMoveRoutePointDown}
-                    onReorderRoute={handleReorderRoute}
+                    // Enhanced props for distance filtering
+                    onLocationSet={handleLocationSet}
+                    onDistanceFilterChange={handleDistanceFilterChange}
+                    distanceFilterActive={distanceFilterActive}
+                    maxDistance={maxDistance}
+                    hideOutsidePlaques={hideOutsidePlaques}
+                    activeLocation={activeLocation}
                     useImperial={useImperial}
                     setUseImperial={setUseImperial}
                     isMobile={isMobile}
@@ -749,6 +762,10 @@ const Discover = () => {
                     variant="discover"
                     className="h-full"
                     showRouteButton={isRoutingMode}
+                    // Show distance if filter is active
+                    showDistance={distanceFilterActive && activeLocation}
+                    distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : undefined}
+                    distanceUnit={useImperial ? 'mi' : 'km'}
                   />
                 ))}
               </div>
@@ -764,6 +781,10 @@ const Discover = () => {
                     onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
                     variant="discover"
                     showRouteButton={isRoutingMode}
+                    // Show distance if filter is active
+                    showDistance={distanceFilterActive && activeLocation}
+                    distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : undefined}
+                    distanceUnit={useImperial ? 'mi' : 'km'}
                   />
                 ))}
               </div>
@@ -827,6 +848,10 @@ const Discover = () => {
         onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
         nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
         onSelectNearbyPlaque={handlePlaqueClick}
+        // Show distance in detail if filter is active
+        showDistance={distanceFilterActive && activeLocation && selectedPlaque}
+        distance={distanceFilterActive && activeLocation && selectedPlaque ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
+        distanceUnit={useImperial ? 'mi' : 'km'}
       />
     </PageContainer>
   );
