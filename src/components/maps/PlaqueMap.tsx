@@ -55,6 +55,7 @@ const PlaqueMap = React.forwardRef(({
 }, ref) => {
   // Refs
   const mapContainerRef = useRef(null);
+  const restoreTimeoutRef = useRef(null);
   
   // Component state
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -172,21 +173,41 @@ const PlaqueMap = React.forwardRef(({
     }
   });
   
-  // FIXED: Sync and restore location state when activeLocation prop changes (with debouncing)
+  // ENHANCED: Improved sync and restore location state when map becomes visible
   useEffect(() => {
-    console.log('PlaqueMap: activeLocation prop changed:', activeLocation);
+    console.log('PlaqueMap: Map visibility effect triggered', { 
+      mapLoaded, 
+      mapInstance: !!mapInstance, 
+      activeLocation, 
+      mapActiveLocation,
+      hideOutsidePlaques 
+    });
     
-    // Debounce to prevent excessive updates
-    const debounceTimeout = setTimeout(() => {
-      if (activeLocation && mapInstance && window.L) {
-        // If we have an active location from parent but no map active location, restore it
+    // Only proceed if map is fully loaded and we have an active location from parent
+    if (!mapLoaded || !mapInstance || !window.L || !activeLocation) return;
+    
+    // Clear any existing timeout
+    if (restoreTimeoutRef.current) {
+      clearTimeout(restoreTimeoutRef.current);
+    }
+    
+    // Debounced restoration with longer delay to ensure map is fully rendered
+    restoreTimeoutRef.current = setTimeout(() => {
+      console.log('PlaqueMap: Executing restoration...', { 
+        activeLocation, 
+        hideOutsidePlaques, 
+        maxDistance 
+      });
+      
+      try {
+        // First, ensure we have the location marker
         if (!mapActiveLocation || 
             mapActiveLocation[0] !== activeLocation[0] || 
             mapActiveLocation[1] !== activeLocation[1]) {
           
-          console.log('Restoring location state in map...');
+          console.log('PlaqueMap: Restoring location marker...');
           
-          // Create location marker if it doesn't exist
+          // Create location marker
           const L = window.L;
           const searchMarker = L.marker(activeLocation, {
             icon: L.divIcon({
@@ -226,21 +247,29 @@ const PlaqueMap = React.forwardRef(({
           
           // Add to map
           searchMarker.addTo(mapInstance);
-          
-          // Restore distance circle if needed - with additional debouncing
-          const circleTimeout = setTimeout(() => {
-            if (restoreDistanceCircle) {
-              restoreDistanceCircle();
-            }
-          }, 200);
-          
-          return () => clearTimeout(circleTimeout);
         }
+        
+        // Then restore the distance circle if needed
+        if (hideOutsidePlaques && restoreDistanceCircle) {
+          console.log('PlaqueMap: Restoring distance circle...');
+          
+          // Additional delay to ensure marker is rendered first
+          setTimeout(() => {
+            restoreDistanceCircle();
+          }, 200);
+        }
+        
+      } catch (error) {
+        console.error('PlaqueMap: Error during restoration:', error);
       }
-    }, 300); // Debounce for 300ms
+    }, 500); // Increased delay for better reliability
     
-    return () => clearTimeout(debounceTimeout);
-  }, [activeLocation, mapInstance]); // Removed mapActiveLocation to prevent loops
+    return () => {
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+      }
+    };
+  }, [mapLoaded, mapInstance, activeLocation, hideOutsidePlaques, maxDistance, restoreDistanceCircle]);
 
   // FIXED: Update filteredPlaquesCount when displayPlaques changes
   useEffect(() => {
@@ -258,6 +287,15 @@ const PlaqueMap = React.forwardRef(({
       return () => clearTimeout(syncTimeout);
     }
   }, [mapActiveLocation, onLocationSet]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Rest of the component remains the same...
   // Toggle routing mode
@@ -383,7 +421,7 @@ const PlaqueMap = React.forwardRef(({
     
   }, [onDistanceFilterChange, applyDistanceFilter]);
   
-  // Expose methods to the parent component via ref
+  // ENHANCED: Expose methods to the parent component via ref
   React.useImperativeHandle(ref, () => ({
     drawRouteLine: (points, useRoadRoutingParam = true, maintainView = false) => 
       drawWalkingRoute(points, useRoadRoutingParam, maintainView),
@@ -404,42 +442,43 @@ const PlaqueMap = React.forwardRef(({
     zoomIn,
     zoomOut,
     changeBaseMap,
-    // FIXED: Expose proper location restoration with debouncing
+    // ENHANCED: Better location restoration
     getActiveLocation: () => mapActiveLocation || activeLocation,
-    isFilteringActive: () => hideOutsidePlaques,restoreDistanceCircle: () => {
-  console.log('Restoring distance circle via ref...', {
-    activeLocation: mapActiveLocation || activeLocation,
-    maxDistance,
-    hideOutsidePlaques,
-    mapInstance: !!mapInstance
-  });
-  
-  // Use the location from either source
-  const locationToUse = mapActiveLocation || activeLocation;
-  
-  if (!locationToUse || !mapInstance) {
-    console.warn('Cannot restore distance circle - missing location or map instance');
-    return;
-  }
-  
-  // Clear any existing timeout
-  if (window.restoreCircleTimeout) {
-    clearTimeout(window.restoreCircleTimeout);
-  }
-  
-  // Call the restoration function from useMapOperations
-  window.restoreCircleTimeout = setTimeout(() => {
-    try {
+    isFilteringActive: () => hideOutsidePlaques,
+    restoreDistanceCircle: () => {
+      console.log('PlaqueMap: Manual restore via ref...', {
+        activeLocation: mapActiveLocation || activeLocation,
+        maxDistance,
+        hideOutsidePlaques,
+        mapInstance: !!mapInstance,
+        mapLoaded
+      });
+      
+      // Use the location from either source
+      const locationToUse = mapActiveLocation || activeLocation;
+      
+      if (!locationToUse || !mapInstance || !mapLoaded) {
+        console.warn('Cannot restore distance circle - missing requirements');
+        return;
+      }
+      
+      // Clear any existing timeout
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+      }
+      
+      // Force immediate restoration
       if (restoreDistanceCircle) {
-        restoreDistanceCircle();
+        try {
+          restoreDistanceCircle();
+          console.log('PlaqueMap: Distance circle restored via ref');
+        } catch (error) {
+          console.error('Error restoring distance circle via ref:', error);
+        }
       } else {
         console.warn('restoreDistanceCircle function not available');
       }
-    } catch (error) {
-      console.error('Error restoring distance circle:', error);
-    }
-  }, 100);
-},
+    },
     resetFilters: handleResetFilters
   }));
   

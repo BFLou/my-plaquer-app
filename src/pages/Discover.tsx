@@ -156,7 +156,6 @@ const Discover = () => {
   }, [routePoints, calculateRouteDistance]);
 
   // FIXED: Add this effect to handle map restoration when switching to map view
-// FIXED: Enhanced map restoration when switching to map view
 useEffect(() => {
   if (viewMode === 'map' && mapRef.current) {
     console.log('Discover: Switching to map view, checking restoration...', { 
@@ -173,11 +172,21 @@ useEffect(() => {
         console.log('Discover: Attempting to restore distance circle...');
         
         if (mapRef.current && mapRef.current.restoreDistanceCircle) {
+          // Force restoration
           mapRef.current.restoreDistanceCircle();
+          
+          // Verify restoration worked, retry if needed
+          setTimeout(() => {
+            if (hideOutsidePlaques && mapRef.current && mapRef.current.restoreDistanceCircle) {
+              console.log('Discover: Verifying distance circle restoration...');
+              mapRef.current.restoreDistanceCircle();
+            }
+          }, 300);
+          
         } else {
           console.warn('Map ref or restoreDistanceCircle method not available');
         }
-      }, 600); // Increased timeout to ensure map is fully loaded
+      }, 800); // Increased timeout for better reliability
       
       return () => clearTimeout(timer);
     } else {
@@ -189,6 +198,36 @@ useEffect(() => {
   }
 }, [viewMode, activeLocation, distanceFilterActive, hideOutsidePlaques, maxDistance]);
 
+useEffect(() => {
+  if (viewMode === 'map' && mapRef.current && activeLocation && distanceFilterActive) {
+    console.log('Discover: Distance filter state changed, ensuring circle visibility...');
+    
+    const timer = setTimeout(() => {
+      if (mapRef.current && mapRef.current.restoreDistanceCircle) {
+        // Always call restore when filter state changes
+        mapRef.current.restoreDistanceCircle();
+      }
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }
+}, [viewMode, activeLocation, distanceFilterActive, hideOutsidePlaques, maxDistance]);
+
+// Also ensure that when the component unmounts or view changes, we clean up properly
+useEffect(() => {
+  return () => {
+    // Clean up any pending restoration timeouts
+    if (window.mapFilterTimeout) {
+      clearTimeout(window.mapFilterTimeout);
+    }
+    if (window.locationSetTimeout) {
+      clearTimeout(window.locationSetTimeout);
+    }
+    if (window.restoreCircleTimeout) {
+      clearTimeout(window.restoreCircleTimeout);
+    }
+  };
+}, []);
 
 // FIXED: Additional effect to handle distance circle restoration when filter state changes
 useEffect(() => {
