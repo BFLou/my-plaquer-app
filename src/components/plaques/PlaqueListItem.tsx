@@ -1,6 +1,6 @@
-// src/components/plaques/PlaqueListItem.tsx - Fixed dropdown menu
+// src/components/plaques/PlaqueListItem.tsx - Enhanced with distance display
 import React, { useState } from 'react';
-import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar } from 'lucide-react';
+import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar, Navigation } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +44,13 @@ type PlaqueListItemProps = {
   onRemovePlaque?: (id: number) => void;
   onAddToRoute?: (plaque: Plaque) => void;
   showSelection?: boolean;
+  showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
+  // NEW: Distance display props
+  showDistance?: boolean;
+  distance?: number;
+  formatDistance?: (distance: number) => string;
 };
 
 export const PlaqueListItem = ({
@@ -57,8 +62,13 @@ export const PlaqueListItem = ({
   onRemovePlaque,
   onAddToRoute,
   showSelection = false,
+  showRouteButton = false,
   variant = 'discover',
-  className = ''
+  className = '',
+  // NEW: Distance props
+  showDistance = false,
+  distance,
+  formatDistance = (d) => `${d.toFixed(1)} km`
 }: PlaqueListItemProps) => {
   // State for various dialogs and actions
   const [showAddToCollection, setShowAddToCollection] = useState(false);
@@ -292,7 +302,7 @@ export const PlaqueListItem = ({
 
                       {onAddToRoute && (
                         <DropdownMenuItem onSelect={handleAddToRoute}>
-                          <MapPin size={14} className="mr-2 text-blue-600" />
+                          <Plus size={14} className="mr-2 text-green-600" />
                           Add to route
                         </DropdownMenuItem>
                       )}
@@ -326,6 +336,14 @@ export const PlaqueListItem = ({
             
             {/* Badges */}
             <div className="flex flex-wrap items-center gap-1 mb-2">
+              {/* NEW: Distance badge - shows first for prominence */}
+              {showDistance && distance !== undefined && distance !== Infinity && (
+                <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
+                  <Navigation size={10} className="mr-1" />
+                  {formatDistance(distance)}
+                </Badge>
+              )}
+
               {getPlaqueColor() && getPlaqueColor() !== "Unknown" && (
                 <Badge 
                   variant="outline" 
@@ -361,6 +379,24 @@ export const PlaqueListItem = ({
                 </Badge>
               )}
             </div>
+
+            {/* NEW: Route button for mobile */}
+            {showRouteButton && onAddToRoute && (
+              <div className="mb-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToRoute();
+                  }}
+                  className="h-7 text-xs"
+                >
+                  <Plus size={12} className="mr-1" />
+                  Add to Route
+                </Button>
+              </div>
+            )}
             
             {/* Short description preview */}
             {plaque.inscription && (

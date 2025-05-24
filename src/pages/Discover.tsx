@@ -1,9 +1,9 @@
-// src/pages/Discover.tsx - Enhanced with distance filtering integration
+// src/pages/Discover.tsx - Fixed map view persistence and empty state issues
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Search, Filter, X, Map, Grid, List, Navigation, Badge,
-  Route as RouteIcon, MapPin, Target
+  Route as RouteIcon, MapPin, Target, Crosshair
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { PlaqueCard } from "@/components/plaques/PlaqueCard";
@@ -27,7 +27,6 @@ import '../styles/map-styles.css';
 
 // Import filter components
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
-import ActiveFiltersDisplay from '../components/plaques/ActiveFiltersDisplay';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
@@ -68,7 +67,7 @@ const Discover = () => {
   const [onlyVisited, setOnlyVisited] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
-  // NEW: Distance filter states
+  // Distance filter states
   const [activeLocation, setActiveLocation] = useState(null);
   const [distanceFilterActive, setDistanceFilterActive] = useState(false);
   const [maxDistance, setMaxDistance] = useState(1); // km
@@ -104,7 +103,6 @@ const Discover = () => {
     return calculateDistance(activeLocation[0], activeLocation[1], lat, lng);
   }, [activeLocation]);
 
-  // Helper functions for distance and time calculation
   const formatDistance = useCallback((distanceKm) => {
     if (useImperial) {
       const miles = distanceKm * 0.621371;
@@ -156,6 +154,23 @@ const Discover = () => {
     const distance = calculateRouteDistance(routePoints);
     setRouteDistance(distance);
   }, [routePoints, calculateRouteDistance]);
+
+  // FIXED: Add this effect to handle map restoration when switching to map view
+  useEffect(() => {
+    if (viewMode === 'map' && mapRef.current && (activeLocation || distanceFilterActive)) {
+      console.log('Discover: Switching to map view, restoring state...', { activeLocation, distanceFilterActive });
+      
+      // Give the map time to fully render
+      const timer = setTimeout(() => {
+        if (mapRef.current && mapRef.current.restoreDistanceCircle) {
+          console.log('Discover: Calling restoreDistanceCircle...');
+          mapRef.current.restoreDistanceCircle();
+        }
+      }, 300); // Reduced from 500ms for faster restoration
+      
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, activeLocation, distanceFilterActive]);
 
   // Initialize state from URL params
   useEffect(() => {
@@ -387,16 +402,19 @@ const Discover = () => {
     }
   }, [routePoints.length]);
 
-  // Distance filter handlers
-  const handleLocationSet = useCallback((location) => {
-    setActiveLocation(location);
-    setDistanceFilterActive(true);
-    toast.success("Location set! Distance filter is now available.", "success");
-  }, []);
-
+  // FIXED: Update the distance filter change handler
   const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
+    console.log('Discover: Distance filter change:', { newDistance, hideOutside, activeLocation });
+    
     setMaxDistance(newDistance);
     setHideOutsidePlaques(hideOutside);
+    
+    // Force map to update if we're in map view
+    if (viewMode === 'map' && mapRef.current && mapRef.current.restoreDistanceCircle) {
+      setTimeout(() => {
+        mapRef.current.restoreDistanceCircle();
+      }, 100);
+    }
     
     if (hideOutside && activeLocation) {
       const count = allPlaques.filter(plaque => {
@@ -406,7 +424,24 @@ const Discover = () => {
       
       console.log(`Distance filter: showing ${count} of ${allPlaques.length} plaques within ${formatDistance(newDistance)}`);
     }
-  }, [activeLocation, allPlaques, getDistanceFromActiveLocation, formatDistance]);
+  }, [activeLocation, allPlaques, getDistanceFromActiveLocation, formatDistance, viewMode]);
+
+  // FIXED: Update the location set handler
+  const handleLocationSet = useCallback((location) => {
+    console.log('Discover: Location set:', location);
+    setActiveLocation(location);
+    setDistanceFilterActive(true);
+    toast.success("Location set! Distance filter is now available.");
+    
+    // If we're switching back to map view, make sure it restores properly
+    if (viewMode === 'map' && mapRef.current) {
+      setTimeout(() => {
+        if (mapRef.current && mapRef.current.restoreDistanceCircle) {
+          mapRef.current.restoreDistanceCircle();
+        }
+      }, 200);
+    }
+  }, [viewMode]);
 
   // Handler functions
   const handleSearch = () => {
@@ -458,6 +493,7 @@ const Discover = () => {
     setFiltersOpen(false);
   };
 
+  // FIXED: Update the reset filters function to properly clear state
   const handleResetFilters = () => {
     setSelectedPostcodes([]);
     setSelectedColors([]);
@@ -469,6 +505,11 @@ const Discover = () => {
     setHideOutsidePlaques(false);
     setActiveLocation(null);
     setCurrentPage(1);
+    
+    // Clear map state if we're in map view
+    if (viewMode === 'map' && mapRef.current && mapRef.current.resetFilters) {
+      mapRef.current.resetFilters();
+    }
   };
 
   const handlePageChange = (page) => {
@@ -553,92 +594,97 @@ const Discover = () => {
       {/* Enhanced Active Filters Display - now includes distance filter */}
       {activeFiltersCount > 0 && (
         <div className="container mx-auto px-4 mt-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg">
             <span className="text-sm font-medium text-gray-700">Active filters:</span>
             
-            {/* Distance filter badge */}
-            {distanceFilterActive && hideOutsidePlaques && (
-              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                <Target size={12} />
-                <span>Within {formatDistance(maxDistance)}</span>
-                <button
-                  onClick={() => {
-                    setDistanceFilterActive(false);
-                    setHideOutsidePlaques(false);
-                  }}
-                  className="ml-1 hover:bg-green-200 rounded-full p-0.5"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            )}
-            
-            {/* Other filter badges */}
-            {selectedColors.map((color) => (
-              <div key={color} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                <span>{capitalizeWords(color)}</span>
+            {/* Color filters */}
+            {selectedColors.map(color => (
+              <Badge key={color} variant="secondary" className="gap-1">
+                {capitalizeWords(color)}
                 <button
                   onClick={() => setSelectedColors(prev => prev.filter(c => c !== color))}
-                  className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   <X size={10} />
                 </button>
-              </div>
+              </Badge>
             ))}
             
-            {selectedPostcodes.map((postcode) => (
-              <div key={postcode} className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                <span>{postcode}</span>
+            {/* Postcode filters */}
+            {selectedPostcodes.map(postcode => (
+              <Badge key={postcode} variant="secondary" className="gap-1">
+                {postcode}
                 <button
                   onClick={() => setSelectedPostcodes(prev => prev.filter(p => p !== postcode))}
-                  className="ml-1 hover:bg-purple-200 rounded-full p-0.5"
+                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   <X size={10} />
                 </button>
-              </div>
+              </Badge>
             ))}
             
-            {selectedProfessions.map((profession) => (
-              <div key={profession} className="flex items-center gap-1 bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs">
-                <span>{capitalizeWords(profession)}</span>
+            {/* Profession filters */}
+            {selectedProfessions.map(profession => (
+              <Badge key={profession} variant="secondary" className="gap-1">
+                {capitalizeWords(profession)}
                 <button
                   onClick={() => setSelectedProfessions(prev => prev.filter(p => p !== profession))}
-                  className="ml-1 hover:bg-amber-200 rounded-full p-0.5"
+                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   <X size={10} />
                 </button>
-              </div>
+              </Badge>
             ))}
             
+            {/* Visited filter */}
             {onlyVisited && (
-              <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                <span>Visited only</span>
+              <Badge variant="secondary" className="gap-1">
+                Visited Only
                 <button
                   onClick={() => setOnlyVisited(false)}
-                  className="ml-1 hover:bg-green-200 rounded-full p-0.5"
+                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   <X size={10} />
                 </button>
-              </div>
+              </Badge>
             )}
             
+            {/* Favorites filter */}
             {onlyFavorites && (
-              <div className="flex items-center gap-1 bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">
-                <span>Favorites only</span>
+              <Badge variant="secondary" className="gap-1">
+                Favorites Only
                 <button
                   onClick={() => setOnlyFavorites(false)}
-                  className="ml-1 hover:bg-red-200 rounded-full p-0.5"
+                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   <X size={10} />
                 </button>
-              </div>
+              </Badge>
             )}
             
+            {/* FIXED: Distance filter with new icon */}
+            {distanceFilterActive && hideOutsidePlaques && (
+              <Badge variant="secondary" className="gap-1 bg-green-100 text-green-800">
+                <Crosshair size={12} />
+                Within {formatDistance(maxDistance)}
+                <button
+                  onClick={() => {
+                    setHideOutsidePlaques(false);
+                    setDistanceFilterActive(false);
+                  }}
+                  className="ml-1 hover:bg-green-300 rounded-full w-4 h-4 flex items-center justify-center"
+                >
+                  <X size={10} />
+                </button>
+              </Badge>
+            )}
+            
+            {/* Clear all button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleResetFilters}
-              className="text-xs h-6 px-2"
+              className="text-gray-600 hover:text-gray-800"
             >
               Clear all
             </Button>
@@ -655,8 +701,8 @@ const Discover = () => {
               <>
                 {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
                 {distanceFilterActive && activeLocation && (
-                  <span className="ml-2 text-sm text-green-600">
-                    • Distance filter active
+                  <span className="ml-2 text-green-600">
+                    {hideOutsidePlaques ? `within ${formatDistance(maxDistance)}` : `• ${formatDistance(maxDistance)} range active`}
                   </span>
                 )}
                 {isRoutingMode && routePoints.length > 0 && (
@@ -717,14 +763,14 @@ const Discover = () => {
               ))}
             </div>
           )
-        ) : filteredPlaques.length > 0 ? (
+        ) : (
           <>
             {viewMode === 'map' && (
               <div className="relative">
                 <div className="h-[650px]">
                   <PlaqueMap
                     ref={mapRef}
-                    plaques={filteredPlaques} // Use filtered plaques for map
+                    plaques={allPlaques} // FIXED: Use all plaques - let map handle filtering internally
                     onPlaqueClick={handlePlaqueClick}
                     favorites={favorites}
                     selectedPlaqueId={selectedPlaque?.id}
@@ -736,81 +782,94 @@ const Discover = () => {
                     addPlaqueToRoute={handleAddPlaqueToRoute}
                     removePlaqueFromRoute={handleRemovePlaqueFromRoute}
                     clearRoute={handleClearRoute}
-                    // Enhanced props for distance filtering
-                    onLocationSet={handleLocationSet}
-                    onDistanceFilterChange={handleDistanceFilterChange}
-                    distanceFilterActive={distanceFilterActive}
-                    maxDistance={maxDistance}
-                    hideOutsidePlaques={hideOutsidePlaques}
-                    activeLocation={activeLocation}
+                    exportRoute={() => {}}
+                    saveRoute={() => {}}
+                    moveRoutePointUp={() => {}}
+                    moveRoutePointDown={() => {}}
+                    onReorderRoute={() => {}}
                     useImperial={useImperial}
                     setUseImperial={setUseImperial}
                     isMobile={isMobile}
+                    // Pass distance filter props to map
+                    onLocationSet={handleLocationSet}
+                    onDistanceFilterChange={handleDistanceFilterChange}
+                    maxDistance={maxDistance}
+                    hideOutsidePlaques={hideOutsidePlaques}
+                    activeLocation={activeLocation} // Make sure this is passed!
                   />
                 </div>
               </div>
             )}
 
-            {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sortedAndPaginatedPlaques.map((plaque) => (
-                  <PlaqueCard 
-                    key={plaque.id}
-                    plaque={plaque}
-                    onClick={handlePlaqueClick}
-                    onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
-                    variant="discover"
-                    className="h-full"
-                    showRouteButton={isRoutingMode}
-                    // Show distance if filter is active
-                    showDistance={distanceFilterActive && activeLocation}
-                    distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : undefined}
-                    distanceUnit={useImperial ? 'mi' : 'km'}
-                  />
-                ))}
-              </div>
-            )}
-
-            {viewMode === 'list' && (
-              <div className="space-y-3">
-                {sortedAndPaginatedPlaques.map((plaque) => (
-                  <PlaqueListItem 
-                    key={plaque.id}
-                    plaque={plaque}
-                    onClick={handlePlaqueClick}
-                    onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
-                    variant="discover"
-                    showRouteButton={isRoutingMode}
-                    // Show distance if filter is active
-                    showDistance={distanceFilterActive && activeLocation}
-                    distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : undefined}
-                    distanceUnit={useImperial ? 'mi' : 'km'}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Pagination for grid and list views */}
-            {viewMode !== 'map' && totalPages > 1 && (
-              <Pagination 
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
+            {/* FIXED: Show empty state only for grid/list views, not map */}
+            {(viewMode === 'grid' || viewMode === 'list') && filteredPlaques.length === 0 ? (
+              <EmptyState
+                icon={MapPin}
+                title="No plaques found"
+                description={
+                  distanceFilterActive && hideOutsidePlaques 
+                    ? `No plaques found within ${formatDistance(maxDistance)} of your location. Try increasing the distance or adjusting your filters.`
+                    : "Try adjusting your filters or search criteria"
+                }
+                actionLabel="Reset Filters"
+                onAction={handleResetFilters}
               />
+            ) : (
+              <>
+                {viewMode === 'grid' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {sortedAndPaginatedPlaques.map((plaque) => (
+                      <PlaqueCard 
+                        key={plaque.id}
+                        plaque={plaque}
+                        onClick={handlePlaqueClick}
+                        onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
+                        variant="discover"
+                        className="h-full"
+                        showRouteButton={isRoutingMode}
+                        // Show distance if distance filter is active
+                        showDistance={distanceFilterActive && activeLocation}
+                        distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : undefined}
+                        formatDistance={formatDistance}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {viewMode === 'list' && (
+                  <div className="space-y-3">
+                    {sortedAndPaginatedPlaques.map((plaque) => (
+                      <PlaqueListItem 
+                        key={plaque.id}
+                        plaque={plaque}
+                        onClick={handlePlaqueClick}
+                        onAddToRoute={isRoutingMode ? handleAddPlaqueToRoute : undefined}
+                        variant="discover"
+                        showRouteButton={isRoutingMode}
+                        // Show distance if distance filter is active
+                        showDistance={distanceFilterActive && activeLocation}
+                        distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : undefined}
+                        formatDistance={formatDistance}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination for grid and list views */}
+                {viewMode !== 'map' && totalPages > 1 && (
+                  <Pagination 
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                )}
+              </>
             )}
           </>
-        ) : (
-          <EmptyState
-            icon={MapPin}
-            title="No plaques found"
-            description="Try adjusting your filters or search criteria"
-            actionLabel="Reset Filters"
-            onAction={handleResetFilters}
-          />
         )}
       </div>
 
-      {/* Filter Dialog */}
+      {/* Enhanced Filter Dialog */}
       <DiscoverFilterDialog
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -851,7 +910,7 @@ const Discover = () => {
         // Show distance in detail if filter is active
         showDistance={distanceFilterActive && activeLocation && selectedPlaque}
         distance={distanceFilterActive && activeLocation && selectedPlaque ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
-        distanceUnit={useImperial ? 'mi' : 'km'}
+        formatDistance={formatDistance}
       />
     </PageContainer>
   );

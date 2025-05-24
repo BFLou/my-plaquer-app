@@ -1,4 +1,4 @@
-// src/components/maps/hooks/useMapOperations.ts - Complete version with all fixes
+// src/components/maps/hooks/useMapOperations.ts - Fixed version with proper circle clearing
 import { useCallback, useState, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from '../utils/routeUtils';
@@ -21,33 +21,53 @@ export default function useMapOperations(
   const [locationType, setLocationType] = useState<'user' | 'search' | null>(null);
   const routeLineRef = useRef<any>(null);
   
+  // FIXED: More comprehensive distance circle clearing
+  const clearDistanceCircle = useCallback(() => {
+    console.log('Clearing distance circle...');
+    
+    if (distanceCircle && mapInstance) {
+      try {
+        mapInstance.removeLayer(distanceCircle);
+        console.log('Distance circle removed successfully');
+      } catch (error) {
+        console.warn('Error removing distance circle:', error);
+      }
+      setDistanceCircle(null);
+    }
+    
+    // ADDITIONAL: Clear any leftover circles by class name
+    if (mapInstance && window.L) {
+      try {
+        mapInstance.eachLayer((layer: any) => {
+          if (layer instanceof window.L.Circle && layer.options.className === 'distance-filter-circle') {
+            mapInstance.removeLayer(layer);
+            console.log('Removed leftover distance circle');
+          }
+        });
+      } catch (error) {
+        console.warn('Error during layer cleanup:', error);
+      }
+    }
+  }, [mapInstance, distanceCircle]);
+  
   // Clear all location-related overlays
   const clearLocationOverlays = useCallback(() => {
-    if (userLocationMarker) {
+    if (userLocationMarker && mapInstance) {
       mapInstance.removeLayer(userLocationMarker);
       setUserLocationMarker(null);
     }
-    if (searchLocationMarker) {
+    if (searchLocationMarker && mapInstance) {
       mapInstance.removeLayer(searchLocationMarker);
       setSearchLocationMarker(null);
     }
-    if (accuracyCircle) {
+    if (accuracyCircle && mapInstance) {
       mapInstance.removeLayer(accuracyCircle);
       setAccuracyCircle(null);
     }
-    if (distanceCircle) {
-      mapInstance.removeLayer(distanceCircle);
-      setDistanceCircle(null);
-    }
-  }, [mapInstance, userLocationMarker, searchLocationMarker, accuracyCircle, distanceCircle]);
-  
-  // Clear only distance circle (for redraws)
-  const clearDistanceCircle = useCallback(() => {
-    if (distanceCircle) {
-      mapInstance.removeLayer(distanceCircle);
-      setDistanceCircle(null);
-    }
-  }, [mapInstance, distanceCircle]);
+    
+    // Clear distance circle
+    clearDistanceCircle();
+  }, [mapInstance, userLocationMarker, searchLocationMarker, accuracyCircle, clearDistanceCircle]);
   
   // Find user's current location
   const findUserLocation = useCallback(() => {
@@ -233,37 +253,47 @@ export default function useMapOperations(
     });
   }, [plaques]);
 
-  // Draw distance circle around active location - FIXED to prevent overlapping
+  // FIXED: Enhanced distance circle drawing with proper cleanup
   const drawDistanceCircle = useCallback((center: [number, number], radiusKm: number) => {
     if (!window.L || !mapInstance) return;
     
     const L = window.L;
     
-    // ALWAYS remove existing distance circle first
+    // ALWAYS clear existing circle first
     clearDistanceCircle();
     
-    // Create new distance circle WITHOUT distance text
-    const circle = L.circle(center, {
-      radius: radiusKm * 1000, // Convert km to meters
-      fillColor: '#10b981', // Green color
-      fillOpacity: 0.15,
-      color: '#10b981',
-      weight: 2,
-      opacity: 0.8,
-      dashArray: '8, 4',
-    }).addTo(mapInstance);
+    console.log(`Drawing distance circle at [${center[0]}, ${center[1]}] with radius ${radiusKm}km`);
     
-    // Store reference - NO LABEL/TEXT
-    setDistanceCircle(circle);
-    
-    // Fit bounds to show entire filter area
-    mapInstance.fitBounds(circle.getBounds(), {
-      padding: [30, 30],
-      maxZoom: 15,
-      animate: true
-    });
-    
-    return circle;
+    try {
+      // Create new distance circle with unique identifier
+      const circle = L.circle(center, {
+        radius: radiusKm * 1000, // Convert km to meters
+        fillColor: '#10b981', // Green color
+        fillOpacity: 0.15,
+        color: '#10b981',
+        weight: 2,
+        opacity: 0.8,
+        dashArray: '8, 4',
+        className: 'distance-filter-circle', // Add class for identification
+        interactive: false // Make it non-interactive
+      }).addTo(mapInstance);
+      
+      // Store reference
+      setDistanceCircle(circle);
+      console.log('Distance circle created and added to map');
+      
+      // Fit bounds to show entire filter area
+      mapInstance.fitBounds(circle.getBounds(), {
+        padding: [30, 30],
+        maxZoom: 15,
+        animate: true
+      });
+      
+      return circle;
+    } catch (error) {
+      console.error('Error creating distance circle:', error);
+      return null;
+    }
   }, [mapInstance, clearDistanceCircle]);
 
   // Apply distance filter using active location
@@ -272,6 +302,8 @@ export default function useMapOperations(
       console.log('No active location for distance filter');
       return;
     }
+    
+    console.log('Applying distance filter...', { activeLocation, maxDistance });
     
     // Draw distance circle around active location
     drawDistanceCircle(activeLocation, maxDistance);
@@ -284,18 +316,28 @@ export default function useMapOperations(
     
   }, [activeLocation, maxDistance, drawDistanceCircle, filterPlaquesInRange, setFilteredPlaquesCount, locationType]);
 
-  // Reset filters
+  // FIXED: Enhanced reset filters function
   const resetFilters = useCallback(() => {
     if (!mapInstance) return;
     
-    // Clear distance circle only, keep location markers
+    console.log('Resetting distance filters...');
+    
+    // Clear distance circle
     clearDistanceCircle();
     
     // Reset filter count
     setFilteredPlaquesCount(0);
-  }, [mapInstance, clearDistanceCircle, setFilteredPlaquesCount]);
+    
+    // Clear active location
+    setActiveLocation(null);
+    setLocationType(null);
+    
+    // Clear location markers
+    clearLocationOverlays();
+    
+  }, [mapInstance, clearDistanceCircle, setFilteredPlaquesCount, clearLocationOverlays]);
 
-  // Search for a place by address with geocoding
+  // Search for a place by address with proper coordinate handling
   const searchPlaceByAddress = useCallback(async (address: string): Promise<boolean> => {
     if (!address.trim() || !mapInstance || !window.L) return false;
     
@@ -392,6 +434,14 @@ export default function useMapOperations(
     }
   }, [mapInstance, clearRoute]);
 
+  // FIXED: Restore distance circle when map is reloaded
+  const restoreDistanceCircle = useCallback(() => {
+    if (activeLocation && !distanceCircle) {
+      console.log('Restoring distance circle...');
+      drawDistanceCircle(activeLocation, maxDistance);
+    }
+  }, [activeLocation, distanceCircle, drawDistanceCircle, maxDistance]);
+
   return {
     findUserLocation,
     setSearchLocation,
@@ -402,6 +452,8 @@ export default function useMapOperations(
     searchPlaceByAddress,
     activeLocation,
     locationType,
-    filterPlaquesInRange  // Export this function so it can be used in the main component
+    filterPlaquesInRange,
+    clearDistanceCircle,
+    restoreDistanceCircle // Export this new function
   };
 }

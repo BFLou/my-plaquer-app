@@ -1,6 +1,6 @@
-// src/components/plaques/PlaqueCard.tsx - Improved and refactored
+// src/components/plaques/PlaqueCard.tsx - Enhanced with distance display
 import React, { useState } from 'react';
-import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X } from 'lucide-react';
+import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,10 +42,16 @@ type PlaqueCardProps = {
   onMarkVisited?: (id: number) => void;
   onRemovePlaque?: (id: number) => void;
   onClick?: (plaque: Plaque) => void;
+  onAddToRoute?: (plaque: Plaque) => void;
   showCollectionActions?: boolean;
   showSelection?: boolean;
+  showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
+  // NEW: Distance display props
+  showDistance?: boolean;
+  distance?: number;
+  formatDistance?: (distance: number) => string;
 };
 
 export const PlaqueCard = ({
@@ -55,10 +61,16 @@ export const PlaqueCard = ({
   onMarkVisited,
   onRemovePlaque,
   onClick,
+  onAddToRoute,
   showCollectionActions = false,
   showSelection = false,
+  showRouteButton = false,
   variant = 'discover',
-  className = ''
+  className = '',
+  // NEW: Distance props
+  showDistance = false,
+  distance,
+  formatDistance = (d) => `${d.toFixed(1)} km`
 }: PlaqueCardProps) => {
   // State for various dialogs and actions
   const [showDropdown, setShowDropdown] = useState(false);
@@ -133,6 +145,15 @@ export const PlaqueCard = ({
   const handleAddToCollection = () => {
     setShowAddToCollection(true);
     setShowDropdown(false);
+  };
+
+  // NEW: Handle add to route
+  const handleAddToRoute = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onAddToRoute) {
+      onAddToRoute(plaque);
+    }
   };
 
   // Quick visit form submission
@@ -269,6 +290,14 @@ export const PlaqueCard = ({
           
           {/* Status badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {/* NEW: Distance badge - shows first for prominence */}
+            {showDistance && distance !== undefined && distance !== Infinity && (
+              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                <Navigation size={10} className="mr-1" />
+                {formatDistance(distance)}
+              </Badge>
+            )}
+            
             {isVisited && (
               <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
                 <CheckCircle size={10} className="mr-1" /> 
@@ -325,6 +354,21 @@ export const PlaqueCard = ({
             <p className="mt-2 text-xs sm:text-sm text-gray-600 line-clamp-2">
               {plaque.inscription}
             </p>
+          )}
+          
+          {/* NEW: Route button */}
+          {showRouteButton && onAddToRoute && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddToRoute}
+                className="w-full h-8 text-xs"
+              >
+                <Plus size={12} className="mr-1" />
+                Add to Route
+              </Button>
+            </div>
           )}
           
           {/* Selection checkbox */}
