@@ -156,21 +156,54 @@ const Discover = () => {
   }, [routePoints, calculateRouteDistance]);
 
   // FIXED: Add this effect to handle map restoration when switching to map view
-  useEffect(() => {
-    if (viewMode === 'map' && mapRef.current && (activeLocation || distanceFilterActive)) {
-      console.log('Discover: Switching to map view, restoring state...', { activeLocation, distanceFilterActive });
-      
-      // Give the map time to fully render
+// FIXED: Enhanced map restoration when switching to map view
+useEffect(() => {
+  if (viewMode === 'map' && mapRef.current) {
+    console.log('Discover: Switching to map view, checking restoration...', { 
+      activeLocation, 
+      distanceFilterActive, 
+      hideOutsidePlaques,
+      maxDistance
+    });
+    
+    // Only restore if we have an active location and distance filtering is enabled
+    if (activeLocation && distanceFilterActive) {
+      // Give the map time to fully render, then restore
       const timer = setTimeout(() => {
+        console.log('Discover: Attempting to restore distance circle...');
+        
         if (mapRef.current && mapRef.current.restoreDistanceCircle) {
-          console.log('Discover: Calling restoreDistanceCircle...');
           mapRef.current.restoreDistanceCircle();
+        } else {
+          console.warn('Map ref or restoreDistanceCircle method not available');
         }
-      }, 300); // Reduced from 500ms for faster restoration
+      }, 600); // Increased timeout to ensure map is fully loaded
       
       return () => clearTimeout(timer);
+    } else {
+      console.log('Discover: Not restoring - missing conditions', {
+        hasActiveLocation: !!activeLocation,
+        isDistanceFilterActive: distanceFilterActive
+      });
     }
-  }, [viewMode, activeLocation, distanceFilterActive]);
+  }
+}, [viewMode, activeLocation, distanceFilterActive, hideOutsidePlaques, maxDistance]);
+
+
+// FIXED: Additional effect to handle distance circle restoration when filter state changes
+useEffect(() => {
+  if (viewMode === 'map' && mapRef.current && activeLocation && distanceFilterActive && hideOutsidePlaques) {
+    console.log('Discover: Distance filter state changed, restoring circle...');
+    
+    const timer = setTimeout(() => {
+      if (mapRef.current && mapRef.current.restoreDistanceCircle) {
+        mapRef.current.restoreDistanceCircle();
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }
+}, [viewMode, activeLocation, distanceFilterActive, hideOutsidePlaques, maxDistance]);
 
   // Initialize state from URL params
   useEffect(() => {
@@ -403,45 +436,67 @@ const Discover = () => {
   }, [routePoints.length]);
 
   // FIXED: Update the distance filter change handler
-  const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
-    console.log('Discover: Distance filter change:', { newDistance, hideOutside, activeLocation });
-    
-    setMaxDistance(newDistance);
-    setHideOutsidePlaques(hideOutside);
-    
-    // Force map to update if we're in map view
+// FIXED: Update the distance filter change handler with debouncing
+const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
+  console.log('Discover: Distance filter change:', { newDistance, hideOutside, activeLocation });
+  
+  setMaxDistance(newDistance);
+  setHideOutsidePlaques(hideOutside);
+  
+  // Debounce map updates to prevent excessive re-rendering
+  const updateMapFilter = () => {
     if (viewMode === 'map' && mapRef.current && mapRef.current.restoreDistanceCircle) {
-      setTimeout(() => {
-        mapRef.current.restoreDistanceCircle();
-      }, 100);
+      mapRef.current.restoreDistanceCircle();
     }
+  };
+  
+  // Clear any existing timeout
+  if (window.mapFilterTimeout) {
+    clearTimeout(window.mapFilterTimeout);
+  }
+  
+  // Set new timeout for map update
+  window.mapFilterTimeout = setTimeout(updateMapFilter, 150);
+  
+  if (hideOutside && activeLocation) {
+    const count = allPlaques.filter(plaque => {
+      const distance = getDistanceFromActiveLocation(plaque);
+      return distance <= newDistance;
+    }).length;
     
-    if (hideOutside && activeLocation) {
-      const count = allPlaques.filter(plaque => {
-        const distance = getDistanceFromActiveLocation(plaque);
-        return distance <= newDistance;
-      }).length;
-      
-      console.log(`Distance filter: showing ${count} of ${allPlaques.length} plaques within ${formatDistance(newDistance)}`);
-    }
-  }, [activeLocation, allPlaques, getDistanceFromActiveLocation, formatDistance, viewMode]);
+    console.log(`Distance filter: showing ${count} of ${allPlaques.length} plaques within ${formatDistance(newDistance)}`);
+  }
+}, [activeLocation, allPlaques, getDistanceFromActiveLocation, formatDistance, viewMode]);
 
-  // FIXED: Update the location set handler
-  const handleLocationSet = useCallback((location) => {
-    console.log('Discover: Location set:', location);
-    setActiveLocation(location);
-    setDistanceFilterActive(true);
-    toast.success("Location set! Distance filter is now available.");
-    
-    // If we're switching back to map view, make sure it restores properly
-    if (viewMode === 'map' && mapRef.current) {
-      setTimeout(() => {
-        if (mapRef.current && mapRef.current.restoreDistanceCircle) {
-          mapRef.current.restoreDistanceCircle();
-        }
-      }, 200);
+// FIXED: Update the location set handler with debouncing
+const handleLocationSet = useCallback((location) => {
+  console.log('Discover: Location set:', location);
+  
+  // Only update if location actually changed
+  if (activeLocation && 
+      activeLocation[0] === location[0] && 
+      activeLocation[1] === location[1]) {
+    return; // Location hasn't changed, skip update
+  }
+  
+  setActiveLocation(location);
+  setDistanceFilterActive(true);
+  toast.success("Location set! Distance filter is now available.");
+  
+  // If we're switching back to map view, make sure it restores properly
+  if (viewMode === 'map' && mapRef.current) {
+    // Debounce the restoration
+    if (window.locationSetTimeout) {
+      clearTimeout(window.locationSetTimeout);
     }
-  }, [viewMode]);
+    
+    window.locationSetTimeout = setTimeout(() => {
+      if (mapRef.current && mapRef.current.restoreDistanceCircle) {
+        mapRef.current.restoreDistanceCircle();
+      }
+    }, 300);
+  }
+}, [viewMode, activeLocation]);
 
   // Handler functions
   const handleSearch = () => {
@@ -494,23 +549,35 @@ const Discover = () => {
   };
 
   // FIXED: Update the reset filters function to properly clear state
-  const handleResetFilters = () => {
-    setSelectedPostcodes([]);
-    setSelectedColors([]);
-    setSelectedProfessions([]);
-    setOnlyVisited(false);
-    setOnlyFavorites(false);
-    // Reset distance filter
-    setDistanceFilterActive(false);
-    setHideOutsidePlaques(false);
-    setActiveLocation(null);
-    setCurrentPage(1);
-    
-    // Clear map state if we're in map view
-    if (viewMode === 'map' && mapRef.current && mapRef.current.resetFilters) {
-      mapRef.current.resetFilters();
-    }
-  };
+// FIXED: Update the reset filters function to properly clear state
+const handleResetFilters = () => {
+  setSelectedPostcodes([]);
+  setSelectedColors([]);
+  setSelectedProfessions([]);
+  setOnlyVisited(false);
+  setOnlyFavorites(false);
+  // Reset distance filter
+  setDistanceFilterActive(false);
+  setHideOutsidePlaques(false);
+  setActiveLocation(null);
+  setCurrentPage(1);
+  
+  // Clear map state if we're in map view
+  if (viewMode === 'map' && mapRef.current && mapRef.current.resetFilters) {
+    mapRef.current.resetFilters();
+  }
+  
+  // Clear any pending timeouts
+  if (window.mapFilterTimeout) {
+    clearTimeout(window.mapFilterTimeout);
+  }
+  if (window.locationSetTimeout) {
+    clearTimeout(window.locationSetTimeout);
+  }
+  if (window.restoreCircleTimeout) {
+    clearTimeout(window.restoreCircleTimeout);
+  }
+};
 
   const handlePageChange = (page) => {
     setCurrentPage(page);

@@ -435,12 +435,32 @@ export default function useMapOperations(
   }, [mapInstance, clearRoute]);
 
   // FIXED: Restore distance circle when map is reloaded
-  const restoreDistanceCircle = useCallback(() => {
-    if (activeLocation && !distanceCircle) {
-      console.log('Restoring distance circle...');
-      drawDistanceCircle(activeLocation, maxDistance);
-    }
-  }, [activeLocation, distanceCircle, drawDistanceCircle, maxDistance]);
+// FIXED: Enhanced restore distance circle function
+const restoreDistanceCircle = useCallback(() => {
+  console.log('Restoring distance circle...', { 
+    activeLocation, 
+    maxDistance, 
+    mapInstance: !!mapInstance,
+    distanceCircle: !!distanceCircle 
+  });
+  
+  if (!activeLocation || !mapInstance) {
+    console.log('Cannot restore - missing activeLocation or mapInstance');
+    return;
+  }
+  
+  // Always clear existing circle first to prevent duplicates
+  clearDistanceCircle();
+  
+  // Draw new distance circle
+  const newCircle = drawDistanceCircle(activeLocation, maxDistance);
+  
+  if (newCircle) {
+    console.log('Distance circle restored successfully');
+  } else {
+    console.warn('Failed to restore distance circle');
+  }
+}, [activeLocation, maxDistance, mapInstance, clearDistanceCircle, drawDistanceCircle]);
 
   return {
     findUserLocation,

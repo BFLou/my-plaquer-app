@@ -104,6 +104,19 @@ const PlaqueMap = React.forwardRef(({
     useImperial
   );
 
+  // FIXED: Helper function to calculate distance (moved before useMemo)
+  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }, []);
+
   // FIXED: Filter plaques for map display based on hideOutsidePlaques
   const displayPlaques = React.useMemo(() => {
     if (!hideOutsidePlaques || !activeLocation) {
@@ -122,20 +135,7 @@ const PlaqueMap = React.forwardRef(({
       const distance = calculateDistance(activeLocation[0], activeLocation[1], lat, lng);
       return distance <= maxDistance;
     });
-  }, [plaques, hideOutsidePlaques, activeLocation, maxDistance]);
-
-  // Helper function to calculate distance
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Earth radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+  }, [plaques, hideOutsidePlaques, activeLocation, maxDistance, calculateDistance]);
   
   // FIXED: Use filtered plaques for map markers
   const { 
@@ -172,81 +172,94 @@ const PlaqueMap = React.forwardRef(({
     }
   });
   
-  // FIXED: Sync and restore location state when activeLocation prop changes
+  // FIXED: Sync and restore location state when activeLocation prop changes (with debouncing)
   useEffect(() => {
     console.log('PlaqueMap: activeLocation prop changed:', activeLocation);
     
-    if (activeLocation && mapInstance && window.L) {
-      // If we have an active location from parent but no map active location, restore it
-      if (!mapActiveLocation || 
-          mapActiveLocation[0] !== activeLocation[0] || 
-          mapActiveLocation[1] !== activeLocation[1]) {
-        
-        console.log('Restoring location state in map...');
-        
-        // Create location marker if it doesn't exist
-        const L = window.L;
-        const searchMarker = L.marker(activeLocation, {
-          icon: L.divIcon({
-            className: 'search-location-marker',
-            html: `
-              <div style="
-                position: relative;
-                width: 36px;
-                height: 36px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-              ">
+    // Debounce to prevent excessive updates
+    const debounceTimeout = setTimeout(() => {
+      if (activeLocation && mapInstance && window.L) {
+        // If we have an active location from parent but no map active location, restore it
+        if (!mapActiveLocation || 
+            mapActiveLocation[0] !== activeLocation[0] || 
+            mapActiveLocation[1] !== activeLocation[1]) {
+          
+          console.log('Restoring location state in map...');
+          
+          // Create location marker if it doesn't exist
+          const L = window.L;
+          const searchMarker = L.marker(activeLocation, {
+            icon: L.divIcon({
+              className: 'search-location-marker',
+              html: `
                 <div style="
-                  position: absolute;
+                  position: relative;
                   width: 36px;
                   height: 36px;
-                  border-radius: 50%;
-                  background-color: rgba(239, 68, 68, 0.2);
-                  animation: pulse 2s infinite;
-                "></div>
-                <div style="
-                  width: 16px;
-                  height: 16px;
-                  background-color: #ef4444;
-                  border-radius: 50%;
-                  border: 2px solid white;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                  z-index: 1;
-                "></div>
-              </div>
-            `,
-            iconSize: [36, 36],
-            iconAnchor: [18, 18]
-          })
-        });
-        
-        // Add to map
-        searchMarker.addTo(mapInstance);
-        
-        // Restore distance circle if needed
-        setTimeout(() => {
-          if (restoreDistanceCircle) {
-            restoreDistanceCircle();
-          }
-        }, 100);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                ">
+                  <div style="
+                    position: absolute;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    background-color: rgba(239, 68, 68, 0.2);
+                    animation: pulse 2s infinite;
+                  "></div>
+                  <div style="
+                    width: 16px;
+                    height: 16px;
+                    background-color: #ef4444;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    z-index: 1;
+                  "></div>
+                </div>
+              `,
+              iconSize: [36, 36],
+              iconAnchor: [18, 18]
+            })
+          });
+          
+          // Add to map
+          searchMarker.addTo(mapInstance);
+          
+          // Restore distance circle if needed - with additional debouncing
+          const circleTimeout = setTimeout(() => {
+            if (restoreDistanceCircle) {
+              restoreDistanceCircle();
+            }
+          }, 200);
+          
+          return () => clearTimeout(circleTimeout);
+        }
       }
-    }
-  }, [activeLocation, mapInstance, mapActiveLocation, restoreDistanceCircle]);
+    }, 300); // Debounce for 300ms
+    
+    return () => clearTimeout(debounceTimeout);
+  }, [activeLocation, mapInstance]); // Removed mapActiveLocation to prevent loops
 
   // FIXED: Update filteredPlaquesCount when displayPlaques changes
   useEffect(() => {
     setFilteredPlaquesCount(displayPlaques.length);
   }, [displayPlaques]);
   
-  // Sync active location with parent component
+  // Sync active location with parent component (with debouncing)
   useEffect(() => {
     if (mapActiveLocation && mapActiveLocation !== activeLocation) {
-      onLocationSet(mapActiveLocation);
+      // Debounce to prevent rapid updates
+      const syncTimeout = setTimeout(() => {
+        onLocationSet(mapActiveLocation);
+      }, 100);
+      
+      return () => clearTimeout(syncTimeout);
     }
-  }, [mapActiveLocation, activeLocation, onLocationSet]);
+  }, [mapActiveLocation, onLocationSet]);
   
+  // Rest of the component remains the same...
   // Toggle routing mode
   const handleToggleRoutingMode = () => {
     const newRoutingMode = !isRoutingMode;
@@ -352,15 +365,22 @@ const PlaqueMap = React.forwardRef(({
     }, 2000);
   }, [findUserLocation, mapActiveLocation, locationType]);
 
-  // Enhanced distance filter handling
+  // FIXED: Enhanced distance filter handling with debouncing
   const handleDistanceFilterUpdate = useCallback((newDistance, hideOutside) => {
     console.log('Map: Distance filter update:', { newDistance, hideOutside });
     
     // Update parent component
     onDistanceFilterChange(newDistance, hideOutside);
     
-    // Apply filter on map (this updates the circle)
-    applyDistanceFilter();
+    // Debounce the map filter application
+    if (window.mapFilterUpdateTimeout) {
+      clearTimeout(window.mapFilterUpdateTimeout);
+    }
+    
+    window.mapFilterUpdateTimeout = setTimeout(() => {
+      applyDistanceFilter();
+    }, 200);
+    
   }, [onDistanceFilterChange, applyDistanceFilter]);
   
   // Expose methods to the parent component via ref
@@ -384,17 +404,43 @@ const PlaqueMap = React.forwardRef(({
     zoomIn,
     zoomOut,
     changeBaseMap,
-    // FIXED: Expose proper location restoration
+    // FIXED: Expose proper location restoration with debouncing
     getActiveLocation: () => mapActiveLocation || activeLocation,
-    isFilteringActive: () => hideOutsidePlaques,
-    restoreDistanceCircle: () => {
-      console.log('Restoring distance circle via ref...');
-      if (restoreDistanceCircle && (mapActiveLocation || activeLocation)) {
-        setTimeout(() => {
-          restoreDistanceCircle();
-        }, 100);
+    isFilteringActive: () => hideOutsidePlaques,restoreDistanceCircle: () => {
+  console.log('Restoring distance circle via ref...', {
+    activeLocation: mapActiveLocation || activeLocation,
+    maxDistance,
+    hideOutsidePlaques,
+    mapInstance: !!mapInstance
+  });
+  
+  // Use the location from either source
+  const locationToUse = mapActiveLocation || activeLocation;
+  
+  if (!locationToUse || !mapInstance) {
+    console.warn('Cannot restore distance circle - missing location or map instance');
+    return;
+  }
+  
+  // Clear any existing timeout
+  if (window.restoreCircleTimeout) {
+    clearTimeout(window.restoreCircleTimeout);
+  }
+  
+  // Call the restoration function from useMapOperations
+  window.restoreCircleTimeout = setTimeout(() => {
+    try {
+      if (restoreDistanceCircle) {
+        restoreDistanceCircle();
+      } else {
+        console.warn('restoreDistanceCircle function not available');
       }
+    } catch (error) {
+      console.error('Error restoring distance circle:', error);
     }
+  }, 100);
+},
+    resetFilters: handleResetFilters
   }));
   
   // Helper to get bounds from plaque points
