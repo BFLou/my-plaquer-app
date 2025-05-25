@@ -1,7 +1,7 @@
-// src/components/maps/PlaqueMap.tsx - Fixed location persistence and map filtering
+// src/components/maps/PlaqueMap.tsx - FIXED: Ensure route planning button is available
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import { Search } from 'lucide-react';
+import { Search, Route as RouteIcon, X } from 'lucide-react';
 
 // Import sub-components
 import MapContainer from './containers/MapContainer';
@@ -22,7 +22,7 @@ const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.en
   : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
 
 /**
- * Enhanced PlaqueMap Component with proper filtering and location persistence
+ * Enhanced PlaqueMap Component with proper routing controls
  */
 const PlaqueMap = React.forwardRef(({
   plaques = [],
@@ -104,7 +104,7 @@ const PlaqueMap = React.forwardRef(({
     useImperial
   );
 
-  // FIXED: Helper function to calculate distance (moved before useMemo)
+  // Helper function to calculate distance
   const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
     const R = 6371; // Earth radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -117,13 +117,12 @@ const PlaqueMap = React.forwardRef(({
     return R * c;
   }, []);
 
-  // FIXED: Filter plaques for map display based on hideOutsidePlaques
+  // Filter plaques for map display based on hideOutsidePlaques
   const displayPlaques = React.useMemo(() => {
     if (!hideOutsidePlaques || !activeLocation) {
-      return plaques; // Show all plaques if not filtering
+      return plaques;
     }
     
-    // Filter plaques by distance when hideOutsidePlaques is true
     return plaques.filter(plaque => {
       if (!plaque.latitude || !plaque.longitude) return false;
       
@@ -137,13 +136,13 @@ const PlaqueMap = React.forwardRef(({
     });
   }, [plaques, hideOutsidePlaques, activeLocation, maxDistance, calculateDistance]);
   
-  // FIXED: Use filtered plaques for map markers
+  // Use filtered plaques for map markers
   const { 
     markersMap,
     redrawMarkers
   } = useMapMarkers(
     mapInstance,
-    displayPlaques, // Use filtered plaques instead of all plaques
+    displayPlaques,
     favorites,
     selectedPlaqueId,
     isRoutingMode,
@@ -172,7 +171,7 @@ const PlaqueMap = React.forwardRef(({
     }
   });
   
-  // ENHANCED: Improved sync and restore location state when map becomes visible
+  // Improved sync and restore location state when map becomes visible
   useEffect(() => {
     console.log('PlaqueMap: Map visibility effect triggered', { 
       mapLoaded, 
@@ -182,15 +181,12 @@ const PlaqueMap = React.forwardRef(({
       hideOutsidePlaques 
     });
     
-    // Only proceed if map is fully loaded and we have an active location from parent
     if (!mapLoaded || !mapInstance || !window.L || !activeLocation) return;
     
-    // Clear any existing timeout
     if (restoreTimeoutRef.current) {
       clearTimeout(restoreTimeoutRef.current);
     }
     
-    // Debounced restoration with longer delay to ensure map is fully rendered
     restoreTimeoutRef.current = setTimeout(() => {
       console.log('PlaqueMap: Executing restoration...', { 
         activeLocation, 
@@ -199,14 +195,12 @@ const PlaqueMap = React.forwardRef(({
       });
       
       try {
-        // First, ensure we have the location marker
         if (!mapActiveLocation || 
             mapActiveLocation[0] !== activeLocation[0] || 
             mapActiveLocation[1] !== activeLocation[1]) {
           
           console.log('PlaqueMap: Restoring location marker...');
           
-          // Create location marker
           const L = window.L;
           const searchMarker = L.marker(activeLocation, {
             icon: L.divIcon({
@@ -244,15 +238,12 @@ const PlaqueMap = React.forwardRef(({
             })
           });
           
-          // Add to map
           searchMarker.addTo(mapInstance);
         }
         
-        // Then restore the distance circle if needed
         if (hideOutsidePlaques && restoreDistanceCircle) {
           console.log('PlaqueMap: Restoring distance circle...');
           
-          // Additional delay to ensure marker is rendered first
           setTimeout(() => {
             restoreDistanceCircle();
           }, 200);
@@ -261,7 +252,7 @@ const PlaqueMap = React.forwardRef(({
       } catch (error) {
         console.error('PlaqueMap: Error during restoration:', error);
       }
-    }, 500); // Increased delay for better reliability
+    }, 500);
     
     return () => {
       if (restoreTimeoutRef.current) {
@@ -270,15 +261,14 @@ const PlaqueMap = React.forwardRef(({
     };
   }, [mapLoaded, mapInstance, activeLocation, hideOutsidePlaques, maxDistance, restoreDistanceCircle]);
 
-  // FIXED: Update filteredPlaquesCount when displayPlaques changes
+  // Update filteredPlaquesCount when displayPlaques changes
   useEffect(() => {
     setFilteredPlaquesCount(displayPlaques.length);
   }, [displayPlaques]);
   
-  // Sync active location with parent component (with debouncing)
+  // Sync active location with parent component
   useEffect(() => {
     if (mapActiveLocation && mapActiveLocation !== activeLocation) {
-      // Debounce to prevent rapid updates
       const syncTimeout = setTimeout(() => {
         onLocationSet(mapActiveLocation);
       }, 100);
@@ -295,9 +285,8 @@ const PlaqueMap = React.forwardRef(({
       }
     };
   }, []);
-  
-  // Rest of the component remains the same...
-  // Toggle routing mode
+
+  // FIXED: Toggle routing mode with panel management
   const handleToggleRoutingMode = () => {
     const newRoutingMode = !isRoutingMode;
     setIsRoutingMode(newRoutingMode);
@@ -321,7 +310,6 @@ const PlaqueMap = React.forwardRef(({
   // Enhanced reset filters function
   const handleResetFilters = useCallback(() => {
     resetFilters();
-    // Also reset parent component filters
     onDistanceFilterChange(1, false);
   }, [resetFilters, onDistanceFilterChange]);
   
@@ -335,14 +323,12 @@ const PlaqueMap = React.forwardRef(({
     let success = false;
     
     if (coordinates) {
-      // Direct coordinates from autocomplete selection
       try {
         setSearchLocation(coordinates, searchQuery);
         success = true;
         
         showToast("Location set! Distance filter is now available.", "success");
         
-        // Show filter panel after a short delay
         setTimeout(() => {
           setShowFilters(true);
         }, 1500);
@@ -352,7 +338,6 @@ const PlaqueMap = React.forwardRef(({
         success = false;
       }
     } else {
-      // Fallback to address search
       success = await searchPlaceByAddress(searchQuery);
       
       if (success) {
@@ -391,10 +376,9 @@ const PlaqueMap = React.forwardRef(({
     }
   }, [mapInstance, setBaseMap]);
   
-  // Enhanced find user location with proper state management
+  // Enhanced find user location
   const handleFindUserLocation = useCallback(() => {
     findUserLocation();
-    // Show filter panel after location is found
     setTimeout(() => {
       if (mapActiveLocation && locationType === 'user') {
         setShowFilters(true);
@@ -402,14 +386,12 @@ const PlaqueMap = React.forwardRef(({
     }, 2000);
   }, [findUserLocation, mapActiveLocation, locationType]);
 
-  // FIXED: Enhanced distance filter handling with debouncing
+  // Enhanced distance filter handling
   const handleDistanceFilterUpdate = useCallback((newDistance, hideOutside) => {
     console.log('Map: Distance filter update:', { newDistance, hideOutside });
     
-    // Update parent component
     onDistanceFilterChange(newDistance, hideOutside);
     
-    // Debounce the map filter application
     if (window.mapFilterUpdateTimeout) {
       clearTimeout(window.mapFilterUpdateTimeout);
     }
@@ -420,7 +402,7 @@ const PlaqueMap = React.forwardRef(({
     
   }, [onDistanceFilterChange, applyDistanceFilter]);
   
-  // ENHANCED: Expose methods to the parent component via ref
+  // Expose methods to the parent component via ref
   React.useImperativeHandle(ref, () => ({
     drawRouteLine: (points, useRoadRoutingParam = true, maintainView = false) => 
       drawWalkingRoute(points, useRoadRoutingParam, maintainView),
@@ -441,7 +423,6 @@ const PlaqueMap = React.forwardRef(({
     zoomIn,
     zoomOut,
     changeBaseMap,
-    // ENHANCED: Better location restoration
     getActiveLocation: () => mapActiveLocation || activeLocation,
     isFilteringActive: () => hideOutsidePlaques,
     restoreDistanceCircle: () => {
@@ -453,7 +434,6 @@ const PlaqueMap = React.forwardRef(({
         mapLoaded
       });
       
-      // Use the location from either source
       const locationToUse = mapActiveLocation || activeLocation;
       
       if (!locationToUse || !mapInstance || !mapLoaded) {
@@ -461,12 +441,10 @@ const PlaqueMap = React.forwardRef(({
         return;
       }
       
-      // Clear any existing timeout
       if (restoreTimeoutRef.current) {
         clearTimeout(restoreTimeoutRef.current);
       }
       
-      // Force immediate restoration
       if (restoreDistanceCircle) {
         try {
           restoreDistanceCircle();
@@ -518,9 +496,24 @@ const PlaqueMap = React.forwardRef(({
           <span className="font-medium">Search location</span>
         </Button>
       </div>
+
+      {/* ADDED: Route Planning Button - Only show when not in routing mode */}
+      {!isRoutingMode && (
+        <div className="absolute top-4 left-4 z-[1000]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleRoutingMode}
+            className="shadow-lg flex items-center gap-2 px-4 bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 transition-all duration-200"
+          >
+            <RouteIcon size={16} />
+            <span className="font-medium">Plan Route</span>
+          </Button>
+        </div>
+      )}
       
-      {/* Active location indicator */}
-      {(mapActiveLocation || activeLocation) && (
+      {/* Active location indicator - Only show when not in routing mode */}
+      {(mapActiveLocation || activeLocation) && !isRoutingMode && (
         <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-[999] bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
           {locationType === 'user' ? '📍 Current Location' : '🔍 Search Location'} • Filter Available
           {hideOutsidePlaques && (
@@ -531,7 +524,7 @@ const PlaqueMap = React.forwardRef(({
         </div>
       )}
       
-      {/* Map Controls */}
+      {/* Map Controls - Updated to exclude route button */}
       <MapControls
         isLoadingLocation={isLoadingLocation}
         showFilters={showFilters}
@@ -570,7 +563,7 @@ const PlaqueMap = React.forwardRef(({
         />
       )}
       
-      {/* Enhanced Filter Panel with parent integration */}
+      {/* Enhanced Filter Panel */}
       {showFilters && (mapActiveLocation || activeLocation) && (
         <FilterPanel
           maxDistance={maxDistance}

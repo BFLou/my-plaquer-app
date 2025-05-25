@@ -1,16 +1,14 @@
-// src/components/maps/controls/MapControls.tsx - Updated with better filter icon
+// src/components/maps/controls/MapControls.tsx - FIXED: Remove duplicate route button
 import React from 'react';
 import { 
   Navigation, 
   Target, // Changed from Filter to Target for distance filter
-  Route as RouteIcon, 
   RotateCcw,
   ZoomIn,
   ZoomOut,
   Layers
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   Tooltip, 
   TooltipContent, 
@@ -111,30 +109,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* Route Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant={isRoutingMode ? "default" : "outline"}
-                size="sm" 
-                className={`h-10 w-10 p-0 relative ${isRoutingMode ? 'bg-green-600 text-white' : ''}`}
-                onClick={toggleRoutingMode}
-              >
-                <RouteIcon size={18} />
-                {isRoutingMode && routePointsCount > 0 && (
-                  <Badge 
-                    variant="default" 
-                    className="absolute -top-2 -right-2 h-5 min-w-5 p-0 flex items-center justify-center bg-green-500"
-                  >
-                    {routePointsCount}
-                  </Badge>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>{isRoutingMode ? "Exit route planning" : "Plan a route"}</p>
-            </TooltipContent>
-          </Tooltip>
+          {/* REMOVED: Route Button - This was the duplicate */}
           
           {/* Zoom In Button */}
           {zoomIn && (

@@ -1,9 +1,9 @@
-// src/pages/Discover.tsx - FIXED: Complete render loop fixes
+// src/pages/Discover.tsx - FIXED: Remove duplicate route controls and improve alignment
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Search, Filter, X, Map, Grid, List, Badge,
-  Route as MapPin, Crosshair
+  Crosshair
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { PlaqueCard } from "@/components/plaques/PlaqueCard";
@@ -748,263 +748,203 @@ const Discover = () => {
                     setIsRoutingMode={setIsRoutingMode}
                     routePoints={routePoints}
                     addPlaqueToRoute={handleAddPlaqueToRoute}
-removePlaqueFromRoute={handleRemovePlaqueFromRoute}
-                   clearRoute={handleClearRoute}
-                   exportRoute={() => {}}
-                   saveRoute={() => {}}
-                   moveRoutePointUp={() => {}}
-                   moveRoutePointDown={() => {}}
-                   onReorderRoute={() => {}}
-                   useImperial={useImperial}
-                   setUseImperial={setUseImperial}
-                   isMobile={isMobile}
-                   onDistanceFilterChange={handleDistanceFilterChange}
-                   onLocationSet={handleLocationSet}
-                   activeLocation={activeLocation}
-                   distanceFilterActive={distanceFilterActive}
-                   hideOutsidePlaques={distanceFilterVisible}
-                   maxDistance={distanceFilterRadius}
-                   filteredPlaques={filteredPlaques}
-                 />
-               </div>
-               
-               {/* Map overlay controls */}
-               <div className="absolute top-4 right-4 flex flex-col gap-2 z-[1000]">
-                 {/* Route Planning Button */}
-                 <Button
-                   variant={isRoutingMode ? "default" : "outline"}
-                   size="sm"
-                   onClick={handleToggleRoutingMode}
-                   className={`shadow-lg ${isRoutingMode ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                 >
-                   <MapPin size={16} className="mr-1" />
-                   {isRoutingMode ? 'Exit Route' : 'Plan Route'}
-                 </Button>
-                 
-                 {/* Route Controls */}
-                 {isRoutingMode && routePoints.length > 0 && (
-                   <div className="bg-white rounded-lg shadow-lg p-3 max-w-xs">
-                     <div className="flex justify-between items-center mb-2">
-                       <span className="font-medium text-sm">Route ({routePoints.length} stops)</span>
-                       <Button
-                         variant="ghost"
-                         size="sm"
-                         onClick={handleClearRoute}
-                         className="h-6 w-6 p-0"
-                       >
-                         <X size={12} />
-                       </Button>
-                     </div>
-                     <div className="text-xs text-gray-600 mb-2">
-                       Distance: {formatDistance(routeDistance)}<br/>
-                       Walking time: {formatWalkingTime(routeDistance)}
-                     </div>
-                     {routePoints.length >= 2 && (
-                       <Button
-                         size="sm"
-                         className="w-full text-xs"
-                         onClick={async () => {
-                           try {
-                             const routeData = {
-                               name: `Route - ${new Date().toLocaleDateString()}`,
-                               plaques: routePoints.map(p => p.id),
-                               distance: routeDistance,
-                               created: new Date().toISOString()
-                             };
-                             
-                             await createRoute(routeData);
-                             toast.success("Route saved successfully!");
-                             navigate('/routes');
-                           } catch (error) {
-                             toast.error("Failed to save route");
-                             console.error("Error saving route:", error);
-                           }
-                         }}
-                       >
-                         Save Route
-                       </Button>
-                     )}
-                   </div>
-                 )}
-               </div>
-             </div>
-           )}
-           
-           {urlState.view === 'grid' && (
-             <>
-               {filteredPlaques.length === 0 ? (
-                 <EmptyState
-                   title="No plaques found"
-                   description={
-                     activeFiltersCount > 0 
-                       ? "Try adjusting your filters to see more results."
-                       : urlState.search.trim()
-                       ? "Try different search terms or browse all plaques."
-                       : "No plaques are available at the moment."
-                   }
-                   actionButton={
-                     activeFiltersCount > 0 ? (
-                       <Button variant="outline" onClick={handleResetFilters}>
-                         Clear Filters
-                       </Button>
-                     ) : urlState.search.trim() ? (
-                       <Button variant="outline" onClick={() => setSearch('')}>
-                         Clear Search
-                       </Button>
-                     ) : null
-                   }
-                 />
-               ) : (
-                 <>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {sortedAndPaginatedPlaques.map((plaque) => (
-                       <PlaqueCard
-                         key={plaque.id}
-                         plaque={plaque}
-                         isFavorite={isFavorite(plaque.id)}
-                         onFavoriteToggle={handleFavoriteToggle}
-                         onPlaqueClick={handlePlaqueClick}
-                         isVisited={isPlaqueVisited(plaque.id)}
-                         onMarkVisited={handleMarkVisited}
-                         showDistance={distanceFilterActive && activeLocation}
-                         distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : 0}
-                         formatDistance={formatDistance}
-                         isInRoute={isRoutingMode && routePoints.some(p => p.id === plaque.id)}
-                         onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(plaque) : undefined}
-                         onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(plaque.id) : undefined}
-                         routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === plaque.id) + 1 : 0}
-                       />
-                     ))}
-                   </div>
-                   
-                   {totalPages > 1 && (
-                     <div className="mt-8">
-                       <Pagination
-                         currentPage={currentPage}
-                         totalPages={totalPages}
-                         onPageChange={handlePageChange}
-                       />
-                     </div>
-                   )}
-                 </>
-               )}
-             </>
-           )}
-           
-           {urlState.view === 'list' && (
-             <>
-               {filteredPlaques.length === 0 ? (
-                 <EmptyState
-                   title="No plaques found"
-                   description={
-                     activeFiltersCount > 0 
-                       ? "Try adjusting your filters to see more results."
-                       : urlState.search.trim()
-                       ? "Try different search terms or browse all plaques."
-                       : "No plaques are available at the moment."
-                   }
-                   actionButton={
-                     activeFiltersCount > 0 ? (
-                       <Button variant="outline" onClick={handleResetFilters}>
-                         Clear Filters
-                       </Button>
-                     ) : urlState.search.trim() ? (
-                       <Button variant="outline" onClick={() => setSearch('')}>
-                         Clear Search
-                       </Button>
-                     ) : null
-                   }
-                 />
-               ) : (
-                 <>
-                   <div className="space-y-4">
-                     {sortedAndPaginatedPlaques.map((plaque) => (
-                       <PlaqueListItem
-                         key={plaque.id}
-                         plaque={plaque}
-                         isFavorite={isFavorite(plaque.id)}
-                         onFavoriteToggle={handleFavoriteToggle}
-                         onPlaqueClick={handlePlaqueClick}
-                         isVisited={isPlaqueVisited(plaque.id)}
-                         onMarkVisited={handleMarkVisited}
-                         showDistance={distanceFilterActive && activeLocation}
-                         distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : 0}
-                         formatDistance={formatDistance}
-                         isInRoute={isRoutingMode && routePoints.some(p => p.id === plaque.id)}
-                         onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(plaque) : undefined}
-                         onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(plaque.id) : undefined}
-                         routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === plaque.id) + 1 : 0}
-                       />
-                     ))}
-                   </div>
-                   
-                   {totalPages > 1 && (
-                     <div className="mt-8">
-                       <Pagination
-                         currentPage={currentPage}
-                         totalPages={totalPages}
-                         onPageChange={handlePageChange}
-                       />
-                     </div>
-                   )}
-                 </>
-               )}
-             </>
-           )}
-         </>
-       )}
-     </div>
-     
-{/* Filter Dialog - FIXED: Match prop names exactly */}
-<DiscoverFilterDialog
-  isOpen={filtersOpen}
-  onClose={() => setFiltersOpen(false)}
-  
-  postcodes={postcodeOptions}
-  selectedPostcodes={urlState.postcodes}
-  onPostcodesChange={(values) => setFilters({ postcodes: values })}
-  
-  colors={colorOptions}
-  selectedColors={urlState.colors}
-  onColorsChange={(values) => setFilters({ colors: values })}
-  
-  professions={professionOptions}
-  selectedProfessions={urlState.professions}
-  onProfessionsChange={(values) => setFilters({ professions: values })}
-  
-  onlyVisited={urlState.onlyVisited}
-  onVisitedChange={(value) => setFilters({ onlyVisited: value })}
-  
-  onlyFavorites={urlState.onlyFavorites}
-  onFavoritesChange={(value) => setFilters({ onlyFavorites: value })}
-  
-  onApply={() => setFiltersOpen(false)}
-  onReset={handleResetFilters}
-/>
-     
-     {/* Plaque Detail Modal */}
-     {selectedPlaque && (
-       <PlaqueDetail
-         plaque={selectedPlaque}
-         isFavorite={isFavorite(selectedPlaque.id)}
-         onFavoriteToggle={handleFavoriteToggle}
-         onClose={handleCloseDetail}
-         isVisited={isPlaqueVisited(selectedPlaque.id)}
-         onMarkVisited={handleMarkVisited}
-         nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-         onNearbyPlaqueClick={handlePlaqueClick}
-         showDistance={distanceFilterActive && activeLocation}
-         distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(selectedPlaque) : 0}
-         formatDistance={formatDistance}
-         formatWalkingTime={formatWalkingTime}
-         isInRoute={isRoutingMode && routePoints.some(p => p.id === selectedPlaque.id)}
-         onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(selectedPlaque) : undefined}
-         onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(selectedPlaque.id) : undefined}
-         routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === selectedPlaque.id) + 1 : 0}
-       />
-     )}
-   </PageContainer>
- );
+                    removePlaqueFromRoute={handleRemovePlaqueFromRoute}
+                    clearRoute={handleClearRoute}
+                    exportRoute={() => {}}
+                    saveRoute={() => {}}
+                    moveRoutePointUp={() => {}}
+                    moveRoutePointDown={() => {}}
+                    onReorderRoute={() => {}}
+                    useImperial={useImperial}
+                    setUseImperial={setUseImperial}
+                    isMobile={isMobile}
+                    onDistanceFilterChange={handleDistanceFilterChange}
+                    onLocationSet={handleLocationSet}
+                    activeLocation={activeLocation}
+                    maxDistance={distanceFilterRadius}
+                    hideOutsidePlaques={distanceFilterVisible}
+                  />
+                </div>
+                
+                {/* REMOVED: Map overlay controls - No duplicate route button */}
+              </div>
+            )}
+            
+            {urlState.view === 'grid' && (
+              <>
+                {filteredPlaques.length === 0 ? (
+                  <EmptyState
+                    title="No plaques found"
+                    description={
+                      activeFiltersCount > 0 
+                        ? "Try adjusting your filters to see more results."
+                        : urlState.search.trim()
+                        ? "Try different search terms or browse all plaques."
+                        : "No plaques are available at the moment."
+                    }
+                    actionButton={
+                      activeFiltersCount > 0 ? (
+                        <Button variant="outline" onClick={handleResetFilters}>
+                          Clear Filters
+                        </Button>
+                      ) : urlState.search.trim() ? (
+                        <Button variant="outline" onClick={() => setSearch('')}>
+                          Clear Search
+                        </Button>
+                      ) : null
+                    }
+                  />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {sortedAndPaginatedPlaques.map((plaque) => (
+                        <PlaqueCard
+                          key={plaque.id}
+                          plaque={plaque}
+                          isFavorite={isFavorite(plaque.id)}
+                          onFavoriteToggle={handleFavoriteToggle}
+                          onPlaqueClick={handlePlaqueClick}
+                          isVisited={isPlaqueVisited(plaque.id)}
+                          onMarkVisited={handleMarkVisited}
+                          showDistance={distanceFilterActive && activeLocation}
+                          distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : 0}
+                          formatDistance={formatDistance}
+                          isInRoute={isRoutingMode && routePoints.some(p => p.id === plaque.id)}
+                          onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(plaque) : undefined}
+                          onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(plaque.id) : undefined}
+                          routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === plaque.id) + 1 : 0}
+                        />
+                      ))}
+                    </div>
+                    
+                    {totalPages > 1 && (
+                      <div className="mt-8">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={handlePageChange}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+            
+            {urlState.view === 'list' && (
+              <>
+                {filteredPlaques.length === 0 ? (
+                  <EmptyState
+                    title="No plaques found"
+                    description={
+                      activeFiltersCount > 0 
+                        ? "Try adjusting your filters to see more results."
+                        : urlState.search.trim()
+                        ? "Try different search terms or browse all plaques."
+                        : "No plaques are available at the moment."
+                    }
+                    actionButton={
+                      activeFiltersCount > 0 ? (
+                        <Button variant="outline" onClick={handleResetFilters}>
+                          Clear Filters
+                        </Button>
+                      ) : urlState.search.trim() ? (
+                        <Button variant="outline" onClick={() => setSearch('')}>
+                          Clear Search
+                        </Button>
+                      ) : null
+                    }
+                  />
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {sortedAndPaginatedPlaques.map((plaque) => (
+                        <PlaqueListItem
+                          key={plaque.id}
+                          plaque={plaque}
+                          isFavorite={isFavorite(plaque.id)}
+                          onFavoriteToggle={handleFavoriteToggle}
+                          onPlaqueClick={handlePlaqueClick}
+                          isVisited={isPlaqueVisited(plaque.id)}
+                          onMarkVisited={handleMarkVisited}
+                          showDistance={distanceFilterActive && activeLocation}
+                          distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(plaque) : 0}
+                          formatDistance={formatDistance}
+                          isInRoute={isRoutingMode && routePoints.some(p => p.id === plaque.id)}
+                          onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(plaque) : undefined}
+                          onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(plaque.id) : undefined}
+                          routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === plaque.id) + 1 : 0}
+                        />
+                      ))}
+                    </div>
+                    
+                    {totalPages > 1 && (
+                      <div className="mt-8">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={handlePageChange}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+      
+      {/* Filter Dialog - FIXED: Match prop names exactly */}
+      <DiscoverFilterDialog
+        isOpen={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        
+        postcodes={postcodeOptions}
+        selectedPostcodes={urlState.postcodes}
+        onPostcodesChange={(values) => setFilters({ postcodes: values })}
+        
+        colors={colorOptions}
+        selectedColors={urlState.colors}
+        onColorsChange={(values) => setFilters({ colors: values })}
+        
+        professions={professionOptions}
+        selectedProfessions={urlState.professions}
+        onProfessionsChange={(values) => setFilters({ professions: values })}
+        
+        onlyVisited={urlState.onlyVisited}
+        onVisitedChange={(value) => setFilters({ onlyVisited: value })}
+        
+        onlyFavorites={urlState.onlyFavorites}
+        onFavoritesChange={(value) => setFilters({ onlyFavorites: value })}
+        
+        onApply={() => setFiltersOpen(false)}
+        onReset={handleResetFilters}
+      />
+      
+      {/* Plaque Detail Modal */}
+      {selectedPlaque && (
+        <PlaqueDetail
+          plaque={selectedPlaque}
+          isFavorite={isFavorite(selectedPlaque.id)}
+          onFavoriteToggle={handleFavoriteToggle}
+          onClose={handleCloseDetail}
+          isVisited={isPlaqueVisited(selectedPlaque.id)}
+          onMarkVisited={handleMarkVisited}
+          nearbyPlaques={getNearbyPlaques(selectedPlaque)}
+          onNearbyPlaqueClick={handlePlaqueClick}
+          showDistance={distanceFilterActive && activeLocation}
+          distance={distanceFilterActive && activeLocation ? getDistanceFromActiveLocation(selectedPlaque) : 0}
+          formatDistance={formatDistance}
+          formatWalkingTime={formatWalkingTime}
+          isInRoute={isRoutingMode && routePoints.some(p => p.id === selectedPlaque.id)}
+          onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(selectedPlaque) : undefined}
+          onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(selectedPlaque.id) : undefined}
+          routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === selectedPlaque.id) + 1 : 0}
+        />
+      )}
+    </PageContainer>
+  );
 };
 
 export default Discover;
