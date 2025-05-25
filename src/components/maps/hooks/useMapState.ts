@@ -1,4 +1,4 @@
-// src/hooks/useMapState.ts - Persistent map state management
+// src/components/maps/hooks/useMapState.ts - Fixed version
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface MapState {
@@ -31,8 +31,8 @@ interface MapStateManager {
 const MAP_STATE_STORAGE_KEY = 'discover-map-state';
 
 export const useMapState = (): MapStateManager => {
-  // Initialize state from localStorage if available
-  const getInitialState = (): MapState => {
+  // FIXED: Memoize initial state creation
+  const getInitialState = useCallback((): MapState => {
     try {
       const stored = localStorage.getItem(MAP_STATE_STORAGE_KEY);
       if (stored) {
@@ -66,63 +66,82 @@ export const useMapState = (): MapStateManager => {
       userLocation: null,
       searchLocation: null,
     };
-  };
+  }, []); // FIXED: Empty dependency array to prevent recreation
 
-  const [state, setState] = useState<MapState>(getInitialState);
+  const [state, setState] = useState<MapState>(() => getInitialState());
   const persistenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Debounced persistence to avoid excessive localStorage writes
+  // FIXED: Immediate persistence for important changes
+  const persistStateImmediate = useCallback((newState: MapState) => {
+    try {
+      localStorage.setItem(MAP_STATE_STORAGE_KEY, JSON.stringify(newState));
+    } catch (error) {
+      console.warn('Failed to persist map state:', error);
+    }
+  }, []);
+
+  // FIXED: Debounced persistence to avoid excessive localStorage writes
   const persistState = useCallback(() => {
     if (persistenceTimeoutRef.current) {
       clearTimeout(persistenceTimeoutRef.current);
     }
     
     persistenceTimeoutRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(MAP_STATE_STORAGE_KEY, JSON.stringify(state));
-        console.log('Map state persisted:', state);
-      } catch (error) {
-        console.warn('Failed to persist map state:', error);
-      }
+      persistStateImmediate(state);
     }, 500);
-  }, [state]);
-
-  // Auto-persist when state changes
-  useEffect(() => {
-    persistState();
-  }, [persistState]);
+  }, [state, persistStateImmediate]);
 
   const updateCenter = useCallback((center: [number, number]) => {
-    setState(prev => ({ ...prev, center }));
-  }, []);
+    setState(prev => {
+      const newState = { ...prev, center };
+      // Persist immediately for important changes
+      setTimeout(() => persistStateImmediate(newState), 100);
+      return newState;
+    });
+  }, [persistStateImmediate]);
 
   const updateZoom = useCallback((zoom: number) => {
-    setState(prev => ({ ...prev, zoom }));
-  }, []);
+    setState(prev => {
+      const newState = { ...prev, zoom };
+      // Persist immediately for important changes
+      setTimeout(() => persistStateImmediate(newState), 100);
+      return newState;
+    });
+  }, [persistStateImmediate]);
 
   const setDistanceFilter = useCallback((location: [number, number], radius: number, visible: boolean) => {
-    setState(prev => ({
-      ...prev,
-      distanceFilter: {
-        active: true,
-        location,
-        radius,
-        visible,
-      }
-    }));
-  }, []);
+    setState(prev => {
+      const newState = {
+        ...prev,
+        distanceFilter: {
+          active: true,
+          location,
+          radius,
+          visible,
+        }
+      };
+      // Persist immediately for important changes
+      setTimeout(() => persistStateImmediate(newState), 100);
+      return newState;
+    });
+  }, [persistStateImmediate]);
 
   const clearDistanceFilter = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      distanceFilter: {
-        active: false,
-        location: null,
-        radius: 1,
-        visible: false,
-      }
-    }));
-  }, []);
+    setState(prev => {
+      const newState = {
+        ...prev,
+        distanceFilter: {
+          active: false,
+          location: null,
+          radius: 1,
+          visible: false,
+        }
+      };
+      // Persist immediately for important changes
+      setTimeout(() => persistStateImmediate(newState), 100);
+      return newState;
+    });
+  }, [persistStateImmediate]);
 
   const setUserLocation = useCallback((location: [number, number] | null) => {
     setState(prev => ({ ...prev, userLocation: location }));
@@ -150,7 +169,7 @@ export const useMapState = (): MapStateManager => {
     return state.distanceFilter.active && 
            state.distanceFilter.location !== null && 
            state.distanceFilter.visible;
-  }, [state.distanceFilter]);
+  }, [state.distanceFilter.active, state.distanceFilter.location, state.distanceFilter.visible]);
 
   // Cleanup on unmount
   useEffect(() => {

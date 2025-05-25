@@ -31,6 +31,12 @@ export { default as PlaqueMap } from './maps/PlaqueMap';
 export { default as UserCollectionsPanel } from './profile/UserCollectionsPanel';
 export { default as VisitedPlaquesPanel } from './profile/VisitedPlaquesPanel';
 
+// Error Boundary and Route components
+export { MapErrorBoundary } from './ErrorBoundary';
+export { OptimizedRoute } from './OptimizedRoute';
+export { NotFoundPage } from './NotFoundPage';
+export { ScrollToTop } from './ScrollToTop';
+
 // Common components
 export { EmptyState as CommonEmptyState } from './common/EmptyState';
 export { ActionBar, type ActionBarButton } from './common/ActionBar';
@@ -70,3 +76,19 @@ export * from './ui/tabs';
 export * from './ui/textarea';
 export * from './ui/tooltip';
 export { Toaster } from './ui/sonner';
+
+
+// src/hooks/index.ts
+export { useAuth } from '../hooks/useAuth';
+export { useCollections } from '../hooks//useCollection';
+export { useCollectionActions } from '../hooks//useCollectionActions';
+export { useCollectionDetail } from '../hooks//useCollectionDetail';
+export { useCollectionsList } from '../hooks//useCollectionsList';
+export { useFavorites } from '../hooks//useFavorites';
+export { usePlaqueFilters } from '../hooks//usePlaqueFilters';
+export { usePlaques } from '../hooks//usePlaques';
+export { useRoutes } from '../hooks//useRoutes';
+export { useTheme } from '../hooks//useTheme';
+export { useVisitedPlaques } from '../hooks//useVisitedPlaques';
+export { useAnimation } from '../hooks//useAnimation';
+export { useGlobalErrorHandlers } from '../hooks//useGlobalErrorHandlers'; // New hook
