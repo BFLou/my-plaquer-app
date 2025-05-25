@@ -1,4 +1,4 @@
-// src/hooks/useRoutes.tsx
+// src/hooks/useRoutes.tsx - Simplified to match Firebase rules
 import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
@@ -123,12 +123,12 @@ export const useRoutes = () => {
     }
   }, [user]);
 
-  // Create a new route
+  // Create a new route - simplified to match Firebase rules
   const createRoute = useCallback(async (
     name: string,
+    description: string,
     points: Plaque[],
     totalDistance: number,
-    description: string = '',
     isPublic: boolean = false
   ) => {
     if (!user) throw new Error('You must be logged in to create a route');
@@ -269,8 +269,7 @@ export const useRoutes = () => {
       const q = query(
         collection(db, 'routes'),
         where('is_public', '==', true),
-        orderBy('views', 'desc'),
-        // limit(limit)
+        orderBy('views', 'desc')
       );
       
       const querySnapshot = await getDocs(q);
@@ -285,6 +284,46 @@ export const useRoutes = () => {
     }
   }, []);
 
+  // Export route as GPX
+  const exportRouteAsGPX = useCallback(async (routeId: string) => {
+    try {
+      const route = await getRoute(routeId);
+      if (!route) return null;
+
+      const waypoints = route.points.map((point, index) => `
+    <wpt lat="${point.lat}" lon="${point.lng}">
+      <n>${point.title}</n>
+      <desc>Stop ${index + 1}: ${point.title}</desc>
+    </wpt>`).join('');
+
+      const gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Plaquer App" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <n>${route.name}</n>
+    <desc>${route.description}</desc>
+    <time>${route.created_at instanceof Date ? route.created_at.toISOString() : new Date().toISOString()}</time>
+  </metadata>
+  ${waypoints}
+</gpx>`;
+
+      // Create and download file
+      const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${route.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.gpx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      toast.success('Route exported successfully');
+      return gpxContent;
+    } catch (err) {
+      console.error('Error exporting route:', err);
+      toast.error('Failed to export route');
+      throw err;
+    }
+  }, [getRoute]);
+
   return {
     routes,
     loading,
@@ -293,7 +332,8 @@ export const useRoutes = () => {
     createRoute,
     updateRoute,
     deleteRoute,
-    getPublicRoutes
+    getPublicRoutes,
+    exportRouteAsGPX
   };
 };
 
