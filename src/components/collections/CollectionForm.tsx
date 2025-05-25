@@ -4,10 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export type CollectionFormData = {
   name: string;

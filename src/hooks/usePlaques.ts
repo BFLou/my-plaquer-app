@@ -1,15 +1,5 @@
 // src/hooks/usePlaques.ts
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  getDocs, 
-  orderBy, 
-  limit, 
-  where,
-  Timestamp 
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Plaque } from '@/types/plaque';
 import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 

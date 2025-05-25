@@ -3,12 +3,8 @@ import React, { useState } from 'react';
 import { 
   Navigation, 
   ChevronDown, 
-  ChevronUp, 
-  MapPin, 
-  Clock,
-  Route as RouteIcon
+  ChevronUp
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface RouteStep {

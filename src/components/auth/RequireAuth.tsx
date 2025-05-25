@@ -1,6 +1,5 @@
 // src/components/auth/RequireAuth.tsx
 import React, { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader } from 'lucide-react';
 import AuthModal from './AuthModal';
@@ -11,7 +10,6 @@ type RequireAuthProps = {
 
 const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
   const [showModal, setShowModal] = React.useState(false);
 
   if (loading) {

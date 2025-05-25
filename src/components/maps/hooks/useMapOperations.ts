@@ -1,4 +1,4 @@
-// src/components/maps/hooks/useMapOperations.ts - Fixed version with proper circle clearing
+// src/components/maps/hooks/useMapOperations.ts - Enhanced version with better zoom control
 import { useCallback, useState, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from '../utils/routeUtils';
@@ -21,6 +21,63 @@ export default function useMapOperations(
   const [locationType, setLocationType] = useState<'user' | 'search' | null>(null);
   const routeLineRef = useRef<any>(null);
   
+  // Track current map state to prevent unnecessary zooms
+  const mapStateRef = useRef<{
+    lastCenter: [number, number] | null;
+    lastZoom: number | null;
+    preventNextZoom: boolean;
+  }>({
+    lastCenter: null,
+    lastZoom: null,
+    preventNextZoom: false
+  });
+
+  // Enhanced zoom control helper
+  const shouldUpdateMapView = useCallback((newCenter: [number, number], newZoom?: number) => {
+    if (!mapInstance || mapStateRef.current.preventNextZoom) {
+      mapStateRef.current.preventNextZoom = false;
+      return false;
+    }
+
+    const currentCenter = mapInstance.getCenter();
+    const currentZoom = mapInstance.getZoom();
+    
+    // Check if the change is significant enough to warrant an update
+    const centerDistance = calculateDistance(
+      currentCenter.lat, currentCenter.lng,
+      newCenter[0], newCenter[1]
+    );
+    
+    const zoomDifference = newZoom ? Math.abs(currentZoom - newZoom) : 0;
+    
+    // Only update if center moved more than 100m or zoom changed by more than 1 level
+    return centerDistance > 0.1 || zoomDifference > 1;
+  }, [mapInstance]);
+
+  // Smooth map update without aggressive zooming
+  const updateMapView = useCallback((
+    center: [number, number], 
+    zoom: number = 15, 
+    options: { animate?: boolean; maintainZoom?: boolean } = {}
+  ) => {
+    if (!mapInstance) return;
+
+    const currentZoom = mapInstance.getZoom();
+    const finalZoom = options.maintainZoom ? currentZoom : zoom;
+
+    if (shouldUpdateMapView(center, finalZoom)) {
+      mapInstance.setView(center, finalZoom, {
+        animate: options.animate !== false,
+        duration: 0.8,
+        easeLinearity: 0.3
+      });
+      
+      // Update tracking
+      mapStateRef.current.lastCenter = center;
+      mapStateRef.current.lastZoom = finalZoom;
+    }
+  }, [mapInstance, shouldUpdateMapView]);
+
   // FIXED: More comprehensive distance circle clearing
   const clearDistanceCircle = useCallback(() => {
     console.log('Clearing distance circle...');
@@ -35,7 +92,7 @@ export default function useMapOperations(
       setDistanceCircle(null);
     }
     
-    // ADDITIONAL: Clear any leftover circles by class name
+    // Clear any leftover circles by class name
     if (mapInstance && window.L) {
       try {
         mapInstance.eachLayer((layer: any) => {
@@ -65,11 +122,10 @@ export default function useMapOperations(
       setAccuracyCircle(null);
     }
     
-    // Clear distance circle
     clearDistanceCircle();
   }, [mapInstance, userLocationMarker, searchLocationMarker, accuracyCircle, clearDistanceCircle]);
   
-  // Find user's current location
+  // ENHANCED: Find user location with controlled zooming
   const findUserLocation = useCallback(() => {
     if (!mapInstance || !window.L) {
       console.log("Map or Leaflet not available for location");
@@ -93,7 +149,7 @@ export default function useMapOperations(
           
           const L = window.L;
           
-          // Add user location marker with improved styling
+          // Add user location marker
           const userMarker = L.marker([latitude, longitude], {
             icon: L.divIcon({
               className: 'user-location-marker',
@@ -107,7 +163,7 @@ export default function useMapOperations(
             })
           }).addTo(mapInstance);
           
-          // Add accuracy circle if reasonable (and not too large)
+          // Add accuracy circle if reasonable
           if (position.coords.accuracy < 50) {
             const newAccuracyCircle = L.circle([latitude, longitude], {
               radius: position.coords.accuracy,
@@ -127,11 +183,13 @@ export default function useMapOperations(
           setActiveLocation([latitude, longitude]);
           setLocationType('user');
           
-          // Pan to location
-          mapInstance.flyTo([latitude, longitude], 15, {
-            animate: true,
-            duration: 1
-          });
+          // FIXED: Gentle zoom with current zoom level check
+          const currentZoom = mapInstance.getZoom();
+          updateMapView(
+            [latitude, longitude], 
+            Math.max(currentZoom, 13), // Don't zoom out if already zoomed in
+            { animate: true, maintainZoom: currentZoom >= 13 }
+          );
           
           // Update user location state if callback provided
           if (setUserLocation) {
@@ -159,10 +217,11 @@ export default function useMapOperations(
     setFilteredPlaquesCount, 
     setUserLocation,
     userLocationMarker,
-    accuracyCircle
+    accuracyCircle,
+    updateMapView
   ]);
 
-  // Set search location (from address search)
+  // ENHANCED: Set search location with controlled zooming
   const setSearchLocation = useCallback((coordinates: [number, number], address: string) => {
     if (!mapInstance || !window.L) return;
     
@@ -236,7 +295,15 @@ export default function useMapOperations(
     const plaquesInRange = filterPlaquesInRange(coordinates, maxDistance);
     setFilteredPlaquesCount(plaquesInRange.length);
     
-  }, [mapInstance, searchLocationMarker, maxDistance, setUserLocation, setFilteredPlaquesCount]);
+    // FIXED: Gentle zoom to search location
+    const currentZoom = mapInstance.getZoom();
+    updateMapView(
+      coordinates, 
+      Math.max(currentZoom, 14), // Gentle zoom
+      { animate: true, maintainZoom: currentZoom >= 14 }
+    );
+    
+  }, [mapInstance, searchLocationMarker, maxDistance, setUserLocation, setFilteredPlaquesCount, updateMapView]);
 
   // Filter plaques within a certain distance of a point
   const filterPlaquesInRange = useCallback((center: [number, number], radiusKm: number): Plaque[] => {
@@ -253,41 +320,54 @@ export default function useMapOperations(
     });
   }, [plaques]);
 
-  // FIXED: Enhanced distance circle drawing with proper cleanup
+  // ENHANCED: Distance circle drawing with state persistence
   const drawDistanceCircle = useCallback((center: [number, number], radiusKm: number) => {
     if (!window.L || !mapInstance) return;
     
     const L = window.L;
     
-    // ALWAYS clear existing circle first
+    // Clear existing circle
     clearDistanceCircle();
     
     console.log(`Drawing distance circle at [${center[0]}, ${center[1]}] with radius ${radiusKm}km`);
     
     try {
-      // Create new distance circle with unique identifier
+      // Create new distance circle
       const circle = L.circle(center, {
         radius: radiusKm * 1000, // Convert km to meters
-        fillColor: '#10b981', // Green color
+        fillColor: '#10b981',
         fillOpacity: 0.15,
         color: '#10b981',
         weight: 2,
         opacity: 0.8,
         dashArray: '8, 4',
-        className: 'distance-filter-circle', // Add class for identification
-        interactive: false // Make it non-interactive
+        className: 'distance-filter-circle',
+        interactive: false
       }).addTo(mapInstance);
       
-      // Store reference
+      // Store reference with metadata for restoration
+      circle._customData = {
+        center: center,
+        radius: radiusKm,
+        timestamp: Date.now()
+      };
+      
       setDistanceCircle(circle);
       console.log('Distance circle created and added to map');
       
-      // Fit bounds to show entire filter area
-      mapInstance.fitBounds(circle.getBounds(), {
-        padding: [30, 30],
-        maxZoom: 15,
-        animate: true
-      });
+      // FIXED: Don't auto-fit to circle bounds - let user control zoom
+      // Instead, just ensure the circle is visible if needed
+      const mapBounds = mapInstance.getBounds();
+      const circleBounds = circle.getBounds();
+      
+      if (!mapBounds.contains(circleBounds)) {
+        // Only fit if the circle is completely outside the view
+        mapInstance.fitBounds(circleBounds, {
+          padding: [30, 30],
+          maxZoom: Math.max(mapInstance.getZoom(), 15), // Don't zoom out
+          animate: true
+        });
+      }
       
       return circle;
     } catch (error) {
@@ -316,7 +396,7 @@ export default function useMapOperations(
     
   }, [activeLocation, maxDistance, drawDistanceCircle, filterPlaquesInRange, setFilteredPlaquesCount, locationType]);
 
-  // FIXED: Enhanced reset filters function
+  // ENHANCED: Reset filters function
   const resetFilters = useCallback(() => {
     if (!mapInstance) return;
     
@@ -335,14 +415,16 @@ export default function useMapOperations(
     // Clear location markers
     clearLocationOverlays();
     
+    // Reset zoom prevention
+    mapStateRef.current.preventNextZoom = false;
+    
   }, [mapInstance, clearDistanceCircle, setFilteredPlaquesCount, clearLocationOverlays]);
 
-  // Search for a place by address with proper coordinate handling
+  // Search for a place by address
   const searchPlaceByAddress = useCallback(async (address: string): Promise<boolean> => {
     if (!address.trim() || !mapInstance || !window.L) return false;
     
     try {
-      // Use OpenStreetMap's Nominatim service for geocoding (London-focused)
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', London, UK')}&limit=1&bounded=1&viewbox=-0.489,51.28,0.236,51.686`
       );
@@ -362,14 +444,8 @@ export default function useMapOperations(
           throw new Error('Invalid coordinates returned from geocoding service');
         }
         
-        // Set search location
+        // Set search location without aggressive zooming
         setSearchLocation([lat, lon], result.display_name);
-        
-        // Pan to location
-        mapInstance.flyTo([lat, lon], 15, {
-          animate: true,
-          duration: 1.5
-        });
         
         return true;
       } else {
@@ -410,9 +486,9 @@ export default function useMapOperations(
       
       if (latLngs.length < 2) return;
       
-      // Create polyline with animated dash effect
+      // Create polyline
       const routePolyline = L.polyline(latLngs, {
-        color: '#10b981', // green-500
+        color: '#10b981',
         weight: 4,
         opacity: 0.8,
         lineCap: 'round',
@@ -421,11 +497,16 @@ export default function useMapOperations(
         className: 'animated-dash'
       }).addTo(routeGroup);
       
-      // Fit bounds to show entire route
-      mapInstance.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
-      
       // Store reference
       routeLineRef.current = routeGroup;
+      
+      // FIXED: Only fit bounds if route is not currently visible
+      const routeBounds = routePolyline.getBounds();
+      const mapBounds = mapInstance.getBounds();
+      
+      if (!mapBounds.intersects(routeBounds)) {
+        mapInstance.fitBounds(routeBounds, { padding: [50, 50] });
+      }
       
       return routeGroup;
     } catch (error) {
@@ -434,33 +515,37 @@ export default function useMapOperations(
     }
   }, [mapInstance, clearRoute]);
 
-  // FIXED: Restore distance circle when map is reloaded
-// FIXED: Enhanced restore distance circle function
-const restoreDistanceCircle = useCallback(() => {
-  console.log('Restoring distance circle...', { 
-    activeLocation, 
-    maxDistance, 
-    mapInstance: !!mapInstance,
-    distanceCircle: !!distanceCircle 
-  });
-  
-  if (!activeLocation || !mapInstance) {
-    console.log('Cannot restore - missing activeLocation or mapInstance');
-    return;
-  }
-  
-  // Always clear existing circle first to prevent duplicates
-  clearDistanceCircle();
-  
-  // Draw new distance circle
-  const newCircle = drawDistanceCircle(activeLocation, maxDistance);
-  
-  if (newCircle) {
-    console.log('Distance circle restored successfully');
-  } else {
-    console.warn('Failed to restore distance circle');
-  }
-}, [activeLocation, maxDistance, mapInstance, clearDistanceCircle, drawDistanceCircle]);
+  // ENHANCED: Restore distance circle when map is reloaded
+  const restoreDistanceCircle = useCallback(() => {
+    console.log('Restoring distance circle...', { 
+      activeLocation, 
+      maxDistance, 
+      mapInstance: !!mapInstance,
+      distanceCircle: !!distanceCircle 
+    });
+    
+    if (!activeLocation || !mapInstance) {
+      console.log('Cannot restore - missing activeLocation or mapInstance');
+      return;
+    }
+    
+    // Always clear existing circle first
+    clearDistanceCircle();
+    
+    // Draw new distance circle
+    const newCircle = drawDistanceCircle(activeLocation, maxDistance);
+    
+    if (newCircle) {
+      console.log('Distance circle restored successfully');
+    } else {
+      console.warn('Failed to restore distance circle');
+    }
+  }, [activeLocation, maxDistance, mapInstance, clearDistanceCircle, drawDistanceCircle]);
+
+  // Method to prevent next zoom (useful when switching views)
+  const preventNextZoom = useCallback(() => {
+    mapStateRef.current.preventNextZoom = true;
+  }, []);
 
   return {
     findUserLocation,
@@ -474,6 +559,8 @@ const restoreDistanceCircle = useCallback(() => {
     locationType,
     filterPlaquesInRange,
     clearDistanceCircle,
-    restoreDistanceCircle // Export this new function
+    restoreDistanceCircle,
+    preventNextZoom,
+    updateMapView
   };
 }

@@ -4,12 +4,6 @@ import {
   User, 
   LogOut, 
   Settings, 
-  MapPin, 
-  Star, 
-  Route,
-  HelpCircle,
-  Bell,
-  Trophy,
   Moon,
   Sun
 } from 'lucide-react';

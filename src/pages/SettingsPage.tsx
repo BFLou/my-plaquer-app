@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer } from '@/components';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
 import SettingsHeader from '@/components/settings/SettingsHeader';
 import SettingsTabs from '@/components/settings/SettingsTabs';
 import ProfileSettings from '@/components/settings/ProfileSettings';

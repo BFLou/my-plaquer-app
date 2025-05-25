@@ -1,8 +1,7 @@
 // src/pages/CollectionDetail.tsx - Updated with breadcrumb navigation
-import React, { useState, useEffect, useRef } from 'react';
+import{ useState, useEffect, useRef } from 'react';
 import { 
-  Check, Filter, Map, Trash2, Plus, Grid, List, Navigation, 
-  RouteIcon, ArrowLeft, Star, Pencil, Copy, Edit, Trash, MapPin, X, Clock
+  Check, Trash2, ArrowLeft, Star, Pencil, Copy, Edit, MapPin, X, Clock
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCollectionDetail } from '../hooks/useCollectionDetail';
@@ -14,7 +13,6 @@ import { ActionBar } from "@/components/common/ActionBar";
 import { toast } from 'sonner';
 
 // Collection Components
-import CollectionDetailHeader from '../components/collections/CollectionDetailHeader';
 import CollectionPlaqueGrid from '../components/collections/CollectionPlaqueGrid';
 import CollectionPlaqueList from '../components/collections/CollectionPlaqueList';
 import { CollectionStats } from '@/components/collections/CollectionStats';

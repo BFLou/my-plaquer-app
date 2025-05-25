@@ -1,6 +1,5 @@
 // src/utils/collectionStatsUtils.ts
-import { Timestamp } from 'firebase/firestore';
-import { format, formatDistance } from 'date-fns';
+import { formatDistance } from 'date-fns';
 
 type Collection = {
   id: number | string;
@@ -32,7 +31,6 @@ type Visit = {
  * Get visit statistics for a collection
  */
 export function getVisitedStats(
-  collection: Collection, 
   plaques: Plaque[],
   userVisits: Visit[]
 ) {
@@ -205,7 +203,6 @@ export function getCollectionStats(
   
   // Calculate visited stats
   const { visitedCount, visitedPercentage } = getVisitedStats(
-    collection, 
     plaques, 
     userVisits
   );

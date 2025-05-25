@@ -3,9 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { MapPin, Calendar, ChevronRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, isValid } from 'date-fns';
 import { usePlaques } from '@/hooks/usePlaques';

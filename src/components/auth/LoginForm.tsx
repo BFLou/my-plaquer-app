@@ -5,9 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
 
-// Import correct icons from Lucide React
-import { Loader } from 'lucide-react';
-// For Google icon and Github icon, we need to use Lucide's alternate imports
+
 // They're now part of the brand icons collection
 import { GithubIcon } from 'lucide-react'; 
 

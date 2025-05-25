@@ -1,6 +1,6 @@
 // src/components/settings/SecuritySettings.tsx
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, AlertTriangle, Download, Trash2, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle, Download, Trash2, Shield } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import SettingsCard from './SettingsCard';
 import { useAuth } from '@/hooks/useAuth';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 const SecuritySettings: React.FC = () => {
   const { user } = useAuth();

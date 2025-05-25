@@ -1,6 +1,6 @@
 // components/OfflineIndicator.tsx
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, WifiOff } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 
 const OfflineIndicator = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);

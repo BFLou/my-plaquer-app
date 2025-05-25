@@ -10,8 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { profileImageService } from '@/services/profileImageService';
 import { profileService } from '@/services/profileService';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 interface ProfileFormProps {
   onSuccess?: () => void;

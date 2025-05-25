@@ -1,6 +1,5 @@
 // src/components/maps/hooks/useRouteManagement.ts
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Plaque } from '@/types/plaque';
 import { calculateDistance, formatDistance as formatDistanceUtil } from '../utils/routeUtils';
 
 export const useRouteManagement = ({

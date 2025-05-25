@@ -20,6 +20,25 @@ export default function useMapMarkers(
   const [markersMap, setMarkersMap] = useState<Map<number, any>>(new Map());
   const clusterGroupRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
+  const userHasInteractedRef = useRef(false);
+  const initialFitDoneRef = useRef(false);
+  
+  // Track user interactions
+  useEffect(() => {
+    if (!mapInstance) return;
+    
+    const handleUserInteraction = () => {
+      userHasInteractedRef.current = true;
+    };
+    
+    mapInstance.on('dragstart', handleUserInteraction);
+    mapInstance.on('zoomstart', handleUserInteraction);
+    
+    return () => {
+      mapInstance.off('dragstart', handleUserInteraction);
+      mapInstance.off('zoomstart', handleUserInteraction);
+    };
+  }, [mapInstance]);
   
   // Initialize marker layers
   useEffect(() => {
@@ -212,7 +231,7 @@ export default function useMapMarkers(
         marker.bindPopup(popupContent, popupOptions);
         
         // Add click handler
-        marker.on('click', (e) => {
+        marker.on('click', function(e: any) {
           // Stop propagation to prevent map click
           if (e.originalEvent) {
             L.DomEvent.stopPropagation(e.originalEvent);
@@ -249,8 +268,8 @@ export default function useMapMarkers(
       console.error("Error adding markers to layers:", e);
     }
     
-    // Focus on selected plaque or fit all markers
-    if (selectedPlaqueId && !maintainView) {
+    // FIXED: Only auto-fit bounds on initial load or when explicitly requested
+    if (selectedPlaqueId && !maintainView && !userHasInteractedRef.current) {
       const selectedPlaque = plaques.find(p => p.id === selectedPlaqueId);
       if (selectedPlaque && selectedPlaque.latitude && selectedPlaque.longitude) {
         const lat = parseFloat(selectedPlaque.latitude as unknown as string);
@@ -262,8 +281,8 @@ export default function useMapMarkers(
           }, 100);
         }
       }
-    } else if (plaques.length > 0 && !maintainView) {
-      // Fit bounds to show all markers if no specific one is selected
+    } else if (plaques.length > 0 && !maintainView && !initialFitDoneRef.current && !userHasInteractedRef.current) {
+      // Only fit all markers on very first load
       const validPlaques = plaques.filter(p => p.latitude && p.longitude);
       
       if (validPlaques.length > 0) {
@@ -280,6 +299,7 @@ export default function useMapMarkers(
             // Use a timeout to allow map to render first
             setTimeout(() => {
               mapInstance.fitBounds(bounds, { padding: [50, 50] });
+              initialFitDoneRef.current = true;
             }, 300);
           }
         } catch (e) {

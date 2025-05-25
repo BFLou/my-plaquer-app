@@ -1,7 +1,11 @@
 // src/utils/map-utils.ts
-// Update the createPlaqueIcon function to fix alignment issues
+import { Plaque } from '@/types/plaque'; // adjust path if needed
 
-export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false) => {
+export const createPlaqueIcon = (
+  plaque: Plaque,
+  isFavorite: boolean = false,
+  isSelected: boolean = false
+) => {
   // Determine marker color based on plaque color
   let markerColor = 'blue';
   if (plaque.color) {
@@ -12,8 +16,7 @@ export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false)
     else if (color === 'black' || color === 'grey' || color === 'gray') markerColor = 'gray';
     else markerColor = 'blue';
   }
-  
-  // Create icon HTML with improved alignment
+
   const iconHtml = `
     <div class="flex items-center justify-center bg-white rounded-full p-1 shadow-md ${isFavorite ? 'ring-2 ring-amber-500' : ''}" 
          style="display: flex; align-items: center; justify-content: center; width: 28px; height: 28px;">
@@ -21,19 +24,17 @@ export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false)
            style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background-color: ${getColorHex(markerColor)};">
         ${plaque.visited ? 
           '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' : 
-          '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'
-        }
+          '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>'}
       </div>
     </div>
   `;
-  
-  // We need to access L from the window object
-  const L = (window).L;
+
+  const L = (window as any).L;
   if (!L) {
     console.error("Leaflet not available to create icon");
     return null;
   }
-  
+
   return L.divIcon({
     className: `custom-marker ${isSelected ? 'selected-marker' : ''}`,
     html: iconHtml,
@@ -42,8 +43,8 @@ export const createPlaqueIcon = (plaque, isFavorite = false, isSelected = false)
   });
 };
 
-// Helper function to get hex colors
-function getColorHex(color) {
+// Add type for color
+function getColorHex(color: 'blue' | 'green' | 'amber' | 'gray' | string): string {
   switch (color) {
     case 'blue': return '#3b82f6';
     case 'green': return '#10b981';
@@ -53,15 +54,18 @@ function getColorHex(color) {
   }
 }
 
-// Update the createPlaquePopup function to fix route button issues
-export const createPlaquePopup = (plaque, onPlaqueClick, isRoutingMode = false, onAddToRoute = null) => {
+// Add all necessary types
+export const createPlaquePopup = (
+  plaque: Plaque,
+  onPlaqueClick: (plaque: Plaque) => void,
+  isRoutingMode: boolean = false,
+  onAddToRoute: ((plaque: Plaque) => void) | null = null
+): HTMLDivElement => {
   const popupContent = document.createElement('div');
   popupContent.className = 'plaque-popup p-2';
-  
-  // Ensure the routing mode parameter is correctly used
+
   console.log("Creating popup with routing mode:", isRoutingMode);
-  
-  // Create popup content with conditional routing button
+
   popupContent.innerHTML = `
     <div class="font-semibold text-sm mb-1">${plaque.title || 'Unnamed Plaque'}</div>
     <div class="text-xs text-gray-600 mb-2 truncate">${plaque.location || plaque.address || ''}</div>
@@ -75,23 +79,22 @@ export const createPlaquePopup = (plaque, onPlaqueClick, isRoutingMode = false, 
     </div>
   `;
 
-  // Add event listeners after a small delay to ensure DOM is ready
   setTimeout(() => {
     const detailButton = popupContent.querySelector('.view-details');
     const routeButton = popupContent.querySelector('.add-to-route');
-    
+
     if (detailButton && onPlaqueClick) {
       detailButton.addEventListener('click', () => {
         onPlaqueClick(plaque);
       });
     }
-    
+
     if (routeButton && onAddToRoute) {
       routeButton.addEventListener('click', () => {
         onAddToRoute(plaque);
       });
     }
   }, 10);
-  
+
   return popupContent;
 };

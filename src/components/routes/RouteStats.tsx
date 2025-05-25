@@ -5,9 +5,6 @@ import {
   Clock, 
   Route as RouteIcon, 
   TrendingUp,
-  Users,
-  Calendar,
-  Navigation,
   Target
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";

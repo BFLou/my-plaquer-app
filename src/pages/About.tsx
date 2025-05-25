@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
   Mail, 
-  ChevronRight, 
   Users, 
   Database, 
   Map, 
@@ -11,7 +10,6 @@ import {
   Share2, 
   BookOpen,
   Route,
-  ExternalLink,
   Send
 } from 'lucide-react';
 import { PageContainer } from '@/components';

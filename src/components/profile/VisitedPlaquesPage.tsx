@@ -1,6 +1,6 @@
 // src/components/profile/VisitedPlaquesPage.tsx
 import React, { useState } from 'react';
-import { MapPin, Calendar, SlidersHorizontal, Search, Filter } from 'lucide-react';
+import { MapPin, Calendar, Search, Filter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,7 +54,7 @@ const VisitedPlaquesPage: React.FC<VisitedPlaquesPageProps> = ({
   // Filter and sort visits
   const getFilteredAndSortedVisits = () => {
     // First filter by search query and rating
-    let filtered = visits.filter(visit => {
+    const filtered = visits.filter(visit => {
       const plaque = getPlaqueData(visit.plaque_id);
       
       // Filter by search query

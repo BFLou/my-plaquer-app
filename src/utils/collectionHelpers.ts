@@ -1,5 +1,4 @@
 // src/features/collections/utils/collectionHelpers.ts
-import { Timestamp } from 'firebase/firestore';
 
 export const formatTimeAgo = (dateValue: any): string => {
   // If no date value is provided, return 'recently'

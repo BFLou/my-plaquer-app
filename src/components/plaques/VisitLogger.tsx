@@ -1,6 +1,6 @@
 // src/components/plaques/VisitLogger.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MapPin, Star, X, Share2, Check, Image, Edit, Plus, Award, Calendar } from 'lucide-react';
+import { MapPin, Star, X, Share2, Check, Plus, Calendar } from 'lucide-react';
 import { 
   Sheet, 
   SheetContent, 
@@ -10,8 +10,6 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
   Popover,

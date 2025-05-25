@@ -1,8 +1,6 @@
 // src/services/profileService.ts
 import { 
-  updateProfile as updateAuthProfile,
-  User 
-} from 'firebase/auth';
+  updateProfile as updateAuthProfile} from 'firebase/auth';
 import { 
   doc, 
   updateDoc,
@@ -11,7 +9,6 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { profileImageService } from './profileImageService';
-import { toast } from 'sonner';
 
 export const profileService = {
   /**

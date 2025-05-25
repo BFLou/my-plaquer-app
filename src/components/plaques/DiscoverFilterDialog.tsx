@@ -1,7 +1,7 @@
 // src/components/plaques/DiscoverFilterDialog.tsx
 import React, { useState } from 'react';
 import { 
-  Search, Filter, X, Check, MapPin, Circle,
+  Search, X, MapPin, Circle,
   User, Star, CheckCircle, ArrowLeft, ArrowRight, Calendar
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";

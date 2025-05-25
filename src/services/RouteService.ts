@@ -6,7 +6,6 @@ import {
   doc, 
   getDoc,
   serverTimestamp,
-  Timestamp,
   deleteDoc,
   query,
   where,

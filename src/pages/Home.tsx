@@ -1,17 +1,15 @@
 // src/pages/Home.tsx - Updated with EnhancedSearchBar
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   ChevronRight, Map, Camera, ListChecks, User, Navigation, 
-  Compass, Info, X, CheckCircle, MapPin, Filter as FilterIcon 
+  Info, X, CheckCircle, Filter as FilterIcon 
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
-  CategoryCard, PopularLocations, PopularFigures, 
   OnboardingStepContent, CategoriesSection
 } from "@/components/home/HomeComponents";
 import EnhancedSearchBar from "@/components/home/EnhancedSearchBar";

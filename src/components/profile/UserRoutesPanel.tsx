@@ -1,9 +1,8 @@
 // src/components/profile/UserRoutesPanel.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Route, ChevronRight, Plus, MoreVertical } from 'lucide-react';
+import { Route, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useRoutes } from '@/hooks/useRoutes';
 import { toast } from 'sonner';
 import RouteCard from '../routes/RouteCard';

@@ -1,6 +1,6 @@
 // src/components/settings/PrivacySettings.tsx
 import React, { useState } from 'react';
-import { Eye, Users, MapPin, Activity, Folder } from 'lucide-react';
+import { Users, MapPin, Activity, Folder } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

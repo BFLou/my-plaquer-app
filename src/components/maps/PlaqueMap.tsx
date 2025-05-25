@@ -1,8 +1,7 @@
 // src/components/maps/PlaqueMap.tsx - Fixed location persistence and map filtering
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plaque } from '@/types/plaque';
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Layers } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 // Import sub-components
 import MapContainer from './containers/MapContainer';
