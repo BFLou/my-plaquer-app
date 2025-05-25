@@ -12,7 +12,6 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/button";
 import Pagination from '@/components/plaques/Pagination';
 import PlaqueMap from '../components/maps/PlaqueMap';
-import CollapsibleRoutePanel from '../components/maps/controls/CollapsibleRoutePanel';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 
 // Import hooks
@@ -410,22 +409,6 @@ const Discover = () => {
               hideOutsidePlaques={hideOutsidePlaques}
             />
           </div>
-          
-          {/* Collapsible Route Panel */}
-          {isRoutingMode && (
-            <CollapsibleRoutePanel
-              routePoints={routePoints}
-              removePlaqueFromRoute={handleRemovePlaqueFromRoute}
-              clearRoute={handleClearRoute}
-              exportRoute={() => {}}
-              useImperial={useImperial}
-              setUseImperial={setUseImperial}
-              onClose={() => setIsRoutingMode(false)}
-              formatDistance={formatDistance}
-              formatWalkingTime={formatWalkingTime}
-              onSave={() => {}}
-            />
-          )}
         </div>
       );
     }
