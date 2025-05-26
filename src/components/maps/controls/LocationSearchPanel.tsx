@@ -1,4 +1,4 @@
-// src/components/maps/controls/LocationSearchPanel.tsx - Fixed autocomplete and improved UX
+// src/components/maps/controls/LocationSearchPanel.tsx - FIXED: Z-index for modal compatibility
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, MapPin, Loader } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -183,7 +183,7 @@ const LocationSearchPanel: React.FC<LocationSearchPanelProps> = ({
   };
 
   return (
-    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-[1000] w-80 sm:w-96">
+    <div className="absolute top-16 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 z-[950] w-80 sm:w-96">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-sm font-medium flex items-center gap-1.5">
           <MapPin size={16} className="text-gray-500" />

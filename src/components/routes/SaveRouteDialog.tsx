@@ -1,47 +1,34 @@
-// src/components/routes/SaveRouteDialog.tsx
+// src/components/routes/SaveRouteDialog.tsx - FIXED: Removed public/private option
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { 
-  Save, 
-  MapPin, 
-  Clock, 
-  Route as RouteIcon,
-  Globe,
-  Lock
-} from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Clock, Route } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
-
-interface SaveRouteDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (data: SaveRouteData) => Promise<void>;
-  routePoints: Plaque[];
-  routeDistance: number;
-  useImperial: boolean;
-  isSaving?: boolean;
-  initialData?: {
-    name?: string;
-    description?: string;
-    isPublic?: boolean;
-  };
-}
 
 export interface SaveRouteData {
   name: string;
   description: string;
-  isPublic: boolean;
+}
+
+interface SaveRouteDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: SaveRouteData) => void;
+  routePoints: Plaque[];
+  routeDistance: number;
+  useImperial?: boolean;
+  isSaving?: boolean;
 }
 
 const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
@@ -50,26 +37,45 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
   onSave,
   routePoints,
   routeDistance,
-  useImperial,
-  isSaving = false,
-  initialData
+  useImperial = false,
+  isSaving = false
 }) => {
-  const [formData, setFormData] = useState({
-    name: initialData?.name || `Walking Route - ${new Date().toLocaleDateString()}`,
-    description: initialData?.description || '',
-    isPublic: initialData?.isPublic || false
-  });
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
 
-  // Calculate estimated walking time (12 minutes per km + 2 minutes per stop)
-  const estimatedDuration = React.useMemo(() => {
-    const baseMinutes = routeDistance * 12;
-    const stopTime = routePoints.length * 2;
-    return Math.round(baseMinutes + stopTime);
-  }, [routeDistance, routePoints.length]);
+  // Reset form when dialog closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setName('');
+      setDescription('');
+    }
+  }, [isOpen]);
 
-  // Format distance
+  // Generate default name based on route
+  React.useEffect(() => {
+    if (isOpen && routePoints.length > 0 && !name) {
+      const startLocation = routePoints[0]?.address || routePoints[0]?.location || 'Start';
+      const endLocation = routePoints[routePoints.length - 1]?.address || routePoints[routePoints.length - 1]?.location || 'End';
+      
+      // Extract area names for cleaner default names
+      const getAreaName = (location: string) => {
+        if (!location) return '';
+        // Try to extract the area/district name (usually the first part before comma)
+        const parts = location.split(',');
+        return parts[0].trim();
+      };
+      
+      const startArea = getAreaName(startLocation);
+      const endArea = getAreaName(endLocation);
+      
+      if (routePoints.length === 2) {
+        setName(`${startArea} to ${endArea}`);
+      } else {
+        setName(`${startArea} Walking Tour (${routePoints.length} stops)`);
+      }
+    }
+  }, [isOpen, routePoints, name]);
+
   const formatDistance = (km: number) => {
     if (useImperial) {
       const miles = km * 0.621371;
@@ -78,201 +84,150 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
     return `${km.toFixed(1)} km`;
   };
 
-  // Format duration
-  const formatDuration = (minutes: number) => {
+  const formatWalkingTime = (km: number) => {
+    const minutes = useImperial 
+      ? Math.round(km * 0.621371 * 20) // 20 minutes per mile
+      : Math.round(km * 12); // 12 minutes per km
+    
     if (minutes < 60) {
       return `${minutes} min`;
     }
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}h${mins > 0 ? ` ${mins}m` : ''}`;
+    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
   };
 
-  // Validate form
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.name.trim()) {
-      newErrors.name = 'Route name is required';
-    }
-    
-    if (formData.name.length > 100) {
-      newErrors.name = 'Route name must be less than 100 characters';
-    }
-    
-    if (formData.description.length > 500) {
-      newErrors.description = 'Description must be less than 500 characters';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle form submission
-  const handleSave = async () => {
-    if (!validateForm()) {
+  const handleSave = () => {
+    if (!name.trim()) {
       return;
     }
 
-    try {
-      await onSave(formData);
-      onClose();
-    } catch (error) {
-      console.error('Error saving route:', error);
-    }
+    onSave({
+      name: name.trim(),
+      description: description.trim()
+    });
   };
 
-  // Get stop label (A, B, C, etc.)
-  const getStopLabel = (index: number, total: number) => {
-    if (index === 0) return 'A';
-    if (index === total - 1) return 'B';
-    return String.fromCharCode(65 + index);
-  };
-
-  // Get stop color
-  const getStopColor = (index: number, total: number) => {
-    if (index === 0) return 'bg-green-500';
-    if (index === total - 1) return 'bg-red-500';
-    return 'bg-blue-500';
-  };
+  const isFormValid = name.trim().length > 0 && routePoints.length >= 2;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] z-[1100]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Save size={20} className="text-green-600" />
+            <Route size={20} className="text-green-600" />
             Save Walking Route
           </DialogTitle>
+          <DialogDescription>
+            Save your walking route to access it later and share with others.
+          </DialogDescription>
         </DialogHeader>
-        
-        <div className="space-y-6 py-4">
+
+        <div className="space-y-6">
           {/* Route Summary */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <RouteIcon size={16} />
-              Route Summary
-            </h3>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium text-green-900">Route Summary</h3>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                {routePoints.length} stops
+              </Badge>
+            </div>
             
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <MapPin size={14} className="text-blue-600" />
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2 text-green-700">
+                <MapPin size={16} />
                 <span className="font-medium">{formatDistance(routeDistance)}</span>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Clock size={14} className="text-blue-600" />
-                <span className="font-medium">{formatDuration(estimatedDuration)}</span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {routePoints.length} stops
-                </Badge>
+              <div className="flex items-center gap-2 text-green-700">
+                <Clock size={16} />
+                <span className="font-medium">{formatWalkingTime(routeDistance)}</span>
               </div>
             </div>
-          </div>
 
-          {/* Route Name */}
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium">
-              Route Name *
-            </label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter a memorable name for your route"
-              className={errors.name ? 'border-red-500' : ''}
-            />
-            {errors.name && (
-              <p className="text-red-500 text-xs">{errors.name}</p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">
-              Description
-            </label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Describe what makes this route special..."
-              rows={3}
-              className={errors.description ? 'border-red-500' : ''}
-            />
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Optional - help others discover your route</span>
-              <span>{formData.description.length}/500</span>
-            </div>
-            {errors.description && (
-              <p className="text-red-500 text-xs">{errors.description}</p>
-            )}
-          </div>
-
-          {/* Visibility Settings */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-sm">Visibility</h3>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                {formData.isPublic ? (
-                  <Globe size={16} className="text-blue-600" />
-                ) : (
-                  <Lock size={16} className="text-gray-600" />
-                )}
-                <div>
-                  <Label htmlFor="visibility" className="text-sm font-medium">
-                    {formData.isPublic ? 'Public Route' : 'Private Route'}
-                  </Label>
-                  <p className="text-xs text-gray-500">
-                    {formData.isPublic 
-                      ? 'Others can discover and view this route' 
-                      : 'Only you can see this route'
-                    }
-                  </p>
-                </div>
-              </div>
-              <Switch
-                id="visibility"
-                checked={formData.isPublic}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPublic: checked }))}
-              />
-            </div>
-          </div>
-
-          {/* Route Stops Preview */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-sm">Route Stops</h3>
-            <div className="max-h-32 overflow-y-auto space-y-2">
-              {routePoints.map((point, index) => (
-                <div key={point.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded text-sm">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${getStopColor(index, routePoints.length)}`}>
-                    {getStopLabel(index, routePoints.length)}
+            {/* Route stops preview */}
+            <div className="mt-3 pt-3 border-t border-green-200">
+              <div className="text-xs text-green-600 mb-2">Route stops:</div>
+              <div className="max-h-20 overflow-y-auto text-xs text-green-700">
+                {routePoints.map((point, index) => (
+                  <div key={point.id} className="flex items-center gap-2 mb-1">
+                    <span className="font-mono w-4">{index + 1}.</span>
+                    <span className="truncate">{point.title}</span>
                   </div>
-                  <div className="flex-1 truncate">{point.title}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Form Fields */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="route-name">Route Name *</Label>
+              <Input
+                id="route-name"
+                placeholder="Enter a name for your route"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isSaving}
+                maxLength={100}
+              />
+              <div className="text-xs text-gray-500 text-right">
+                {name.length}/100 characters
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="route-description">Description (optional)</Label>
+              <Textarea
+                id="route-description"
+                placeholder="Add notes about your route, highlights, or recommendations..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={isSaving}
+                rows={3}
+                maxLength={500}
+              />
+              <div className="text-xs text-gray-500 text-right">
+                {description.length}/500 characters
+              </div>
+            </div>
+          </div>
+
+          {/* REMOVED: Public/Private toggle - Everything is private by default */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-xs">🔒</span>
+              </div>
+              <div>
+                <div className="font-medium text-blue-900 text-sm">Private Route</div>
+                <div className="text-blue-700 text-xs">
+                  Your route will be saved privately to your account. Only you can access it.
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={isSaving}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button
+            onClick={handleSave}
+            disabled={!isFormValid || isSaving}
+            className="min-w-[100px]"
+          >
             {isSaving ? (
               <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                <div className="h-4 w-4 rounded-full border-2 border-b-transparent border-white animate-spin mr-2"></div>
                 Saving...
               </>
             ) : (
-              <>
-                <Save size={14} className="mr-2" />
-                Save Route
-              </>
+              'Save Route'
             )}
           </Button>
         </DialogFooter>

@@ -1,4 +1,4 @@
-// src/components/maps/controls/CollapsibleRoutePanel.tsx
+// src/components/maps/controls/CollapsibleRoutePanel.tsx - FIXED: Proper routing mode exit
 import React, { useState } from 'react';
 import { 
   Route as RouteIcon, 
@@ -40,6 +40,9 @@ interface CollapsibleRoutePanelProps {
   className?: string;
   formatDistance?: (distance: number) => string;
   formatWalkingTime?: (distance: number) => string;
+  // FIXED: Add routing mode control props
+  isRoutingMode?: boolean;
+  setIsRoutingMode?: (mode: boolean) => void;
 }
 
 const CollapsibleRoutePanel: React.FC<CollapsibleRoutePanelProps> = ({
@@ -55,7 +58,10 @@ const CollapsibleRoutePanel: React.FC<CollapsibleRoutePanelProps> = ({
   onReorder,
   className = '',
   formatDistance,
-  formatWalkingTime
+  formatWalkingTime,
+  // FIXED: Add routing mode props with defaults
+  isRoutingMode = true,
+  setIsRoutingMode = () => {}
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -97,6 +103,18 @@ const CollapsibleRoutePanel: React.FC<CollapsibleRoutePanelProps> = ({
     return formatWalkingTime ? formatWalkingTime(totalDistance) : `${Math.round(totalDistance * 12)} min`;
   };
 
+  // FIXED: Handle closing routing mode completely
+  const handleCompleteClose = () => {
+    // Clear the route
+    clearRoute();
+    // Exit routing mode
+    setIsRoutingMode(false);
+    // Close the panel
+    onClose();
+    // Show feedback to user
+    toast.info("Route planning mode deactivated");
+  };
+
   // Handle save route - simplified to match Firebase rules
   const handleSaveRoute = async (data: SaveRouteData) => {
     if (!user) {
@@ -112,12 +130,12 @@ const CollapsibleRoutePanel: React.FC<CollapsibleRoutePanelProps> = ({
     try {
       setIsSaving(true);
       
+      // FIXED: Remove isPublic parameter since everything is private
       await createRoute(
         data.name,
         data.description,
         routePoints,
-        totalDistance,
-        data.isPublic
+        totalDistance
       );
       
       toast.success("Route saved successfully!");
@@ -209,7 +227,8 @@ const CollapsibleRoutePanel: React.FC<CollapsibleRoutePanelProps> = ({
               <RouteIcon size={20} className="text-green-600" />
               <h3 className="font-semibold text-gray-900">Route Planner</h3>
             </div>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+            {/* FIXED: Use complete close handler */}
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleCompleteClose}>
               <X size={16} />
             </Button>
           </div>
@@ -269,7 +288,8 @@ const CollapsibleRoutePanel: React.FC<CollapsibleRoutePanelProps> = ({
                 {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
               </Button>
               {!isCollapsed && (
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+                // FIXED: Use complete close handler
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleCompleteClose}>
                   <X size={16} />
                 </Button>
               )}

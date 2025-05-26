@@ -1,4 +1,4 @@
-// src/components/maps/hooks/useMapInitialization.ts - Updated with base map selection
+// src/components/maps/hooks/useMapInitialization.ts - FIXED: Remove default zoom controls
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface MapOptions {
@@ -104,7 +104,6 @@ export const useMapInitialization = (
         
         const mapOptions = { ...defaultOptions, ...options };
         
-        // Add a brief delay before initializing the map to ensure the container is ready
         // Make sure the container has dimensions before initializing Leaflet
         const mapContainer = mapRef.current;
         if (!mapContainer) return;
@@ -114,13 +113,13 @@ export const useMapInitialization = (
         mapContainer.style.width = '100%';
         mapContainer.style.position = 'relative';
         
-        // Initialize the map with zoomControl disabled to add it to custom position
+        // FIXED: Initialize the map with zoomControl disabled completely
         const map = window.L.map(mapContainer, {
           center: mapOptions.center,
           zoom: mapOptions.zoom,
           maxZoom: mapOptions.maxZoom,
           minZoom: mapOptions.minZoom,
-          zoomControl: false, // Disable default zoom control
+          zoomControl: false, // FIXED: Disable ALL default zoom controls
           zoomSnap: 0.5,
           zoomDelta: 0.5,
           wheelDebounceTime: 100,
@@ -134,12 +133,8 @@ export const useMapInitialization = (
           map.invalidateSize();
         }, 100);
         
-        // Add zoom control to the top-right with improved styling
-        window.L.control.zoom({
-          position: 'topright',
-          zoomInTitle: 'Zoom in',
-          zoomOutTitle: 'Zoom out'
-        }).addTo(map);
+        // REMOVED: Do not add any zoom controls
+        // The custom MapControls component will handle zoom via custom buttons
 
         // Initialize different base map layers
         const streetLayer = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -182,13 +177,8 @@ export const useMapInitialization = (
         baseLayersRef.current['street'].addTo(map);
         activeBaseLayerRef.current = 'street';
 
-        // Add scale control with both imperial and metric
-        window.L.control.scale({
-          imperial: true,
-          metric: true,
-          position: 'bottomright',
-          maxWidth: 150
-        }).addTo(map);
+        // REMOVED: Scale control to keep map cleaner
+        // The attribution is enough for most users
         
         // Prevent zoom on scroll unless shift key is pressed
         map.scrollWheelZoom.disable();

@@ -1,6 +1,5 @@
-// src/pages/Discover.tsx - Complete simplified version
+// src/pages/Discover.tsx - FIXED: Removed duplicate toasts, moved to components
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { toast } from 'sonner';
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 import plaqueData from '../data/plaque_data.json';
@@ -65,7 +64,7 @@ const Discover = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Load plaque data
+  // Load plaque data - FIXED: Removed toast, handle error silently
   useEffect(() => {
     try {
       setLoading(true);
@@ -127,7 +126,7 @@ const Discover = () => {
     } catch (error) {
       console.error('Error loading plaque data:', error);
       setLoading(false);
-      toast.error("Could not load the plaque data. Please try again later.");
+      // Error handling will be done by individual components as needed
     }
   }, []);
 
@@ -136,16 +135,16 @@ const Discover = () => {
   const maxDistance = mapStateManager.state.distanceFilter.radius;
   const hideOutsidePlaques = mapStateManager.state.distanceFilter.visible;
 
-  // Distance filter handlers
+  // Distance filter handlers - FIXED: Removed toast
   const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
     if (activeLocation) {
       mapStateManager.setDistanceFilter(activeLocation, newDistance, hideOutside);
     }
   }, [activeLocation, mapStateManager]);
 
+  // FIXED: Removed toast - let PlaqueMap handle location feedback
   const handleLocationSet = useCallback((location) => {
     mapStateManager.setSearchLocation(location);
-    toast.success("Location set! Distance filter is now available.");
   }, [mapStateManager]);
 
   // Filtered plaques
@@ -226,13 +225,16 @@ const Discover = () => {
 
   // Event handlers
   const handlePlaqueClick = useCallback((plaque) => {
+    console.log('Discover: handlePlaqueClick called with plaque:', plaque.id, plaque.title);
     setSelectedPlaque(plaque);
   }, []);
 
   const handleFavoriteToggle = useCallback((id) => {
     toggleFavorite(id);
+    // Toast handled by useFavorites hook
   }, [toggleFavorite]);
 
+  // FIXED: Removed toast - let PlaqueDetail component handle feedback
   const handleMarkVisited = useCallback(async (id) => {
     try {
       await markAsVisited(id, {
@@ -244,10 +246,10 @@ const Discover = () => {
         p.id === id ? { ...p, visited: true } : p
       ));
       
-      toast.success("Marked as visited");
+      // Success feedback handled by PlaqueDetail component
     } catch (error) {
       console.error("Error marking as visited:", error);
-      toast.error("Failed to mark as visited");
+      // Error feedback handled by PlaqueDetail component
     }
   }, [markAsVisited]);
 
@@ -257,54 +259,38 @@ const Discover = () => {
     setCurrentPage(1);
   }, [resetUrlFilters, mapStateManager]);
 
-  // Route management
+  // FIXED: Route management - removed toasts, let PlaqueMap handle feedback
   const handleAddPlaqueToRoute = useCallback((plaque) => {
     if (routePoints.some(p => p.id === plaque.id)) {
-      toast.info(`"${plaque.title}" is already in your route.`);
+      // Already in route - no action needed, PlaqueMap will show feedback
       return;
     }
     
-    setRoutePoints(prev => {
-      const newRoute = [...prev, plaque];
-      if (newRoute.length === 1) {
-        toast.success(`Added "${plaque.title}" as your starting point.`);
-      } else {
-        toast.success(`Added "${plaque.title}" (${newRoute.length} stops total)`);
-      }
-      return newRoute;
-    });
+    setRoutePoints(prev => [...prev, plaque]);
+    // Success feedback handled by PlaqueMap
   }, [routePoints]);
 
   const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
-    setRoutePoints(prev => {
-      const newRoute = prev.filter(p => p.id !== plaqueId);
-      const removedPlaque = prev.find(p => p.id === plaqueId);
-      if (removedPlaque) {
-        toast.info(`Removed "${removedPlaque.title}" from route`);
-      }
-      return newRoute;
-    });
+    setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
+    // Feedback handled by route panel component
   }, []);
 
   const handleClearRoute = useCallback(() => {
     if (routePoints.length > 0) {
       setRoutePoints([]);
-      toast.info(`Cleared route with ${routePoints.length} stops`);
+      // Feedback handled by route panel component
     }
   }, [routePoints.length]);
 
+  // FIXED: Removed toasts - let PlaqueMap handle routing mode feedback
   const handleToggleRoutingMode = useCallback(() => {
     const newRoutingMode = !isRoutingMode;
     setIsRoutingMode(newRoutingMode);
     
-    if (newRoutingMode) {
-      toast.success("Route planning mode activated. Click on plaques to add them to your route.", {
-        duration: 4000,
-      });
-    } else {
+    if (!newRoutingMode) {
       handleClearRoute();
-      toast.info("Route planning mode deactivated.");
     }
+    // All feedback handled by PlaqueMap component
   }, [isRoutingMode, handleClearRoute]);
 
   // Distance helper functions
@@ -357,6 +343,12 @@ const Discover = () => {
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
   }, [allPlaques]);
+
+  // Handle nearby plaque selection
+  const handleNearbyPlaqueClick = useCallback((plaque) => {
+    console.log('Discover: handleNearbyPlaqueClick called with plaque:', plaque.id, plaque.title);
+    setSelectedPlaque(plaque);
+  }, []);
 
   const renderContent = () => {
     if (loading) {
@@ -691,21 +683,13 @@ const Discover = () => {
       {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
+          isOpen={!!selectedPlaque}
+          onClose={() => setSelectedPlaque(null)}
           isFavorite={isFavorite(selectedPlaque.id)}
           onFavoriteToggle={handleFavoriteToggle}
-          onClose={() => setSelectedPlaque(null)}
-          isVisited={isPlaqueVisited(selectedPlaque.id)}
           onMarkVisited={handleMarkVisited}
           nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-          onNearbyPlaqueClick={handlePlaqueClick}
-          showDistance={!!activeLocation}
-          distance={activeLocation ? getDistanceFromActiveLocation(selectedPlaque) : 0}
-          formatDistance={formatDistance}
-          formatWalkingTime={formatWalkingTime}
-          isInRoute={isRoutingMode && routePoints.some(p => p.id === selectedPlaque.id)}
-          onAddToRoute={isRoutingMode ? () => handleAddPlaqueToRoute(selectedPlaque) : undefined}
-          onRemoveFromRoute={isRoutingMode ? () => handleRemovePlaqueFromRoute(selectedPlaque.id) : undefined}
-          routeIndex={isRoutingMode ? routePoints.findIndex(p => p.id === selectedPlaque.id) + 1 : 0}
+          onSelectNearbyPlaque={handleNearbyPlaqueClick}
         />
       )}
     </PageContainer>

@@ -1,4 +1,4 @@
-// src/services/RouteService.ts
+// src/services/RouteService.ts - FIXED: Removed duplicate toasts
 import { 
   collection, 
   addDoc, 
@@ -15,7 +15,6 @@ import {
 import { db } from '@/lib/firebase';
 import { Plaque } from '@/types/plaque';
 import { calculateRouteDistance } from '@/components/maps/utils/routeUtils';
-import { toast } from 'sonner';
 
 export interface RoutePoint {
   plaque_id: number;
@@ -34,32 +33,63 @@ export interface RouteData {
   created_at?: any;
   updated_at?: any;
   user_id: string;
-  is_public?: boolean;
+  is_public: boolean; // Keep the field but always set to false
   views?: number;
 }
 
+export interface RouteServiceError {
+  code: string;
+  message: string;
+}
+
 /**
- * Save a route to Firebase
+ * Save a route to Firebase - FIXED: No toasts, returns success/error info
  */
 export const saveRouteToFirebase = async (
   name: string,
   points: Plaque[],
   totalDistance: number,
   userId: string,
-  description: string = '',
-  isPublic: boolean = false
-): Promise<RouteData | null> => {
+  description: string = ''
+): Promise<{ success: boolean; data?: RouteData; error?: RouteServiceError }> => {
   if (!userId) {
-    toast.error("You must be logged in to save routes");
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'AUTH_ERROR',
+        message: 'You must be logged in to save routes'
+      }
+    };
   }
   
   if (points.length < 2) {
-    toast.error("A route must have at least 2 points");
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'A route must have at least 2 points'
+      }
+    };
   }
   
   try {
+    // Validate points have required data
+    const invalidPoints = points.filter(point => 
+      !point.latitude || !point.longitude || 
+      isNaN(parseFloat(point.latitude as unknown as string)) || 
+      isNaN(parseFloat(point.longitude as unknown as string))
+    );
+    
+    if (invalidPoints.length > 0) {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Some route points have invalid coordinates'
+        }
+      };
+    }
+    
     // Format points for storage
     const routePoints = points.map((point, index) => ({
       plaque_id: point.id,
@@ -69,38 +99,44 @@ export const saveRouteToFirebase = async (
       order: index
     }));
     
-    // Create route data
+    // Create route data - Always private
     const routeData: RouteData = {
-      name,
-      description,
+      name: name.trim(),
+      description: description.trim(),
       points: routePoints,
       total_distance: totalDistance,
       user_id: userId,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
-      is_public: isPublic,
+      is_public: false, // Always false - all routes are private
       views: 0
     };
     
     // Add to Firestore
     const docRef = await addDoc(collection(db, 'routes'), routeData);
     
-    toast.success('Route saved successfully');
-    
-    // Return the created route
+    // Return success with the created route
     return {
-      id: docRef.id,
-      ...routeData,
+      success: true,
+      data: {
+        id: docRef.id,
+        ...routeData,
+      }
     };
   } catch (error) {
     console.error('Error saving route:', error);
-    toast.error('Failed to save route');
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'FIRESTORE_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to save route'
+      }
+    };
   }
 };
 
 /**
- * Update an existing route in Firebase
+ * Update an existing route in Firebase - FIXED: No toasts, returns success/error info
  */
 export const updateRouteInFirebase = async (
   routeId: string,
@@ -109,23 +145,43 @@ export const updateRouteInFirebase = async (
     description?: string;
     points?: Plaque[];
     totalDistance?: number;
-    isPublic?: boolean;
   },
   userId: string
-): Promise<RouteData | null> => {
+): Promise<{ success: boolean; data?: RouteData; error?: RouteServiceError }> => {
   if (!userId || !routeId) {
-    toast.error("Missing required data to update route");
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Missing required data to update route'
+      }
+    };
   }
   
   try {
     const docRef = doc(db, 'routes', routeId);
     const docSnap = await getDoc(docRef);
     
-    // Check if route exists and belongs to user
-    if (!docSnap.exists() || docSnap.data().user_id !== userId) {
-      toast.error('Route not found or access denied');
-      return null;
+    // Check if route exists
+    if (!docSnap.exists()) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Route not found'
+        }
+      };
+    }
+    
+    // Check if user owns the route
+    if (docSnap.data().user_id !== userId) {
+      return {
+        success: false,
+        error: {
+          code: 'ACCESS_DENIED',
+          message: 'You do not have permission to update this route'
+        }
+      };
     }
     
     const updateData: Record<string, any> = {
@@ -133,15 +189,50 @@ export const updateRouteInFirebase = async (
     };
     
     // Add fields to update if provided
-    if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.isPublic !== undefined) updateData.is_public = updates.isPublic;
+    if (updates.name !== undefined) {
+      if (!updates.name.trim()) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Route name cannot be empty'
+          }
+        };
+      }
+      updateData.name = updates.name.trim();
+    }
+    
+    if (updates.description !== undefined) {
+      updateData.description = updates.description.trim();
+    }
     
     // Format points if provided
     if (updates.points) {
       if (updates.points.length < 2) {
-        toast.error("A route must have at least 2 points");
-        return null;
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'A route must have at least 2 points'
+          }
+        };
+      }
+      
+      // Validate points have required data
+      const invalidPoints = updates.points.filter(point => 
+        !point.latitude || !point.longitude || 
+        isNaN(parseFloat(point.latitude as unknown as string)) || 
+        isNaN(parseFloat(point.longitude as unknown as string))
+      );
+      
+      if (invalidPoints.length > 0) {
+        return {
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Some route points have invalid coordinates'
+          }
+        };
       }
       
       updateData.points = updates.points.map((point, index) => ({
@@ -161,65 +252,102 @@ export const updateRouteInFirebase = async (
     // Update in Firestore
     await updateDoc(docRef, updateData);
     
-    toast.success('Route updated successfully');
-    
     // Return the updated route
     const currentData = docSnap.data();
     return {
-      id: routeId,
-      ...currentData,
-      ...updateData,
-    } as unknown as RouteData;
+      success: true,
+      data: {
+        id: routeId,
+        ...currentData,
+        ...updateData,
+      } as unknown as RouteData
+    };
   } catch (error) {
     console.error('Error updating route:', error);
-    toast.error('Failed to update route');
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'FIRESTORE_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to update route'
+      }
+    };
   }
 };
 
 /**
- * Delete a route from Firebase
+ * Delete a route from Firebase - FIXED: No toasts, returns success/error info
  */
 export const deleteRouteFromFirebase = async (
   routeId: string,
   userId: string
-): Promise<boolean> => {
+): Promise<{ success: boolean; error?: RouteServiceError }> => {
   if (!userId || !routeId) {
-    toast.error("Missing required data to delete route");
-    return false;
+    return {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Missing required data to delete route'
+      }
+    };
   }
   
   try {
     const docRef = doc(db, 'routes', routeId);
     const docSnap = await getDoc(docRef);
     
-    // Check if route exists and belongs to user
-    if (!docSnap.exists() || docSnap.data().user_id !== userId) {
-      toast.error('Route not found or access denied');
-      return false;
+    // Check if route exists
+    if (!docSnap.exists()) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Route not found'
+        }
+      };
+    }
+    
+    // Check if user owns the route
+    if (docSnap.data().user_id !== userId) {
+      return {
+        success: false,
+        error: {
+          code: 'ACCESS_DENIED',
+          message: 'You do not have permission to delete this route'
+        }
+      };
     }
     
     // Delete the route
     await deleteDoc(docRef);
     
-    toast.success('Route deleted successfully');
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Error deleting route:', error);
-    toast.error('Failed to delete route');
-    return false;
+    return {
+      success: false,
+      error: {
+        code: 'FIRESTORE_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to delete route'
+      }
+    };
   }
 };
 
 /**
- * Get a single route by ID
+ * Get a single route by ID - Only return if belongs to user (no public routes)
  */
 export const getRouteById = async (
   routeId: string,
   userId: string
-): Promise<RouteData | null> => {
-  if (!routeId) {
-    return null;
+): Promise<{ success: boolean; data?: RouteData; error?: RouteServiceError }> => {
+  if (!routeId || !userId) {
+    return {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Missing route ID or user ID'
+      }
+    };
   }
   
   try {
@@ -227,7 +355,13 @@ export const getRouteById = async (
     const docSnap = await getDoc(docRef);
     
     if (!docSnap.exists()) {
-      return null;
+      return {
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Route not found'
+        }
+      };
     }
     
     const routeData = { 
@@ -235,22 +369,30 @@ export const getRouteById = async (
       ...docSnap.data() 
     } as RouteData;
     
-    // Check if route is public or belongs to user
-    if (routeData.user_id === userId || routeData.is_public) {
-      // Increment view count if viewing someone else's public route
-      if (routeData.is_public && routeData.user_id !== userId) {
-        await updateDoc(docRef, {
-          views: (routeData.views || 0) + 1
-        });
-      }
-      
-      return routeData;
+    // Only return route if it belongs to the user (no public routes)
+    if (routeData.user_id === userId) {
+      return {
+        success: true,
+        data: routeData
+      };
     }
     
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'ACCESS_DENIED',
+        message: 'You do not have permission to access this route'
+      }
+    };
   } catch (error) {
     console.error('Error getting route:', error);
-    return null;
+    return {
+      success: false,
+      error: {
+        code: 'FIRESTORE_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get route'
+      }
+    };
   }
 };
 
@@ -259,9 +401,15 @@ export const getRouteById = async (
  */
 export const getUserRoutes = async (
   userId: string
-): Promise<RouteData[]> => {
+): Promise<{ success: boolean; data?: RouteData[]; error?: RouteServiceError }> => {
   if (!userId) {
-    return [];
+    return {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'User ID is required'
+      }
+    };
   }
   
   try {
@@ -273,40 +421,110 @@ export const getUserRoutes = async (
     
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => ({
+    const routes = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as RouteData[];
+    
+    return {
+      success: true,
+      data: routes
+    };
   } catch (error) {
     console.error('Error getting user routes:', error);
-    return [];
+    return {
+      success: false,
+      error: {
+        code: 'FIRESTORE_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get routes'
+      }
+    };
   }
 };
 
 /**
- * Get public routes
+ * Get route statistics for a user
  */
-export const getPublicRoutes = async (
-  limit: number = 10
-): Promise<RouteData[]> => {
-  try {
-    const q = query(
-      collection(db, 'routes'),
-      where('is_public', '==', true),
-      orderBy('views', 'desc')
-      // Add limit if needed: limit(limit)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as RouteData[];
-  } catch (error) {
-    console.error('Error getting public routes:', error);
-    return [];
+export const getRouteStats = async (
+  userId: string
+): Promise<{ 
+  success: boolean; 
+  data?: {
+    totalRoutes: number;
+    totalDistance: number;
+    totalPlaques: number;
+    averageDistance: number;
+    averagePlaques: number;
+  }; 
+  error?: RouteServiceError 
+}> => {
+  const result = await getUserRoutes(userId);
+  
+  if (!result.success || !result.data) {
+    return {
+      success: false,
+      error: result.error || { code: 'UNKNOWN_ERROR', message: 'Failed to get route stats' }
+    };
   }
+  
+  const routes = result.data;
+  const totalRoutes = routes.length;
+  const totalDistance = routes.reduce((sum, route) => sum + (route.total_distance || 0), 0);
+  const totalPlaques = routes.reduce((sum, route) => sum + route.points.length, 0);
+  
+  return {
+    success: true,
+    data: {
+      totalRoutes,
+      totalDistance,
+      totalPlaques,
+      averageDistance: totalRoutes > 0 ? totalDistance / totalRoutes : 0,
+      averagePlaques: totalRoutes > 0 ? totalPlaques / totalRoutes : 0
+    }
+  };
+};
+
+/**
+ * Batch delete routes (useful for cleanup)
+ */
+export const batchDeleteRoutes = async (
+  routeIds: string[],
+  userId: string
+): Promise<{ 
+  success: boolean; 
+  data?: { deleted: number; failed: number }; 
+  error?: RouteServiceError 
+}> => {
+  if (!userId || !routeIds.length) {
+    return {
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'User ID and route IDs are required'
+      }
+    };
+  }
+  
+  let deleted = 0;
+  let failed = 0;
+  
+  for (const routeId of routeIds) {
+    try {
+      const result = await deleteRouteFromFirebase(routeId, userId);
+      if (result.success) {
+        deleted++;
+      } else {
+        failed++;
+      }
+    } catch (error) {
+      failed++;
+    }
+  }
+  
+  return {
+    success: true,
+    data: { deleted, failed }
+  };
 };
 
 export default {
@@ -315,5 +533,6 @@ export default {
   deleteRouteFromFirebase,
   getRouteById,
   getUserRoutes,
-  getPublicRoutes
+  getRouteStats,
+  batchDeleteRoutes
 };

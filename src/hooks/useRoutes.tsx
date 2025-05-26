@@ -1,339 +1,229 @@
-// src/hooks/useRoutes.tsx - Simplified to match Firebase rules
-import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc,
-  getDoc,
-  orderBy,
-  serverTimestamp,
-  Timestamp,
-  onSnapshot
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+// src/hooks/useRoutes.ts - FIXED: Complete corrected version
+import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
+import { 
+  saveRouteToFirebase, 
+  getUserRoutes, 
+  getRouteById, 
+  updateRouteInFirebase, 
+  deleteRouteFromFirebase,
+  getRouteStats,
+  type RouteData 
+} from '../services/RouteService';
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
 
-interface RoutePoint {
-  plaque_id: number;
-  title: string;
-  lat: number;
-  lng: number;
-  order: number;
-}
-
-export interface RouteData {
-  id: string;
-  name: string;
-  description?: string;
-  points: RoutePoint[];
-  total_distance: number;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-  user_id: string;
-  is_public?: boolean;
-  views?: number;
-}
-
 export const useRoutes = () => {
-  const [routes, setRoutes] = useState<RouteData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const [routes, setRoutes] = useState<RouteData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch all routes for the current user with real-time updates
-  useEffect(() => {
-    if (!user) {
+  // Load user's routes
+  const loadRoutes = async () => {
+    if (!user?.uid) {
       setRoutes([]);
-      setLoading(false);
-      return () => {};
+      return;
     }
 
     setLoading(true);
     setError(null);
 
-    // Create a query for real-time updates
-    const q = query(
-      collection(db, 'routes'),
-      where('user_id', '==', user.uid),
-      orderBy('updated_at', 'desc')
-    );
-
-    // Set up a listener for real-time updates
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const routesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as RouteData[];
-        
-        setRoutes(routesData);
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error fetching routes:', err);
-        setError('Failed to fetch routes');
-        setLoading(false);
-        toast.error('Error loading routes');
-      }
-    );
-
-    // Clean up the listener when the component unmounts
-    return () => unsubscribe();
-  }, [user]);
-
-  // Get a single route by ID
-  const getRoute = useCallback(async (routeId: string) => {
-    if (!user) return null;
-
     try {
-      const docRef = doc(db, 'routes', routeId);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const routeData = { id: docSnap.id, ...docSnap.data() } as RouteData;
-        
-        // Check if the route is public or belongs to the user
-        if (routeData.user_id === user.uid || routeData.is_public) {
-          // Increment view count if viewing someone else's public route
-          if (routeData.is_public && routeData.user_id !== user.uid) {
-            await updateDoc(docRef, {
-              views: (routeData.views || 0) + 1
-            });
-          }
-          
-          return routeData;
-        } else {
-          throw new Error('Route not found or access denied');
-        }
+      const result = await getUserRoutes(user.uid);
+      
+      if (result.success && result.data) {
+        setRoutes(result.data);
       } else {
-        throw new Error('Route not found');
+        console.error('Error loading routes:', result.error);
+        setError(result.error?.message || 'Failed to load routes');
+        setRoutes([]);
       }
     } catch (err) {
-      console.error('Error fetching route:', err);
-      toast.error('Error loading route');
-      throw err;
+      console.error('Error loading routes:', err);
+      setError('Failed to load routes');
+      setRoutes([]);
+    } finally {
+      setLoading(false);
     }
-  }, [user]);
+  };
 
-  // Create a new route - simplified to match Firebase rules
-  const createRoute = useCallback(async (
+  // Load routes when user changes
+  useEffect(() => {
+    loadRoutes();
+  }, [user?.uid]);
+
+  // Create route function with proper toast handling
+  const createRoute = async (
     name: string,
     description: string,
     points: Plaque[],
-    totalDistance: number,
-    isPublic: boolean = false
-  ) => {
-    if (!user) throw new Error('You must be logged in to create a route');
-    if (points.length < 2) throw new Error('A route must have at least 2 points');
+    totalDistance: number
+  ): Promise<RouteData | null> => {
+    if (!user?.uid) {
+      toast.error('You must be logged in to create routes');
+      throw new Error('User must be logged in to create routes');
+    }
 
     try {
-      // Format points for storage
-      const routePoints = points.map((point, index) => ({
-        plaque_id: point.id,
-        title: point.title || 'Unnamed Point',
-        lat: parseFloat(point.latitude as unknown as string),
-        lng: parseFloat(point.longitude as unknown as string),
-        order: index
-      }));
-
-      const routeData = {
+      const result = await saveRouteToFirebase(
         name,
-        description: description || '',
-        points: routePoints,
-        total_distance: totalDistance,
-        user_id: user.uid,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        is_public: !!isPublic,
-        views: 0
-      };
+        points,
+        totalDistance,
+        user.uid,
+        description
+      );
 
-      const docRef = await addDoc(collection(db, 'routes'), routeData);
-      
-      toast.success('Route saved successfully');
-      
-      // Return the new route with ID
-      return {
-        id: docRef.id,
-        ...routeData,
-        created_at: new Date(), // Use client-side date for immediate UI update
-        updated_at: new Date()
-      } as unknown as RouteData;
-    } catch (err) {
-      console.error('Error creating route:', err);
-      toast.error('Failed to save route');
-      throw err;
+      if (result.success && result.data) {
+        toast.success('Route saved successfully!');
+        // Refresh routes list
+        await loadRoutes();
+        return result.data;
+      } else {
+        toast.error(result.error?.message || 'Failed to save route');
+        throw new Error(result.error?.message || 'Failed to save route');
+      }
+    } catch (error) {
+      console.error('Error creating route:', error);
+      toast.error('Failed to save route. Please try again.');
+      throw error;
     }
-  }, [user]);
+  };
 
-  // Update an existing route
-  const updateRoute = useCallback(async (
-    routeId: string, 
+  // Update route function with proper toast handling
+  const updateRoute = async (
+    routeId: string,
     updates: {
       name?: string;
       description?: string;
       points?: Plaque[];
       totalDistance?: number;
-      isPublic?: boolean;
     }
-  ) => {
-    if (!user) throw new Error('You must be logged in to update a route');
+  ): Promise<RouteData | null> => {
+    if (!user?.uid) {
+      toast.error('You must be logged in to update routes');
+      throw new Error('User must be logged in to update routes');
+    }
 
     try {
-      const docRef = doc(db, 'routes', routeId);
-      const docSnap = await getDoc(docRef);
-
-      // Check if route exists and belongs to user
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Route not found or access denied');
-      }
-
-      const updateData: Record<string, any> = {
-        updated_at: serverTimestamp()
-      };
-
-      // Add fields to update if provided
-      if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.description !== undefined) updateData.description = updates.description;
-      if (updates.isPublic !== undefined) updateData.is_public = updates.isPublic;
-      
-      // Format points if provided
-      if (updates.points) {
-        updateData.points = updates.points.map((point, index) => ({
-          plaque_id: point.id,
-          title: point.title || 'Unnamed Point',
-          lat: parseFloat(point.latitude as unknown as string),
-          lng: parseFloat(point.longitude as unknown as string),
-          order: index
-        }));
-      }
-      
-      // Update distance if provided
-      if (updates.totalDistance !== undefined) {
-        updateData.total_distance = updates.totalDistance;
-      }
-
-      await updateDoc(docRef, updateData);
-      
-      toast.success('Route updated successfully');
-      
-      // Return the updated route (merging existing data with updates)
-      const currentData = docSnap.data();
-      return {
-        id: routeId,
-        ...currentData,
-        ...updateData,
-        updated_at: new Date() // Use client-side date for immediate UI update
-      } as unknown as RouteData;
-    } catch (err) {
-      console.error('Error updating route:', err);
-      toast.error('Failed to update route');
-      throw err;
-    }
-  }, [user]);
-
-  // Delete a route
-  const deleteRoute = useCallback(async (routeId: string) => {
-    if (!user) throw new Error('You must be logged in to delete a route');
-
-    try {
-      const docRef = doc(db, 'routes', routeId);
-      const docSnap = await getDoc(docRef);
-
-      // Check if route exists and belongs to user
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Route not found or access denied');
-      }
-
-      await deleteDoc(docRef);
-      toast.success('Route deleted successfully');
-      return true;
-    } catch (err) {
-      console.error('Error deleting route:', err);
-      toast.error('Failed to delete route');
-      throw err;
-    }
-  }, [user]);
-
-  // Get public routes
-  const getPublicRoutes = useCallback(async (limit = 10) => {
-    try {
-      const q = query(
-        collection(db, 'routes'),
-        where('is_public', '==', true),
-        orderBy('views', 'desc')
+      const result = await updateRouteInFirebase(
+        routeId,
+        updates,
+        user.uid
       );
-      
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as RouteData[];
-    } catch (err) {
-      console.error('Error fetching public routes:', err);
-      toast.error('Failed to load public routes');
-      throw err;
-    }
-  }, []);
 
-  // Export route as GPX
-  const exportRouteAsGPX = useCallback(async (routeId: string) => {
+      if (result.success && result.data) {
+        toast.success('Route updated successfully!');
+        // Refresh routes list
+        await loadRoutes();
+        return result.data;
+      } else {
+        toast.error(result.error?.message || 'Failed to update route');
+        throw new Error(result.error?.message || 'Failed to update route');
+      }
+    } catch (error) {
+      console.error('Error updating route:', error);
+      toast.error('Failed to update route. Please try again.');
+      throw error;
+    }
+  };
+
+  // Delete route with proper toast handling
+  const deleteRoute = async (routeId: string): Promise<boolean> => {
+    if (!user?.uid) {
+      toast.error('You must be logged in to delete routes');
+      throw new Error('User must be logged in to delete routes');
+    }
+
     try {
-      const route = await getRoute(routeId);
-      if (!route) return null;
+      const result = await deleteRouteFromFirebase(routeId, user.uid);
 
-      const waypoints = route.points.map((point, index) => `
-    <wpt lat="${point.lat}" lon="${point.lng}">
-      <n>${point.title}</n>
-      <desc>Stop ${index + 1}: ${point.title}</desc>
-    </wpt>`).join('');
-
-      const gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Plaquer App" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata>
-    <n>${route.name}</n>
-    <desc>${route.description}</desc>
-    <time>${route.created_at instanceof Date ? route.created_at.toISOString() : new Date().toISOString()}</time>
-  </metadata>
-  ${waypoints}
-</gpx>`;
-
-      // Create and download file
-      const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${route.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.gpx`;
-      link.click();
-      URL.revokeObjectURL(url);
-      
-      toast.success('Route exported successfully');
-      return gpxContent;
-    } catch (err) {
-      console.error('Error exporting route:', err);
-      toast.error('Failed to export route');
-      throw err;
+      if (result.success) {
+        toast.success('Route deleted successfully!');
+        // Refresh routes list
+        await loadRoutes();
+        return true;
+      } else {
+        toast.error(result.error?.message || 'Failed to delete route');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error deleting route:', error);
+      toast.error('Failed to delete route. Please try again.');
+      throw error;
     }
-  }, [getRoute]);
+  };
+
+  // Get single route by ID
+  const getRoute = async (routeId: string): Promise<RouteData | null> => {
+    if (!user?.uid) {
+      return null;
+    }
+
+    try {
+      const result = await getRouteById(routeId, user.uid);
+      
+      if (result.success && result.data) {
+        return result.data;
+      } else {
+        console.error('Error getting route:', result.error);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting route:', error);
+      return null;
+    }
+  };
+
+  // Get route statistics
+  const getUserRouteStats = async () => {
+    if (!user?.uid) {
+      return {
+        totalRoutes: 0,
+        totalDistance: 0,
+        totalPlaques: 0,
+        averageDistance: 0,
+        averagePlaques: 0
+      };
+    }
+
+    try {
+      const result = await getRouteStats(user.uid);
+      
+      if (result.success && result.data) {
+        return result.data;
+      } else {
+        console.error('Error getting route stats:', result.error);
+        return {
+          totalRoutes: 0,
+          totalDistance: 0,
+          totalPlaques: 0,
+          averageDistance: 0,
+          averagePlaques: 0
+        };
+      }
+    } catch (error) {
+      console.error('Error getting route stats:', error);
+      return {
+        totalRoutes: 0,
+        totalDistance: 0,
+        totalPlaques: 0,
+        averageDistance: 0,
+        averagePlaques: 0
+      };
+    }
+  };
 
   return {
     routes,
     loading,
     error,
-    getRoute,
     createRoute,
     updateRoute,
     deleteRoute,
-    getPublicRoutes,
-    exportRouteAsGPX
+    getRoute,
+    loadRoutes,
+    getUserRouteStats
   };
 };
 
