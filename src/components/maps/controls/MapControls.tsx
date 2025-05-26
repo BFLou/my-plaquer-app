@@ -2,7 +2,6 @@
 import React from 'react';
 import { 
   Navigation, 
-  Target, // Changed from Filter to Target for distance filter
   RotateCcw,
   ZoomIn,
   ZoomOut,
@@ -88,29 +87,7 @@ const MapControls: React.FC<MapControlsProps> = ({
             </TooltipContent>
           </Tooltip>
           
-          {/* Distance Filter Button - Changed icon to Target */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-green-50 border-green-200' : ''}`}
-                onClick={() => setShowFilters(!showFilters)}
-                disabled={!hasUserLocation}
-              >
-                <Target size={18} className={showFilters ? 'text-green-600' : ''} />
-                {hasUserLocation && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Distance filter{!hasUserLocation ? " (set location first)" : ""}</p>
-            </TooltipContent>
-          </Tooltip>
-          
-          {/* REMOVED: Route Button - This was the duplicate */}
-          
+                  
           {/* Zoom In Button */}
           {zoomIn && (
             <Tooltip>

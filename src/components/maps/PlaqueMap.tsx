@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import MapContainer from './containers/MapContainer';
 import MapControls from './controls/MapControls';
 import RoutePanel from './controls/RoutePanel';
-import FilterPanel from './controls/FilterPanel';
 import LocationSearchPanel from './controls/LocationSearchPanel';
 import CollapsibleRoutePanel from './controls/CollapsibleRoutePanel';
 
@@ -347,7 +346,7 @@ const PlaqueMap = React.forwardRef(({
         setSearchLocation(coordinates, searchQuery);
         success = true;
         
-        toast.success("Location set! Distance filter is now available.");
+        toast.success("Location set!");
         
         // FIXED: Only show filters after location is successfully set
         setTimeout(() => {
@@ -562,7 +561,6 @@ const PlaqueMap = React.forwardRef(({
       {/* Active location indicator - Only show when not in routing mode */}
       {(mapActiveLocation || activeLocation) && !isRoutingMode && (
         <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-[899] bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium">
-          {locationType === 'user' ? '📍 Current Location' : '🔍 Search Location'} • Filter Available
           {hideOutsidePlaques && (
             <span className="ml-2 bg-green-200 px-2 py-0.5 rounded">
               Showing {displayPlaques.length}/{plaques.length}
@@ -605,27 +603,6 @@ const PlaqueMap = React.forwardRef(({
           onReorder={onReorderRoute}
           isRoutingMode={isRoutingMode}
           setIsRoutingMode={setIsRoutingMode}
-        />
-      )}
-      
-      {/* FIXED: Enhanced Filter Panel - Only show when location is actually set */}
-      {showFilters && (mapActiveLocation || activeLocation) && (
-        <FilterPanel
-          maxDistance={maxDistance}
-          setMaxDistance={(newDistance) => {
-            handleDistanceFilterUpdate(newDistance, hideOutsidePlaques);
-          }}
-          filteredPlaquesCount={filteredPlaquesCount}
-          applyFilter={applyDistanceFilter}
-          closeFilters={() => setShowFilters(false)}
-          resetFilters={handleResetFilters}
-          hasUserLocation={!!(mapActiveLocation || activeLocation)}
-          useImperial={useImperial}
-          hideOutsidePlaques={hideOutsidePlaques}
-          setHideOutsidePlaques={(hideOutside) => {
-            handleDistanceFilterUpdate(maxDistance, hideOutside);
-          }}
-          totalPlaques={plaques.length}
         />
       )}
       
