@@ -1,4 +1,4 @@
-// src/components/maps/controls/UnifiedSearchWidget.tsx - FIXED VERSION
+// src/components/maps/controls/UnifiedSearchWidget.tsx - Complete Enhanced Version
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, X, Loader, Target, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,13 @@ interface LocationSuggestion {
     country?: string;
     city?: string;
     state?: string;
+    postcode?: string;
+    borough?: string;
     [key: string]: string | undefined;
   };
   importance?: number;
+  class?: string;
+  boundingbox?: string[];
 }
 
 interface UnifiedSearchWidgetProps {
@@ -38,8 +42,6 @@ interface UnifiedSearchWidgetProps {
   // Results
   filteredPlaquesCount: number;
   totalPlaques: number;
-  
-  // Map controls - REMOVED: onFindUserLocation and isLoadingLocation
   
   // Units
   useImperial?: boolean;
@@ -68,7 +70,8 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchType, setSearchType] = useState<'location' | 'plaque' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false); // NEW: Collapse state
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   
   // Refs
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -94,7 +97,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
     return `${distance.toFixed(1)} ${unit}`;
   }, [useImperial]);
 
-  // Search input handler
+  // Search input handler - ENHANCED: Better autocomplete triggering
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchValue(value);
@@ -104,94 +107,128 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
       clearTimeout(debounceTimerRef.current);
     }
     
-    // Detect search type
-    if (value.length > 0) {
-      // Simple heuristic for search type detection
-      const isLocation = /\d/.test(value) || 
-                        /london|street|road|avenue|park|square|borough|postcode/i.test(value) ||
-                        value.length < 15; // Short queries are likely locations
+    // Always clear suggestions when typing
+    setSuggestions([]);
+    setShowSuggestions(false);
+    
+    // Detect search type and fetch suggestions
+    if (value.length >= 2) {
+      // Improved heuristic for search type detection
+      const isLocationSearch = /\d/.test(value) || 
+                             /london|street|road|avenue|park|square|borough|postcode|station|bridge|market|church|school|hospital|theatre|museum|gallery|library|town|city|centre|center/i.test(value) ||
+                             value.length <= 20; // Longer queries might be plaque names
       
-      setSearchType(isLocation ? 'location' : 'plaque');
+      setSearchType(isLocationSearch ? 'location' : 'plaque');
       
-      // Only fetch location suggestions for location searches
-      if (isLocation && value.length >= 2) {
+      // Fetch location suggestions for location searches
+      if (isLocationSearch) {
         // Check cache first
-        if (autocompleteCache.current.has(value)) {
-          setSuggestions(autocompleteCache.current.get(value) || []);
-          setShowSuggestions(true);
+        const cacheKey = value.toLowerCase().trim();
+        if (autocompleteCache.current.has(cacheKey)) {
+          const cachedSuggestions = autocompleteCache.current.get(cacheKey) || [];
+          setSuggestions(cachedSuggestions);
+          setShowSuggestions(cachedSuggestions.length > 0);
           return;
         }
         
         // Debounce API calls
         debounceTimerRef.current = setTimeout(() => {
           fetchLocationSuggestions(value);
-        }, 300);
-      } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
+        }, 250); // Reduced debounce for faster response
       }
     } else {
       setSearchType(null);
-      setSuggestions([]);
-      setShowSuggestions(false);
     }
   }, []);
 
-  // Fetch location suggestions
+  // ENHANCED: Fetch location suggestions with better error handling
   const fetchLocationSuggestions = useCallback(async (query: string) => {
     if (!query || query.length < 2) return;
+    
+    const trimmedQuery = query.trim().toLowerCase();
+    if (!trimmedQuery) return;
     
     setIsFetching(true);
     
     try {
-      // London-focused search with bounding box
+      // Enhanced London-focused search with better bounding box
       const londonBounds = 'viewbox=-0.489,51.28,0.236,51.686&bounded=1';
+      const searchQuery = encodeURIComponent(`${query}, London, UK`);
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', London')}&limit=6&addressdetails=1&${londonBounds}&countrycodes=gb`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${searchQuery}&limit=8&addressdetails=1&${londonBounds}&countrycodes=gb&dedupe=1`,
+        {
+          headers: {
+            'User-Agent': 'PlaquerApp/1.0'
+          }
+        }
       );
       
-      if (!response.ok) throw new Error('Failed to fetch suggestions');
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       
       const data = await response.json();
       
-      // Format and prioritize suggestions
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response format');
+      }
+      
+      // Enhanced formatting and prioritization
       const formattedSuggestions = data
+        .filter((item: any) => item.lat && item.lon && item.display_name)
         .map((item: any) => ({
-          id: item.place_id,
+          id: item.place_id || Math.random().toString(),
           display_name: item.display_name,
           lat: parseFloat(item.lat),
           lon: parseFloat(item.lon),
-          type: item.type,
-          address: item.address,
-          importance: item.importance || 0
+          type: item.type || 'location',
+          address: item.address || {},
+          importance: parseFloat(item.importance) || 0,
+          class: item.class || '',
+          boundingbox: item.boundingbox || []
         }))
         .sort((a: LocationSuggestion, b: LocationSuggestion) => {
-          // Prioritize by type and importance
-          const typeOrder = { 
-            'street': 5, 'road': 5, 'suburb': 4, 'neighbourhood': 4,
-            'postcode': 3, 'city_district': 2, 'borough': 2, 'city': 1 
+          // Enhanced prioritization
+          const getTypeScore = (type: string, cls: string) => {
+            if (cls === 'highway' && ['primary', 'secondary', 'tertiary'].includes(type)) return 10;
+            if (type === 'road' || type === 'street') return 9;
+            if (type === 'suburb' || type === 'neighbourhood') return 8;
+            if (cls === 'railway' && type === 'station') return 7;
+            if (cls === 'amenity') return 6;
+            if (type === 'postcode') return 5;
+            if (type === 'city_district' || type === 'borough') return 4;
+            return 3;
           };
           
-          const aScore = (typeOrder[a.type as keyof typeof typeOrder] || 0) + (a.importance || 0);
-          const bScore = (typeOrder[b.type as keyof typeof typeOrder] || 0) + (b.importance || 0);
+          const aScore = getTypeScore(a.type, a.class || '') + (a.importance * 2);
+          const bScore = getTypeScore(b.type, b.class || '') + (b.importance * 2);
           
           return bScore - aScore;
-        });
+        })
+        .slice(0, 6); // Limit to 6 results
       
-      // Cache results
-      autocompleteCache.current.set(query, formattedSuggestions);
-      setSuggestions(formattedSuggestions);
-      setShowSuggestions(true);
+      // Cache results with lowercase key
+      autocompleteCache.current.set(trimmedQuery, formattedSuggestions);
+      
+      // Only show suggestions if the query hasn't changed
+      if (searchValue.toLowerCase().trim() === trimmedQuery) {
+        setSuggestions(formattedSuggestions);
+        setShowSuggestions(formattedSuggestions.length > 0);
+      }
       
     } catch (error) {
       console.error('Error fetching location suggestions:', error);
+      // Show user-friendly error for network issues
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        toast.error("Network error. Please check your connection.");
+      }
       setSuggestions([]);
+      setShowSuggestions(false);
     } finally {
       setIsFetching(false);
     }
-  }, []);
+  }, [searchValue]);
 
-  // FIXED: Handle suggestion selection
+  // ENHANCED: Handle suggestion selection
   const handleSuggestionClick = useCallback((suggestion: LocationSuggestion) => {
     setSearchValue(suggestion.display_name);
     setShowSuggestions(false);
@@ -201,6 +238,47 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
     onLocationSet([suggestion.lat, suggestion.lon], suggestion.display_name);
     toast.success("Location set! Distance filter activated.");
   }, [onLocationSet]);
+
+  // ENHANCED: Keyboard navigation for suggestions
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : suggestions.length - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+          handleSuggestionClick(suggestions[selectedSuggestionIndex]);
+        } else if (suggestions.length > 0) {
+          handleSuggestionClick(suggestions[0]);
+        } else {
+          handleSearchSubmit(e as any);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        inputRef.current?.blur();
+        break;
+    }
+  }, [showSuggestions, suggestions, selectedSuggestionIndex, handleSuggestionClick]);
+  
+  // Reset selected index when suggestions change
+  useEffect(() => {
+    setSelectedSuggestionIndex(-1);
+  }, [suggestions]);
 
   // Handle search submit
   const handleSearchSubmit = useCallback((e: React.FormEvent) => {
@@ -296,7 +374,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
           
           {/* Search Input Row */}
           <div className="flex items-center space-x-3">
-            {/* Location Status Indicator - REMOVED: Find my location functionality */}
+            {/* Location Status Indicator */}
             <button
               onClick={activeLocation ? handleRemoveLocation : undefined}
               disabled={!activeLocation}
@@ -322,8 +400,15 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
                     placeholder="Search location in London..."
                     value={searchValue}
                     onChange={handleInputChange}
-                    onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => {
+                      if (suggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
                     className="pl-10 pr-20 h-11 border-2 border-gray-200 focus:border-blue-500 bg-white shadow-sm"
+                    autoComplete="off"
+                    spellCheck="false"
                   />
                 </div>
               </form>
@@ -361,26 +446,51 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
             )}
           </div>
 
-          {/* FIXED: Search Suggestions */}
+          {/* IMPROVED: Search Suggestions with keyboard navigation */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="max-h-40 overflow-y-auto space-y-1 border-t border-gray-100 pt-3">
-              {suggestions.map((suggestion) => (
+            <div className="max-h-48 overflow-y-auto space-y-1 border-t border-gray-100 pt-3 bg-white rounded-b-lg">
+              {suggestions.map((suggestion, index) => (
                 <button
                   key={suggestion.id}
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded-lg transition-colors flex items-center space-x-2"
+                  className={`w-full text-left px-3 py-3 rounded-lg transition-colors flex items-center space-x-3 ${
+                    index === selectedSuggestionIndex 
+                      ? 'bg-blue-100 border border-blue-200' 
+                      : 'hover:bg-gray-50 border border-transparent'
+                  }`}
+                  onMouseEnter={() => setSelectedSuggestionIndex(index)}
                 >
                   <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 truncate">
                       {suggestion.display_name.split(',').slice(0, 2).join(', ')}
                     </div>
-                    <div className="text-xs text-gray-500 capitalize">
-                      {suggestion.type} {suggestion.address?.postcode && `• ${suggestion.address.postcode}`}
+                    <div className="text-xs text-gray-500 capitalize flex items-center gap-1">
+                      <span>{suggestion.type.replace('_', ' ')}</span>
+                      {suggestion.address?.postcode && (
+                        <>
+                          <span>•</span>
+                          <span>{suggestion.address.postcode}</span>
+                        </>
+                      )}
+                      {suggestion.address?.borough && (
+                        <>
+                          <span>•</span>
+                          <span>{suggestion.address.borough}</span>
+                        </>
+                      )}
                     </div>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {index === selectedSuggestionIndex && '↵'}
                   </div>
                 </button>
               ))}
+              
+              {/* Keyboard hints */}
+              <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+                Use ↑↓ to navigate, ↵ to select, Esc to close
+              </div>
             </div>
           )}
 
@@ -403,7 +513,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
                   >
                     Remove
                   </button>
-                  {/* NEW: Collapse Button */}
+                  {/* Collapse Button */}
                   <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center"
@@ -429,7 +539,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
                       </span>
                     </div>
                     
-                    {/* FIXED: Distance Slider */}
+                    {/* Distance Slider */}
                     <div className="px-1">
                       <Slider
                         value={[displayDistance]}
@@ -458,7 +568,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
                       <span className="ml-1">plaques found</span>
                     </div>
                     
-                    {/* FIXED: Hide Toggle */}
+                    {/* Hide Toggle */}
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="hide-distant"

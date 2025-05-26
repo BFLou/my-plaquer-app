@@ -45,16 +45,17 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       removeFromRoute,
       clearRoute,
       setMapStyle
-    }
+    },
+    getVisiblePlaques,
+    searchPlaques,
+    getRouteStats
   } = useMapState(plaques);
 
   // Map operations (location search, filtering, etc.)
   const {
     isLoadingLocation,
     searchLocation,
-    findUserLocation,
-    getFilteredPlaques,
-    getVisiblePlaques
+    findUserLocation
   } = useMapOperations(mapInstanceRef.current, plaques, state);
 
   // Initialize Leaflet map (similar to your existing approach)
@@ -228,15 +229,15 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           zIndexOffset: isSelected ? 1000 : 0
         });
 
-        // Add click handler for simple modal (not full PlaqueDetail)
+        // Add click handler - directly open PlaqueDetail
         marker.on('click', function(e: any) {
           // Stop propagation to prevent map click
           if (e.originalEvent) {
             L.DomEvent.stopPropagation(e.originalEvent);
           }
           
-          // Show simple modal instead of opening full PlaqueDetail immediately
-          setShowPlaqueModal(plaque);
+          // Directly open the existing PlaqueDetail component
+          selectPlaque(plaque);
         });
 
         // Add to cluster group
@@ -394,89 +395,24 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
         </div>
       )}
 
-      {/* Simple Plaque Modal (not full PlaqueDetail) */}
-      {showPlaqueModal && (
-        <div className="absolute inset-0 z-[1002] flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 pr-4">
-                {showPlaqueModal.title || 'Unnamed Plaque'}
-              </h3>
-              <button
-                onClick={() => setShowPlaqueModal(null)}
-                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
-                {showPlaqueModal.location || showPlaqueModal.address || 'Location unknown'}
-              </p>
-              {showPlaqueModal.profession && (
-                <p className="text-sm text-gray-500">
-                  {showPlaqueModal.profession}
-                </p>
-              )}
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  selectPlaque(showPlaqueModal);
-                  setShowPlaqueModal(null);
-                }}
-                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium transition-colors"
-              >
-                View Details
-              </button>
-              
-              {state.routeMode && (
-                <button
-                  onClick={() => {
-                    handleRouteToggle(showPlaqueModal);
-                    setShowPlaqueModal(null);
-                  }}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                    state.routePoints.some(p => p.id === showPlaqueModal.id)
-                      ? 'bg-red-500 hover:bg-red-600 text-white'
-                      : 'bg-green-500 hover:bg-green-600 text-white'
-                  }`}
-                >
-                  {state.routePoints.some(p => p.id === showPlaqueModal.id)
-                    ? 'Remove from Route'
-                    : 'Add to Route'
-                  }
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plaque Details Modal - Using existing component with higher z-index */}
-      {state.selectedPlaque && (
-        <div className="relative z-[1003]">
-          <PlaqueDetail
-            plaque={state.selectedPlaque}
-            isOpen={true}
-            onClose={clearSelection}
-            isFavorite={favorites.includes(state.selectedPlaque.id)}
-            onFavoriteToggle={() => onFavoriteToggle(state.selectedPlaque!.id)}
-            onMarkVisited={() => onMarkVisited(state.selectedPlaque!.id)}
-            nearbyPlaques={getNearbyPlaques(state.selectedPlaque)}
-            onSelectNearbyPlaque={selectPlaque}
-            // Add route-specific props if in route mode
-            {...(state.routeMode && {
-              showAddToRoute: true,
-              isInRoute: state.routePoints.some(p => p.id === state.selectedPlaque!.id),
-              onAddToRoute: () => handleRouteToggle(state.selectedPlaque!)
-            })}
-          />
-        </div>
-      )}
-
+{/* Plaque Details Modal - Using existing PlaqueDetail component */}
+{state.selectedPlaque && (
+  <PlaqueDetail
+    plaque={state.selectedPlaque}
+    isOpen={true}
+    onClose={clearSelection}
+    isFavorite={favorites.includes(state.selectedPlaque.id)}
+    onFavoriteToggle={() => onFavoriteToggle(state.selectedPlaque!.id)}
+    onMarkVisited={() => onMarkVisited(state.selectedPlaque!.id)}
+    nearbyPlaques={getNearbyPlaques(state.selectedPlaque)}
+    onSelectNearbyPlaque={selectPlaque}
+    className="z-[1003]"
+    // Fixed: Separate the conditional props
+    showAddToRoute={state.routeMode}
+    isInRoute={state.routeMode ? state.routePoints.some(p => p.id === state.selectedPlaque!.id) : false}
+    onAddToRoute={state.routeMode ? () => handleRouteToggle(state.selectedPlaque!) : undefined}
+  />
+)}
       {/* Status Info */}
       {state.distanceFilter && state.activeLocation && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
