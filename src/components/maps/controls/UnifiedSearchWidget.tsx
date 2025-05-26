@@ -1,6 +1,6 @@
 // src/components/maps/controls/UnifiedSearchWidget.tsx - FIXED VERSION
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, MapPin, X, Loader, Target } from 'lucide-react';
+import { Search, MapPin, X, Loader, Target, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -39,9 +39,7 @@ interface UnifiedSearchWidgetProps {
   filteredPlaquesCount: number;
   totalPlaques: number;
   
-  // Map controls
-  onFindUserLocation: () => void;
-  isLoadingLocation: boolean;
+  // Map controls - REMOVED: onFindUserLocation and isLoadingLocation
   
   // Units
   useImperial?: boolean;
@@ -60,8 +58,6 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
   hideOutsidePlaques,
   filteredPlaquesCount,
   totalPlaques,
-  onFindUserLocation,
-  isLoadingLocation,
   useImperial = false,
   className = ''
 }) => {
@@ -72,6 +68,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchType, setSearchType] = useState<'location' | 'plaque' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false); // NEW: Collapse state
   
   // Refs
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -194,13 +191,13 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
     }
   }, []);
 
-  // Handle suggestion selection
+  // FIXED: Handle suggestion selection
   const handleSuggestionClick = useCallback((suggestion: LocationSuggestion) => {
     setSearchValue(suggestion.display_name);
     setShowSuggestions(false);
     setSuggestions([]);
     
-    // Set location
+    // Set location with coordinates
     onLocationSet([suggestion.lat, suggestion.lon], suggestion.display_name);
     toast.success("Location set! Distance filter activated.");
   }, [onLocationSet]);
@@ -210,15 +207,17 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
     e.preventDefault();
     if (!searchValue.trim()) return;
     
-    if (searchType === 'location') {
-      // Search for location
+    if (searchType === 'location' && suggestions.length > 0) {
+      // Use first suggestion if available
+      handleSuggestionClick(suggestions[0]);
+    } else if (searchType === 'location') {
+      // Manual search for location
       fetchLocationSuggestions(searchValue);
     } else {
       // For plaque search, we could integrate with the main search
-      // For now, show a message
       toast.info("Plaque search integrated with main search bar");
     }
-  }, [searchValue, searchType, fetchLocationSuggestions]);
+  }, [searchValue, searchType, suggestions, handleSuggestionClick, fetchLocationSuggestions]);
 
   // Clear search
   const handleClearSearch = useCallback(() => {
@@ -228,25 +227,24 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
     setSearchType(null);
   }, []);
 
-  // Handle location actions
-  const handleFindMyLocation = useCallback(() => {
-    onFindUserLocation();
-  }, [onFindUserLocation]);
-
+  // Handle location removal
   const handleRemoveLocation = useCallback(() => {
     onLocationClear();
+    setSearchValue(''); // Clear search input too
     toast.info("Location cleared");
   }, [onLocationClear]);
 
-  // Distance slider change
+  // FIXED: Distance slider change with proper state management
   const handleDistanceChange = useCallback((values: number[]) => {
     const displayValue = values[0];
     const kmValue = getKmFromDisplay(displayValue);
+    console.log('Distance slider changed:', { displayValue, kmValue, hideOutsidePlaques });
     onDistanceChange(kmValue, hideOutsidePlaques);
   }, [getKmFromDisplay, onDistanceChange, hideOutsidePlaques]);
 
-  // Toggle hide distant plaques
+  // FIXED: Toggle hide distant plaques with proper state management
   const handleToggleHide = useCallback((checked: boolean) => {
+    console.log('Hide toggle changed:', { checked, maxDistance });
     onDistanceChange(maxDistance, checked);
   }, [maxDistance, onDistanceChange]);
 
@@ -298,24 +296,20 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
           
           {/* Search Input Row */}
           <div className="flex items-center space-x-3">
-            {/* Location Status Indicator */}
+            {/* Location Status Indicator - REMOVED: Find my location functionality */}
             <button
-              onClick={activeLocation ? handleRemoveLocation : handleFindMyLocation}
-              disabled={isLoadingLocation}
+              onClick={activeLocation ? handleRemoveLocation : undefined}
+              disabled={!activeLocation}
               className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                 activeLocation 
-                  ? 'bg-green-100 border-green-500 hover:bg-green-200' 
-                  : 'bg-gray-100 border-gray-300 hover:bg-blue-50 hover:border-blue-300'
+                  ? 'bg-green-100 border-green-500 hover:bg-green-200 cursor-pointer' 
+                  : 'bg-gray-100 border-gray-300 cursor-not-allowed opacity-50'
               }`}
-              title={activeLocation ? 'Remove location' : 'Find my location'}
+              title={activeLocation ? 'Remove location' : 'No location set'}
             >
-              {isLoadingLocation ? (
-                <Loader className="w-4 h-4 animate-spin text-blue-600" />
-              ) : (
-                <MapPin className={`w-4 h-4 ${
-                  activeLocation ? 'text-green-600' : 'text-gray-500'
-                }`} />
-              )}
+              <MapPin className={`w-4 h-4 ${
+                activeLocation ? 'text-green-600' : 'text-gray-400'
+              }`} />
             </button>
 
             {/* Search Input */}
@@ -367,7 +361,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
             )}
           </div>
 
-          {/* Search Suggestions */}
+          {/* FIXED: Search Suggestions */}
           {showSuggestions && suggestions.length > 0 && (
             <div className="max-h-40 overflow-y-auto space-y-1 border-t border-gray-100 pt-3">
               {suggestions.map((suggestion) => (
@@ -394,7 +388,7 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
           {isExpanded && activeLocation && (
             <div className="space-y-4 border-t border-gray-100 pt-4 animate-in slide-in-from-top-2 duration-300">
               
-              {/* Current Location Display */}
+              {/* Location Display with Collapse Button */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -402,87 +396,87 @@ const UnifiedSearchWidget: React.FC<UnifiedSearchWidgetProps> = ({
                     {getLocationDisplayName()}
                   </span>
                 </div>
-                <button
-                  onClick={handleRemoveLocation}
-                  className="text-xs text-red-500 hover:text-red-700 hover:underline"
-                >
-                  Remove
-                </button>
-              </div>
-
-              {/* Distance Filter */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <Target className="w-4 h-4" />
-                    Distance Range
-                  </label>
-                  <span className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                    {formatDistance(displayDistance)}
-                  </span>
-                </div>
-                
-                {/* Distance Slider */}
-                <div className="px-1">
-                  <Slider
-                    value={[displayDistance]}
-                    min={minDistance}
-                    max={maxDistanceLimit}
-                    step={useImperial ? 0.1 : 0.1}
-                    onValueChange={handleDistanceChange}
-                    className="w-full"
-                  />
-                  
-                  {/* Range Labels */}
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{distanceMarkers[0]}{unit}</span>
-                    <span>{distanceMarkers[2]}{unit}</span>
-                    <span>{distanceMarkers[4]}{unit}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Results & Controls */}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <div className="text-sm text-gray-600">
-                  <span className="font-semibold text-blue-600">{filteredPlaquesCount}</span>
-                  <span className="mx-1">of</span>
-                  <span className="font-semibold">{totalPlaques}</span>
-                  <span className="ml-1">plaques found</span>
-                </div>
-                
-                {/* Hide Toggle */}
                 <div className="flex items-center space-x-2">
-                  <Switch
-                    id="hide-distant"
-                    checked={hideOutsidePlaques}
-                    onCheckedChange={handleToggleHide}
-                    size="sm"
-                  />
-                  <Label htmlFor="hide-distant" className="text-xs text-gray-600">
-                    Hide distant
-                  </Label>
+                  <button
+                    onClick={handleRemoveLocation}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                  >
+                    Remove
+                  </button>
+                  {/* NEW: Collapse Button */}
+                  <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                    title={isCollapsed ? 'Expand controls' : 'Collapse controls'}
+                  >
+                    {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
+
+              {/* Collapsible Distance Controls */}
+              {!isCollapsed && (
+                <>
+                  {/* Distance Filter */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <Target className="w-4 h-4" />
+                        Distance Range
+                      </label>
+                      <span className="text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                        {formatDistance(displayDistance)}
+                      </span>
+                    </div>
+                    
+                    {/* FIXED: Distance Slider */}
+                    <div className="px-1">
+                      <Slider
+                        value={[displayDistance]}
+                        min={minDistance}
+                        max={maxDistanceLimit}
+                        step={useImperial ? 0.1 : 0.1}
+                        onValueChange={handleDistanceChange}
+                        className="w-full"
+                      />
+                      
+                      {/* Range Labels */}
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>{distanceMarkers[0]}{unit}</span>
+                        <span>{distanceMarkers[2]}{unit}</span>
+                        <span>{distanceMarkers[4]}{unit}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Results & Controls */}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <div className="text-sm text-gray-600">
+                      <span className="font-semibold text-blue-600">{filteredPlaquesCount}</span>
+                      <span className="mx-1">of</span>
+                      <span className="font-semibold">{totalPlaques}</span>
+                      <span className="ml-1">plaques found</span>
+                    </div>
+                    
+                    {/* FIXED: Hide Toggle */}
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="hide-distant"
+                        checked={hideOutsidePlaques}
+                        onCheckedChange={handleToggleHide}
+                        size="sm"
+                      />
+                      <Label htmlFor="hide-distant" className="text-xs text-gray-600">
+                        Hide distant
+                      </Label>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Quick Action - Show when no location is set */}
-      {!activeLocation && !isLoadingLocation && (
-        <div className="flex justify-center mt-3">
-          <Button
-            onClick={handleFindMyLocation}
-            variant="outline"
-            size="sm"
-            className="bg-white/90 backdrop-blur-sm border-white/20 hover:bg-white hover:shadow-md transition-all"
-          >
-            <MapPin className="w-4 h-4 mr-2" />
-            Find My Location
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,566 +1,302 @@
-// src/components/maps/hooks/useMapOperations.ts - Enhanced version with better zoom control
-import { useCallback, useState, useRef } from 'react';
+// src/components/map/hooks/useMapOperations.ts
+import { useState, useCallback } from 'react';
 import { Plaque } from '@/types/plaque';
-import { calculateDistance } from '../utils/routeUtils';
 
-export default function useMapOperations(
+interface MapState {
+  center: [number, number];
+  zoom: number;
+  searchQuery: string;
+  activeLocation: [number, number] | null;
+  distanceFilter: number | null;
+  selectedPlaque: Plaque | null;
+  routeMode: boolean;
+  routePoints: Plaque[];
+  isSearching: boolean;
+  mapStyle: 'street' | 'satellite' | 'terrain';
+}
+
+export const useMapOperations = (
   mapInstance: any,
   plaques: Plaque[],
-  maxDistance: number,
-  setIsLoadingLocation: (loading: boolean) => void,
-  setFilteredPlaquesCount: (count: number) => void,
-  routePoints: Plaque[],
-  setUserLocation?: React.Dispatch<React.SetStateAction<[number, number] | null>>,
-  useImperial: boolean = false
-) {
-  const [userLocationMarker, setUserLocationMarker] = useState<any>(null);
-  const [searchLocationMarker, setSearchLocationMarker] = useState<any>(null);
-  const [accuracyCircle, setAccuracyCircle] = useState<any>(null);
-  const [distanceCircle, setDistanceCircle] = useState<any>(null);
-  const [activeLocation, setActiveLocation] = useState<[number, number] | null>(null);
-  const [locationType, setLocationType] = useState<'user' | 'search' | null>(null);
-  const routeLineRef = useRef<any>(null);
-  
-  // Track current map state to prevent unnecessary zooms
-  const mapStateRef = useRef<{
-    lastCenter: [number, number] | null;
-    lastZoom: number | null;
-    preventNextZoom: boolean;
-  }>({
-    lastCenter: null,
-    lastZoom: null,
-    preventNextZoom: false
-  });
+  state: MapState
+) => {
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
-  // Enhanced zoom control helper
-  const shouldUpdateMapView = useCallback((newCenter: [number, number], newZoom?: number) => {
-    if (!mapInstance || mapStateRef.current.preventNextZoom) {
-      mapStateRef.current.preventNextZoom = false;
-      return false;
+  // Find user's current location
+  const findUserLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation is not supported by this browser');
+      return;
     }
 
-    const currentCenter = mapInstance.getCenter();
-    const currentZoom = mapInstance.getZoom();
-    
-    // Check if the change is significant enough to warrant an update
-    const centerDistance = calculateDistance(
-      currentCenter.lat, currentCenter.lng,
-      newCenter[0], newCenter[1]
+    setIsLoadingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        if (mapInstance) {
+          mapInstance.setView([latitude, longitude], 15);
+        }
+        
+        setIsLoadingLocation(false);
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        setIsLoadingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
     );
-    
-    const zoomDifference = newZoom ? Math.abs(currentZoom - newZoom) : 0;
-    
-    // Only update if center moved more than 100m or zoom changed by more than 1 level
-    return centerDistance > 0.1 || zoomDifference > 1;
   }, [mapInstance]);
 
-  // Smooth map update without aggressive zooming
-  const updateMapView = useCallback((
-    center: [number, number], 
-    zoom: number = 15, 
-    options: { animate?: boolean; maintainZoom?: boolean } = {}
-  ) => {
-    if (!mapInstance) return;
-
-    const currentZoom = mapInstance.getZoom();
-    const finalZoom = options.maintainZoom ? currentZoom : zoom;
-
-    if (shouldUpdateMapView(center, finalZoom)) {
-      mapInstance.setView(center, finalZoom, {
-        animate: options.animate !== false,
-        duration: 0.8,
-        easeLinearity: 0.3
-      });
-      
-      // Update tracking
-      mapStateRef.current.lastCenter = center;
-      mapStateRef.current.lastZoom = finalZoom;
-    }
-  }, [mapInstance, shouldUpdateMapView]);
-
-  // FIXED: More comprehensive distance circle clearing
-  const clearDistanceCircle = useCallback(() => {
-    console.log('Clearing distance circle...');
-    
-    if (distanceCircle && mapInstance) {
-      try {
-        mapInstance.removeLayer(distanceCircle);
-        console.log('Distance circle removed successfully');
-      } catch (error) {
-        console.warn('Error removing distance circle:', error);
-      }
-      setDistanceCircle(null);
-    }
-    
-    // Clear any leftover circles by class name
-    if (mapInstance && window.L) {
-      try {
-        mapInstance.eachLayer((layer: any) => {
-          if (layer instanceof window.L.Circle && layer.options.className === 'distance-filter-circle') {
-            mapInstance.removeLayer(layer);
-            console.log('Removed leftover distance circle');
-          }
-        });
-      } catch (error) {
-        console.warn('Error during layer cleanup:', error);
-      }
-    }
-  }, [mapInstance, distanceCircle]);
-  
-  // Clear all location-related overlays
-  const clearLocationOverlays = useCallback(() => {
-    if (userLocationMarker && mapInstance) {
-      mapInstance.removeLayer(userLocationMarker);
-      setUserLocationMarker(null);
-    }
-    if (searchLocationMarker && mapInstance) {
-      mapInstance.removeLayer(searchLocationMarker);
-      setSearchLocationMarker(null);
-    }
-    if (accuracyCircle && mapInstance) {
-      mapInstance.removeLayer(accuracyCircle);
-      setAccuracyCircle(null);
-    }
-    
-    clearDistanceCircle();
-  }, [mapInstance, userLocationMarker, searchLocationMarker, accuracyCircle, clearDistanceCircle]);
-  
-  // ENHANCED: Find user location with controlled zooming
-  const findUserLocation = useCallback(() => {
-    if (!mapInstance || !window.L) {
-      console.log("Map or Leaflet not available for location");
-      return;
-    }
-    
-    setIsLoadingLocation(true);
-    
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          // Clear existing markers but keep search location if it exists
-          if (userLocationMarker) {
-            mapInstance.removeLayer(userLocationMarker);
-          }
-          if (accuracyCircle) {
-            mapInstance.removeLayer(accuracyCircle);
-          }
-          
-          const L = window.L;
-          
-          // Add user location marker
-          const userMarker = L.marker([latitude, longitude], {
-            icon: L.divIcon({
-              className: 'user-location-marker',
-              html: `
-                <div style="position: relative; width: 100%; height: 100%;">
-                  <div style="position: absolute; top: -14px; left: -14px; width: 28px; height: 28px; border-radius: 50%; background-color: rgba(59, 130, 246, 0.3); animation: pulse 1.5s infinite;"></div>
-                  <div style="position: absolute; top: -8px; left: -8px; width: 16px; height: 16px; border-radius: 50%; background-color: #3b82f6; border: 2px solid #ffffff; box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);"></div>
-                </div>
-              `,
-              iconSize: [0, 0],
-            })
-          }).addTo(mapInstance);
-          
-          // Add accuracy circle if reasonable
-          if (position.coords.accuracy < 50) {
-            const newAccuracyCircle = L.circle([latitude, longitude], {
-              radius: position.coords.accuracy,
-              fillColor: '#3b82f6',
-              fillOpacity: 0.1,
-              color: '#3b82f6',
-              weight: 1,
-              opacity: 0.3,
-              dashArray: '2, 4'
-            }).addTo(mapInstance);
-            
-            setAccuracyCircle(newAccuracyCircle);
-          }
-          
-          // Store references
-          setUserLocationMarker(userMarker);
-          setActiveLocation([latitude, longitude]);
-          setLocationType('user');
-          
-          // FIXED: Gentle zoom with current zoom level check
-          const currentZoom = mapInstance.getZoom();
-          updateMapView(
-            [latitude, longitude], 
-            Math.max(currentZoom, 13), // Don't zoom out if already zoomed in
-            { animate: true, maintainZoom: currentZoom >= 13 }
-          );
-          
-          // Update user location state if callback provided
-          if (setUserLocation) {
-            setUserLocation([latitude, longitude]);
-          }
-          
-          // Filter plaques by distance and update count
-          const plaquesInRange = filterPlaquesInRange([latitude, longitude], maxDistance);
-          setFilteredPlaquesCount(plaquesInRange.length);
-          
-          setIsLoadingLocation(false);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          setIsLoadingLocation(false);
-        }
-      );
-    } else {
-      setIsLoadingLocation(false);
-    }
-  }, [
-    mapInstance, 
-    maxDistance, 
-    setIsLoadingLocation, 
-    setFilteredPlaquesCount, 
-    setUserLocation,
-    userLocationMarker,
-    accuracyCircle,
-    updateMapView
-  ]);
-
-  // ENHANCED: Set search location with controlled zooming
-  const setSearchLocation = useCallback((coordinates: [number, number], address: string) => {
-    if (!mapInstance || !window.L) return;
-    
-    const L = window.L;
-    
-    // Clear existing search marker
-    if (searchLocationMarker) {
-      mapInstance.removeLayer(searchLocationMarker);
-    }
-    
-    // Create search location marker
-    const searchMarker = L.marker(coordinates, {
-      icon: L.divIcon({
-        className: 'search-location-marker',
-        html: `
-          <div style="
-            position: relative;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            <div style="
-              position: absolute;
-              width: 36px;
-              height: 36px;
-              border-radius: 50%;
-              background-color: rgba(239, 68, 68, 0.2);
-              animation: pulse 2s infinite;
-            "></div>
-            <div style="
-              width: 16px;
-              height: 16px;
-              background-color: #ef4444;
-              border-radius: 50%;
-              border: 2px solid white;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              z-index: 1;
-            "></div>
-          </div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-      })
-    }).addTo(mapInstance);
-    
-    // Add popup with location info
-    const popupContent = `
-      <div class="p-3">
-        <div class="font-medium text-sm">${address}</div>
-        <div class="text-xs text-gray-500 mt-1">
-          <span class="font-medium">Search Location</span>
-        </div>
-      </div>
-    `;
-    
-    searchMarker.bindPopup(popupContent);
-    
-    // Store references
-    setSearchLocationMarker(searchMarker);
-    setActiveLocation(coordinates);
-    setLocationType('search');
-    
-    // Update user location state
-    if (setUserLocation) {
-      setUserLocation(coordinates);
-    }
-    
-    // Calculate nearby plaques
-    const plaquesInRange = filterPlaquesInRange(coordinates, maxDistance);
-    setFilteredPlaquesCount(plaquesInRange.length);
-    
-    // FIXED: Gentle zoom to search location
-    const currentZoom = mapInstance.getZoom();
-    updateMapView(
-      coordinates, 
-      Math.max(currentZoom, 14), // Gentle zoom
-      { animate: true, maintainZoom: currentZoom >= 14 }
-    );
-    
-  }, [mapInstance, searchLocationMarker, maxDistance, setUserLocation, setFilteredPlaquesCount, updateMapView]);
-
-  // Filter plaques within a certain distance of a point
-  const filterPlaquesInRange = useCallback((center: [number, number], radiusKm: number): Plaque[] => {
-    return plaques.filter(plaque => {
-      if (!plaque.latitude || !plaque.longitude) return false;
-      
-      const lat = parseFloat(plaque.latitude);
-      const lng = parseFloat(plaque.longitude);
-      
-      if (isNaN(lat) || isNaN(lng)) return false;
-      
-      const distance = calculateDistance(center[0], center[1], lat, lng);
-      return distance <= radiusKm;
-    });
-  }, [plaques]);
-
-  // ENHANCED: Distance circle drawing with state persistence
-  const drawDistanceCircle = useCallback((center: [number, number], radiusKm: number) => {
-    if (!window.L || !mapInstance) return;
-    
-    const L = window.L;
-    
-    // Clear existing circle
-    clearDistanceCircle();
-    
-    console.log(`Drawing distance circle at [${center[0]}, ${center[1]}] with radius ${radiusKm}km`);
-    
-    try {
-      // Create new distance circle
-      const circle = L.circle(center, {
-        radius: radiusKm * 1000, // Convert km to meters
-        fillColor: '#10b981',
-        fillOpacity: 0.15,
-        color: '#10b981',
-        weight: 2,
-        opacity: 0.8,
-        dashArray: '8, 4',
-        className: 'distance-filter-circle',
-        interactive: false
-      }).addTo(mapInstance);
-      
-      // Store reference with metadata for restoration
-      circle._customData = {
-        center: center,
-        radius: radiusKm,
-        timestamp: Date.now()
-      };
-      
-      setDistanceCircle(circle);
-      console.log('Distance circle created and added to map');
-      
-      // FIXED: Don't auto-fit to circle bounds - let user control zoom
-      // Instead, just ensure the circle is visible if needed
-      const mapBounds = mapInstance.getBounds();
-      const circleBounds = circle.getBounds();
-      
-      if (!mapBounds.contains(circleBounds)) {
-        // Only fit if the circle is completely outside the view
-        mapInstance.fitBounds(circleBounds, {
-          padding: [30, 30],
-          maxZoom: Math.max(mapInstance.getZoom(), 15), // Don't zoom out
-          animate: true
-        });
-      }
-      
-      return circle;
-    } catch (error) {
-      console.error('Error creating distance circle:', error);
-      return null;
-    }
-  }, [mapInstance, clearDistanceCircle]);
-
-  // Apply distance filter using active location
-  const applyDistanceFilter = useCallback(() => {
-    if (!activeLocation) {
-      console.log('No active location for distance filter');
-      return;
-    }
-    
-    console.log('Applying distance filter...', { activeLocation, maxDistance });
-    
-    // Draw distance circle around active location
-    drawDistanceCircle(activeLocation, maxDistance);
-    
-    // Filter plaques by distance
-    const plaquesInRange = filterPlaquesInRange(activeLocation, maxDistance);
-    setFilteredPlaquesCount(plaquesInRange.length);
-    
-    console.log(`Applied ${maxDistance}km filter around ${locationType} location, found ${plaquesInRange.length} plaques`);
-    
-  }, [activeLocation, maxDistance, drawDistanceCircle, filterPlaquesInRange, setFilteredPlaquesCount, locationType]);
-
-  // ENHANCED: Reset filters function
-  const resetFilters = useCallback(() => {
-    if (!mapInstance) return;
-    
-    console.log('Resetting distance filters...');
-    
-    // Clear distance circle
-    clearDistanceCircle();
-    
-    // Reset filter count
-    setFilteredPlaquesCount(0);
-    
-    // Clear active location
-    setActiveLocation(null);
-    setLocationType(null);
-    
-    // Clear location markers
-    clearLocationOverlays();
-    
-    // Reset zoom prevention
-    mapStateRef.current.preventNextZoom = false;
-    
-  }, [mapInstance, clearDistanceCircle, setFilteredPlaquesCount, clearLocationOverlays]);
-
-  // Search for a place by address
-  const searchPlaceByAddress = useCallback(async (address: string): Promise<boolean> => {
-    if (!address.trim() || !mapInstance || !window.L) return false;
-    
+  // Search for a location by address
+  const searchLocation = useCallback(async (address: string): Promise<[number, number] | null> => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', London, UK')}&limit=1&bounded=1&viewbox=-0.489,51.28,0.236,51.686`
       );
       
-      if (!response.ok) {
-        throw new Error(`Failed to search for location: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error('Location search failed');
       
       const data = await response.json();
       
       if (data && data.length > 0) {
         const result = data[0];
-        const lat = parseFloat(result.lat);
-        const lon = parseFloat(result.lon);
+        const coordinates: [number, number] = [parseFloat(result.lat), parseFloat(result.lon)];
         
-        if (isNaN(lat) || isNaN(lon)) {
-          throw new Error('Invalid coordinates returned from geocoding service');
+        if (mapInstance) {
+          mapInstance.setView(coordinates, 15);
         }
         
-        // Set search location without aggressive zooming
-        setSearchLocation([lat, lon], result.display_name);
-        
-        return true;
-      } else {
-        return false;
+        return coordinates;
       }
       
+      return null;
     } catch (error) {
       console.error('Error searching for location:', error);
-      return false;
-    }
-  }, [mapInstance, setSearchLocation]);
-
-  // Clear route
-  const clearRoute = useCallback(() => {
-    if (routeLineRef.current && mapInstance) {
-      mapInstance.removeLayer(routeLineRef.current);
-      routeLineRef.current = null;
+      return null;
     }
   }, [mapInstance]);
 
-  // Draw basic route
-  const drawRoute = useCallback((points: Plaque[]) => {
-    if (!window.L || !mapInstance || points.length < 2) return;
-    
-    clearRoute();
-    
-    try {
-      const L = window.L;
-      const routeGroup = L.featureGroup().addTo(mapInstance);
-      
-      // Get coordinates for each point
-      const latLngs = points
-        .filter(p => p.latitude && p.longitude)
-        .map(p => [
-          parseFloat(p.latitude), 
-          parseFloat(p.longitude)
-        ]);
-      
-      if (latLngs.length < 2) return;
-      
-      // Create polyline
-      const routePolyline = L.polyline(latLngs, {
-        color: '#10b981',
-        weight: 4,
-        opacity: 0.8,
-        lineCap: 'round',
-        lineJoin: 'round',
-        dashArray: '10, 10',
-        className: 'animated-dash'
-      }).addTo(routeGroup);
-      
-      // Store reference
-      routeLineRef.current = routeGroup;
-      
-      // FIXED: Only fit bounds if route is not currently visible
-      const routeBounds = routePolyline.getBounds();
-      const mapBounds = mapInstance.getBounds();
-      
-      if (!mapBounds.intersects(routeBounds)) {
-        mapInstance.fitBounds(routeBounds, { padding: [50, 50] });
-      }
-      
-      return routeGroup;
-    } catch (error) {
-      console.error("Error creating route:", error);
-      return null;
+  // Get plaques filtered by distance
+  const getFilteredPlaques = useCallback((): Plaque[] => {
+    if (!state.activeLocation || !state.distanceFilter) {
+      return plaques;
     }
-  }, [mapInstance, clearRoute]);
 
-  // ENHANCED: Restore distance circle when map is reloaded
-  const restoreDistanceCircle = useCallback(() => {
-    console.log('Restoring distance circle...', { 
-      activeLocation, 
-      maxDistance, 
-      mapInstance: !!mapInstance,
-      distanceCircle: !!distanceCircle 
+    return plaques.filter(plaque => {
+      if (!plaque.latitude || !plaque.longitude) return false;
+      
+      const lat = parseFloat(plaque.latitude as string);
+      const lng = parseFloat(plaque.longitude as string);
+      
+      if (isNaN(lat) || isNaN(lng)) return false;
+      
+      const distance = calculateDistance(
+        state.activeLocation![0], 
+        state.activeLocation![1], 
+        lat, 
+        lng
+      );
+      
+      return distance <= state.distanceFilter!;
     });
-    
-    if (!activeLocation || !mapInstance) {
-      console.log('Cannot restore - missing activeLocation or mapInstance');
-      return;
-    }
-    
-    // Always clear existing circle first
-    clearDistanceCircle();
-    
-    // Draw new distance circle
-    const newCircle = drawDistanceCircle(activeLocation, maxDistance);
-    
-    if (newCircle) {
-      console.log('Distance circle restored successfully');
-    } else {
-      console.warn('Failed to restore distance circle');
-    }
-  }, [activeLocation, maxDistance, mapInstance, clearDistanceCircle, drawDistanceCircle]);
+  }, [plaques, state.activeLocation, state.distanceFilter]);
 
-  // Method to prevent next zoom (useful when switching views)
-  const preventNextZoom = useCallback(() => {
-    mapStateRef.current.preventNextZoom = true;
+  // Get plaques that should be visible on map
+  const getVisiblePlaques = useCallback((): Plaque[] => {
+    // If we have a distance filter, use filtered plaques
+    if (state.activeLocation && state.distanceFilter) {
+      return getFilteredPlaques();
+    }
+    
+    // If we have a search query, filter by that
+    if (state.searchQuery.trim()) {
+      const searchTerm = state.searchQuery.toLowerCase();
+      return plaques.filter(plaque => 
+        plaque.title?.toLowerCase().includes(searchTerm) ||
+        plaque.inscription?.toLowerCase().includes(searchTerm) ||
+        plaque.location?.toLowerCase().includes(searchTerm) ||
+        plaque.address?.toLowerCase().includes(searchTerm) ||
+        plaque.profession?.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Otherwise show all plaques
+    return plaques;
+  }, [plaques, state.activeLocation, state.distanceFilter, state.searchQuery, getFilteredPlaques]);
+
+  // Calculate distance between two geographic points
+  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }, []);
 
+  // Get nearby plaques for a given plaque
+  const getNearbyPlaques = useCallback((targetPlaque: Plaque, radius: number = 1): Plaque[] => {
+    if (!targetPlaque.latitude || !targetPlaque.longitude) return [];
+    
+    const targetLat = parseFloat(targetPlaque.latitude as string);
+    const targetLng = parseFloat(targetPlaque.longitude as string);
+    
+    if (isNaN(targetLat) || isNaN(targetLng)) return [];
+
+    return plaques
+      .filter(plaque => {
+        if (plaque.id === targetPlaque.id) return false;
+        if (!plaque.latitude || !plaque.longitude) return false;
+        
+        const lat = parseFloat(plaque.latitude as string);
+        const lng = parseFloat(plaque.longitude as string);
+        
+        if (isNaN(lat) || isNaN(lng)) return false;
+        
+        const distance = calculateDistance(targetLat, targetLng, lat, lng);
+        return distance <= radius;
+      })
+      .sort((a, b) => {
+        // Sort by distance, then by profession match, then by name
+        const aDist = calculateDistance(
+          targetLat, targetLng,
+          parseFloat(a.latitude as string),
+          parseFloat(a.longitude as string)
+        );
+        const bDist = calculateDistance(
+          targetLat, targetLng,
+          parseFloat(b.latitude as string),
+          parseFloat(b.longitude as string)
+        );
+        
+        if (Math.abs(aDist - bDist) < 0.1) { // If distances are very similar
+          // Prefer same profession
+          if (a.profession === targetPlaque.profession && b.profession !== targetPlaque.profession) return -1;
+          if (b.profession === targetPlaque.profession && a.profession !== targetPlaque.profession) return 1;
+          
+          // Then prefer same postcode
+          if (a.postcode === targetPlaque.postcode && b.postcode !== targetPlaque.postcode) return -1;
+          if (b.postcode === targetPlaque.postcode && a.postcode !== targetPlaque.postcode) return 1;
+        }
+        
+        return aDist - bDist;
+      })
+      .slice(0, 5); // Limit to 5 nearby plaques
+  }, [plaques, calculateDistance]);
+
+  // Fit map to show multiple plaques
+  const fitToPlaques = useCallback((plaquesToFit: Plaque[]) => {
+    if (!mapInstance || plaquesToFit.length === 0) return;
+
+    const validPlaques = plaquesToFit.filter(p => p.latitude && p.longitude);
+    if (validPlaques.length === 0) return;
+
+    if (validPlaques.length === 1) {
+      // Single plaque - center and zoom
+      const plaque = validPlaques[0];
+      const lat = parseFloat(plaque.latitude as string);
+      const lng = parseFloat(plaque.longitude as string);
+      mapInstance.setView([lat, lng], 16);
+    } else {
+      // Multiple plaques - fit bounds
+      const coordinates = validPlaques.map(p => [
+        parseFloat(p.latitude as string),
+        parseFloat(p.longitude as string)
+      ]);
+      
+      const L = (window as any).L;
+      if (L) {
+        const bounds = L.latLngBounds(coordinates);
+        mapInstance.fitBounds(bounds, { padding: [20, 20] });
+      }
+    }
+  }, [mapInstance]);
+
+  // Check if a point is within the current map bounds
+  const isInViewport = useCallback((lat: number, lng: number): boolean => {
+    if (!mapInstance) return true;
+    
+    const bounds = mapInstance.getBounds();
+    return bounds.contains([lat, lng]);
+  }, [mapInstance]);
+
+  // Get map center and zoom for state management
+  const getMapView = useCallback((): { center: [number, number]; zoom: number } => {
+    if (!mapInstance) {
+      return { center: [51.505, -0.09], zoom: 13 };
+    }
+    
+    const center = mapInstance.getCenter();
+    return {
+      center: [center.lat, center.lng],
+      zoom: mapInstance.getZoom()
+    };
+  }, [mapInstance]);
+
+  // Move map to specific location
+  const moveToLocation = useCallback((coordinates: [number, number], zoom?: number) => {
+    if (!mapInstance) return;
+    
+    const targetZoom = zoom || mapInstance.getZoom();
+    mapInstance.setView(coordinates, targetZoom);
+  }, [mapInstance]);
+
+  // Get current map bounds
+  const getMapBounds = useCallback(() => {
+    if (!mapInstance) return null;
+    
+    const bounds = mapInstance.getBounds();
+    return {
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest()
+    };
+  }, [mapInstance]);
+
   return {
+    // Location operations
+    isLoadingLocation,
     findUserLocation,
-    setSearchLocation,
-    applyDistanceFilter,
-    resetFilters,
-    drawRoute,
-    clearRoute,
-    searchPlaceByAddress,
-    activeLocation,
-    locationType,
-    filterPlaquesInRange,
-    clearDistanceCircle,
-    restoreDistanceCircle,
-    preventNextZoom,
-    updateMapView
+    searchLocation,
+    moveToLocation,
+    
+    // Plaque filtering and display
+    getFilteredPlaques,
+    getVisiblePlaques,
+    getNearbyPlaques,
+    
+    // Map viewport operations
+    fitToPlaques,
+    isInViewport,
+    getMapView,
+    getMapBounds,
+    
+    // Utility functions
+    calculateDistance
   };
-}
+};
+
+// Helper function to calculate distance between two points
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+export default useMapOperations;

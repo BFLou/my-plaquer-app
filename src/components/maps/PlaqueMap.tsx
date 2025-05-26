@@ -1,4 +1,4 @@
-// src/components/maps/PlaqueMap.tsx - Updated with UnifiedSearchWidget
+// src/components/maps/PlaqueMap.tsx - FIXED: Removed find location, improved integration
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Route as RouteIcon } from 'lucide-react';
@@ -23,7 +23,7 @@ const ORS_API_KEY = (typeof process !== 'undefined' && process.env && process.en
   : '5b3ce3597851110001cf6248e79bd734efe449838ac44dccb5a5f551';
 
 /**
- * Enhanced PlaqueMap Component with unified search widget
+ * Enhanced PlaqueMap Component - FIXED VERSION
  */
 const PlaqueMap = React.forwardRef(({
   plaques = [],
@@ -58,7 +58,6 @@ const PlaqueMap = React.forwardRef(({
   const restoreTimeoutRef = useRef(null);
   
   // Component state
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [filteredPlaquesCount, setFilteredPlaquesCount] = useState(0);
@@ -82,7 +81,6 @@ const PlaqueMap = React.forwardRef(({
   
   // Use map operations hook for location search, filtering, etc.
   const {
-    findUserLocation,
     setSearchLocation,
     applyDistanceFilter,
     resetFilters,
@@ -96,7 +94,7 @@ const PlaqueMap = React.forwardRef(({
     mapInstance,
     plaques,
     maxDistance,
-    setIsLoadingLocation,
+    () => {}, // Remove loading setter since we removed find location
     setFilteredPlaquesCount,
     routePoints,
     setUserLocation,
@@ -376,18 +374,6 @@ const PlaqueMap = React.forwardRef(({
       setBaseMap(mapInstance, mapType);
     }
   }, [mapInstance, setBaseMap]);
-  
-  // ENHANCED find user location with proper filter integration
-  const handleFindUserLocation = useCallback(() => {
-    findUserLocation();
-    
-    // Auto-activate distance filter after location is found
-    setTimeout(() => {
-      if ((mapActiveLocation || activeLocation) && locationType === 'user') {
-        handleDistanceFilterUpdate(1, true); // 1km default with hide enabled
-      }
-    }, 2000);
-  }, [findUserLocation, mapActiveLocation, activeLocation, locationType]);
 
   // Enhanced distance filter handling
   const handleDistanceFilterUpdate = useCallback((newDistance, hideOutside) => {
@@ -430,7 +416,6 @@ const PlaqueMap = React.forwardRef(({
     drawRouteLine: (points, useRoadRoutingParam = true, maintainView = false) => 
       drawWalkingRoute(points, useRoadRoutingParam, maintainView),
     clearRoute,
-    findUserLocation,
     fitToMarkers: () => {
       if (mapInstance && displayPlaques.length > 0) {
         const bounds = getBoundsFromPlaques(displayPlaques);
@@ -507,23 +492,21 @@ const PlaqueMap = React.forwardRef(({
         isRoutingMode={isRoutingMode}
       />
       
-{/* Unified Search Widget */}
-<div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 z-[1001]" style={{ zIndex: 1001 }}>
-  <UnifiedSearchWidget
-    activeLocation={mapActiveLocation || activeLocation}
-    locationType={locationType}
-    onLocationSet={handleLocationSet}
-    onLocationClear={handleLocationClear}
-    maxDistance={maxDistance}
-    onDistanceChange={handleDistanceFilterUpdate}
-    hideOutsidePlaques={hideOutsidePlaques}
-    filteredPlaquesCount={filteredPlaquesCount}
-    totalPlaques={plaques.length}
-    onFindUserLocation={handleFindUserLocation}
-    isLoadingLocation={isLoadingLocation}
-    useImperial={useImperial}
-  />
-</div>
+      {/* Unified Search Widget - REMOVED: Find location functionality */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4 z-[1001]" style={{ zIndex: 1001 }}>
+        <UnifiedSearchWidget
+          activeLocation={mapActiveLocation || activeLocation}
+          locationType={locationType}
+          onLocationSet={handleLocationSet}
+          onLocationClear={handleLocationClear}
+          maxDistance={maxDistance}
+          onDistanceChange={handleDistanceFilterUpdate}
+          hideOutsidePlaques={hideOutsidePlaques}
+          filteredPlaquesCount={filteredPlaquesCount}
+          totalPlaques={plaques.length}
+          useImperial={useImperial}
+        />
+      </div>
 
       {/* Route Planning Button - Only show when not in routing mode */}
       {!isRoutingMode && (
@@ -542,12 +525,12 @@ const PlaqueMap = React.forwardRef(({
       
       {/* Map Controls - Updated to remove duplicate buttons */}
       <MapControls
-        isLoadingLocation={isLoadingLocation}
+        isLoadingLocation={false} // No longer loading location
         showFilters={false} // Always false since unified widget handles this
         setShowFilters={() => {}} // No-op
         isRoutingMode={isRoutingMode}
         toggleRoutingMode={handleToggleRoutingMode}
-        findUserLocation={() => {}} // Handled by unified widget
+        findUserLocation={() => {}} // No-op since removed
         hasUserLocation={!!(mapActiveLocation || activeLocation)}
         routePointsCount={routePoints.length}
         resetMap={resetMap}
