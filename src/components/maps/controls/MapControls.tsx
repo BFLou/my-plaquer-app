@@ -1,8 +1,6 @@
-// src/components/maps/controls/MapControls.tsx - FIXED: Remove duplicate route button
+// src/components/maps/controls/MapControls.tsx - Updated to work with UnifiedSearchWidget
 import React from 'react';
 import { 
-  Navigation, 
-  Target, // Changed from Filter to Target for distance filter
   RotateCcw,
   ZoomIn,
   ZoomOut,
@@ -24,11 +22,11 @@ import {
 
 interface MapControlsProps {
   isLoadingLocation: boolean;
-  showFilters: boolean;
-  setShowFilters: (show: boolean) => void;
+  showFilters: boolean; // Kept for compatibility but not used
+  setShowFilters: (show: boolean) => void; // Kept for compatibility but not used
   isRoutingMode: boolean;
   toggleRoutingMode: () => void;
-  findUserLocation: () => void;
+  findUserLocation: () => void; // Kept for compatibility but not used
   hasUserLocation: boolean;
   routePointsCount: number;
   resetMap: () => void;
@@ -39,14 +37,6 @@ interface MapControlsProps {
 }
 
 const MapControls: React.FC<MapControlsProps> = ({
-  isLoadingLocation,
-  showFilters,
-  setShowFilters,
-  isRoutingMode,
-  toggleRoutingMode,
-  findUserLocation,
-  hasUserLocation,
-  routePointsCount,
   resetMap,
   zoomIn,
   zoomOut,
@@ -64,52 +54,8 @@ const MapControls: React.FC<MapControlsProps> = ({
 
   return (
     <TooltipProvider>
-      <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-md p-2">
+      <div className="absolute top-4 right-4 z-[800] bg-white rounded-lg shadow-md p-2">
         <div className="flex flex-col gap-2">
-          {/* Location Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant={hasUserLocation ? "outline" : "default"}
-                size="sm" 
-                className={`h-10 w-10 p-0 ${isLoadingLocation ? 'bg-blue-50' : ''}`}
-                onClick={findUserLocation}
-                disabled={isLoadingLocation}
-              >
-                {isLoadingLocation ? (
-                  <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-blue-600 animate-spin"></div>
-                ) : (
-                  <Navigation size={18} className={hasUserLocation ? 'text-blue-600' : ''} />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Find my location</p>
-            </TooltipContent>
-          </Tooltip>
-          
-          {/* Distance Filter Button - Changed icon to Target */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className={`h-10 w-10 p-0 relative ${showFilters ? 'bg-green-50 border-green-200' : ''}`}
-                onClick={() => setShowFilters(!showFilters)}
-                disabled={!hasUserLocation}
-              >
-                <Target size={18} className={showFilters ? 'text-green-600' : ''} />
-                {hasUserLocation && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></span>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Distance filter{!hasUserLocation ? " (set location first)" : ""}</p>
-            </TooltipContent>
-          </Tooltip>
-          
-          {/* REMOVED: Route Button - This was the duplicate */}
           
           {/* Zoom In Button */}
           {zoomIn && (
