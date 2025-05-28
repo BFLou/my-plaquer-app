@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import RouteDetailHeader from '../components/routes/RouteDetailHeader';
 import EditRouteForm from '../components/routes/EditRouteForm';
-import PlaqueMap from '../components/maps/PlaqueMap';
+import { MapContainer } from "../components/maps/MapContainer";
 import { RouteStats } from '../components/routes/RouteStats';
 import {
   AlertDialog,
@@ -356,15 +356,11 @@ const RouteDetailPage: React.FC = () => {
           <TabsContent value="map">
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="h-[600px]">
-                <PlaqueMap
-                  ref={mapRef}
-                  plaques={routePlaques}
-                  selectedPlaqueId={null}
-                  maintainView={false}
-                  className="h-full w-full"
-                  isRoutingMode={true}
-                  routePoints={routePlaques}
-                />
+      <MapContainer
+        plaques={filteredPlaques}
+        onPlaqueClick={handlePlaqueClick}
+        className="h-full w-full"
+      />
               </div>
             </div>
           </TabsContent>

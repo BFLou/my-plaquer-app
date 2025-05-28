@@ -22,7 +22,7 @@ import CollectionCreateForm from '../components/collections/forms/CollectionCrea
 import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
 import CollectionFilterView from '@/components/collections/CollectionFilterView';
 import { EmptyState } from '@/components/common/EmptyState';
-import PlaqueMap from '../components/maps/PlaqueMap';
+import { MapContainer } from "../components/maps/MapContainer";
 import { useRoutes } from '@/hooks/useRoutes';
 import { PageContainer } from "@/components";
 import { formatTimeAgo } from '../utils/timeUtils';
@@ -418,21 +418,11 @@ const CollectionDetailPage = () => {
           ) : viewMode === 'map' ? (
             <div className="relative">
               <div className="h-[450px] sm:h-[650px] rounded-lg overflow-hidden shadow-md">
-                <PlaqueMap
-                  ref={mapRef}
-                  plaques={filteredPlaques}
-                  onPlaqueClick={handleViewPlaque}
-                  favorites={favorites}
-                  selectedPlaqueId={selectedPlaque?.id}
-                  maintainView={maintainMapView}
-                  className="h-full w-full"
-                  isRoutingMode={isRoutingMode}
-                  setIsRoutingMode={setIsRoutingMode}
-                  routePoints={routePoints}
-                  addPlaqueToRoute={addPlaqueToRoute}
-                  removePlaqueFromRoute={removePlaqueFromRoute}
-                  clearRoute={clearRoute}
-                />
+                      <MapContainer
+        plaques={filteredPlaques}
+        onPlaqueClick={handlePlaqueClick}
+        className="h-full w-full"
+      />
               </div>
             </div>
           ) : viewMode === 'grid' ? (

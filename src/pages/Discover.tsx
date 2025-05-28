@@ -1,5 +1,5 @@
-// src/pages/Discover.tsx - FIXED: Removed duplicate toasts, moved to components
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+// src/pages/Discover.tsx
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 import plaqueData from '../data/plaque_data.json';
@@ -10,61 +10,82 @@ import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/button";
 import Pagination from '@/components/plaques/Pagination';
-import PlaqueMap from '../components/maps/PlaqueMap';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
+import DiscoverHeader from '../components/discover/DiscoverHeader';
+
+// Import the new simplified map
+import { MapContainer } from '../components/maps/MapContainer';
 
 // Import hooks
-import { useUrlState } from '../components/maps/hooks/useUrlState';
-import { useMapState } from '../components/maps/hooks/useMapState';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
 
-// Import header component
-import DiscoverHeader from '../components/discover/DiscoverHeader';
-import '../styles/map-styles.css';
+// Simple URL state management
+import { useSearchParams } from 'react-router-dom';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
 const Discover = () => {
-  const mapRef = useRef(null);
+  // URL state management (simplified)
+  const [searchParams, setSearchParams] = useSearchParams();
   
+  // Get values from URL
+  const urlState = {
+    view: (searchParams.get('view') as ViewMode) || 'grid',
+    search: searchParams.get('search') || '',
+    colors: searchParams.get('colors')?.split(',').filter(Boolean) || [],
+    postcodes: searchParams.get('postcodes')?.split(',').filter(Boolean) || [],
+    professions: searchParams.get('professions')?.split(',').filter(Boolean) || [],
+    onlyVisited: searchParams.get('visited') === 'true',
+    onlyFavorites: searchParams.get('favorites') === 'true',
+  };
+
+  // Update URL helpers
+  const updateUrlState = (updates: Partial<typeof urlState>) => {
+    const newParams = new URLSearchParams(searchParams);
+    
+    Object.entries({ ...urlState, ...updates }).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          newParams.set(key, value.join(','));
+        } else {
+          newParams.delete(key);
+        }
+      } else if (value === true) {
+        newParams.set(key, 'true');
+      } else if (value === false || value === '') {
+        newParams.delete(key);
+      } else if (value) {
+        newParams.set(key, value);
+      }
+    });
+    
+    setSearchParams(newParams, { replace: true });
+  };
+
   // Basic state
   const [allPlaques, setAllPlaques] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Route state
-  const [routePoints, setRoutePoints] = useState([]);
-  const [isRoutingMode, setIsRoutingMode] = useState(false);
-  const [useImperial, setUseImperial] = useState(false);
 
   // Filter options
   const [postcodeOptions, setPostcodeOptions] = useState([]);
   const [colorOptions, setColorOptions] = useState([]);
   const [professionOptions, setProfessionOptions] = useState([]);
 
+  // Distance filter state (simplified)
+  const [activeLocation, setActiveLocation] = useState<[number, number] | null>(null);
+  const [filterRadius, setFilterRadius] = useState(1);
+  const [filterEnabled, setFilterEnabled] = useState(false);
+
   // External hooks
-  const { urlState, setViewMode, setSearch, setFilters, resetFilters: resetUrlFilters } = useUrlState();
-  const mapStateManager = useMapState();
   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
-  const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
-  // Mobile detection
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Load plaque data - FIXED: Removed toast, handle error silently
+  // Load plaque data
   useEffect(() => {
     try {
       setLoading(true);
@@ -78,24 +99,20 @@ const Discover = () => {
       const professionCount = {};
       
       adaptedData.forEach(plaque => {
-        // Postcodes
         if (plaque.postcode && plaque.postcode !== "Unknown") {
           postcodeCount[plaque.postcode] = (postcodeCount[plaque.postcode] || 0) + 1;
         }
         
-        // Colors
         const color = plaque.color?.toLowerCase();
         if (color && color !== "unknown") {
           colorCount[color] = (colorCount[color] || 0) + 1;
         }
         
-        // Professions
         if (plaque.profession && plaque.profession !== "Unknown") {
           professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
         }
       });
       
-      // Set filter options
       setPostcodeOptions(
         Object.entries(postcodeCount)
           .map(([value, count]) => ({ label: value, value, count }))
@@ -126,37 +143,20 @@ const Discover = () => {
     } catch (error) {
       console.error('Error loading plaque data:', error);
       setLoading(false);
-      // Error handling will be done by individual components as needed
     }
   }, []);
-
-  // Distance filter state
-  const activeLocation = mapStateManager.state.distanceFilter.location;
-  const maxDistance = mapStateManager.state.distanceFilter.radius;
-  const hideOutsidePlaques = mapStateManager.state.distanceFilter.visible;
-
-  // Distance filter handlers - FIXED: Removed toast
-  const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
-    if (activeLocation) {
-      mapStateManager.setDistanceFilter(activeLocation, newDistance, hideOutside);
-    }
-  }, [activeLocation, mapStateManager]);
-
-  // FIXED: Removed toast - let PlaqueMap handle location feedback
-  const handleLocationSet = useCallback((location) => {
-    mapStateManager.setSearchLocation(location);
-  }, [mapStateManager]);
 
   // Filtered plaques
   const filteredPlaques = useMemo(() => {
     let filtered = allPlaques.filter((plaque) => {
       // Standard filters
+      const searchLower = urlState.search.toLowerCase();
       const matchesSearch = !urlState.search.trim() || 
-        (plaque.title?.toLowerCase().includes(urlState.search.toLowerCase())) ||
-        (plaque.inscription?.toLowerCase().includes(urlState.search.toLowerCase())) ||
-        (plaque.address?.toLowerCase().includes(urlState.search.toLowerCase())) ||
-        (plaque.location?.toLowerCase().includes(urlState.search.toLowerCase())) ||
-        (plaque.description?.toLowerCase().includes(urlState.search.toLowerCase()));
+        plaque.title?.toLowerCase().includes(searchLower) ||
+        plaque.inscription?.toLowerCase().includes(searchLower) ||
+        plaque.address?.toLowerCase().includes(searchLower) ||
+        plaque.location?.toLowerCase().includes(searchLower) ||
+        plaque.description?.toLowerCase().includes(searchLower);
       
       const matchesPostcode = urlState.postcodes.length === 0 || 
         (plaque.postcode && urlState.postcodes.includes(plaque.postcode));
@@ -179,7 +179,7 @@ const Discover = () => {
     });
 
     // Apply distance filter if active
-    if (activeLocation && hideOutsidePlaques) {
+    if (activeLocation && filterEnabled) {
       filtered = filtered.filter(plaque => {
         if (!plaque.latitude || !plaque.longitude) return false;
         
@@ -189,7 +189,7 @@ const Discover = () => {
         if (isNaN(lat) || isNaN(lng)) return false;
         
         const distance = calculateDistance(activeLocation[0], activeLocation[1], lat, lng);
-        return distance <= maxDistance;
+        return distance <= filterRadius;
       });
     }
 
@@ -197,12 +197,11 @@ const Discover = () => {
   }, [
     allPlaques, 
     urlState,
-    favorites, 
     isPlaqueVisited,
     isFavorite,
     activeLocation,
-    hideOutsidePlaques,
-    maxDistance
+    filterEnabled,
+    filterRadius
   ]);
 
   // Active filters count
@@ -212,7 +211,7 @@ const Discover = () => {
            urlState.professions.length + 
            (urlState.onlyVisited ? 1 : 0) + 
            (urlState.onlyFavorites ? 1 : 0) +
-           (activeLocation && hideOutsidePlaques ? 1 : 0);
+           (activeLocation && filterEnabled ? 1 : 0);
   }, [
     urlState.postcodes.length,
     urlState.colors.length,
@@ -220,21 +219,18 @@ const Discover = () => {
     urlState.onlyVisited,
     urlState.onlyFavorites,
     activeLocation,
-    hideOutsidePlaques
+    filterEnabled
   ]);
 
   // Event handlers
   const handlePlaqueClick = useCallback((plaque) => {
-    console.log('Discover: handlePlaqueClick called with plaque:', plaque.id, plaque.title);
     setSelectedPlaque(plaque);
   }, []);
 
   const handleFavoriteToggle = useCallback((id) => {
     toggleFavorite(id);
-    // Toast handled by useFavorites hook
   }, [toggleFavorite]);
 
-  // FIXED: Removed toast - let PlaqueDetail component handle feedback
   const handleMarkVisited = useCallback(async (id) => {
     try {
       await markAsVisited(id, {
@@ -245,53 +241,24 @@ const Discover = () => {
       setAllPlaques(prev => prev.map(p => 
         p.id === id ? { ...p, visited: true } : p
       ));
-      
-      // Success feedback handled by PlaqueDetail component
     } catch (error) {
       console.error("Error marking as visited:", error);
-      // Error feedback handled by PlaqueDetail component
     }
   }, [markAsVisited]);
 
   const resetFilters = useCallback(() => {
-    resetUrlFilters();
-    mapStateManager.clearDistanceFilter();
+    updateUrlState({
+      search: '',
+      colors: [],
+      postcodes: [],
+      professions: [],
+      onlyVisited: false,
+      onlyFavorites: false,
+    });
+    setActiveLocation(null);
+    setFilterEnabled(false);
     setCurrentPage(1);
-  }, [resetUrlFilters, mapStateManager]);
-
-  // FIXED: Route management - removed toasts, let PlaqueMap handle feedback
-  const handleAddPlaqueToRoute = useCallback((plaque) => {
-    if (routePoints.some(p => p.id === plaque.id)) {
-      // Already in route - no action needed, PlaqueMap will show feedback
-      return;
-    }
-    
-    setRoutePoints(prev => [...prev, plaque]);
-    // Success feedback handled by PlaqueMap
-  }, [routePoints]);
-
-  const handleRemovePlaqueFromRoute = useCallback((plaqueId) => {
-    setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
-    // Feedback handled by route panel component
   }, []);
-
-  const handleClearRoute = useCallback(() => {
-    if (routePoints.length > 0) {
-      setRoutePoints([]);
-      // Feedback handled by route panel component
-    }
-  }, [routePoints.length]);
-
-  // FIXED: Removed toasts - let PlaqueMap handle routing mode feedback
-  const handleToggleRoutingMode = useCallback(() => {
-    const newRoutingMode = !isRoutingMode;
-    setIsRoutingMode(newRoutingMode);
-    
-    if (!newRoutingMode) {
-      handleClearRoute();
-    }
-    // All feedback handled by PlaqueMap component
-  }, [isRoutingMode, handleClearRoute]);
 
   // Distance helper functions
   const getDistanceFromActiveLocation = useCallback((plaque) => {
@@ -306,35 +273,16 @@ const Discover = () => {
   }, [activeLocation]);
 
   const formatDistance = useCallback((distanceKm) => {
-    if (useImperial) {
-      const miles = distanceKm * 0.621371;
-      return `${miles.toFixed(1)} mi`;
-    }
     return `${distanceKm.toFixed(1)} km`;
-  }, [useImperial]);
+  }, []);
 
-  const formatWalkingTime = useCallback((distanceKm) => {
-    if (distanceKm <= 0) return "0 min";
-    
-    const minutes = useImperial 
-      ? Math.round(distanceKm * 0.621371 * 20)
-      : Math.round(distanceKm * 12);
-    
-    if (minutes < 60) {
-      return `${minutes} min`;
-    }
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins > 0 ? `${mins}m` : ''}`;
-  }, [useImperial]);
-
-  // Paginated plaques
+  // Pagination
   const itemsPerPage = 12;
   const totalPages = Math.ceil(filteredPlaques.length / itemsPerPage);
   const paginatedPlaques = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredPlaques.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredPlaques, currentPage, itemsPerPage]);
+  }, [filteredPlaques, currentPage]);
 
   // Get nearby plaques for detail view
   const getNearbyPlaques = useCallback((currentPlaque) => {
@@ -343,12 +291,6 @@ const Discover = () => {
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
   }, [allPlaques]);
-
-  // Handle nearby plaque selection
-  const handleNearbyPlaqueClick = useCallback((plaque) => {
-    console.log('Discover: handleNearbyPlaqueClick called with plaque:', plaque.id, plaque.title);
-    setSelectedPlaque(plaque);
-  }, []);
 
   const renderContent = () => {
     if (loading) {
@@ -372,33 +314,10 @@ const Discover = () => {
       return (
         <div className="relative">
           <div className="h-[650px]">
-            <PlaqueMap
-              ref={mapRef}
-              plaques={allPlaques}
+            <MapContainer
+              plaques={filteredPlaques}
               onPlaqueClick={handlePlaqueClick}
-              favorites={favorites}
-              selectedPlaqueId={selectedPlaque?.id}
-              maintainView={true}
               className="h-full w-full"
-              isRoutingMode={isRoutingMode}
-              setIsRoutingMode={setIsRoutingMode}
-              routePoints={routePoints}
-              addPlaqueToRoute={handleAddPlaqueToRoute}
-              removePlaqueFromRoute={handleRemovePlaqueFromRoute}
-              clearRoute={handleClearRoute}
-              exportRoute={() => {}}
-              saveRoute={() => {}}
-              moveRoutePointUp={() => {}}
-              moveRoutePointDown={() => {}}
-              onReorderRoute={() => {}}
-              useImperial={useImperial}
-              setUseImperial={setUseImperial}
-              isMobile={isMobile}
-              onDistanceFilterChange={handleDistanceFilterChange}
-              onLocationSet={handleLocationSet}
-              activeLocation={activeLocation}
-              maxDistance={maxDistance}
-              hideOutsidePlaques={hideOutsidePlaques}
             />
           </div>
         </div>
@@ -422,7 +341,7 @@ const Discover = () => {
                 Clear Filters
               </Button>
             ) : urlState.search.trim() ? (
-              <Button onClick={() => setSearch('')} variant="outline">
+              <Button onClick={() => updateUrlState({ search: '' })} variant="outline">
                 Clear Search
               </Button>
             ) : null
@@ -434,10 +353,6 @@ const Discover = () => {
     const commonProps = {
       showDistance: !!activeLocation,
       formatDistance,
-      isInRoute: (plaque) => isRoutingMode && routePoints.some(p => p.id === plaque.id),
-      onAddToRoute: isRoutingMode ? handleAddPlaqueToRoute : undefined,
-      onRemoveFromRoute: isRoutingMode ? handleRemovePlaqueFromRoute : undefined,
-      routeIndex: (plaque) => isRoutingMode ? routePoints.findIndex(p => p.id === plaque.id) + 1 : 0,
     };
 
     if (urlState.view === 'grid') {
@@ -514,9 +429,9 @@ const Discover = () => {
       {/* Header with view tabs and search */}
       <DiscoverHeader
         viewMode={urlState.view}
-        onViewModeChange={setViewMode}
+        onViewModeChange={(view) => updateUrlState({ view })}
         searchValue={urlState.search}
-        onSearchChange={setSearch}
+        onSearchChange={(search) => updateUrlState({ search })}
         activeFiltersCount={activeFiltersCount}
         onOpenFilters={() => setFiltersOpen(true)}
       />
@@ -532,7 +447,7 @@ const Discover = () => {
               <div key={color} className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
                 {capitalizeWords(color)}
                 <button
-                  onClick={() => setFilters({ 
+                  onClick={() => updateUrlState({ 
                     colors: urlState.colors.filter(c => c !== color) 
                   })}
                   className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
@@ -547,7 +462,7 @@ const Discover = () => {
               <div key={postcode} className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
                 {postcode}
                 <button
-                  onClick={() => setFilters({ 
+                  onClick={() => updateUrlState({ 
                     postcodes: urlState.postcodes.filter(p => p !== postcode) 
                   })}
                   className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
@@ -562,7 +477,7 @@ const Discover = () => {
               <div key={profession} className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
                 {capitalizeWords(profession)}
                 <button
-                  onClick={() => setFilters({ 
+                  onClick={() => updateUrlState({ 
                     professions: urlState.professions.filter(p => p !== profession) 
                   })}
                   className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
@@ -577,7 +492,7 @@ const Discover = () => {
               <div className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
                 Visited Only
                 <button
-                  onClick={() => setFilters({ onlyVisited: false })}
+                  onClick={() => updateUrlState({ onlyVisited: false })}
                   className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   ×
@@ -590,7 +505,7 @@ const Discover = () => {
               <div className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
                 Favorites Only
                 <button
-                  onClick={() => setFilters({ onlyFavorites: false })}
+                  onClick={() => updateUrlState({ onlyFavorites: false })}
                   className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   ×
@@ -599,11 +514,14 @@ const Discover = () => {
             )}
             
             {/* Distance filter */}
-            {activeLocation && hideOutsidePlaques && (
+            {activeLocation && filterEnabled && (
               <div className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full border border-green-200 text-xs">
-                📍 Within {formatDistance(maxDistance)}
+                📍 Within {formatDistance(filterRadius)}
                 <button
-                  onClick={() => mapStateManager.clearDistanceFilter()}
+                  onClick={() => {
+                    setActiveLocation(null);
+                    setFilterEnabled(false);
+                  }}
                   className="ml-1 hover:bg-green-300 rounded-full w-4 h-4 flex items-center justify-center"
                 >
                   ×
@@ -631,16 +549,9 @@ const Discover = () => {
             {loading ? "Loading plaques..." : (
               <>
                 {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-                {activeLocation && (
+                {activeLocation && filterEnabled && (
                   <span className="ml-2 text-green-600">
-                    {hideOutsidePlaques ? `within ${formatDistance(maxDistance)}` : `• ${formatDistance(maxDistance)} range active`}
-                  </span>
-                )}
-                {isRoutingMode && routePoints.length > 0 && (
-                  <span className="ml-2">
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                      Route: {routePoints.length} stops
-                    </span>
+                    within {formatDistance(filterRadius)}
                   </span>
                 )}
               </>
@@ -659,21 +570,21 @@ const Discover = () => {
         
         postcodes={postcodeOptions}
         selectedPostcodes={urlState.postcodes}
-        onPostcodesChange={(values) => setFilters({ postcodes: values })}
+        onPostcodesChange={(values) => updateUrlState({ postcodes: values })}
         
         colors={colorOptions}
         selectedColors={urlState.colors}
-        onColorsChange={(values) => setFilters({ colors: values })}
+        onColorsChange={(values) => updateUrlState({ colors: values })}
         
         professions={professionOptions}
         selectedProfessions={urlState.professions}
-        onProfessionsChange={(values) => setFilters({ professions: values })}
+        onProfessionsChange={(values) => updateUrlState({ professions: values })}
         
         onlyVisited={urlState.onlyVisited}
-        onVisitedChange={(value) => setFilters({ onlyVisited: value })}
+        onVisitedChange={(value) => updateUrlState({ onlyVisited: value })}
         
         onlyFavorites={urlState.onlyFavorites}
-        onFavoritesChange={(value) => setFilters({ onlyFavorites: value })}
+        onFavoritesChange={(value) => updateUrlState({ onlyFavorites: value })}
         
         onApply={() => setFiltersOpen(false)}
         onReset={resetFilters}
@@ -689,7 +600,7 @@ const Discover = () => {
           onFavoriteToggle={handleFavoriteToggle}
           onMarkVisited={handleMarkVisited}
           nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-          onSelectNearbyPlaque={handleNearbyPlaqueClick}
+          onSelectNearbyPlaque={setSelectedPlaque}
         />
       )}
     </PageContainer>

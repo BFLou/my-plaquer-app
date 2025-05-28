@@ -24,8 +24,23 @@ export { default as VisitLogger } from './plaques/VisitLogger';
 export { CollectionStats } from './collections/CollectionStats';
 export { default as EmptyState } from './collections/EmptyState';
 
-// Map components
-export { default as PlaqueMap } from './maps/PlaqueMap';
+// Map components - NEW SECTION
+export { MapContainer } from './maps/MapContainer';
+export { MapView } from './maps/MapView';
+
+// Map features
+export { SearchBar } from './maps/features/Search/SearchBar';
+export { useSearch } from './maps/features/Search/useSearch';
+export { LocationFilter } from './maps/features/LocationFilter/LocationFilter';
+export { useLocationFilter } from './maps/features/LocationFilter/useLocationFilter';
+export { RoutePanel } from './maps/features/RouteBuilder/RoutePanel';
+export { MapControls } from './maps/features/Controls/MapControls';
+
+// Map core hooks
+export { useMap } from './maps/core/useMap';
+export { useMarkers } from './maps/core/useMarkers';
+export { useRoute } from './maps/core/useRoute';
+export { useDistanceCircle } from './maps/core/useDistanceCircle';
 
 // Profile components
 export { default as UserCollectionsPanel } from './profile/UserCollectionsPanel';
@@ -77,18 +92,17 @@ export * from './ui/textarea';
 export * from './ui/tooltip';
 export { Toaster } from './ui/sonner';
 
-
 // src/hooks/index.ts
 export { useAuth } from '../hooks/useAuth';
-export { useCollections } from '../hooks//useCollection';
-export { useCollectionActions } from '../hooks//useCollectionActions';
-export { useCollectionDetail } from '../hooks//useCollectionDetail';
-export { useCollectionsList } from '../hooks//useCollectionsList';
-export { useFavorites } from '../hooks//useFavorites';
-export { usePlaqueFilters } from '../hooks//usePlaqueFilters';
-export { usePlaques } from '../hooks//usePlaques';
-export { useRoutes } from '../hooks//useRoutes';
-export { useTheme } from '../hooks//useTheme';
-export { useVisitedPlaques } from '../hooks//useVisitedPlaques';
-export { useAnimation } from '../hooks//useAnimation';
-export { useGlobalErrorHandlers } from '../hooks//useGlobalErrorHandlers'; // New hook
+export { useCollections } from '../hooks/useCollection';
+export { useCollectionActions } from '../hooks/useCollectionActions';
+export { useCollectionDetail } from '../hooks/useCollectionDetail';
+export { useCollectionsList } from '../hooks/useCollectionsList';
+export { useFavorites } from '../hooks/useFavorites';
+export { usePlaqueFilters } from '../hooks/usePlaqueFilters';
+export { usePlaques } from '../hooks/usePlaques';
+export { useRoutes } from '../hooks/useRoutes';
+export { useTheme } from '../hooks/useTheme';
+export { useVisitedPlaques } from '../hooks/useVisitedPlaques';
+export { useAnimation } from '../hooks/useAnimation';
+export { useGlobalErrorHandlers } from '../hooks/useGlobalErrorHandlers'; // New hook
