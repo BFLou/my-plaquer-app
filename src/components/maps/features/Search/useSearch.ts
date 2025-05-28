@@ -50,19 +50,21 @@ export const useSearch = (plaques: Plaque[]) => {
     // Search locations via Nominatim
     if (query.length > 2) {
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?` +
-          `format=json&q=${encodeURIComponent(query + ', London')}&limit=3`
-        );
+const response = await fetch(
+  `https://nominatim.openstreetmap.org/search?` +
+  `format=json&q=${encodeURIComponent(query)}&limit=3&addressdetails=1&countrycodes=gb`
+);
+
         const places = await response.json();
         
-        const locationResults = places.map((place: any) => ({
-          type: 'location' as const,
-          id: place.place_id,
-          title: place.display_name.split(',')[0],
-          subtitle: place.display_name.split(',').slice(1, 3).join(',').trim(),
-          coordinates: [parseFloat(place.lat), parseFloat(place.lon)] as [number, number]
-        }));
+const locationResults = places.map((place: any) => ({
+  type: 'location' as const,
+  id: place.place_id,
+  title: place.display_name.split(',')[0],
+  subtitle: place.display_name,
+  coordinates: [parseFloat(place.lat), parseFloat(place.lon)] as [number, number],
+}));
+
         
         searchResults.push(...locationResults);
       } catch (error) {

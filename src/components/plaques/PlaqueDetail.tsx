@@ -1,4 +1,4 @@
-// src/components/plaques/PlaqueDetail.tsx
+// src/components/plaques/PlaqueDetail.tsx - Quick z-index fix
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, X, ExternalLink, Calendar } from 'lucide-react';
 import { 
@@ -37,6 +37,7 @@ type PlaqueDetailProps = {
   nearbyPlaques?: Plaque[];
   onSelectNearbyPlaque?: (plaque: Plaque) => void;
   className?: string;
+  isMapView?: boolean; // NEW: Add prop to detect map view
 };
 
 export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
@@ -49,8 +50,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   nearbyPlaques = [],
   onSelectNearbyPlaque,
   className = '',
+  isMapView = false, // NEW: Default to false
 }) => {
-  const { isPlaqueVisited, getVisitInfo } = useVisitedPlaques();
+  const { isPlaqueVisited, getVisitInfo, markAsVisited } = useVisitedPlaques();
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   
   // Date picker dialog state
@@ -69,7 +71,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
 
   const handleFavoriteToggle = () => {
     if (onFavoriteToggle) onFavoriteToggle(plaque.id);
-    // Removed toast call - now handled by the useFavorites hook
   };
 
   // Open date picker dialog
@@ -85,13 +86,11 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     
     setIsMarkingVisited(true);
     try {
-      // Create new visit in Firebase with selected date and notes
       await markAsVisited(plaque.id, {
         visitedAt: visitDate.toISOString(),
         notes: visitNotes,
       });
       
-      // Call the external handler if provided (for parent component to update UI)
       if (onMarkVisited) {
         onMarkVisited(plaque.id);
       }
@@ -153,11 +152,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // Image source with fallback
   const imageUrl = plaque.image || plaque.main_photo;
 
+  // NEW: Apply higher z-index for map view
+  const sheetClassName = isMapView 
+    ? `${className} z-[9999] [&>div]:z-[9999]` // Force highest z-index for map view
+    : className;
+
   return (
     <>
+      {/* MODIFIED: Add z-index override for map view */}
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="bottom" className={`h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0 ${className}`}>
-          {/* Add SheetDescription for accessibility */}
+        <SheetContent 
+          side="bottom" 
+          className={`h-[90vh] sm:max-w-md sm:h-full sm:right-0 sm:left-auto p-0 ${sheetClassName}`}
+          style={isMapView ? { zIndex: 9999 } : {}} // Inline style as fallback
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>{plaque.title}</SheetTitle>
             <SheetDescription>Details about {plaque.title} plaque</SheetDescription>
@@ -195,6 +203,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
             </div>
             
             <div className="p-6 overflow-y-auto flex-grow">
+              {/* Rest of the component content remains the same */}
               <h2 className="text-2xl font-bold mb-1">{plaque.title}</h2>
               
               <p className="text-gray-600 flex items-start mt-1 mb-4">
@@ -353,7 +362,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   <h3 className="font-medium mb-2">Nearby Plaques</h3>
                   <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                     {nearbyPlaques.map(nearbyPlaque => {
-                      // Get image URL and color for nearby plaque
                       const nearbyImageUrl = nearbyPlaque.image || nearbyPlaque.main_photo;
                       const nearbyPlaqueColor = nearbyPlaque.color || nearbyPlaque.colour || 'unknown';
                       
@@ -406,7 +414,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 
                 <Button 
                   className="flex-1" 
-                  variant="outline"onClick={() => {
+                  variant="outline"
+                  onClick={() => {
                     const location = plaque.latitude && plaque.longitude 
                       ? `${plaque.latitude},${plaque.longitude}`
                       : plaque.address;
@@ -421,15 +430,17 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         </SheetContent>
       </Sheet>
 
-      {/* Date Picker Dialog */}
+      {/* Date Picker Dialog - Apply high z-index for map view */}
       <Dialog open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent 
+          className={`sm:max-w-md ${isMapView ? 'z-[9999]' : ''}`}
+          style={isMapView ? { zIndex: 9999 } : {}}
+        >
           <DialogHeader>
             <DialogTitle>When did you visit this plaque?</DialogTitle>
           </DialogHeader>
           
           <div className="py-4 space-y-4">
-            {/* Date Picker */}
             <div className="space-y-2">
               <Label htmlFor="visit-date">Visit Date</Label>
               
@@ -461,7 +472,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               </Popover>
             </div>
 
-            {/* Notes */}
             <div className="space-y-2">
               <Label htmlFor="visit-notes">Notes (optional)</Label>
               <Textarea

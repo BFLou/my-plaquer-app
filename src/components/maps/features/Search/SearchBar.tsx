@@ -57,8 +57,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => value && setShowResults(true)}
-          placeholder="Search plaques or locations..."
-          className="pl-10 pr-10 h-12 text-base"
+          placeholder="Search plaques or location" 
+          className="pl-10 pr-10 h-12 text-base bg-white text-black border border-gray-300 focus:ring-2 focus:ring-blue-500" // MODIFIED LINE
         />
         {value && (
           <button

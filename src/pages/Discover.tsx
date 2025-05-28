@@ -591,7 +591,7 @@ const Discover = () => {
       />
       
       {/* Plaque Detail Modal */}
-      {selectedPlaque && (
+        {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
           isOpen={!!selectedPlaque}
@@ -601,6 +601,7 @@ const Discover = () => {
           onMarkVisited={handleMarkVisited}
           nearbyPlaques={getNearbyPlaques(selectedPlaque)}
           onSelectNearbyPlaque={setSelectedPlaque}
+          isMapView={urlState.view === 'map'} // NEW: Pass map view flag
         />
       )}
     </PageContainer>
