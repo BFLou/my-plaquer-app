@@ -1,4 +1,4 @@
-// src/components/maps/MapView.tsx
+// src/components/maps/MapView.tsx - Updated to support enhanced distance circle
 import React, { useEffect, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { useMap } from '@/components/maps/core/useMap';
@@ -16,6 +16,7 @@ interface MapViewProps {
   filterCenter: [number, number] | null;
   filterRadius: number;
   filterEnabled: boolean;
+  filterLocationName?: string; // New prop for location name
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -27,12 +28,13 @@ export const MapView: React.FC<MapViewProps> = ({
   onPlaqueClick,
   filterCenter,
   filterRadius,
-  filterEnabled
+  filterEnabled,
+  filterLocationName
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const { map, isReady } = useMap(mapRef, { center, zoom });
   
-  // Add markers
+  // Add markers with enhanced clustering
   useMarkers(map, plaques, {
     onMarkerClick: onPlaqueClick,
     routeMode
@@ -41,11 +43,12 @@ export const MapView: React.FC<MapViewProps> = ({
   // Add route line
   useRoute(map, routePoints);
   
-  // Add distance circle
+  // Add enhanced distance circle with location name
   useDistanceCircle(map, {
     center: filterCenter,
     radius: filterRadius,
-    enabled: filterEnabled
+    enabled: filterEnabled,
+    locationName: filterLocationName
   });
   
   // Update view when center/zoom changes

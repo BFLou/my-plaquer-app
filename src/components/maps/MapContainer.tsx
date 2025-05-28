@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx
+// src/components/maps/MapContainer.tsx - Enhanced with location-based search and distance filtering
 import React, { useReducer, useMemo, useCallback } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -18,10 +18,11 @@ interface MapState {
   searchQuery: string;
   selectedResult: any | null;
   
-  // Filter state
+  // Enhanced filter state
   filterCenter: [number, number] | null;
   filterRadius: number;
   filterEnabled: boolean;
+  filterLocation: string | null; // Store the location name
   
   // Route state
   routeMode: boolean;
@@ -35,7 +36,7 @@ type MapAction =
   | { type: 'SET_VIEW'; center: [number, number]; zoom: number }
   | { type: 'SET_SEARCH'; query: string }
   | { type: 'SELECT_RESULT'; result: any }
-  | { type: 'SET_FILTER'; center: [number, number]; radius: number }
+  | { type: 'SET_LOCATION_FILTER'; center: [number, number]; radius: number; location: string }
   | { type: 'UPDATE_RADIUS'; radius: number }
   | { type: 'CLEAR_FILTER' }
   | { type: 'TOGGLE_ROUTE_MODE' }
@@ -57,11 +58,12 @@ function mapReducer(state: MapState, action: MapAction): MapState {
     case 'SELECT_RESULT':
       return { ...state, selectedResult: action.result };
     
-    case 'SET_FILTER':
+    case 'SET_LOCATION_FILTER':
       return { 
         ...state, 
         filterCenter: action.center,
         filterRadius: action.radius,
+        filterLocation: action.location,
         filterEnabled: true 
       };
     
@@ -72,6 +74,7 @@ function mapReducer(state: MapState, action: MapAction): MapState {
       return { 
         ...state, 
         filterCenter: null,
+        filterLocation: null,
         filterEnabled: false 
       };
     
@@ -124,6 +127,7 @@ const initialState: MapState = {
   filterCenter: null,
   filterRadius: 1,
   filterEnabled: false,
+  filterLocation: null,
   routeMode: false,
   routePoints: [],
   showingDetails: null
@@ -146,8 +150,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const visiblePlaques = useMemo(() => {
     let filtered = plaques;
     
-    // Apply search filter
-    if (state.searchQuery) {
+    // Apply search filter (only for plaque text searches when no distance filter is active)
+    if (state.searchQuery && !state.filterEnabled) {
       const query = state.searchQuery.toLowerCase();
       filtered = filtered.filter(p => 
         p.title?.toLowerCase().includes(query) ||
@@ -156,13 +160,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       );
     }
     
-    // Apply distance filter
+    // Apply distance filter (this overrides text search when active)
     if (state.filterEnabled && state.filterCenter) {
-      filtered = filtered.filter(p => {
+      filtered = plaques.filter(p => {
         if (!p.latitude || !p.longitude) return false;
         const distance = calculateDistance(
-          state.filterCenter[0], 
-          state.filterCenter[1],
+          state.filterCenter![0], 
+          state.filterCenter![1],
           parseFloat(p.latitude as string), 
           parseFloat(p.longitude as string)
         );
@@ -193,32 +197,114 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   }, []);
 
-  const handleLocationSet = useCallback((coords: [number, number]) => {
-    dispatch({ type: 'SET_FILTER', center: coords, radius: state.filterRadius });
-    toast.success('Location set! Adjust the radius to filter plaques.');
+  // New handler for location-based searches (replaces both search and filter)
+  const handleLocationSelect = useCallback((result: any) => {
+    dispatch({ type: 'SELECT_RESULT', result });
+    
+    if (result.coordinates) {
+      // Clear any existing text search when selecting a location
+      dispatch({ type: 'SET_SEARCH', query: '' });
+      
+      // Set view to the location
+      dispatch({ 
+        type: 'SET_VIEW', 
+        center: result.coordinates, 
+        zoom: result.type === 'postcode' ? 15 : 13
+      });
+      
+      // Enable distance filter with default radius
+      const defaultRadius = result.type === 'postcode' ? 0.5 : 1.5;
+      dispatch({ 
+        type: 'SET_LOCATION_FILTER', 
+        center: result.coordinates, 
+        radius: defaultRadius,
+        location: result.title
+      });
+      
+      const plaqueCount = plaques.filter(p => {
+        if (!p.latitude || !p.longitude) return false;
+        const distance = calculateDistance(
+          result.coordinates[0], 
+          result.coordinates[1],
+          parseFloat(p.latitude as string), 
+          parseFloat(p.longitude as string)
+        );
+        return distance <= defaultRadius;
+      }).length;
+      
+      toast.success(`Found ${plaqueCount} plaques within ${defaultRadius}km of ${result.title}`);
+    }
+  }, [plaques]);
+
+  // Updated location set handler - this should only work when manually setting location
+  const handleManualLocationSet = useCallback((coords: [number, number]) => {
+    // Clear any text search
+    dispatch({ type: 'SET_SEARCH', query: '' });
+    
+    dispatch({ 
+      type: 'SET_LOCATION_FILTER', 
+      center: coords, 
+      radius: state.filterRadius,
+      location: 'My Location'
+    });
+    
+    // Center map on the location
+    dispatch({ 
+      type: 'SET_VIEW', 
+      center: coords, 
+      zoom: 14
+    });
+    
+    toast.success('Location set! Showing plaques within your selected radius.');
   }, [state.filterRadius]);
+
+  const handleRadiusChange = useCallback((radius: number) => {
+    dispatch({ type: 'UPDATE_RADIUS', radius });
+    
+    if (state.filterEnabled && state.filterCenter) {
+      const plaqueCount = plaques.filter(p => {
+        if (!p.latitude || !p.longitude) return false;
+        const distance = calculateDistance(
+          state.filterCenter![0], 
+          state.filterCenter![1],
+          parseFloat(p.latitude as string), 
+          parseFloat(p.longitude as string)
+        );
+        return distance <= radius;
+      }).length;
+      
+      toast.info(`${plaqueCount} plaques within ${radius}km of ${state.filterLocation}`);
+    }
+  }, [state.filterEnabled, state.filterCenter, state.filterLocation, plaques]);
+
+  const handleClearFilter = useCallback(() => {
+    dispatch({ type: 'CLEAR_FILTER' });
+    toast.info('Distance filter cleared - showing all plaques');
+  }, []);
 
   return (
     <div className={`relative h-[600px] w-full ${className}`}>
-      {/* Search Bar */}
+      {/* Enhanced Search Bar */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-md px-4">
         <SearchBar 
           plaques={plaques}
           value={state.searchQuery}
           onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
           onSelect={handleSearchSelect}
+          onLocationSelect={handleLocationSelect}
         />
       </div>
 
-      {/* Location Filter */}
+      {/* Location Filter - Only for setting distance filters */}
       <div className="absolute top-4 right-4 z-[1000]">
         <LocationFilter
           enabled={state.filterEnabled}
           center={state.filterCenter}
           radius={state.filterRadius}
-          onSetLocation={handleLocationSet}
-          onRadiusChange={(radius) => dispatch({ type: 'UPDATE_RADIUS', radius })}
-          onClear={() => dispatch({ type: 'CLEAR_FILTER' })}
+          locationName={state.filterLocation}
+          onSetLocation={handleManualLocationSet}
+          onRadiusChange={handleRadiusChange}
+          onClear={handleClearFilter}
         />
       </div>
 
@@ -244,15 +330,22 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         />
       </div>
 
-      {/* Status Bar */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white rounded-lg shadow-lg px-3 py-2 text-sm">
-        <span className="font-medium">{visiblePlaques.length}</span> of{' '}
-        <span className="font-medium">{plaques.length}</span> plaques
-        {state.filterEnabled && (
-          <span className="ml-2 text-green-600">
-            • Within {state.filterRadius}km
-          </span>
-        )}
+      {/* Enhanced Status Bar */}
+      <div className="absolute bottom-4 left-4 z-[1000] bg-white rounded-lg shadow-lg px-3 py-2 text-sm status-bar-enhanced">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{visiblePlaques.length}</span> of{' '}
+          <span className="font-medium">{plaques.length}</span> plaques
+          {state.filterEnabled && state.filterLocation && (
+            <div className="status-location-info ml-2">
+              Within {state.filterRadius}km of {state.filterLocation}
+            </div>
+          )}
+          {state.searchQuery && !state.filterEnabled && (
+            <div className="status-location-info ml-2">
+              Matching "{state.searchQuery}"
+            </div>
+          )}
+        </div>
       </div>
 
       {/* The Map */}
