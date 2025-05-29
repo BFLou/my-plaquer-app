@@ -1,4 +1,4 @@
-// src/components/maps/core/useMarkers.ts - Updated with Minimalist Outline Cluster Icons
+// src/components/maps/core/useMarkers.ts - COMPLETE: Fixed marker click handlers
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -34,13 +34,10 @@ export const useMarkers = (
     
     // Create cluster group with Minimalist Outline styling
     const clusterGroup = L.markerClusterGroup({
-      // Clustering options
       maxClusterRadius: 80,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
-      
-      // Performance options
       chunkedLoading: true,
       chunkInterval: 200,
       chunkDelay: 50,
@@ -49,13 +46,11 @@ export const useMarkers = (
       animateAddingMarkers: false,
       disableClusteringAtZoom: 18,
       
-      // UPDATED: Minimalist Outline cluster icon function
       iconCreateFunction: function(cluster) {
         const count = cluster.getChildCount();
         let size = 36;
         let fontSize = '12px';
         
-        // Responsive sizing based on cluster count
         if (count < 6) {
           size = 36;
           fontSize = '12px';
@@ -102,7 +97,6 @@ export const useMarkers = (
     
     plaques.forEach(plaque => {
       try {
-        // Skip plaques without coordinates
         if (!plaque.latitude || !plaque.longitude) return;
         
         const lat = parseFloat(plaque.latitude as string);
@@ -110,7 +104,6 @@ export const useMarkers = (
         
         if (isNaN(lat) || isNaN(lng)) return;
         
-        // Create icon for this plaque
         const icon = createPlaqueIcon(L, plaque, false, false);
         const marker = L.marker([lat, lng], { 
           icon,
@@ -120,15 +113,14 @@ export const useMarkers = (
           zIndexOffset: 0
         });
         
-        // Create popup content
+        // FIXED: Enhanced popup with route button
         const popupContent = createPlaquePopup(
           plaque,
-          options.onMarkerClick,
+          options.onMarkerClick, // This handles both detail view and route adding
           options.routeMode,
-          options.routeMode ? options.onMarkerClick : null
+          options.routeMode ? options.onMarkerClick : null // Add to route handler
         );
         
-        // Configure popup options
         const popupOptions = {
           closeButton: true,
           autoClose: true,
@@ -140,19 +132,14 @@ export const useMarkers = (
           keepInView: true
         };
         
-        // Bind popup to marker
         marker.bindPopup(popupContent, popupOptions);
         
-        // Add click handler
+        // FIXED: Always show popup first, don't auto-add to route
         marker.on('click', function(e: any) {
-          if (options.routeMode) {
-            options.onMarkerClick(plaque);
-            return false;
-          }
           marker.openPopup();
+          return false; // Prevent event bubbling
         });
         
-        // Store marker in map
         markersMap.set(plaque.id, marker);
         markers.push(marker);
       } catch (error) {
@@ -160,17 +147,13 @@ export const useMarkers = (
       }
     });
     
-    // Add all markers to cluster group at once
     clusterGroup.addLayers(markers);
-    
-    // Add cluster group to map
     map.addLayer(clusterGroup);
     
-    // Store references
     clusterGroupRef.current = clusterGroup;
     markersRef.current = markersMap;
     
-    console.log(`Added ${markers.length} markers with minimalist outline clusters`);
+    console.log(`Added ${markers.length} markers with route mode: ${options.routeMode}`);
     
   }, [map, plaques, options.onMarkerClick, options.routeMode]);
 };

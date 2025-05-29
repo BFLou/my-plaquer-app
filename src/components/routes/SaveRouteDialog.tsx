@@ -1,4 +1,4 @@
-// src/components/routes/SaveRouteDialog.tsx - FIXED: Removed public/private option
+// src/components/routes/SaveRouteDialog.tsx - FIXED: Proper sizing and text wrapping
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -112,13 +112,13 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] z-[1100]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Route size={20} className="text-green-600" />
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-auto z-[1100]">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Route size={24} className="text-green-600" />
             Save Walking Route
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-base">
             Save your walking route to access it later and share with others.
           </DialogDescription>
         </DialogHeader>
@@ -127,31 +127,35 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
           {/* Route Summary */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-green-900">Route Summary</h3>
+              <h3 className="font-medium text-green-900 text-lg">Route Summary</h3>
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 {routePoints.length} stops
               </Badge>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div className="flex items-center gap-2 text-green-700">
-                <MapPin size={16} />
-                <span className="font-medium">{formatDistance(routeDistance)}</span>
+                <MapPin size={18} />
+                <span className="font-medium text-base">{formatDistance(routeDistance)}</span>
               </div>
               <div className="flex items-center gap-2 text-green-700">
-                <Clock size={16} />
-                <span className="font-medium">{formatWalkingTime(routeDistance)}</span>
+                <Clock size={18} />
+                <span className="font-medium text-base">{formatWalkingTime(routeDistance)}</span>
               </div>
             </div>
 
             {/* Route stops preview */}
             <div className="mt-3 pt-3 border-t border-green-200">
-              <div className="text-xs text-green-600 mb-2">Route stops:</div>
-              <div className="max-h-20 overflow-y-auto text-xs text-green-700">
+              <div className="text-sm text-green-600 mb-2 font-medium">Route stops:</div>
+              <div className="max-h-32 overflow-y-auto text-sm text-green-700 space-y-1">
                 {routePoints.map((point, index) => (
-                  <div key={point.id} className="flex items-center gap-2 mb-1">
-                    <span className="font-mono w-4">{index + 1}.</span>
-                    <span className="truncate">{point.title}</span>
+                  <div key={point.id} className="flex items-start gap-2">
+                    <span className="font-mono text-xs bg-green-200 text-green-800 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                      {index + 1}
+                    </span>
+                    <span className="break-words flex-1 leading-relaxed">
+                      {point.title}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -161,7 +165,9 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
           {/* Form Fields */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="route-name">Route Name *</Label>
+              <Label htmlFor="route-name" className="text-base font-medium">
+                Route Name *
+              </Label>
               <Input
                 id="route-name"
                 placeholder="Enter a name for your route"
@@ -169,6 +175,7 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 disabled={isSaving}
                 maxLength={100}
+                className="text-base py-3"
               />
               <div className="text-xs text-gray-500 text-right">
                 {name.length}/100 characters
@@ -176,15 +183,18 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="route-description">Description (optional)</Label>
+              <Label htmlFor="route-description" className="text-base font-medium">
+                Description (optional)
+              </Label>
               <Textarea
                 id="route-description"
                 placeholder="Add notes about your route, highlights, or recommendations..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isSaving}
-                rows={3}
+                rows={4}
                 maxLength={500}
+                className="text-base resize-none"
               />
               <div className="text-xs text-gray-500 text-right">
                 {description.length}/500 characters
@@ -192,34 +202,38 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
             </div>
           </div>
 
-          {/* REMOVED: Public/Private toggle - Everything is private by default */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-xs">🔒</span>
+          {/* Privacy Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-sm">🔒</span>
               </div>
-              <div>
-                <div className="font-medium text-blue-900 text-sm">Private Route</div>
-                <div className="text-blue-700 text-xs">
+              <div className="flex-1">
+                <div className="font-medium text-blue-900 text-base mb-1">
+                  Private Route
+                </div>
+                <div className="text-blue-700 text-sm leading-relaxed">
                   Your route will be saved privately to your account. Only you can access it.
+                  You can export it as GPX or share the details manually if needed.
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-3 pt-6">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={isSaving}
+            className="w-full sm:w-auto order-2 sm:order-1"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={!isFormValid || isSaving}
-            className="min-w-[100px]"
+            className="w-full sm:w-auto min-w-[120px] order-1 sm:order-2"
           >
             {isSaving ? (
               <>

@@ -1,4 +1,4 @@
-// src/components/maps/utils/markerUtils.ts - Updated
+// src/components/maps/utils/markerUtils.ts - COMPLETE: All marker utilities
 import { Plaque } from '@/types/plaque';
 
 /**
@@ -56,61 +56,120 @@ export const createPlaqueIcon = (
 };
 
 /**
- * Creates popup content for a plaque marker with improved styling
- * Enhanced to work properly in fullscreen mode
+ * Creates popup content for a plaque marker with enhanced route functionality
  */
 export const createPlaquePopup = (
   plaque: Plaque,
-  onPlaqueClick: (plaque: Plaque) => void,
+  onViewDetails: (plaque: Plaque) => void,
   isRoutingMode: boolean = false,
   onAddToRoute: ((plaque: Plaque) => void) | null = null
 ) => {
   const popupContent = document.createElement('div');
-  popupContent.className = 'plaque-popup p-3';
+  popupContent.className = 'plaque-popup p-3 min-w-[250px]';
   
-  // Create popup HTML with improved styling and conditional routing button
+  // Enhanced popup HTML with better styling
   popupContent.innerHTML = `
-    <div class="font-semibold text-sm mb-2">${plaque.title || 'Unnamed Plaque'}</div>
-    <div class="text-xs text-gray-600 mb-3">${plaque.location || plaque.address || ''}</div>
-    <div class="flex gap-2">
-      <button class="view-details py-1.5 px-3 bg-blue-500 text-white text-xs rounded flex-grow hover:bg-blue-600 transition-colors cursor-pointer">
-        View Details
-      </button>
-      ${isRoutingMode ? `
-        <button class="add-to-route py-1.5 px-3 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors cursor-pointer">
-          Add to Route
+    <div class="space-y-3">
+      <!-- Plaque Title -->
+      <div class="font-semibold text-base text-gray-900 leading-tight">
+        ${plaque.title || 'Unnamed Plaque'}
+      </div>
+      
+      <!-- Location Info -->
+      <div class="text-sm text-gray-600">
+        ${plaque.location || plaque.address || 'Location not specified'}
+      </div>
+      
+      <!-- Additional Info -->
+      <div class="flex flex-wrap gap-2 text-xs">
+        ${plaque.color ? `
+          <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+            ${plaque.color.charAt(0).toUpperCase() + plaque.color.slice(1)} plaque
+          </span>
+        ` : ''}
+        ${plaque.profession ? `
+          <span class="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+            ${plaque.profession}
+          </span>
+        ` : ''}
+        ${plaque.visited ? `
+          <span class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
+            ✓ Visited
+          </span>
+        ` : ''}
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="flex gap-2 pt-2">
+        <button class="view-details flex-1 py-2 px-3 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+          View Details
         </button>
-      ` : ''}
+        
+        ${isRoutingMode ? `
+          <button class="add-to-route py-2 px-3 bg-green-500 hover:bg-green-600 text-white text-sm rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Add to Route
+          </button>
+        ` : ''}
+      </div>
     </div>
   `;
   
-  // Add event listeners - Improved with proper event handling for fullscreen
-  const detailButtonHandler = (e: Event) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onPlaqueClick) {
-      onPlaqueClick(plaque);
+  // Enhanced event handlers with better error handling
+  const setupEventHandlers = () => {
+    const detailButton = popupContent.querySelector('.view-details');
+    const routeButton = popupContent.querySelector('.add-to-route');
+    
+    if (detailButton) {
+      const handleDetailClick = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          onViewDetails(plaque);
+        } catch (error) {
+          console.error('Error opening plaque details:', error);
+        }
+      };
+      
+      detailButton.addEventListener('click', handleDetailClick, { capture: true });
+    }
+    
+    if (routeButton && onAddToRoute) {
+      const handleRouteClick = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          onAddToRoute(plaque);
+          // Visual feedback
+          const button = e.target as HTMLButtonElement;
+          const originalText = button.innerHTML;
+          button.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            Added!
+          `;
+          button.classList.add('bg-green-600');
+          
+          // Reset after 2 seconds
+          setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('bg-green-600');
+          }, 2000);
+        } catch (error) {
+          console.error('Error adding to route:', error);
+        }
+      };
+      
+      routeButton.addEventListener('click', handleRouteClick, { capture: true });
     }
   };
   
-  const routeButtonHandler = (e: Event) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onAddToRoute) {
-      onAddToRoute(plaque);
-    }
-  };
-  
-  // Add event listeners immediately
-  const detailButton = popupContent.querySelector('.view-details');
-  if (detailButton) {
-    detailButton.addEventListener('click', detailButtonHandler, { capture: true });
-  }
-  
-  const routeButton = popupContent.querySelector('.add-to-route');
-  if (routeButton && onAddToRoute) {
-    routeButton.addEventListener('click', routeButtonHandler, { capture: true });
-  }
+  // Use setTimeout to ensure DOM is ready
+  setTimeout(setupEventHandlers, 0);
   
   return popupContent;
 };
