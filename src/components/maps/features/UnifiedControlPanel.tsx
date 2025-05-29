@@ -1,4 +1,4 @@
-// src/components/maps/features/UnifiedControlPanel.tsx - NEW: Single control panel for all map actions
+// src/components/maps/features/UnifiedControlPanel.tsx - REFINED: Compact and mobile-friendly
 import React, { useState } from 'react';
 import { 
   MapPin, 
@@ -152,24 +152,22 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
 
   return (
     <>
-      <Card className={`w-48 shadow-lg backdrop-blur-sm bg-white/95 ${className}`}>
+      <Card className={`w-40 sm:w-48 shadow-lg backdrop-blur-sm bg-white/95 border border-gray-200/50 ${className}`}>
         <CardContent className="p-2 space-y-1">
           
           {/* Distance Filter Button */}
           <Button
             variant={distanceFilter.enabled ? "default" : "outline"}
             size="sm"
-            className="w-full justify-between h-10 text-left"
+            className="w-full justify-between h-8 text-left text-xs font-medium"
             onClick={() => setShowDistanceFilter(true)}
           >
-            <div className="flex items-center gap-2">
-              <MapPin size={16} />
-              <span className="flex-1 text-left">
-                {distanceFilter.enabled ? "Distance" : "Distance"}
-              </span>
+            <div className="flex items-center gap-1.5">
+              <MapPin size={14} />
+              <span className="truncate">Distance</span>
             </div>
             {distanceFilter.enabled && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 min-w-[16px]">
                 {distanceFilter.radius < 1 
                   ? `${Math.round(distanceFilter.radius * 1000)}m` 
                   : `${distanceFilter.radius}km`}
@@ -181,15 +179,15 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
           <Button
             variant={activeStandardFiltersCount > 0 ? "default" : "outline"}
             size="sm"
-            className="w-full justify-between h-10 text-left"
+            className="w-full justify-between h-8 text-left text-xs font-medium"
             onClick={() => setShowStandardFilters(true)}
           >
-            <div className="flex items-center gap-2">
-              <Filter size={16} />
-              <span className="flex-1 text-left">Filters</span>
+            <div className="flex items-center gap-1.5">
+              <Filter size={14} />
+              <span className="truncate">Filters</span>
             </div>
             {activeStandardFiltersCount > 0 && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 min-w-[16px]">
                 {activeStandardFiltersCount}
               </Badge>
             )}
@@ -199,17 +197,15 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
           <Button
             variant={routeMode ? "default" : "outline"}
             size="sm"
-            className="w-full justify-between h-10 text-left"
+            className="w-full justify-between h-8 text-left text-xs font-medium"
             onClick={onToggleRoute}
           >
-            <div className="flex items-center gap-2">
-              <Route size={16} />
-              <span className="flex-1 text-left">
-                {routeMode ? "Planning" : "Route"}
-              </span>
+            <div className="flex items-center gap-1.5">
+              <Route size={14} />
+              <span className="truncate">{routeMode ? "Planning" : "Route"}</span>
             </div>
             {routePointsCount > 0 && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 min-w-[16px]">
                 {routePointsCount}
               </Badge>
             )}
@@ -219,11 +215,11 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
           <Button
             variant="outline"
             size="sm"
-            className="w-full justify-start h-10 text-left text-gray-600 hover:text-gray-800"
+            className="w-full justify-start h-8 text-left text-xs font-medium text-gray-600 hover:text-gray-800"
             onClick={handleResetAll}
           >
-            <div className="flex items-center gap-2">
-              <RotateCcw size={16} />
+            <div className="flex items-center gap-1.5">
+              <RotateCcw size={14} />
               <span>Reset</span>
             </div>
           </Button>
@@ -231,61 +227,44 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
         </CardContent>
       </Card>
 
-      {/* Distance Filter Modal - REDESIGNED: Match DiscoverFilterDialog styling */}
+      {/* Distance Filter Modal - Compact design */}
       {showDistanceFilter && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-3 sm:p-4">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDistanceFilter(false)} />
-          <div className="relative z-[9999] w-full max-w-md h-[85vh] max-h-[650px] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col">
+          <div className="relative z-[9999] w-full max-w-sm sm:max-w-md max-h-[85vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col">
             
-            {/* Header - Match DiscoverFilterDialog style */}
+            {/* Compact Header */}
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-3 text-white">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Target size={20} />
-                  Distance Filter
-                </h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target size={18} />
+                  <h2 className="text-lg font-semibold">Distance Filter</h2>
+                </div>
                 <button
                   onClick={() => setShowDistanceFilter(false)}
                   className="h-8 w-8 p-1 rounded-full hover:bg-white/20 flex items-center justify-center"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
               
-              <div className="text-sm text-blue-100">
-                {distanceFilter.enabled && distanceFilter.locationName
-                  ? `Active filter: ${distanceFilter.locationName}`
-                  : "Set a location to filter plaques by distance"
-                }
-              </div>
+              {distanceFilter.enabled && distanceFilter.locationName && (
+                <div className="text-sm text-blue-100 mt-1">
+                  Active: {distanceFilter.locationName}
+                </div>
+              )}
             </div>
 
-            {/* Status Alert - When distance filter is active */}
-            {distanceFilter.enabled && distanceFilter.locationName && (
-              <div className="px-4 py-3 bg-blue-50 border-b">
-                <div className="flex items-center gap-2 text-sm text-blue-800">
-                  <MapPin className="h-4 w-4" />
-                  <div>
-                    <strong>Location Filter Active:</strong> Showing results within{' '}
-                    {distanceFilter.radius < 1 
-                      ? `${Math.round(distanceFilter.radius * 1000)}m` 
-                      : `${distanceFilter.radius}km`}{' '}
-                    of {distanceFilter.locationName}.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Content */}
+            {/* Compact Content */}
             <div className="flex-grow overflow-auto p-4">
               {!distanceFilter.enabled ? (
-                // Setup new distance filter
+                // Setup new distance filter - Compact
                 <div className="space-y-4">
-                  <div className="text-sm text-gray-600 mb-4">
-                    Set a center location to find plaques within a specific distance radius.
+                  <div className="text-sm text-gray-600">
+                    Set a location to find plaques within a specific distance.
                   </div>
                   
-                  {/* Use My Location Button */}
+                  {/* My Location Button */}
                   <button
                     onClick={async () => {
                       if (navigator.geolocation) {
@@ -298,9 +277,7 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                             onSetLocation(coords);
                             setShowDistanceFilter(false);
                           },
-                          (error) => {
-                            console.error('Error getting location:', error);
-                          }
+                          (error) => console.error('Error getting location:', error)
                         );
                       }
                     }}
@@ -310,20 +287,20 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                       <Target size={16} className="text-blue-600" />
                     </div>
                     <div className="text-left">
-                      <div className="font-medium text-sm">Use my current location</div>
-                      <div className="text-xs text-gray-500">Find plaques near me</div>
+                      <div className="font-medium text-sm">Use my location</div>
+                      <div className="text-xs text-gray-500">Find nearby plaques</div>
                     </div>
                   </button>
                   
-                  {/* Manual Address Input */}
+                  {/* Manual Address Input - Compact */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
-                      Or enter a location manually:
+                      Or enter location:
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Enter London postcode, area, or address..."
+                        placeholder="London postcode or area..."
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         onKeyDown={async (e) => {
                           if (e.key === 'Enter' && e.currentTarget.value.trim()) {
@@ -352,32 +329,25 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                         }}
                       />
                     </div>
-                    <div className="text-xs text-gray-500">
-                      Examples: "NW1 2DB", "Camden", "Westminster Bridge"
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                    💡 <strong>Tip:</strong> Use the search bar above the map to find specific locations, then fine-tune the distance here.
                   </div>
                 </div>
               ) : (
-                // Manage existing distance filter
-                <div className="space-y-6">
-                  {/* Current Location Display */}
-                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div className="text-2xl font-bold text-green-600 mb-1">
+                // Manage existing distance filter - Compact
+                <div className="space-y-4">
+                  {/* Current Location Display - Compact */}
+                  <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-lg font-bold text-green-600">
                       {distanceFilter.radius < 1 
                         ? `${Math.round(distanceFilter.radius * 1000)}m` 
                         : `${distanceFilter.radius}km`}
                     </div>
-                    <div className="text-sm text-green-700">
-                      Search radius from {distanceFilter.locationName}
+                    <div className="text-sm text-green-700 truncate">
+                      from {distanceFilter.locationName}
                     </div>
                   </div>
 
-                  {/* Quick Distance Presets */}
-                  <div className="space-y-3">
+                  {/* Quick Distance Presets - Compact Grid */}
+                  <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-700">Quick distances:</div>
                     <div className="grid grid-cols-3 gap-2">
                       {[0.5, 1, 1.5, 2, 3, 5].map((distance) => (
@@ -385,28 +355,23 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                           key={distance}
                           onClick={() => onRadiusChange(distance)}
                           className={`
-                            h-10 px-2 text-xs font-medium rounded-md transition-all
+                            h-8 px-2 text-xs font-medium rounded-md transition-all
                             ${Math.abs(distanceFilter.radius - distance) < 0.01
-                              ? 'bg-blue-500 text-white border-blue-600 shadow-md'
+                              ? 'bg-blue-500 text-white border-blue-600'
                               : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
                             }
                           `}
                         >
-                          <div className="font-medium">
-                            {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
-                          </div>
-                          <div className="text-[10px] opacity-75">
-                            {distance < 1 ? 'Close' : distance <= 2 ? 'Walk' : 'Wide'}
-                          </div>
+                          {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
                         </button>
                       ))}
                     </div>
                   </div>
                   
-                  {/* Custom Slider */}
-                  <div className="space-y-3">
+                  {/* Custom Slider - Compact */}
+                  <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <div className="text-sm font-medium text-gray-700">Custom distance:</div>
+                      <div className="text-sm font-medium text-gray-700">Custom:</div>
                       <div className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
                         {distanceFilter.radius < 1 
                           ? `${Math.round(distanceFilter.radius * 1000)}m` 
@@ -414,49 +379,28 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                       </div>
                     </div>
                     
-                    <div className="px-1">
-                      <input
-                        type="range"
-                        min="0.1"
-                        max="10"
-                        step="0.1"
-                        value={distanceFilter.radius}
-                        onChange={(e) => onRadiusChange(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                      />
-                      <div className="flex justify-between text-xs text-gray-400 mt-1">
-                        <span>100m</span>
-                        <span>1km</span>
-                        <span>5km</span>
-                        <span>10km</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Distance Info */}
-                  <div className="pt-3 border-t space-y-2">
-                    <div className="text-xs text-gray-600">
-                      <div className="flex items-center justify-between">
-                        <span>Estimated walking time:</span>
-                        <span className="font-medium">~{Math.round(distanceFilter.radius * 12)} minutes</span>
-                      </div>
-                      {distanceFilter.center && (
-                        <div className="flex items-center justify-between mt-1">
-                          <span>Center coordinates:</span>
-                          <span className="font-mono text-[10px]">
-                            {distanceFilter.center[0].toFixed(4)}, {distanceFilter.center[1].toFixed(4)}
-                          </span>
-                        </div>
-                      )}
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="10"
+                      step="0.1"
+                      value={distanceFilter.radius}
+                      onChange={(e) => onRadiusChange(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>100m</span>
+                      <span>5km</span>
+                      <span>10km</span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Footer Actions - Match DiscoverFilterDialog */}
-            <div className="p-4 border-t bg-gray-50">
-              <div className="flex gap-3">
+            {/* Compact Footer Actions */}
+            <div className="p-3 border-t bg-gray-50">
+              <div className="flex gap-2">
                 {distanceFilter.enabled ? (
                   <>
                     <button
@@ -464,13 +408,13 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                         onClearDistanceFilter();
                         setShowDistanceFilter(false);
                       }}
-                      className="flex-1 px-4 py-2 bg-white border border-red-300 text-red-600 rounded-md hover:bg-red-50 transition-colors font-medium text-sm"
+                      className="flex-1 px-3 py-2 bg-white border border-red-300 text-red-600 rounded-md hover:bg-red-50 transition-colors font-medium text-sm"
                     >
-                      Clear Filter
+                      Clear
                     </button>
                     <button
                       onClick={() => setShowDistanceFilter(false)}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
+                      className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
                     >
                       Done
                     </button>
@@ -478,7 +422,7 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                 ) : (
                   <button
                     onClick={() => setShowDistanceFilter(false)}
-                    className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium text-sm"
+                    className="w-full px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium text-sm"
                   >
                     Cancel
                   </button>
@@ -489,12 +433,11 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
         </div>
       )}
 
-      {/* Standard Filters Dialog - UPDATED: Higher z-index for map view */}
+      {/* Standard Filters Dialog */}
       <DiscoverFilterDialog
         isOpen={showStandardFilters}
         onClose={() => setShowStandardFilters(false)}
         
-        // Filter options
         postcodes={filterOptions.postcodeOptions}
         selectedPostcodes={selectedPostcodes}
         onPostcodesChange={onPostcodesChange}
@@ -507,21 +450,18 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
         selectedProfessions={selectedProfessions}
         onProfessionsChange={onProfessionsChange}
         
-        // Toggle options
         onlyVisited={onlyVisited}
         onVisitedChange={onVisitedChange}
         
         onlyFavorites={onlyFavorites}
         onFavoritesChange={onFavoritesChange}
         
-        // Actions
         onApply={() => setShowStandardFilters(false)}
         onReset={() => {
           onResetStandardFilters();
           setShowStandardFilters(false);
         }}
         
-        // Distance filter integration
         distanceFilter={distanceFilter}
         allPlaques={plaques}
         isPlaqueVisited={isPlaqueVisited}

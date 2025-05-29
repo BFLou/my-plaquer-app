@@ -82,14 +82,14 @@ export const createPlaquePopup = (
       
       <!-- Additional Info -->
       <div class="flex flex-wrap gap-2 text-xs">
-        ${plaque.color ? `
+        ${plaque.color && plaque.color.toLowerCase() !== 'unknown' ? `
           <span class="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
             ${plaque.color.charAt(0).toUpperCase() + plaque.color.slice(1)} plaque
           </span>
         ` : ''}
-        ${plaque.profession ? `
+        ${plaque.profession && plaque.profession.toLowerCase() !== 'unknown' ? `
           <span class="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-800">
-            ${plaque.profession}
+            ${plaque.profession.charAt(0).toUpperCase() + plaque.profession.slice(1)}
           </span>
         ` : ''}
         ${plaque.visited ? `
