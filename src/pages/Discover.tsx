@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx
+// src/pages/Discover.tsx - UPDATED: Distance filter integration for all views
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -12,25 +12,27 @@ import { Button } from "@/components/ui/button";
 import Pagination from '@/components/plaques/Pagination';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';
-
-// Import the new simplified map
+import DiscoverFilters from '../components/discover/DiscoverFilters';
 import { MapContainer } from '../components/maps/MapContainer';
-
-// Import hooks
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
-
-// Simple URL state management
 import { useSearchParams } from 'react-router-dom';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
+// NEW: Distance filter state interface
+interface DistanceFilter {
+  enabled: boolean;
+  center: [number, number] | null;
+  radius: number;
+  locationName: string | null;
+}
+
 const Discover = () => {
-  // URL state management (simplified)
+  // URL state management
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Get values from URL
   const urlState = {
     view: (searchParams.get('view') as ViewMode) || 'grid',
     search: searchParams.get('search') || '',
@@ -41,7 +43,6 @@ const Discover = () => {
     onlyFavorites: searchParams.get('favorites') === 'true',
   };
 
-  // Update URL helpers
   const updateUrlState = (updates: Partial<typeof urlState>) => {
     const newParams = new URLSearchParams(searchParams);
     
@@ -71,15 +72,18 @@ const Discover = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  // NEW: Distance filter state - shared across all views
+  const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>({
+    enabled: false,
+    center: null,
+    radius: 1,
+    locationName: null
+  });
+
   // Filter options
   const [postcodeOptions, setPostcodeOptions] = useState([]);
   const [colorOptions, setColorOptions] = useState([]);
   const [professionOptions, setProfessionOptions] = useState([]);
-
-  // Distance filter state (simplified)
-  const [activeLocation, setActiveLocation] = useState<[number, number] | null>(null);
-  const [filterRadius, setFilterRadius] = useState(1);
-  const [filterEnabled, setFilterEnabled] = useState(false);
 
   // External hooks
   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
@@ -146,7 +150,7 @@ const Discover = () => {
     }
   }, []);
 
-  // Filtered plaques
+  // UPDATED: Enhanced filtered plaques with distance filter
   const filteredPlaques = useMemo(() => {
     let filtered = allPlaques.filter((plaque) => {
       // Standard filters
@@ -178,8 +182,8 @@ const Discover = () => {
              matchesFavorite;
     });
 
-    // Apply distance filter if active
-    if (activeLocation && filterEnabled) {
+    // NEW: Apply distance filter for ALL views (not just map)
+    if (distanceFilter.enabled && distanceFilter.center) {
       filtered = filtered.filter(plaque => {
         if (!plaque.latitude || !plaque.longitude) return false;
         
@@ -188,8 +192,13 @@ const Discover = () => {
         
         if (isNaN(lat) || isNaN(lng)) return false;
         
-        const distance = calculateDistance(activeLocation[0], activeLocation[1], lat, lng);
-        return distance <= filterRadius;
+        const distance = calculateDistance(
+          distanceFilter.center![0], 
+          distanceFilter.center![1], 
+          lat, 
+          lng
+        );
+        return distance <= distanceFilter.radius;
       });
     }
 
@@ -199,27 +208,26 @@ const Discover = () => {
     urlState,
     isPlaqueVisited,
     isFavorite,
-    activeLocation,
-    filterEnabled,
-    filterRadius
+    distanceFilter.enabled,
+    distanceFilter.center,
+    distanceFilter.radius
   ]);
 
-  // Active filters count
+  // UPDATED: Active filters count including distance filter
   const activeFiltersCount = useMemo(() => {
     return urlState.postcodes.length + 
            urlState.colors.length + 
            urlState.professions.length + 
            (urlState.onlyVisited ? 1 : 0) + 
            (urlState.onlyFavorites ? 1 : 0) +
-           (activeLocation && filterEnabled ? 1 : 0);
+           (distanceFilter.enabled ? 1 : 0); // NEW: Include distance filter
   }, [
     urlState.postcodes.length,
     urlState.colors.length,
     urlState.professions.length,
     urlState.onlyVisited,
     urlState.onlyFavorites,
-    activeLocation,
-    filterEnabled
+    distanceFilter.enabled // NEW: Include distance filter
   ]);
 
   // Event handlers
@@ -246,6 +254,7 @@ const Discover = () => {
     }
   }, [markAsVisited]);
 
+  // UPDATED: Reset filters including distance filter
   const resetFilters = useCallback(() => {
     updateUrlState({
       search: '',
@@ -255,22 +264,35 @@ const Discover = () => {
       onlyVisited: false,
       onlyFavorites: false,
     });
-    setActiveLocation(null);
-    setFilterEnabled(false);
+    // NEW: Clear distance filter
+    setDistanceFilter({
+      enabled: false,
+      center: null,
+      radius: 1,
+      locationName: null
+    });
     setCurrentPage(1);
+  }, []);
+
+  // NEW: Distance filter handlers
+  const handleDistanceFilterChange = useCallback((newFilter: Partial<DistanceFilter>) => {
+    setDistanceFilter(prev => ({ ...prev, ...newFilter }));
+    setCurrentPage(1); // Reset to first page when filter changes
   }, []);
 
   // Distance helper functions
   const getDistanceFromActiveLocation = useCallback((plaque) => {
-    if (!activeLocation || !plaque.latitude || !plaque.longitude) return Infinity;
+    if (!distanceFilter.enabled || !distanceFilter.center || !plaque.latitude || !plaque.longitude) {
+      return Infinity;
+    }
     
     const lat = parseFloat(plaque.latitude);
     const lng = parseFloat(plaque.longitude);
     
     if (isNaN(lat) || isNaN(lng)) return Infinity;
     
-    return calculateDistance(activeLocation[0], activeLocation[1], lat, lng);
-  }, [activeLocation]);
+    return calculateDistance(distanceFilter.center[0], distanceFilter.center[1], lat, lng);
+  }, [distanceFilter]);
 
   const formatDistance = useCallback((distanceKm) => {
     return `${distanceKm.toFixed(1)} km`;
@@ -318,6 +340,12 @@ const Discover = () => {
               plaques={filteredPlaques}
               onPlaqueClick={handlePlaqueClick}
               className="h-full w-full"
+              // Pass distance filter handlers to map
+              onDistanceFilterChange={handleDistanceFilterChange}
+              distanceFilter={distanceFilter}
+              // Pass external filter functions
+              isPlaqueVisited={isPlaqueVisited}
+              isFavorite={isFavorite}
             />
           </div>
         </div>
@@ -351,7 +379,7 @@ const Discover = () => {
     }
 
     const commonProps = {
-      showDistance: !!activeLocation,
+      showDistance: distanceFilter.enabled, // NEW: Show distance when filter is active
       formatDistance,
     };
 
@@ -368,7 +396,7 @@ const Discover = () => {
                 onPlaqueClick={handlePlaqueClick}
                 isVisited={isPlaqueVisited(plaque.id)}
                 onMarkVisited={handleMarkVisited}
-                distance={activeLocation ? getDistanceFromActiveLocation(plaque) : 0}
+                distance={distanceFilter.enabled ? getDistanceFromActiveLocation(plaque) : 0}
                 {...commonProps}
               />
             ))}
@@ -400,7 +428,7 @@ const Discover = () => {
                 onPlaqueClick={handlePlaqueClick}
                 isVisited={isPlaqueVisited(plaque.id)}
                 onMarkVisited={handleMarkVisited}
-                distance={activeLocation ? getDistanceFromActiveLocation(plaque) : 0}
+                distance={distanceFilter.enabled ? getDistanceFromActiveLocation(plaque) : 0}
                 {...commonProps}
               />
             ))}
@@ -436,111 +464,33 @@ const Discover = () => {
         onOpenFilters={() => setFiltersOpen(true)}
       />
       
-      {/* Active filters display */}
-      {activeFiltersCount > 0 && (
-        <div className="container mx-auto px-4 mt-3">
-          <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg">
-            <span className="text-sm font-medium text-gray-700">Active filters:</span>
-            
-            {/* Color filters */}
-            {urlState.colors.map(color => (
-              <div key={color} className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
-                {capitalizeWords(color)}
-                <button
-                  onClick={() => updateUrlState({ 
-                    colors: urlState.colors.filter(c => c !== color) 
-                  })}
-                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            
-            {/* Postcode filters */}
-            {urlState.postcodes.map(postcode => (
-              <div key={postcode} className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
-                {postcode}
-                <button
-                  onClick={() => updateUrlState({ 
-                    postcodes: urlState.postcodes.filter(p => p !== postcode) 
-                  })}
-                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            
-            {/* Profession filters */}
-            {urlState.professions.map(profession => (
-              <div key={profession} className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
-                {capitalizeWords(profession)}
-                <button
-                  onClick={() => updateUrlState({ 
-                    professions: urlState.professions.filter(p => p !== profession) 
-                  })}
-                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            
-            {/* Visited filter */}
-            {urlState.onlyVisited && (
-              <div className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
-                Visited Only
-                <button
-                  onClick={() => updateUrlState({ onlyVisited: false })}
-                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            
-            {/* Favorites filter */}
-            {urlState.onlyFavorites && (
-              <div className="inline-flex items-center gap-1 bg-white text-gray-700 px-2 py-1 rounded-full border text-xs">
-                Favorites Only
-                <button
-                  onClick={() => updateUrlState({ onlyFavorites: false })}
-                  className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            
-            {/* Distance filter */}
-            {activeLocation && filterEnabled && (
-              <div className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full border border-green-200 text-xs">
-                📍 Within {formatDistance(filterRadius)}
-                <button
-                  onClick={() => {
-                    setActiveLocation(null);
-                    setFilterEnabled(false);
-                  }}
-                  className="ml-1 hover:bg-green-300 rounded-full w-4 h-4 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            
-            {/* Clear all button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetFilters}
-              className="text-gray-600 hover:text-gray-800 ml-auto"
-            >
-              Clear all
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* UPDATED: Active filters display with distance filter */}
+      <DiscoverFilters
+        urlState={urlState}
+        activeFiltersCount={activeFiltersCount}
+        activeLocation={distanceFilter.center} // NEW: Pass distance filter center
+        maxDistance={distanceFilter.radius} // NEW: Pass distance filter radius
+        hideOutsidePlaques={distanceFilter.enabled} // NEW: Pass distance filter enabled state
+        formatDistance={formatDistance}
+        onRemoveFilter={(filters) => updateUrlState(filters)}
+        onResetFilters={resetFilters}
+        filtersOpen={filtersOpen}
+        onCloseFilters={() => setFiltersOpen(false)}
+        filterOptions={{
+          postcodeOptions,
+          colorOptions,
+          professionOptions
+        }}
+        onApplyFilters={(filters) => updateUrlState(filters)}
+        // NEW: Distance filter props
+        distanceFilter={distanceFilter}
+        onClearDistanceFilter={() => setDistanceFilter({
+          enabled: false,
+          center: null,
+          radius: 1,
+          locationName: null
+        })}
+      />
       
       {/* Status bar */}
       <div className="container mx-auto px-4 py-4">
@@ -549,9 +499,9 @@ const Discover = () => {
             {loading ? "Loading plaques..." : (
               <>
                 {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-                {activeLocation && filterEnabled && (
+                {distanceFilter.enabled && distanceFilter.locationName && (
                   <span className="ml-2 text-green-600">
-                    within {formatDistance(filterRadius)}
+                    within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
                   </span>
                 )}
               </>
@@ -591,7 +541,7 @@ const Discover = () => {
       />
       
       {/* Plaque Detail Modal */}
-        {selectedPlaque && (
+      {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
           isOpen={!!selectedPlaque}
@@ -601,7 +551,7 @@ const Discover = () => {
           onMarkVisited={handleMarkVisited}
           nearbyPlaques={getNearbyPlaques(selectedPlaque)}
           onSelectNearbyPlaque={setSelectedPlaque}
-          isMapView={urlState.view === 'map'} // NEW: Pass map view flag
+          isMapView={urlState.view === 'map'}
         />
       )}
     </PageContainer>

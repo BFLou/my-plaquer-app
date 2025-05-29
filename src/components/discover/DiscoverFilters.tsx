@@ -1,10 +1,18 @@
-// src/components/discover/DiscoverFilters.tsx
+// src/components/discover/DiscoverFilters.tsx - UPDATED: With distance filter indicator
 import React from 'react';
-import { X, Crosshair } from 'lucide-react';
+import { X, Crosshair, MapPin } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { capitalizeWords } from '@/utils/stringUtils';
 import DiscoverFilterDialog from '../plaques/DiscoverFilterDialog';
+
+// NEW: Distance filter interface
+interface DistanceFilter {
+  enabled: boolean;
+  center: [number, number] | null;
+  radius: number;
+  locationName: string | null;
+}
 
 interface DiscoverFiltersProps {
   urlState: {
@@ -30,6 +38,9 @@ interface DiscoverFiltersProps {
     professionOptions: any[];
   };
   onApplyFilters: (filters: any) => void;
+  // NEW: Distance filter props
+  distanceFilter: DistanceFilter;
+  onClearDistanceFilter: () => void;
 }
 
 const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
@@ -44,7 +55,10 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   filtersOpen,
   onCloseFilters,
   filterOptions,
-  onApplyFilters
+  onApplyFilters,
+  // NEW: Distance filter props
+  distanceFilter,
+  onClearDistanceFilter
 }) => {
   if (activeFiltersCount === 0) {
     return null;
@@ -128,8 +142,30 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
             </Badge>
           )}
           
-          {/* Distance filter */}
-          {activeLocation && hideOutsidePlaques && (
+          {/* NEW: Distance filter indicator */}
+          {distanceFilter.enabled && distanceFilter.center && distanceFilter.locationName && (
+            <Badge variant="secondary" className="gap-1 bg-green-100 text-green-800 border-green-200">
+              <MapPin size={12} />
+              <span className="font-medium">
+                {distanceFilter.locationName}
+              </span>
+              <span className="text-xs opacity-75">
+                ({distanceFilter.radius < 1 
+                  ? `${Math.round(distanceFilter.radius * 1000)}m` 
+                  : `${distanceFilter.radius}km`})
+              </span>
+              <button
+                onClick={onClearDistanceFilter}
+                className="ml-1 hover:bg-green-300 rounded-full w-4 h-4 flex items-center justify-center"
+                title="Clear distance filter"
+              >
+                <X size={10} />
+              </button>
+            </Badge>
+          )}
+          
+          {/* LEGACY: Keep old distance filter for backward compatibility */}
+          {activeLocation && hideOutsidePlaques && !distanceFilter.enabled && (
             <Badge variant="secondary" className="gap-1 bg-green-100 text-green-800">
               <Crosshair size={12} />
               Within {formatDistance(maxDistance)}

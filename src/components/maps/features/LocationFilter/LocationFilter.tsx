@@ -1,14 +1,12 @@
-// src/components/maps/features/LocationFilter/LocationFilter.tsx - Fixed radius controls
+// src/components/maps/features/LocationFilter/LocationFilter.tsx - REDESIGNED: Simplified approach
 import React, { useState } from 'react';
-import { MapPin, X, Loader, ChevronDown, Target, Ruler } from 'lucide-react';
+import { MapPin, X, Loader, Target, Ruler, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useLocationFilter } from './useLocationFilter';
 
 interface LocationFilterProps {
@@ -30,241 +28,268 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
   onClear,
   locationName
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [searchAddress, setSearchAddress] = useState('');
   const { isLocating, findMyLocation, setManualLocation } = useLocationFilter();
   
+  // Quick distance presets
+  const quickDistances = [0.5, 1, 2, 5];
+  
+  // Handle finding user location
   const handleFindLocation = async () => {
     const coords = await findMyLocation();
     if (coords) {
       onSetLocation(coords);
-      setIsOpen(false);
+      setShowControls(false);
     }
   };
   
-  const handleAddressSearch = async (address: string) => {
-    const coords = await setManualLocation(address);
+  // Handle address search
+  const handleAddressSearch = async () => {
+    if (!searchAddress.trim()) return;
+    
+    const coords = await setManualLocation(searchAddress);
     if (coords) {
       onSetLocation(coords);
-      setIsOpen(false);
+      setSearchAddress('');
+      setShowControls(false);
     }
-  };
-
-  // Preset distance options with better coverage
-  const distancePresets = [
-    { value: 0.25, label: '250m', description: 'Very close' },
-    { value: 0.5, label: '500m', description: 'Walking distance' },
-    { value: 1, label: '1km', description: 'Short walk' },
-    { value: 1.5, label: '1.5km', description: 'Medium walk' },
-    { value: 2, label: '2km', description: 'Long walk' },
-    { value: 3, label: '3km', description: 'Extended area' },
-    { value: 5, label: '5km', description: 'Wide area' },
-    { value: 10, label: '10km', description: 'Very wide area' }
-  ];
-
-  // Handle preset button clicks
-  const handlePresetClick = (value: number) => {
-    onRadiusChange(value);
-  };
-
-  // Handle slider changes
-  const handleSliderChange = (values: number[]) => {
-    onRadiusChange(values[0]);
   };
 
   // Format radius display
   const formatRadius = (km: number) => {
-    if (km < 1) {
-      return `${Math.round(km * 1000)}m`;
-    }
+    if (km < 1) return `${Math.round(km * 1000)}m`;
     return `${km}km`;
   };
-  
+
+  // Handle key press in search
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAddressSearch();
+    }
+  };
+
+  // Main button display logic
+  const getMainButtonContent = () => {
+    if (enabled && locationName) {
+      return (
+        <div className="flex items-center gap-2 min-w-0">
+          <Target size={16} className="text-green-600 flex-shrink-0" />
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-xs font-medium truncate max-w-[120px]">
+              {locationName}
+            </span>
+            <span className="text-xs text-gray-500">
+              {formatRadius(radius)} radius
+            </span>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-2">
+        <MapPin size={16} />
+        <span>Distance Filter</span>
+      </div>
+    );
+  };
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant={enabled ? 'default' : 'outline'}
-          size="sm"
-          className="shadow-lg min-w-[140px]"
-        >
-          {enabled ? (
-            <div className="flex items-center gap-2">
-              <Target size={16} />
-              <span>{formatRadius(radius)} radius</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <MapPin size={16} />
-              <span>Distance Filter</span>
-            </div>
-          )}
-          <ChevronDown size={14} className="ml-2" />
-        </Button>
-      </PopoverTrigger>
-      
-      <PopoverContent className="w-96 p-0" align="end">
-        <div className="p-4 border-b bg-gray-50">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium flex items-center gap-2">
-              <Ruler size={16} className="text-blue-500" />
-              Distance Filter
-            </h3>
-            {enabled && (
-              <Button variant="ghost" size="sm" onClick={onClear} className="h-8 w-8 p-0">
+    <div className="relative">
+      {/* Main Toggle Button */}
+      <Button
+        variant={enabled ? 'default' : 'outline'}
+        size="sm"
+        className="shadow-lg min-w-[160px] h-10 justify-start"
+        onClick={() => setShowControls(!showControls)}
+      >
+        {getMainButtonContent()}
+        <Settings size={14} className="ml-auto flex-shrink-0" />
+      </Button>
+
+      {/* Controls Panel */}
+      {showControls && (
+        <Card className="absolute top-12 right-0 w-80 z-[1100] shadow-xl border-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Ruler size={16} className="text-blue-500" />
+                Distance Filter Setup
+              </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowControls(false)}
+                className="h-6 w-6 p-0 hover:bg-gray-100"
+              >
                 <X size={14} />
               </Button>
-            )}
-          </div>
-          {enabled && locationName && (
-            <div className="mt-2">
-              <Badge variant="secondary" className="text-xs">
-                Center: {locationName}
-              </Badge>
             </div>
-          )}
-        </div>
-        
-        {!enabled ? (
-          <div className="p-4 space-y-4">
-            <div className="text-sm text-gray-600 mb-3">
-              Set a center location to find plaques within a specific distance radius.
-            </div>
-            
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={handleFindLocation}
-              disabled={isLocating}
-            >
-              {isLocating ? (
-                <Loader className="mr-2 animate-spin" size={16} />
-              ) : (
-                <Target className="mr-2" size={16} />
-              )}
-              Use my current location
-            </Button>
-            
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Enter London postcode, area, or address..."
-                className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                    handleAddressSearch(e.currentTarget.value);
-                  }
-                }}
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                Examples: "NW1 2DB", "Camden", "Westminster Bridge"
-              </div>
-            </div>
-            
-            <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
-              💡 <strong>Tip:</strong> Use the search bar above to find specific postcodes and areas, then fine-tune the distance here.
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 space-y-6">
-            {/* Current Radius Display */}
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{formatRadius(radius)}</div>
-              <div className="text-xs text-blue-600/70">Current search radius</div>
-            </div>
-
-            {/* Quick Preset Buttons */}
-            <div className="space-y-3">
-              <div className="text-sm font-medium text-gray-700">Quick distances:</div>
-              <div className="grid grid-cols-2 gap-2">
-                {distancePresets.slice(0, 6).map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant={Math.abs(radius - preset.value) < 0.01 ? "default" : "outline"}
-                    size="sm"
-                    className="text-xs h-10 px-2 flex flex-col items-center justify-center"
-                    onClick={() => handlePresetClick(preset.value)}
-                  >
-                    <span className="font-medium">{preset.label}</span>
-                    <span className="text-[10px] opacity-70">{preset.description}</span>
-                  </Button>
-                ))}
-              </div>
-              
-              {/* Extended presets for larger distances */}
-              <div className="grid grid-cols-2 gap-2">
-                {distancePresets.slice(6).map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant={Math.abs(radius - preset.value) < 0.01 ? "default" : "outline"}
-                    size="sm"
-                    className="text-xs h-10 px-2 flex flex-col items-center justify-center"
-                    onClick={() => handlePresetClick(preset.value)}
-                  >
-                    <span className="font-medium">{preset.label}</span>
-                    <span className="text-[10px] opacity-70">{preset.description}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Custom Slider */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div className="text-sm font-medium text-gray-700">Custom distance:</div>
-                <div className="text-sm font-bold text-blue-600">{formatRadius(radius)}</div>
-              </div>
-              
-              <div className="px-1">
-                <Slider
-                  value={[radius]}
-                  onValueChange={handleSliderChange}
-                  min={0.1}
-                  max={10}
-                  step={0.1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-gray-400 mt-1">
-                  <span>100m</span>
-                  <span>1km</span>
-                  <span>5km</span>
-                  <span>10km</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Distance Info */}
-            <div className="pt-3 border-t space-y-2">
-              <div className="text-xs text-gray-600">
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            {/* Current Status */}
+            {enabled && center && locationName && (
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center justify-between">
-                  <span>Walking time:</span>
-                  <span className="font-medium">~{Math.round(radius * 12)} minutes</span>
-                </div>
-                {center && (
-                  <div className="flex items-center justify-between mt-1">
-                    <span>Center coordinates:</span>
-                    <span className="font-mono text-[10px]">
-                      {center[0].toFixed(4)}, {center[1].toFixed(4)}
-                    </span>
+                  <div>
+                    <div className="text-sm font-medium text-green-800">
+                      Active: {locationName}
+                    </div>
+                    <div className="text-xs text-green-600">
+                      {formatRadius(radius)} search radius
+                    </div>
                   </div>
-                )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClear}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                  >
+                    <X size={14} />
+                  </Button>
+                </div>
               </div>
-            </div>
-            
-            {/* Clear Button */}
-            <div className="pt-2 border-t">
+            )}
+
+            {/* Location Setup */}
+            {!enabled && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-700">
+                  Set Center Location
+                </Label>
+                
+                {/* My Location Button */}
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-10"
+                  onClick={handleFindLocation}
+                  disabled={isLocating}
+                >
+                  {isLocating ? (
+                    <>
+                      <Loader className="mr-2 animate-spin" size={16} />
+                      Finding location...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="mr-2" size={16} />
+                      Use my current location
+                    </>
+                  )}
+                </Button>
+                
+                {/* Address Search */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter postcode or address..."
+                    value={searchAddress}
+                    onChange={(e) => setSearchAddress(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={handleAddressSearch}
+                    disabled={!searchAddress.trim()}
+                    size="sm"
+                  >
+                    Go
+                  </Button>
+                </div>
+                
+                <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                  💡 Try: "NW1 2DB", "Camden", "Westminster Bridge"
+                </div>
+              </div>
+            )}
+
+            {/* Distance Controls - Show when enabled */}
+            {enabled && (
+              <div className="space-y-4">
+                <Label className="text-sm font-medium text-gray-700">
+                  Search Radius
+                </Label>
+                
+                {/* Quick Distance Buttons */}
+                <div className="grid grid-cols-4 gap-2">
+                  {quickDistances.map((distance) => (
+                    <Button
+                      key={distance}
+                      variant={Math.abs(radius - distance) < 0.01 ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 text-xs font-medium"
+                      onClick={() => onRadiusChange(distance)}
+                    >
+                      {formatRadius(distance)}
+                    </Button>
+                  ))}
+                </div>
+                
+                {/* Custom Slider */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-600">Custom:</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {formatRadius(radius)}
+                    </Badge>
+                  </div>
+                  
+                  <Slider
+                    value={[radius]}
+                    onValueChange={(values) => onRadiusChange(values[0])}
+                    min={0.1}
+                    max={10}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>100m</span>
+                    <span>1km</span>
+                    <span>5km</span>
+                    <span>10km</span>
+                  </div>
+                </div>
+                
+                {/* Distance Info */}
+                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                  <div className="flex justify-between">
+                    <span>Walking time:</span>
+                    <span className="font-medium">~{Math.round(radius * 12)} min</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2 border-t">
+              {enabled && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => {
+                    onClear();
+                    setShowControls(false);
+                  }}
+                >
+                  Clear Filter
+                </Button>
+              )}
+              
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={onClear}
+                className="flex-1"
+                onClick={() => setShowControls(false)}
               >
-                <X size={14} className="mr-2" />
-                Clear Distance Filter
+                {enabled ? 'Done' : 'Cancel'}
               </Button>
             </div>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };

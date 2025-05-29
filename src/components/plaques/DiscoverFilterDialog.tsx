@@ -1,22 +1,36 @@
-// src/components/plaques/DiscoverFilterDialog.tsx
-import React, { useState } from 'react';
+// src/components/plaques/DiscoverFilterDialog.tsx - UPDATED: Integrated with distance filter
+import React, { useState, useMemo } from 'react';
 import { 
   Search, X, MapPin, Circle,
-  User, Star, CheckCircle, ArrowLeft, ArrowRight, Calendar
+  User, Star, CheckCircle, ArrowLeft, ArrowRight, Calendar,
+  Crosshair, AlertCircle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { Plaque } from '@/types/plaque';
+import { calculateDistance } from '../maps/utils/routeUtils';
 
 type FilterOption = {
   label: string;
   value: string;
   color?: string;
   count?: number;
+  // NEW: Distance-filtered count
+  filteredCount?: number;
 };
+
+// NEW: Distance filter interface
+interface DistanceFilter {
+  enabled: boolean;
+  center: [number, number] | null;
+  radius: number;
+  locationName: string | null;
+}
 
 type FilterCategory = {
   id: string;
@@ -65,6 +79,12 @@ type DiscoverFilterDialogProps = {
   // Actions
   onApply: () => void;
   onReset: () => void;
+  
+  // NEW: Distance filter integration
+  distanceFilter?: DistanceFilter;
+  allPlaques?: Plaque[];
+  isPlaqueVisited?: (id: number) => boolean;
+  isFavorite?: (id: number) => boolean;
 };
 
 export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
@@ -98,7 +118,13 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   onFavoritesChange,
   
   onApply,
-  onReset
+  onReset,
+  
+  // NEW: Distance filter props
+  distanceFilter,
+  allPlaques = [],
+  isPlaqueVisited,
+  isFavorite
 }) => {
   // State for the current view (main menu or specific category)
   const [currentView, setCurrentView] = useState<string>('main');
@@ -111,6 +137,66 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   
   // Default number of items to show
   const DEFAULT_ITEMS_TO_SHOW = 8;
+  
+  // NEW: Filter plaques based on distance filter
+  const distanceFilteredPlaques = useMemo(() => {
+    if (!distanceFilter?.enabled || !distanceFilter.center || !allPlaques.length) {
+      return allPlaques;
+    }
+    
+    return allPlaques.filter(plaque => {
+      if (!plaque.latitude || !plaque.longitude) return false;
+      
+      const lat = parseFloat(plaque.latitude as string);
+      const lng = parseFloat(plaque.longitude as string);
+      
+      if (isNaN(lat) || isNaN(lng)) return false;
+      
+      const distance = calculateDistance(
+        distanceFilter.center![0],
+        distanceFilter.center![1],
+        lat,
+        lng
+      );
+      
+      return distance <= distanceFilter.radius;
+    });
+  }, [distanceFilter, allPlaques]);
+  
+  // NEW: Enhanced filter options with distance-filtered counts
+  const enhancedFilterOptions = useMemo(() => {
+    const calculateFilteredCounts = (
+      originalOptions: FilterOption[],
+      fieldName: keyof Plaque
+    ): FilterOption[] => {
+      if (!distanceFilter?.enabled || !allPlaques.length) {
+        return originalOptions;
+      }
+      
+      return originalOptions.map(option => {
+        const filteredCount = distanceFilteredPlaques.filter(plaque => {
+          const fieldValue = plaque[fieldName];
+          if (fieldName === 'color') {
+            return fieldValue?.toLowerCase() === option.value.toLowerCase();
+          }
+          return fieldValue === option.value;
+        }).length;
+        
+        return {
+          ...option,
+          filteredCount
+        };
+      });
+    };
+    
+    return {
+      postcodes: calculateFilteredCounts(postcodes, 'postcode'),
+      colors: calculateFilteredCounts(colors, 'color'),
+      professions: calculateFilteredCounts(professions, 'profession'),
+      eras: eras ? calculateFilteredCounts(eras, 'erected') : undefined,
+      organisations: organisations ? calculateFilteredCounts(organisations, 'organisations') : undefined
+    };
+  }, [postcodes, colors, professions, eras, organisations, distanceFilter, distanceFilteredPlaques, allPlaques]);
   
   // Calculate total active filters
   const colorCount = selectedColors.length;
@@ -141,13 +227,30 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     );
   };
   
-  // Define filter categories
+  // NEW: Format count display based on distance filter
+  const formatCount = (option: FilterOption): string => {
+    if (distanceFilter?.enabled && option.filteredCount !== undefined) {
+      if (option.filteredCount === 0) {
+        return `(0 in area)`;
+      } else if (option.filteredCount !== option.count) {
+        return `(${option.filteredCount} in area, ${option.count} total)`;
+      }
+    }
+    return option.count ? `(${option.count})` : '';
+  };
+  
+  // NEW: Check if option should be disabled (no plaques in filtered area)
+  const isOptionDisabled = (option: FilterOption): boolean => {
+    return distanceFilter?.enabled && option.filteredCount === 0;
+  };
+  
+  // Define filter categories with enhanced options
   const filterCategories: FilterCategory[] = [
     {
       id: 'colors',
       name: 'Colors',
       icon: <Circle size={20} className="text-blue-500" />,
-      options: colors,
+      options: enhancedFilterOptions.colors,
       selectedValues: selectedColors,
       onChange: onColorsChange,
       showColors: true
@@ -156,7 +259,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       id: 'locations',
       name: 'Locations',
       icon: <MapPin size={20} className="text-blue-500" />,
-      options: postcodes,
+      options: enhancedFilterOptions.postcodes,
       selectedValues: selectedPostcodes,
       onChange: onPostcodesChange,
       searchable: true
@@ -165,7 +268,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       id: 'professions',
       name: 'Professions',
       icon: <User size={20} className="text-blue-500" />,
-      options: professions,
+      options: enhancedFilterOptions.professions,
       selectedValues: selectedProfessions,
       onChange: onProfessionsChange,
       searchable: true
@@ -173,23 +276,23 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   ];
   
   // Add optional categories if they exist
-  if (eras && onErasChange) {
+  if (enhancedFilterOptions.eras && onErasChange) {
     filterCategories.push({
       id: 'eras',
       name: 'Time Periods',
       icon: <Calendar size={20} className="text-blue-500" />,
-      options: eras,
+      options: enhancedFilterOptions.eras,
       selectedValues: selectedEras || [],
       onChange: onErasChange
     });
   }
   
-  if (organisations && onOrganisationsChange) {
+  if (enhancedFilterOptions.organisations && onOrganisationsChange) {
     filterCategories.push({
       id: 'organisations',
       name: 'Organisations',
       icon: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>,
-      options: organisations,
+      options: enhancedFilterOptions.organisations,
       selectedValues: selectedOrganisations || [],
       onChange: onOrganisationsChange,
       searchable: true
@@ -198,6 +301,23 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   
   // Get the current category being viewed
   const currentCategory = filterCategories.find(cat => cat.id === currentView);
+  
+  // NEW: Calculate filtered toggle counts
+  const filteredToggleCounts = useMemo(() => {
+    if (!distanceFilter?.enabled || !allPlaques.length) {
+      return { visited: 0, favorites: 0 };
+    }
+    
+    const visited = distanceFilteredPlaques.filter(plaque => 
+      plaque.visited || (isPlaqueVisited && isPlaqueVisited(plaque.id))
+    ).length;
+    
+    const favorites = distanceFilteredPlaques.filter(plaque =>
+      isFavorite && isFavorite(plaque.id)
+    ).length;
+    
+    return { visited, favorites };
+  }, [distanceFilteredPlaques, isPlaqueVisited, isFavorite, distanceFilter]);
   
   // Render Main Menu View
   const renderMainMenu = () => (
@@ -211,36 +331,78 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
         </div>
         
         <div className="text-sm text-blue-100">
-          Select a category to filter plaques
+          {distanceFilter?.enabled 
+            ? `Filtering ${distanceFilteredPlaques.length} plaques in ${distanceFilter.locationName}`
+            : "Select a category to filter plaques"
+          }
         </div>
       </div>
       
+      {/* NEW: Distance filter status */}
+      {distanceFilter?.enabled && (
+        <div className="px-4 py-3 bg-blue-50 border-b">
+          <Alert className="border-blue-200">
+            <Crosshair className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-sm text-blue-800">
+              <strong>Location Filter Active:</strong> Showing results within{' '}
+              {distanceFilter.radius < 1 
+                ? `${Math.round(distanceFilter.radius * 1000)}m` 
+                : `${distanceFilter.radius}km`}{' '}
+              of {distanceFilter.locationName}.{' '}
+              <span className="font-medium">
+                {distanceFilteredPlaques.length} of {allPlaques.length} plaques in this area.
+              </span>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+      
       <div className="divide-y">
         {/* Categories List */}
-        {filterCategories.map((category) => (
-          <button
-            key={category.id}
-            className="w-full py-3 px-4 flex items-center justify-between"
-            onClick={() => {
-              setCurrentView(category.id);
-              setSearchQuery('');
-              setShowAll(false);
-            }}
-          >
-            <div className="flex items-center">
-              {category.icon}
-              <span className="ml-3 font-medium">{category.name}</span>
-            </div>
-            <div className="flex items-center">
-              {category.selectedValues.length > 0 && (
-                <Badge className="mr-2 bg-blue-100 text-blue-700">
-                  {category.selectedValues.length}
-                </Badge>
+        {filterCategories.map((category) => {
+          const availableOptionsCount = category.options.filter(opt => !isOptionDisabled(opt)).length;
+          const isDisabled = distanceFilter?.enabled && availableOptionsCount === 0;
+          
+          return (
+            <button
+              key={category.id}
+              className={cn(
+                "w-full py-3 px-4 flex items-center justify-between transition-colors",
+                isDisabled 
+                  ? "opacity-50 cursor-not-allowed" 
+                  : "hover:bg-gray-50"
               )}
-              <ArrowRight size={16} className="text-gray-400" />
-            </div>
-          </button>
-        ))}
+              onClick={() => {
+                if (!isDisabled) {
+                  setCurrentView(category.id);
+                  setSearchQuery('');
+                  setShowAll(false);
+                }
+              }}
+              disabled={isDisabled}
+            >
+              <div className="flex items-center">
+                {category.icon}
+                <span className="ml-3 font-medium">{category.name}</span>
+                {/* NEW: Show availability indicator */}
+                {distanceFilter?.enabled && (
+                  <span className="ml-2 text-xs text-gray-500">
+                    ({availableOptionsCount} available)
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center">
+                {category.selectedValues.length > 0 && (
+                  <Badge className="mr-2 bg-blue-100 text-blue-700">
+                    {category.selectedValues.length}
+                  </Badge>
+                )}
+                {!isDisabled && <ArrowRight size={16} className="text-gray-400" />}
+                {isDisabled && <AlertCircle size={16} className="text-gray-400" />}
+              </div>
+            </button>
+          );
+        })}
         
         {/* Additional Filters */}
         <div className="px-4 py-3">
@@ -252,12 +414,21 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                 <CheckCircle size={18} className="text-blue-500 mr-2" />
                 <div>
                   <div className="font-medium text-sm">Only Visited</div>
-                  <div className="text-xs text-gray-500">Show plaques you've visited</div>
+                  <div className="text-xs text-gray-500">
+                    Show plaques you've visited
+                    {/* NEW: Show filtered count */}
+                    {distanceFilter?.enabled && (
+                      <span className="ml-1">
+                        ({filteredToggleCounts.visited} in area)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Switch 
                 checked={onlyVisited}
                 onCheckedChange={onVisitedChange}
+                disabled={distanceFilter?.enabled && filteredToggleCounts.visited === 0}
               />
             </div>
             
@@ -266,12 +437,21 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                 <Star size={18} className="text-blue-500 mr-2" />
                 <div>
                   <div className="font-medium text-sm">Only Favorites</div>
-                  <div className="text-xs text-gray-500">Show only your favorite plaques</div>
+                  <div className="text-xs text-gray-500">
+                    Show only your favorite plaques
+                    {/* NEW: Show filtered count */}
+                    {distanceFilter?.enabled && (
+                      <span className="ml-1">
+                        ({filteredToggleCounts.favorites} in area)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Switch 
                 checked={onlyFavorites}
                 onCheckedChange={onFavoritesChange}
+                disabled={distanceFilter?.enabled && filteredToggleCounts.favorites === 0}
               />
             </div>
           </div>
@@ -287,14 +467,21 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       ? filterOptions(options, searchQuery)
       : options;
     
-    // Show top items first if there are selected values
+    // Show top items first if there are selected values, then by availability if distance filter is active
     filteredOptions.sort((a, b) => {
       const aSelected = selectedValues.includes(a.value);
       const bSelected = selectedValues.includes(b.value);
+      const aDisabled = isOptionDisabled(a);
+      const bDisabled = isOptionDisabled(b);
       
       if (aSelected && !bSelected) return -1;
       if (!aSelected && bSelected) return 1;
-      return (b.count || 0) - (a.count || 0); // Then sort by count
+      if (distanceFilter?.enabled) {
+        if (!aDisabled && bDisabled) return -1;
+        if (aDisabled && !bDisabled) return 1;
+        return (b.filteredCount || 0) - (a.filteredCount || 0);
+      }
+      return (b.count || 0) - (a.count || 0);
     });
     
     // Limit number of items shown unless expanded
@@ -326,6 +513,12 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               ? `${selectedValues.length} ${category.name.toLowerCase()} selected`
               : `Select ${category.name.toLowerCase()} to filter plaques`
             }
+            {/* NEW: Show area context */}
+            {distanceFilter?.enabled && (
+              <span className="block mt-1 text-xs">
+                In {distanceFilter.locationName} area
+              </span>
+            )}
           </div>
         </div>
         
@@ -343,10 +536,10 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => onChange(filteredOptions.map(o => o.value))}
-              disabled={selectedValues.length === filteredOptions.length}
+              onClick={() => onChange(filteredOptions.filter(o => !isOptionDisabled(o)).map(o => o.value))}
+              disabled={selectedValues.length === filteredOptions.filter(o => !isOptionDisabled(o)).length}
             >
-              Select All
+              Select Available
             </Button>
           </div>
           
@@ -366,25 +559,30 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
           {/* Options list */}
           <div className={showColors ? "grid grid-cols-2 gap-2" : "divide-y border rounded-lg"}>
             {visibleOptions.length > 0 ? (
-              visibleOptions.map(option => (
-                showColors ? (
+              visibleOptions.map(option => {
+                const disabled = isOptionDisabled(option);
+                
+                return showColors ? (
                   // Color option with colored circle
                   <label 
                     key={option.value}
                     className={cn(
-                      "flex items-center p-2 rounded-lg border hover:bg-gray-50 cursor-pointer",
-                      selectedValues.includes(option.value) ? "border-blue-300 bg-blue-50" : "border-gray-200"
+                      "flex items-center p-2 rounded-lg border cursor-pointer transition-colors",
+                      disabled ? "opacity-50 cursor-not-allowed bg-gray-50" :
+                      selectedValues.includes(option.value) ? "border-blue-300 bg-blue-50" : 
+                      "border-gray-200 hover:bg-gray-50"
                     )}
                   >
                     <input 
                       type="checkbox"
                       className="rounded text-blue-500 mr-2"
                       checked={selectedValues.includes(option.value)}
-                      onChange={() => toggleSelection(selectedValues, onChange, option.value)}
+                      onChange={() => !disabled && toggleSelection(selectedValues, onChange, option.value)}
+                      disabled={disabled}
                     />
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-1 min-w-0">
                       <div className={cn(
-                        "w-4 h-4 rounded-full mr-2",
+                        "w-4 h-4 rounded-full mr-2 flex-shrink-0",
                         option.value === 'blue' ? "bg-blue-500" :
                         option.value === 'green' ? "bg-green-500" :
                         option.value === 'brown' ? "bg-amber-700" :
@@ -393,10 +591,12 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                         option.value === 'red' ? "bg-red-500" :
                         "bg-blue-500"
                       )}></div>
-                      <span>{option.label}</span>
-                      {option.count && (
-                        <span className="ml-1 text-gray-500 text-xs">({option.count})</span>
-                      )}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate">{option.label}</span>
+                        <span className="text-xs text-gray-500">
+                          {formatCount(option)}
+                        </span>
+                      </div>
                     </div>
                   </label>
                 ) : (
@@ -404,25 +604,27 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                   <label 
                     key={option.value}
                     className={cn(
-                      "flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer",
-                      selectedValues.includes(option.value) ? "bg-blue-50" : ""
+                      "flex items-center justify-between p-2 cursor-pointer transition-colors",
+                      disabled ? "opacity-50 cursor-not-allowed bg-gray-50" :
+                      selectedValues.includes(option.value) ? "bg-blue-50" : "hover:bg-gray-50"
                     )}
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-1 min-w-0">
                       <input 
                         type="checkbox"
-                        className="rounded text-blue-500 mr-2"
+                        className="rounded text-blue-500 mr-2 flex-shrink-0"
                         checked={selectedValues.includes(option.value)}
-                        onChange={() => toggleSelection(selectedValues, onChange, option.value)}
+                        onChange={() => !disabled && toggleSelection(selectedValues, onChange, option.value)}
+                        disabled={disabled}
                       />
-                      <span>{option.label}</span>
+                      <span className="truncate">{option.label}</span>
                     </div>
-                    {option.count && (
-                      <span className="text-xs text-gray-500">{option.count}</span>
-                    )}
+                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+                      {formatCount(option)}
+                    </span>
                   </label>
                 )
-              ))
+              })
             ) : (
               <div className="p-2 text-center text-sm text-gray-500">
                 No {category.name.toLowerCase()} match your search
@@ -448,7 +650,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] p-0 h-[85vh] max-h-[650px] flex flex-col overflow-hidden rounded-lg">
+      <DialogContent className="sm:max-w-[400px] p-0 h-[85vh] max-h-[650px] flex flex-col overflow-hidden rounded-lg z-[9999] [&>div]:z-[9999]">
         {/* Render the appropriate view */}
         <div className="flex-grow overflow-auto">
           {currentView === 'main' 

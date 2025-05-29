@@ -1,4 +1,4 @@
-// src/components/maps/core/useDistanceCircle.ts - Enhanced with better visualization
+// src/components/maps/core/useDistanceCircle.ts - FIXED: Proper cleanup of radius labels
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 
@@ -16,11 +16,12 @@ export const useDistanceCircle = (
   const circleRef = useRef<L.Circle | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const tooltipRef = useRef<L.Tooltip | null>(null);
+  const radiusLabelsRef = useRef<L.Marker[]>([]); // NEW: Store radius labels for cleanup
   
   useEffect(() => {
     if (!map) return;
     
-    // Clear existing circle, marker, and tooltip
+    // Clear existing circle, marker, tooltip, and radius labels
     if (circleRef.current) {
       map.removeLayer(circleRef.current);
       circleRef.current = null;
@@ -35,6 +36,14 @@ export const useDistanceCircle = (
       map.removeLayer(tooltipRef.current);
       tooltipRef.current = null;
     }
+    
+    // FIXED: Clean up all radius labels
+    radiusLabelsRef.current.forEach(label => {
+      if (map.hasLayer(label)) {
+        map.removeLayer(label);
+      }
+    });
+    radiusLabelsRef.current = [];
     
     // Add new circle and marker if enabled
     if (options.enabled && options.center) {
@@ -120,7 +129,7 @@ export const useDistanceCircle = (
           zIndexOffset: 1000
         }).addTo(map);
         
-        // Add radius labels at cardinal points
+        // FIXED: Create radius labels at cardinal points and store them
         const cardinalPoints = [
           { angle: 0, label: 'N' },
           { angle: 90, label: 'E' },
@@ -128,7 +137,10 @@ export const useDistanceCircle = (
           { angle: 270, label: 'W' }
         ];
         
+        const newRadiusLabels: L.Marker[] = [];
+        
         cardinalPoints.forEach(point => {
+          // Calculate position for radius label
           const lat = options.center![0] + (options.radius / 111.32) * Math.cos(point.angle * Math.PI / 180);
           const lng = options.center![1] + (options.radius / (111.32 * Math.cos(options.center![0] * Math.PI / 180))) * Math.sin(point.angle * Math.PI / 180);
           
@@ -147,7 +159,7 @@ export const useDistanceCircle = (
                   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                   border: 1px solid rgba(255,255,255,0.3);
                 ">
-                  ${options.radius}km
+                  ${options.radius < 1 ? `${Math.round(options.radius * 1000)}m` : `${options.radius}km`}
                 </div>
               `,
               iconSize: [40, 20],
@@ -156,7 +168,13 @@ export const useDistanceCircle = (
             interactive: false,
             zIndexOffset: 500
           }).addTo(map);
+          
+          // Store the label for cleanup
+          newRadiusLabels.push(radiusLabel);
         });
+        
+        // Store all radius labels in ref
+        radiusLabelsRef.current = newRadiusLabels;
         
         // Create info tooltip
         if (options.locationName) {
@@ -182,7 +200,7 @@ export const useDistanceCircle = (
                 ${options.locationName}
               </div>
               <div style="font-size: 10px; opacity: 0.9;">
-                ${options.radius}km search radius
+                ${options.radius < 1 ? `${Math.round(options.radius * 1000)}m` : `${options.radius}km`} search radius
               </div>
             </div>
           `)
@@ -222,14 +240,22 @@ export const useDistanceCircle = (
   // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (circleRef.current && map) {
-        map.removeLayer(circleRef.current);
-      }
-      if (markerRef.current && map) {
-        map.removeLayer(markerRef.current);
-      }
-      if (tooltipRef.current && map) {
-        map.removeLayer(tooltipRef.current);
+      if (map) {
+        if (circleRef.current) {
+          map.removeLayer(circleRef.current);
+        }
+        if (markerRef.current) {
+          map.removeLayer(markerRef.current);
+        }
+        if (tooltipRef.current) {
+          map.removeLayer(tooltipRef.current);
+        }
+        // Clean up radius labels on unmount
+        radiusLabelsRef.current.forEach(label => {
+          if (map.hasLayer(label)) {
+            map.removeLayer(label);
+          }
+        });
       }
     };
   }, [map]);

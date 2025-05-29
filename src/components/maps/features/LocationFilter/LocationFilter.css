@@ -1,0 +1,608 @@
+/* src/components/maps/features/LocationFilter/LocationFilter.css */
+
+/* ==================== LOCATION FILTER COMPONENT ==================== */
+
+/* Main container positioning */
+.location-filter-container {
+  position: relative;
+  z-index: 1000;
+}
+
+/* Main button enhancements */
+.location-filter-button {
+  transition: all 0.2s ease;
+  min-width: 160px;
+  backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.location-filter-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.location-filter-button.active {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+.location-filter-button.active:hover {
+  background-color: #2563eb;
+}
+
+/* Controls panel */
+.location-filter-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  z-index: 1100;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(12px);
+  animation: panel-slide-down 0.2s ease-out;
+}
+
+@keyframes panel-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Panel header */
+.location-filter-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.location-filter-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Panel content */
+.location-filter-content {
+  padding: 16px 20px 20px;
+}
+
+/* Status display */
+.location-status-active {
+  padding: 12px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #d1fae5;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.location-status-info {
+  color: #065f46;
+}
+
+.location-status-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.location-status-radius {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Location setup section */
+.location-setup {
+  space-y: 12px;
+}
+
+.location-setup-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* My location button */
+.my-location-button {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.my-location-button:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+}
+
+.my-location-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Address search */
+.address-search-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.address-search-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.address-search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.address-search-button {
+  height: 36px;
+  padding: 0 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.address-search-button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.address-search-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hint text */
+.location-hint {
+  font-size: 12px;
+  color: #6b7280;
+  background: #eff6ff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* Distance controls */
+.distance-controls {
+  margin-top: 16px;
+}
+
+.distance-controls-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* Quick distance buttons */
+.distance-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.distance-preset-button {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.distance-preset-button:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.distance-preset-button.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Custom slider section */
+.distance-slider-container {
+  margin-top: 12px;
+}
+
+.distance-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.distance-slider-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.distance-slider-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* Slider tick marks */
+.distance-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding: 0 2px;
+}
+
+.distance-slider-tick {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+/* Distance info */
+.distance-info {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.distance-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.distance-info-value {
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Action buttons */
+.location-filter-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  margin-top: 16px;
+}
+
+.action-button {
+  flex: 1;
+  height: 36px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.action-button-clear {
+  background: white;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.action-button-clear:hover {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.action-button-done {
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.action-button-done:hover {
+  background: #f3f4f6;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+@media (max-width: 768px) {
+  .location-filter-panel {
+    width: calc(100vw - 20px);
+    right: -10px;
+    left: 10px;
+  }
+  
+  .location-filter-button {
+    min-width: 140px;
+    font-size: 13px;
+  }
+  
+  .distance-presets {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .distance-preset-button {
+    height: 28px;
+    font-size: 11px;
+  }
+  
+  .location-filter-actions {
+    flex-direction: column;
+  }
+  
+  .action-button {
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .location-filter-panel {
+    width: calc(100vw - 16px);
+    right: -8px;
+    left: 8px;
+  }
+  
+  .location-filter-content {
+    padding: 12px 16px 16px;
+  }
+  
+  .distance-presets {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .distance-preset-button {
+    height: 36px;
+    font-size: 12px;
+  }
+}
+
+/* ==================== ACCESSIBILITY IMPROVEMENTS ==================== */
+
+/* Focus indicators */
+.location-filter-button:focus,
+.distance-preset-button:focus,
+.action-button:focus,
+.my-location-button:focus,
+.address-search-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.address-search-input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .location-filter-panel {
+    border: 2px solid #000;
+  }
+  
+  .distance-preset-button {
+    border-width: 2px;
+  }
+  
+  .distance-preset-button.active {
+    background: #000;
+    color: white;
+    border-color: #000;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .location-filter-panel,
+  .location-filter-button,
+  .distance-preset-button,
+  .action-button,
+  .my-location-button,
+  .address-search-button {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ==================== LOADING STATES ==================== */
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==================== DARK MODE SUPPORT ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .location-filter-button {
+    background-color: rgba(31, 41, 55, 0.95);
+    color: white;
+    border-color: rgba(75, 85, 99, 0.8);
+  }
+  
+  .location-filter-panel {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .location-filter-header {
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    border-color: #374151;
+  }
+  
+  .location-filter-title {
+    color: white;
+  }
+  
+  .location-status-active {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    border-color: #047857;
+  }
+  
+  .location-status-info {
+    color: #a7f3d0;
+  }
+  
+  .my-location-button {
+    background: #374151;
+    color: white;
+    border-color: #4b5563;
+  }
+  
+  .my-location-button:hover:not(:disabled) {
+    background: #4b5563;
+    border-color: #60a5fa;
+  }
+  
+  .address-search-input {
+    background: #374151;
+    color: white;
+    border-color: #4b5563;
+  }
+  
+  .distance-preset-button {
+    background: #374151;
+    color: white;
+    border-color: #4b5563;
+  }
+  
+  .distance-preset-button:hover {
+    border-color: #60a5fa;
+    background: #1e3a8a;
+  }
+  
+  .distance-info {
+    background: #374151;
+    color: #d1d5db;
+  }
+  
+  .distance-info-value {
+    color: white;
+  }
+  
+  .location-hint {
+    background: #1e3a8a;
+    color: #dbeafe;
+  }
+}
+
+/* ==================== ANIMATION ENHANCEMENTS ==================== */
+
+/* Button press effect */
+.distance-preset-button:active,
+.action-button:active,
+.my-location-button:active,
+.address-search-button:active {
+  transform: scale(0.98);
+}
+
+/* Panel entrance with stagger */
+.location-filter-content > * {
+  animation: content-fade-in 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+.location-filter-content > *:nth-child(1) { animation-delay: 0.05s; }
+.location-filter-content > *:nth-child(2) { animation-delay: 0.1s; }
+.location-filter-content > *:nth-child(3) { animation-delay: 0.15s; }
+.location-filter-content > *:nth-child(4) { animation-delay: 0.2s; }
+
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Success state animation */
+.location-status-active {
+  animation: success-pulse 0.5s ease-out;
+}
+
+@keyframes success-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+  .location-filter-container {
+    display: none;
+  }
+}
