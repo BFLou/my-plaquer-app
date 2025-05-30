@@ -87,35 +87,6 @@ const ProfilePage = () => {
     return visitDate >= firstDayOfMonth;
   }).length;
 
-  // Calculate streak (simplified - consecutive days with visits)
-  const calculateStreak = () => {
-    if (visits.length === 0) return 0;
-    
-    const today = new Date();
-    let streak = 0;
-    let currentDate = new Date(today);
-    
-    // Simple streak calculation - check last 7 days
-    for (let i = 0; i < 7; i++) {
-      const hasVisitOnDate = visits.some(visit => {
-        const visitDate = visit.visited_at?.toDate ? visit.visited_at.toDate() : new Date(visit.visited_at);
-        return visitDate.toDateString() === currentDate.toDateString();
-      });
-      
-      if (hasVisitOnDate) {
-        streak++;
-      } else if (i > 0) {
-        break; // Break streak if no visit found (but allow today to be empty)
-      }
-      
-      currentDate.setDate(currentDate.getDate() - 1);
-    }
-    
-    return streak;
-  };
-
-  const currentStreak = calculateStreak();
-
   // Calculate level based on visits
   const calculateLevel = (visits: number) => {
     if (visits < 10) return 1;
@@ -282,9 +253,6 @@ const ProfilePage = () => {
                 <h1 className="text-2xl font-bold">{user.displayName || 'Explorer'}</h1>
                 <p className="opacity-90 mt-1">
                   Member since {new Date(user.metadata.creationTime || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
-                  {currentStreak > 0 && (
-                    <span className="ml-2">• 🔥 {currentStreak} day streak</span>
-                  )}
                 </p>
               </div>
             </div>
