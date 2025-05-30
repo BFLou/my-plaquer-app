@@ -40,13 +40,6 @@ const SettingsPage = () => {
       <SettingsHeader user={user} onBack={() => navigate('/profile')} />
       
       <div className="container mx-auto max-w-5xl px-4">
-        {/* Stats Banner */}
-        <div className="bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
-          <div className="text-sm text-gray-600">
-            Manage your account settings and preferences
-          </div>
-        </div>
-
         <SettingsTabs currentTab={currentTab} onTabChange={setCurrentTab} />
 
         {/* Tab Content */}

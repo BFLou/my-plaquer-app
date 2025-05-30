@@ -32,7 +32,6 @@ const SettingsHeader: React.FC<SettingsHeaderProps> = ({ user, onBack }) => {
         </div>
         
         <div className="flex items-center gap-3">
-          <Settings size={28} />
           <h1 className="text-2xl font-bold">Settings</h1>
         </div>
         <p className="opacity-90 mt-1">
