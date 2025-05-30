@@ -1,4 +1,4 @@
-// src/router/AppRoutes.tsx
+// src/router/AppRoutes.tsx - Updated with plaque detail route
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MapErrorBoundary } from '@/components/ErrorBoundary';
@@ -18,6 +18,7 @@ import Home from '@/pages/Home';
 import About from '@/pages/About';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
+import PlaqueDetailPage from '@/pages/PlaqueDetailPage'; // NEW: Import the plaque detail page
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -32,6 +33,16 @@ export const AppRoutes: React.FC = () => {
         element={
           <MapErrorBoundary>
             <Discover />
+          </MapErrorBoundary>
+        } 
+      />
+      
+      {/* NEW: Individual plaque detail route - PUBLIC */}
+      <Route 
+        path="/plaque/:id" 
+        element={
+          <MapErrorBoundary>
+            <OptimizedRoute element={PlaqueDetailPage} />
           </MapErrorBoundary>
         } 
       />

@@ -1,4 +1,4 @@
-// src/components/plaques/PlaqueCard.tsx - Enhanced with distance display
+// src/components/plaques/PlaqueCard.tsx - Enhanced with navigation options
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,6 +34,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+type NavigationMode = 'modal' | 'url' | 'new-tab';
+
 type PlaqueCardProps = {
   plaque: Plaque;
   isSelected?: boolean;
@@ -47,7 +49,8 @@ type PlaqueCardProps = {
   showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
-  // NEW: Distance display props
+  navigationMode?: NavigationMode; // NEW: Control navigation behavior
+  // Distance display props
   showDistance?: boolean;
   distance?: number;
   formatDistance?: (distance: number) => string;
@@ -66,7 +69,8 @@ export const PlaqueCard = ({
   showRouteButton = false,
   variant = 'discover',
   className = '',
-  // NEW: Distance props
+  navigationMode = 'modal', // NEW: Default to modal
+  // Distance props
   showDistance = false,
   distance,
   formatDistance = (d) => `${d.toFixed(1)} km`
@@ -85,13 +89,29 @@ export const PlaqueCard = ({
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Use hooks for consistent state management
-  const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo, updateVisit } = useVisitedPlaques();
+  const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
   
   // Determine if the plaque is visited and get visit info
   const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
   const isFav = isFavorite(plaque.id);
   const visitInfo = getVisitInfo(plaque.id);
+
+  // NEW: Navigation handler
+  const navigateToPlaque = (plaque: Plaque, mode: NavigationMode) => {
+    switch (mode) {
+      case 'url':
+        window.location.href = `/plaque/${plaque.id}`;
+        break;
+      case 'new-tab':
+        window.open(`/plaque/${plaque.id}`, '_blank');
+        break;
+      case 'modal':
+      default:
+        if (onClick) onClick(plaque);
+        break;
+    }
+  };
 
   // Event handlers
   const handleCardClick = (e: React.MouseEvent) => {
@@ -105,9 +125,8 @@ export const PlaqueCard = ({
       return;
     }
     
-    if (onClick) {
-      onClick(plaque);
-    }
+    // NEW: Use navigation mode to determine behavior
+    navigateToPlaque(plaque, navigationMode);
   };
 
   const handleFavoriteToggle = (e: React.MouseEvent) => {
@@ -146,7 +165,6 @@ export const PlaqueCard = ({
     setShowDropdown(false);
   };
 
-  // NEW: Handle add to route
   const handleAddToRoute = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -289,7 +307,7 @@ export const PlaqueCard = ({
           
           {/* Status badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {/* NEW: Distance badge - shows first for prominence */}
+            {/* Distance badge - shows first for prominence */}
             {showDistance && distance !== undefined && distance !== Infinity && (
               <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
                 <Navigation size={10} className="mr-1" />
@@ -355,7 +373,7 @@ export const PlaqueCard = ({
             </p>
           )}
           
-          {/* NEW: Route button */}
+          {/* Route button */}
           {showRouteButton && onAddToRoute && (
             <div className="mt-3">
               <Button
@@ -387,6 +405,7 @@ export const PlaqueCard = ({
         </CardContent>
       </Card>
 
+      {/* All the dialogs remain the same */}
       {/* Quick visit dialog */}
       <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
         <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -462,11 +481,9 @@ export const PlaqueCard = ({
         plaque={plaque}
         visitId={visitInfo?.id || null}
         onVisitUpdated={() => {
-          // Refresh visit info if needed
           if (onMarkVisited) onMarkVisited(plaque.id);
         }}
         onVisitDeleted={() => {
-          // Handle visit deletion
           if (onMarkVisited) onMarkVisited(plaque.id);
         }}
       />
