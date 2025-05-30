@@ -94,7 +94,7 @@ const SignInPage: React.FC = () => {
 
   return (
     <PageContainer activePage="discover" hasFooter={false}>
-      {/* Header with theme circles */}
+      {/* Header with theme circles - condensed like About page */}
       <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-6 px-4 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-white"></div>
@@ -102,7 +102,7 @@ const SignInPage: React.FC = () => {
           <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
         </div>
         
-        <div className="container mx-auto max-w-2xl relative z-10">
+        <div className="container mx-auto max-w-5xl relative z-10">
           <div className="flex items-center gap-2 mb-4">
             <Button 
               variant="ghost" 
@@ -115,9 +115,9 @@ const SignInPage: React.FC = () => {
             <span className="text-white/80 text-sm">Back</span>
           </div>
 
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Welcome Back</h1>
-            <p className="text-white/90">
+          <div>
+            <h1 className="text-2xl font-bold">Welcome Back</h1>
+            <p className="opacity-90 mt-1">
               Sign in to your account to continue your plaque discovery journey
             </p>
           </div>

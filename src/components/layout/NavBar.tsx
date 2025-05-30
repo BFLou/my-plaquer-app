@@ -1,4 +1,4 @@
-// src/components/layout/NavBar.tsx (Updated with Library navigation)
+// src/components/layout/NavBar.tsx (Updated with separator and consistent styling)
 import React, { useState } from 'react';
 import { MapPin, X, MoreHorizontal, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -51,19 +51,24 @@ export const NavBar = ({ activePage }: NavBarProps) => {
         </Link>
         
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex gap-6 items-center">
-          <NavLink to="/" isActive={activePage === 'home' || location.pathname === '/'}>
-            Home
-          </NavLink>
-          <NavLink to="/discover" isActive={activePage === 'discover' || location.pathname.includes('/discover')}>
-            Discover
-          </NavLink>
-          <NavLink to="/library" isActive={isLibraryActive()}>
-            My Library
-          </NavLink>
-          <NavLink to="/about" isActive={activePage === 'about'}>
-            About
-          </NavLink>
+        <nav className="hidden md:flex items-center">
+          <div className="flex gap-6 items-center">
+            <NavLink to="/" isActive={activePage === 'home' || location.pathname === '/'}>
+              Home
+            </NavLink>
+            <NavLink to="/discover" isActive={activePage === 'discover' || location.pathname.includes('/discover')}>
+              Discover
+            </NavLink>
+            <NavLink to="/library" isActive={isLibraryActive()}>
+              My Library
+            </NavLink>
+            <NavLink to="/about" isActive={activePage === 'about'}>
+              About
+            </NavLink>
+          </div>
+          
+          {/* Separator Bar */}
+          <div className="h-6 w-px bg-gray-300 mx-6"></div>
           
           {/* User Menu */}
           <UserMenu />

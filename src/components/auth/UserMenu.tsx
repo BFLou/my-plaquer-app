@@ -147,20 +147,18 @@ const UserMenu: React.FC = () => {
         </DropdownMenu>
       ) : (
         // Updated buttons for non-authenticated users
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm"
+        <div className="flex items-center gap-6">
+          <button 
             onClick={handleSignIn}
-            className="text-gray-600 hover:text-blue-600"
+            className="text-gray-600 hover:text-blue-600 transition font-normal"
           >
             Sign In
-          </Button>
+          </button>
           <Button 
             variant="default" 
             size="sm"
             onClick={handleCreateAccount}
-            className="gap-2"
+className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
           >
             <User size={14} />
             Join Free

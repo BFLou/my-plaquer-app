@@ -97,9 +97,9 @@ const AuthGate: React.FC<AuthGateProps> = ({
             <span className="text-white/80 text-sm">Back to Discover</span>
           </div>
 
-          <div className="text-center">
+<div>
             <h1 className="text-3xl font-bold mb-2">Unlock More Features</h1>
-            <p className="text-white/90 max-w-2xl mx-auto">
+  <p className="opacity-90 mt-1">
               Create a free account to unlock all features and start building your personal collection of London's historic plaques
             </p>
           </div>
@@ -135,7 +135,7 @@ const AuthGate: React.FC<AuthGateProps> = ({
               ))}
             </div>
 
-            {/* Image placeholder - compact */}
+            {/* Image placeholder - compact 
             <div className="mt-6">
               <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl p-6 border-2 border-blue-200">
                 <div className="flex items-center justify-center h-32 lg:h-40">
@@ -146,8 +146,8 @@ const AuthGate: React.FC<AuthGateProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </div> */}
+          </div> 
 
           {/* Right side - Registration form */}
           <div className="lg:sticky lg:top-8">
