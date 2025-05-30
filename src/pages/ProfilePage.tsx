@@ -1,14 +1,22 @@
-// src/pages/ProfilePage.tsx
-import React, { useRef } from 'react';
+// src/pages/ProfilePage.tsx - Redesigned as Personal Dashboard
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
+  ArrowLeft,
   User, 
   Settings, 
   Camera,
-  LogOut,
+  Edit,
   BookOpen,
-  Activity,
-  Star
+  MapPin,
+  Route,
+  Plus,
+  Star,
+  CheckCircle,
+  TrendingUp,
+  Award,
+  Calendar,
+  FolderOpen
 } from 'lucide-react';
 import { PageContainer } from '@/components';
 import { Button } from "@/components/ui/button";
@@ -17,8 +25,45 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCollections } from '@/hooks/useCollection';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useRoutes } from '@/hooks/useRoutes';
+import { usePlaques } from '@/hooks/usePlaques';
 import { toast } from 'sonner';
-import ProfileForm from '@/components/profile/ProfileForm';
+import { formatTimeAgo } from '@/utils/timeUtils';
+
+// Achievement system constants
+const ACHIEVEMENTS = [
+  {
+    id: 'first_visit',
+    name: 'First Visit',
+    description: 'Visited your first plaque',
+    icon: '🏆',
+    colorClass: 'bg-amber-50 border-amber-200 text-amber-800',
+    requirement: 1
+  },
+  {
+    id: 'collector',
+    name: 'Collector',
+    description: 'Created 5 collections',
+    icon: '🗂️',
+    colorClass: 'bg-blue-50 border-blue-200 text-blue-800',
+    requirement: 5
+  },
+  {
+    id: 'explorer',
+    name: 'Explorer',
+    description: 'Visited 25 plaques',
+    icon: '🚶',
+    colorClass: 'bg-green-50 border-green-200 text-green-800',
+    requirement: 25
+  },
+  {
+    id: 'specialist',
+    name: 'Specialist',
+    description: 'Visit 50 plaques',
+    icon: '🌟',
+    colorClass: 'bg-purple-50 border-purple-200 text-purple-800',
+    requirement: 50
+  }
+];
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -26,77 +71,146 @@ const ProfilePage = () => {
   const { collections } = useCollections();
   const { visits } = useVisitedPlaques();
   const { routes } = useRoutes();
-  const fileInputRef = useRef(null);
+  const { plaques } = usePlaques();
 
-  // Calculate basic statistics for the header
+  // Calculate stats
   const totalVisits = visits.length;
   const totalCollections = collections.length;
-  const totalFavorites = collections.filter(c => c.is_favorite).length;
   const totalRoutes = routes.length;
   const uniquePlaquesVisited = new Set(visits.map(v => v.plaque_id)).size;
+  
+  // Calculate this month's visits
+  const thisMonth = new Date();
+  const firstDayOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1);
+  const thisMonthVisits = visits.filter(visit => {
+    const visitDate = visit.visited_at?.toDate ? visit.visited_at.toDate() : new Date(visit.visited_at);
+    return visitDate >= firstDayOfMonth;
+  }).length;
 
-  // Handle photo upload
-  const handlePhotoUpload = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    if (!e.target.files || !e.target.files[0] || !user) return;
+  // Calculate streak (simplified - consecutive days with visits)
+  const calculateStreak = () => {
+    if (visits.length === 0) return 0;
     
-    const file = e.target.files[0];
+    const today = new Date();
+    let streak = 0;
+    let currentDate = new Date(today);
     
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image too large', {
-        description: 'Please select an image under 5MB'
+    // Simple streak calculation - check last 7 days
+    for (let i = 0; i < 7; i++) {
+      const hasVisitOnDate = visits.some(visit => {
+        const visitDate = visit.visited_at?.toDate ? visit.visited_at.toDate() : new Date(visit.visited_at);
+        return visitDate.toDateString() === currentDate.toDateString();
       });
-      return;
-    }
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Invalid file type', {
-        description: 'Please select an image file'
-      });
-      return;
-    }
-    
-    try {
-      toast.loading('Uploading profile photo...');
       
-      const { profileImageService } = await import('@/services/profileImageService');
-      
-      if (user.photoURL) {
-        await profileImageService.deleteOldProfileImage(user.photoURL);
+      if (hasVisitOnDate) {
+        streak++;
+      } else if (i > 0) {
+        break; // Break streak if no visit found (but allow today to be empty)
       }
       
-      const downloadURL = await profileImageService.uploadProfileImage(user.uid, file);
+      currentDate.setDate(currentDate.getDate() - 1);
+    }
+    
+    return streak;
+  };
+
+  const currentStreak = calculateStreak();
+
+  // Calculate level based on visits
+  const calculateLevel = (visits: number) => {
+    if (visits < 10) return 1;
+    if (visits < 25) return 2;
+    if (visits < 50) return 3;
+    if (visits < 100) return 4;
+    return 5;
+  };
+
+  const currentLevel = calculateLevel(uniquePlaquesVisited);
+  const nextLevelThreshold = currentLevel === 1 ? 10 : currentLevel === 2 ? 25 : currentLevel === 3 ? 50 : currentLevel === 4 ? 100 : 150;
+
+  // Get recent visits with plaque data
+  const getRecentVisitsWithPlaques = () => {
+    return visits
+      .slice(0, 3)
+      .map(visit => {
+        const plaque = plaques.find(p => p.id === visit.plaque_id);
+        return {
+          ...visit,
+          plaque: plaque || { 
+            id: visit.plaque_id, 
+            title: `Plaque #${visit.plaque_id}`, 
+            location: 'Unknown location' 
+          }
+        };
+      });
+  };
+
+  // Get favorite collections
+  const getFavoriteCollections = () => {
+    return collections
+      .filter(c => c.is_favorite)
+      .slice(0, 3);
+  };
+
+  // Check which achievements are unlocked
+  const getUnlockedAchievements = () => {
+    return ACHIEVEMENTS.map(achievement => {
+      let isUnlocked = false;
       
-      if (downloadURL) {
-        toast.dismiss();
-        toast.success('Profile photo updated');
+      switch (achievement.id) {
+        case 'first_visit':
+          isUnlocked = uniquePlaquesVisited >= 1;
+          break;
+        case 'collector':
+          isUnlocked = totalCollections >= 5;
+          break;
+        case 'explorer':
+          isUnlocked = uniquePlaquesVisited >= 25;
+          break;
+        case 'specialist':
+          isUnlocked = uniquePlaquesVisited >= 50;
+          break;
       }
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      toast.dismiss();
-      toast.error('Failed to upload photo');
-    }
+      
+      return {
+        ...achievement,
+        isUnlocked
+      };
+    });
   };
-  
-  // Handle sign out
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast.success('Signed out successfully');
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      toast.error('Failed to sign out');
-    }
+
+  // Calculate area exploration
+  const getAreaExploration = () => {
+    const visitedAreas = new Set();
+    visits.forEach(visit => {
+      const plaque = plaques.find(p => p.id === visit.plaque_id);
+      if (plaque?.area) {
+        visitedAreas.add(plaque.area);
+      }
+    });
+    
+    const totalAreas = 33; // Approximate number of London areas with plaques
+    const visitedCount = visitedAreas.size;
+    const percentage = Math.round((visitedCount / totalAreas) * 100);
+    
+    return { visitedCount, totalAreas, percentage };
   };
-  
+
+  const areaStats = getAreaExploration();
+  const recentVisitsWithPlaques = getRecentVisitsWithPlaques();
+  const favoriteCollections = getFavoriteCollections();
+  const achievements = getUnlockedAchievements();
+
+  // Handle edit profile - navigate to settings
+  const handleEditProfile = () => {
+    navigate('/settings');
+  };
+
+  // Handle settings
+  const handleSettings = () => {
+    navigate('/settings');
+  };
+
   if (!user) {
     return (
       <PageContainer 
@@ -104,32 +218,49 @@ const ProfilePage = () => {
         simplifiedFooter={true}
       >
         <div className="container mx-auto py-8 px-4 text-center">
-          <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-          <p className="mb-6">You need to sign in to view your profile.</p>
-          <Button onClick={() => navigate('/')}>Back to Home</Button>
+          <div className="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
+            <User className="mx-auto text-gray-300 mb-4" size={48} />
+            <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
+            <p className="text-gray-600 mb-6">You need to sign in to view your profile.</p>
+            <Button onClick={() => navigate('/')}>Back to Home</Button>
+          </div>
         </div>
       </PageContainer>
     );
   }
-  
+
   return (
     <PageContainer 
       activePage="profile"
       simplifiedFooter={true}
     >
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-6 px-4 overflow-hidden">
         {/* Decorative background circles */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-white"></div>
-          <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
-          <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
+          <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-white"></div>
+          <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
+          <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
         </div>
         
         <div className="container mx-auto max-w-5xl relative z-10">
+          {/* Back Button */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/library')}
+              className="text-white hover:bg-white/20 h-8 w-8 p-0"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+            <span className="text-white/80 text-sm">Back to Library</span>
+          </div>
+
+          {/* Profile Header */}
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-4">
-              {/* Profile Photo */}
+              {/* Profile Photo with Level Badge */}
               <div className="relative">
                 {user.photoURL ? (
                   <div className="bg-white/20 backdrop-blur-sm w-20 h-20 rounded-full overflow-hidden">
@@ -140,28 +271,20 @@ const ProfilePage = () => {
                     <User size={32} className="text-white" />
                   </div>
                 )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="absolute bottom-0 right-0 h-7 w-7 p-0 rounded-full bg-white hover:bg-gray-100"
-                  onClick={handlePhotoUpload}
-                >
-                  <Camera size={12} className="text-gray-700" />
-                </Button>
-                <input 
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
+                {/* Level Badge */}
+                <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                  Level {currentLevel}
+                </div>
               </div>
               
               {/* User Info */}
               <div>
-                <h1 className="text-2xl font-bold">{user.displayName || 'User'}</h1>
+                <h1 className="text-2xl font-bold">{user.displayName || 'Explorer'}</h1>
                 <p className="opacity-90 mt-1">
                   Member since {new Date(user.metadata.creationTime || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+                  {currentStreak > 0 && (
+                    <span className="ml-2">• 🔥 {currentStreak} day streak</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -171,16 +294,16 @@ const ProfilePage = () => {
               <Button 
                 variant="outline"
                 className="bg-white/10 text-white border-white/20 hover:bg-white/20"
-                onClick={() => navigate('/settings')}
+                onClick={handleEditProfile}
               >
-                <Settings size={16} className="mr-2" /> Settings
+                <Edit size={16} className="mr-2" /> Edit Profile
               </Button>
               <Button 
                 variant="outline"
                 className="bg-white/10 text-white border-white/20 hover:bg-white/20"
-                onClick={handleSignOut}
+                onClick={handleSettings}
               >
-                <LogOut size={16} className="mr-2" /> Sign Out
+                <Settings size={16} className="mr-2" /> Settings
               </Button>
             </div>
           </div>
@@ -198,67 +321,215 @@ const ProfilePage = () => {
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center px-3 py-1">
               <div className="text-lg font-bold text-purple-600">{totalCollections}</div>
-              <div className="text-xs text-gray-500">Collections</div>
+              <div class="text-xs text-gray-500">Collections</div>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center px-3 py-1">
               <div className="text-lg font-bold text-green-600">{totalRoutes}</div>
               <div className="text-xs text-gray-500">Routes</div>
             </div>
+            <div className="h-8 w-px bg-gray-200"></div>
+            <div className="text-center px-3 py-1">
+              <div className="text-lg font-bold text-amber-600">{thisMonthVisits}</div>
+              <div className="text-xs text-gray-500">This Month</div>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              <User size={12} className="mr-1" /> Profile
+          <div className="flex items-center">
+            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200">
+              Explorer Level {currentLevel}
             </Badge>
-            {totalFavorites > 0 && (
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                <Star size={12} className="mr-1" /> {totalFavorites} Favorites
-              </Badge>
+          </div>
+        </div>
+
+
+        {/* Recent Activity Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Recent Visits */}
+          <div className="bg-white shadow-sm rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <CheckCircle className="text-blue-500" size={18} />
+                Recent Visits
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/library/visits')}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                View All
+              </Button>
+            </div>
+            
+            {recentVisitsWithPlaques.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <MapPin className="mx-auto mb-2" size={32} />
+                <p className="text-sm">No visits yet</p>
+                <Button 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => navigate('/discover')}
+                >
+                  Start Exploring
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentVisitsWithPlaques.map((visit) => (
+                  <div 
+                    key={visit.id}
+                    className="border p-3 rounded-lg hover:border-blue-300 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/plaque/${visit.plaque.id}`)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 text-blue-500 rounded-lg flex items-center justify-center">
+                        <MapPin size={18} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium">{visit.plaque.title}</h4>
+                        <p className="text-sm text-gray-500">
+                          {visit.plaque.location} • {formatTimeAgo(visit.visited_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* My Collections */}
+          <div className="bg-white shadow-sm rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <FolderOpen className="text-purple-500" size={18} />
+                My Collections
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/library/collections')}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                View All
+              </Button>
+            </div>
+            
+            {favoriteCollections.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FolderOpen className="mx-auto mb-2" size={32} />
+                <p className="text-sm">No favorite collections yet</p>
+                <Button 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => navigate('/library/collections')}
+                >
+                  Create Collection
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {favoriteCollections.map((collection) => (
+                  <div 
+                    key={collection.id}
+                    className="border p-3 rounded-lg hover:border-blue-300 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/library/collections/${collection.id}`)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 ${collection.color} rounded-lg flex items-center justify-center text-white`}>
+                        {collection.icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{collection.name}</h4>
+                          <Star className="text-amber-500" size={14} fill="currentColor" />
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {Array.isArray(collection.plaques) ? collection.plaques.length : collection.plaques} plaques • Updated {formatTimeAgo(collection.updated_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-        
-        {/* Quick Navigation */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Quick Navigation</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        {/* Quick Actions */}
+        <div className="bg-white shadow-sm rounded-xl p-6 mb-6">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <TrendingUp className="text-blue-500" size={20} />
+            Quick Actions
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Button 
-              variant="outline"
-              className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-blue-50 hover:border-blue-300"
+              onClick={() => navigate('/discover?view=map')}
+              className="h-16 bg-blue-600 hover:bg-blue-700 flex flex-col items-center justify-center"
+            >
+              <MapPin size={20} className="mb-1" />
+              Explore Map
+            </Button>
+            
+            <Button 
               onClick={() => navigate('/library')}
+              className="h-16 bg-purple-600 hover:bg-purple-700 flex flex-col items-center justify-center"
             >
-              <BookOpen className="text-blue-500" size={24} />
-              <span className="font-medium">My Library</span>
-              <span className="text-xs text-gray-500">{totalCollections + totalRoutes} items</span>
+              <BookOpen size={20} className="mb-1" />
+              My Library
             </Button>
             
             <Button 
-              variant="outline"
-              className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-green-50 hover:border-green-300"
-              onClick={() => navigate('/library/visited')}
+              onClick={() => navigate('/discover?view=map')}
+              className="h-16 bg-green-600 hover:bg-green-700 flex flex-col items-center justify-center"
             >
-              <Activity className="text-green-500" size={24} />
-              <span className="font-medium">Visit History</span>
-              <span className="text-xs text-gray-500">{totalVisits} visits</span>
+              <Route size={20} className="mb-1" />
+              Plan Route
             </Button>
             
             <Button 
-              variant="outline"
-              className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300"
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate('/library/collections')}
+              className="h-16 bg-amber-600 hover:bg-amber-700 flex flex-col items-center justify-center"
             >
-              <Settings className="text-purple-500" size={24} />
-              <span className="font-medium">Settings</span>
-              <span className="text-xs text-gray-500">Account & Privacy</span>
+              <Plus size={20} className="mb-1" />
+              New Collection
             </Button>
           </div>
         </div>
-        
-        {/* Profile Form */}
-        <div className="bg-white shadow-sm rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-6">Profile Information</h2>
-          <ProfileForm />
+
+        {/* Achievements/Badges */}
+        <div className="bg-white shadow-sm rounded-xl p-6 mb-8">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Award className="text-amber-500" size={20} />
+            Recent Achievements
+          </h3>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {achievements.map((achievement) => (
+              <div 
+                key={achievement.id}
+                className={`text-center p-4 rounded-lg border ${
+                  achievement.isUnlocked 
+                    ? achievement.colorClass 
+                    : 'bg-gray-100 border-gray-200 opacity-50'
+                }`}
+              >
+                <div className="text-3xl mb-2">{achievement.icon}</div>
+                <h4 className={`font-medium text-sm ${
+                  achievement.isUnlocked ? '' : 'text-gray-600'
+                }`}>
+                  {achievement.name}
+                </h4>
+                <p className={`text-xs ${
+                  achievement.isUnlocked ? '' : 'text-gray-500'
+                }`}>
+                  {achievement.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </PageContainer>
