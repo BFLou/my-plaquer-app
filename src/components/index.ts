@@ -22,7 +22,7 @@ export { default as VisitLogger } from './plaques/VisitLogger';
 
 // Collection components
 export { CollectionStats } from './collections/CollectionStats';
-export { default as EmptyState } from './collections/EmptyState';
+// REMOVED: export { default as EmptyState } from './collections/EmptyState';
 
 // Map components - NEW SECTION
 export { MapContainer } from './maps/MapContainer';
@@ -52,8 +52,8 @@ export { OptimizedRoute } from './OptimizedRoute';
 export { NotFoundPage } from './NotFoundPage';
 export { ScrollToTop } from './ScrollToTop';
 
-// Common components
-export { EmptyState as CommonEmptyState } from './common/EmptyState';
+// Common components - FIXED: Use one EmptyState export
+export { EmptyState } from './common/EmptyState'; // MAIN EmptyState export
 export { ActionBar, type ActionBarButton } from './common/ActionBar';
 export { ViewToggle, type ViewMode } from './common/ViewToggle';
 export { FilterBar } from './common/FilterBar';
@@ -105,4 +105,4 @@ export { useRoutes } from '../hooks/useRoutes';
 export { useTheme } from '../hooks/useTheme';
 export { useVisitedPlaques } from '../hooks/useVisitedPlaques';
 export { useAnimation } from '../hooks/useAnimation';
-export { useGlobalErrorHandlers } from '../hooks/useGlobalErrorHandlers'; // New hook
+export { useGlobalErrorHandlers } from '../hooks/useGlobalErrorHandlers';
