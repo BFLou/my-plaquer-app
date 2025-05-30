@@ -1,11 +1,9 @@
-// src/components/auth/UserMenu.tsx - Updated with new auth workflow
-import React, { useState } from 'react';
+// src/components/auth/UserMenu.tsx - Updated without dark mode
+import React from 'react';
 import { 
   User, 
   LogOut, 
-  Settings, 
-  Moon,
-  Sun
+  Settings
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -20,16 +18,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { toast } from 'sonner';
-import { useTheme } from '@/hooks/useTheme'; // You'll need to create this hook
 
 const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, setTheme } = useTheme(); // Add theme hook
 
   // Get user initials for avatar fallback
   const getUserInitials = () => {
@@ -49,12 +43,6 @@ const UserMenu: React.FC = () => {
       console.error('Error signing out:', error);
       toast.error('There was a problem signing out');
     }
-  };
-
-  const handleThemeToggle = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    toast.success(`Switched to ${newTheme} mode`);
   };
 
   const handleSignIn = () => {
@@ -113,32 +101,6 @@ const UserMenu: React.FC = () => {
             
             <DropdownMenuSeparator />
             
-            {/* Settings Group */}
-            <DropdownMenuGroup>
-              <DropdownMenuItem 
-                onSelect={(e) => {
-                  e.preventDefault(); // Prevent dropdown from closing
-                  handleThemeToggle();
-                }}
-                className="cursor-pointer"
-              >
-                {theme === 'dark' ? (
-                  <Sun className="mr-2 h-4 w-4" />
-                ) : (
-                  <Moon className="mr-2 h-4 w-4" />
-                )}
-                <span>Dark Mode</span>
-                <Switch 
-                  checked={theme === 'dark'} 
-                  onCheckedChange={handleThemeToggle}
-                  onClick={(e) => e.stopPropagation()} // Prevent double toggle
-                  className="ml-auto"
-                />
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            
-            <DropdownMenuSeparator />
-            
             <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sign Out</span>
@@ -146,7 +108,7 @@ const UserMenu: React.FC = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        // Updated buttons for non-authenticated users
+        // Buttons for non-authenticated users
         <div className="flex items-center gap-6">
           <button 
             onClick={handleSignIn}
@@ -158,7 +120,7 @@ const UserMenu: React.FC = () => {
             variant="default" 
             size="sm"
             onClick={handleCreateAccount}
-className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
           >
             <User size={14} />
             Join Free
