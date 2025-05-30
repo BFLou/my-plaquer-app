@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - UPDATED: Distance filter integration for all views
+// src/pages/Discover.tsx - FIXED: Plaque click handling
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -21,7 +21,7 @@ import { useSearchParams } from 'react-router-dom';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
-// NEW: Distance filter state interface
+// Distance filter state interface
 interface DistanceFilter {
   enabled: boolean;
   center: [number, number] | null;
@@ -72,7 +72,7 @@ const Discover = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // NEW: Distance filter state - shared across all views
+  // Distance filter state - shared across all views
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>({
     enabled: false,
     center: null,
@@ -150,7 +150,7 @@ const Discover = () => {
     }
   }, []);
 
-  // UPDATED: Enhanced filtered plaques with distance filter
+  // Enhanced filtered plaques with distance filter
   const filteredPlaques = useMemo(() => {
     let filtered = allPlaques.filter((plaque) => {
       // Standard filters
@@ -182,7 +182,7 @@ const Discover = () => {
              matchesFavorite;
     });
 
-    // NEW: Apply distance filter for ALL views (not just map)
+    // Apply distance filter for ALL views
     if (distanceFilter.enabled && distanceFilter.center) {
       filtered = filtered.filter(plaque => {
         if (!plaque.latitude || !plaque.longitude) return false;
@@ -213,25 +213,26 @@ const Discover = () => {
     distanceFilter.radius
   ]);
 
-  // UPDATED: Active filters count including distance filter
+  // Active filters count including distance filter
   const activeFiltersCount = useMemo(() => {
     return urlState.postcodes.length + 
            urlState.colors.length + 
            urlState.professions.length + 
            (urlState.onlyVisited ? 1 : 0) + 
            (urlState.onlyFavorites ? 1 : 0) +
-           (distanceFilter.enabled ? 1 : 0); // NEW: Include distance filter
+           (distanceFilter.enabled ? 1 : 0);
   }, [
     urlState.postcodes.length,
     urlState.colors.length,
     urlState.professions.length,
     urlState.onlyVisited,
     urlState.onlyFavorites,
-    distanceFilter.enabled // NEW: Include distance filter
+    distanceFilter.enabled
   ]);
 
-  // Event handlers
+  // FIXED: Event handlers with proper debugging
   const handlePlaqueClick = useCallback((plaque) => {
+    console.log('Plaque clicked:', plaque); // Debug log
     setSelectedPlaque(plaque);
   }, []);
 
@@ -254,7 +255,7 @@ const Discover = () => {
     }
   }, [markAsVisited]);
 
-  // UPDATED: Reset filters including distance filter
+  // Reset filters including distance filter
   const resetFilters = useCallback(() => {
     updateUrlState({
       search: '',
@@ -264,7 +265,6 @@ const Discover = () => {
       onlyVisited: false,
       onlyFavorites: false,
     });
-    // NEW: Clear distance filter
     setDistanceFilter({
       enabled: false,
       center: null,
@@ -274,10 +274,10 @@ const Discover = () => {
     setCurrentPage(1);
   }, []);
 
-  // NEW: Distance filter handlers
+  // Distance filter handlers
   const handleDistanceFilterChange = useCallback((newFilter: Partial<DistanceFilter>) => {
     setDistanceFilter(prev => ({ ...prev, ...newFilter }));
-    setCurrentPage(1); // Reset to first page when filter changes
+    setCurrentPage(1);
   }, []);
 
   // Distance helper functions
@@ -340,10 +340,8 @@ const Discover = () => {
               plaques={filteredPlaques}
               onPlaqueClick={handlePlaqueClick}
               className="h-full w-full"
-              // Pass distance filter handlers to map
               onDistanceFilterChange={handleDistanceFilterChange}
               distanceFilter={distanceFilter}
-              // Pass external filter functions
               isPlaqueVisited={isPlaqueVisited}
               isFavorite={isFavorite}
             />
@@ -379,7 +377,7 @@ const Discover = () => {
     }
 
     const commonProps = {
-      showDistance: distanceFilter.enabled, // NEW: Show distance when filter is active
+      showDistance: distanceFilter.enabled,
       formatDistance,
     };
 
@@ -391,10 +389,8 @@ const Discover = () => {
               <PlaqueCard
                 key={plaque.id}
                 plaque={plaque}
-                isFavorite={isFavorite(plaque.id)}
+                onClick={handlePlaqueClick} // FIXED: Use onClick instead of onPlaqueClick
                 onFavoriteToggle={handleFavoriteToggle}
-                onPlaqueClick={handlePlaqueClick}
-                isVisited={isPlaqueVisited(plaque.id)}
                 onMarkVisited={handleMarkVisited}
                 distance={distanceFilter.enabled ? getDistanceFromActiveLocation(plaque) : 0}
                 {...commonProps}
@@ -423,10 +419,8 @@ const Discover = () => {
               <PlaqueListItem
                 key={plaque.id}
                 plaque={plaque}
-                isFavorite={isFavorite(plaque.id)}
+                onClick={handlePlaqueClick} // FIXED: Use onClick instead of onPlaqueClick
                 onFavoriteToggle={handleFavoriteToggle}
-                onPlaqueClick={handlePlaqueClick}
-                isVisited={isPlaqueVisited(plaque.id)}
                 onMarkVisited={handleMarkVisited}
                 distance={distanceFilter.enabled ? getDistanceFromActiveLocation(plaque) : 0}
                 {...commonProps}
@@ -464,13 +458,13 @@ const Discover = () => {
         onOpenFilters={() => setFiltersOpen(true)}
       />
       
-      {/* UPDATED: Active filters display with distance filter */}
+      {/* Active filters display with distance filter */}
       <DiscoverFilters
         urlState={urlState}
         activeFiltersCount={activeFiltersCount}
-        activeLocation={distanceFilter.center} // NEW: Pass distance filter center
-        maxDistance={distanceFilter.radius} // NEW: Pass distance filter radius
-        hideOutsidePlaques={distanceFilter.enabled} // NEW: Pass distance filter enabled state
+        activeLocation={distanceFilter.center}
+        maxDistance={distanceFilter.radius}
+        hideOutsidePlaques={distanceFilter.enabled}
         formatDistance={formatDistance}
         onRemoveFilter={(filters) => updateUrlState(filters)}
         onResetFilters={resetFilters}
@@ -482,7 +476,6 @@ const Discover = () => {
           professionOptions
         }}
         onApplyFilters={(filters) => updateUrlState(filters)}
-        // NEW: Distance filter props
         distanceFilter={distanceFilter}
         onClearDistanceFilter={() => setDistanceFilter({
           enabled: false,
@@ -540,12 +533,15 @@ const Discover = () => {
         onReset={resetFilters}
       />
       
-      {/* Plaque Detail Modal */}
+      {/* FIXED: Plaque Detail Modal - Added debug logging */}
       {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
           isOpen={!!selectedPlaque}
-          onClose={() => setSelectedPlaque(null)}
+          onClose={() => {
+            console.log('Closing plaque detail'); // Debug log
+            setSelectedPlaque(null);
+          }}
           isFavorite={isFavorite(selectedPlaque.id)}
           onFavoriteToggle={handleFavoriteToggle}
           onMarkVisited={handleMarkVisited}
