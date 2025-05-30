@@ -97,13 +97,7 @@ const AddToCollectionDialog = ({ isOpen, onClose, plaque }: AddToCollectionDialo
       );
       
       await Promise.all(promises);
-      
-      const collectionCount = selectedCollections.length;
-      toast.success(
-        collectionCount === 1 
-          ? 'Plaque added to collection'
-          : `Plaque added to ${collectionCount} collections`
-      );
+    
       
       onClose();
     } catch (err) {

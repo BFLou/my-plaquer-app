@@ -177,7 +177,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     } else {
       toggleFavorite(plaque.id);
     }
-    toast.success(isPlaqueFavorite ? "Removed from favorites" : "Added to favorites");
   };
 
   const handleMarkVisitedClick = () => {
