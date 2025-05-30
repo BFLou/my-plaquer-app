@@ -1,4 +1,4 @@
-// src/components/auth/UserMenu.tsx
+// src/components/auth/UserMenu.tsx - Updated with new auth workflow
 import React, { useState } from 'react';
 import { 
   User, 
@@ -8,6 +8,7 @@ import {
   Sun
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,15 +22,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import AuthModal from './AuthModal';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTheme } from '@/hooks/useTheme'; // You'll need to create this hook
 
 const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, setTheme } = useTheme(); // Add theme hook
 
   // Get user initials for avatar fallback
@@ -56,6 +55,26 @@ const UserMenu: React.FC = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     toast.success(`Switched to ${newTheme} mode`);
+  };
+
+  const handleSignIn = () => {
+    // Navigate to sign-in page with current location as redirect
+    navigate('/signin', {
+      state: {
+        redirectTo: location.pathname,
+        backTo: location.pathname
+      }
+    });
+  };
+
+  const handleCreateAccount = () => {
+    // Navigate to auth gate with current location as redirect
+    navigate('/auth-required', {
+      state: {
+        redirectTo: location.pathname,
+        backTo: location.pathname
+      }
+    });
   };
 
   return (
@@ -86,7 +105,7 @@ const UserMenu: React.FC = () => {
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
@@ -127,20 +146,27 @@ const UserMenu: React.FC = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Button 
-          variant="default" 
-          onClick={() => setIsAuthModalOpen(true)}
-          className="gap-2"
-        >
-          <User size={16} />
-          Sign In
-        </Button>
+        // Updated buttons for non-authenticated users
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleSignIn}
+            className="text-gray-600 hover:text-blue-600"
+          >
+            Sign In
+          </Button>
+          <Button 
+            variant="default" 
+            size="sm"
+            onClick={handleCreateAccount}
+            className="gap-2"
+          >
+            <User size={14} />
+            Join Free
+          </Button>
+        </div>
       )}
-
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-      />
     </>
   );
 };

@@ -1,10 +1,12 @@
-// src/router/AppRoutes.tsx - Updated with plaque detail route
+// src/router/AppRoutes.tsx - Complete version with AuthGate and SignIn
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { MapErrorBoundary } from '@/components/ErrorBoundary';
 import { OptimizedRoute } from '@/components/OptimizedRoute';
 import { NotFoundPage } from '@/components/NotFoundPage';
 import RequireAuth from '@/components/auth/RequireAuth';
+import AuthGate from '@/components/auth/AuthGate';
+import SignInPage from '@/pages/SignInPage';
 
 // Import pages
 import LibraryPage from '@/pages/LibraryPage';
@@ -18,7 +20,7 @@ import Home from '@/pages/Home';
 import About from '@/pages/About';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
-import PlaqueDetailPage from '@/pages/PlaqueDetailPage'; // NEW: Import the plaque detail page
+import PlaqueDetailPage from '@/pages/PlaqueDetailPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -37,7 +39,7 @@ export const AppRoutes: React.FC = () => {
         } 
       />
       
-      {/* NEW: Individual plaque detail route - PUBLIC */}
+      {/* Individual plaque detail route - PUBLIC */}
       <Route 
         path="/plaque/:id" 
         element={
@@ -47,22 +49,26 @@ export const AppRoutes: React.FC = () => {
         } 
       />
       
+      {/* Auth routes */}
+      <Route path="/auth-required" element={<AuthGate />} />
+      <Route path="/signin" element={<SignInPage />} />
+      
       {/* Library routes - Main landing page */}
       <Route path="/library" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true}>
           <OptimizedRoute element={LibraryPage} />
         </RequireAuth>
       } />
       
       {/* Collections routes under Library */}
       <Route path="/library/collections" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="create and manage collections">
           <OptimizedRoute element={CollectionsPage} />
         </RequireAuth>
       } />
       
       <Route path="/library/collections/:id" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="view collection details">
           <MapErrorBoundary>
             <OptimizedRoute element={CollectionDetailPage} />
           </MapErrorBoundary>
@@ -71,13 +77,13 @@ export const AppRoutes: React.FC = () => {
       
       {/* Routes management under Library */}
       <Route path="/library/routes" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="create and manage routes">
           <OptimizedRoute element={RoutesManagementPage} />
         </RequireAuth>
       } />
       
       <Route path="/library/routes/:id" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="view route details">
           <MapErrorBoundary>
             <OptimizedRoute element={RouteDetailPage} />
           </MapErrorBoundary>
@@ -86,20 +92,20 @@ export const AppRoutes: React.FC = () => {
       
       {/* Visits under Library */}
       <Route path="/library/visits" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="track your visits">
           <OptimizedRoute element={VisitsPage} />
         </RequireAuth>
       } />
       
       {/* Legacy redirects for backward compatibility */}
       <Route path="/collections" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="create and manage collections">
           <OptimizedRoute element={CollectionsPage} />
         </RequireAuth>
       } />
       
       <Route path="/collections/:id" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="view collection details">
           <MapErrorBoundary>
             <OptimizedRoute element={CollectionDetailPage} />
           </MapErrorBoundary>
@@ -107,13 +113,13 @@ export const AppRoutes: React.FC = () => {
       } />
       
       <Route path="/routes" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="create and manage routes">
           <OptimizedRoute element={RoutesManagementPage} />
         </RequireAuth>
       } />
       
       <Route path="/routes/:id" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="view route details">
           <MapErrorBoundary>
             <OptimizedRoute element={RouteDetailPage} />
           </MapErrorBoundary>
@@ -122,26 +128,26 @@ export const AppRoutes: React.FC = () => {
       
       {/* Profile routes */}
       <Route path="/profile" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="manage your profile">
           <OptimizedRoute element={ProfilePage} />
         </RequireAuth>
       } />
       
       <Route path="/profile/:tab" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="manage your profile">
           <OptimizedRoute element={ProfilePage} />
         </RequireAuth>
       } />
       
       {/* Settings routes */}
       <Route path="/settings" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="access your settings">
           <OptimizedRoute element={SettingsPage} />
         </RequireAuth>
       } />
       
       <Route path="/settings/:tab" element={
-        <RequireAuth>
+        <RequireAuth showGatePage={true} featureName="access your settings">
           <OptimizedRoute element={SettingsPage} />
         </RequireAuth>
       } />
