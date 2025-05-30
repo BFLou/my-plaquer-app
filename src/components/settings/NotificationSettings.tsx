@@ -1,17 +1,14 @@
 // src/components/settings/NotificationSettings.tsx
 import React, { useState } from 'react';
-import { Mail, Bell, Calendar, FileText, Folder } from 'lucide-react';
+import { Mail, Bell, Info } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import SettingsCard from './SettingsCard';
 
 const NotificationSettings: React.FC = () => {
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [visitReminders, setVisitReminders] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
-  const [collectionUpdates, setCollectionUpdates] = useState(true);
+  const [emailUpdates, setEmailUpdates] = useState(true);
+  const [pushUpdates, setPushUpdates] = useState(true);
 
   const handleSave = () => {
     toast.success('Notification preferences saved');
@@ -21,47 +18,20 @@ const NotificationSettings: React.FC = () => {
     {
       id: 'email',
       icon: Mail,
-      title: 'Email Notifications',
-      description: 'Receive notifications via email',
-      value: emailNotifications,
-      onChange: setEmailNotifications,
+      title: 'Email Updates',
+      description: 'Receive app updates and important announcements via email',
+      value: emailUpdates,
+      onChange: setEmailUpdates,
       color: 'blue'
     },
     {
       id: 'push',
       icon: Bell,
       title: 'Push Notifications',
-      description: 'Receive notifications on your device',
-      value: pushNotifications,
-      onChange: setPushNotifications,
+      description: 'Get notified about app updates and new features on your device',
+      value: pushUpdates,
+      onChange: setPushUpdates,
       color: 'green'
-    },
-    {
-      id: 'reminders',
-      icon: Calendar,
-      title: 'Visit Reminders',
-      description: 'Get notified when near unvisited plaques',
-      value: visitReminders,
-      onChange: setVisitReminders,
-      color: 'amber'
-    },
-    {
-      id: 'digest',
-      icon: FileText,
-      title: 'Weekly Digest',
-      description: 'Summary of new plaques and activity',
-      value: weeklyDigest,
-      onChange: setWeeklyDigest,
-      color: 'purple'
-    },
-    {
-      id: 'collections',
-      icon: Folder,
-      title: 'Collection Updates',
-      description: 'Updates when collections you follow change',
-      value: collectionUpdates,
-      onChange: setCollectionUpdates,
-      color: 'pink'
     }
   ];
 
@@ -70,13 +40,13 @@ const NotificationSettings: React.FC = () => {
       <div className="p-6 border-b">
         <h2 className="text-xl font-bold mb-1">Notification Settings</h2>
         <p className="text-gray-500">
-          Control which notifications you receive from Plaquer.
+          Stay informed about app updates and important changes.
         </p>
       </div>
 
       <SettingsCard 
-        title="Notification Preferences"
-        description="Choose how and when you want to be notified"
+        title="App Updates & Announcements"
+        description="Choose how you want to receive information about Plaquer updates"
         footer={
           <Button onClick={handleSave} className="w-full">
             Save Notification Settings
@@ -106,6 +76,32 @@ const NotificationSettings: React.FC = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* Info about what notifications include */}
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+          <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+            <Info size={16} />
+            What you'll receive
+          </h4>
+          <ul className="space-y-1 text-sm text-blue-800">
+            <li className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+              <span>New app features and improvements</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+              <span>Important security updates</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+              <span>Service announcements and maintenance notices</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+              <span>Changes to terms of service or privacy policy</span>
+            </li>
+          </ul>
         </div>
       </SettingsCard>
     </div>
