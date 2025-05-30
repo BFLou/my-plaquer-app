@@ -1,4 +1,4 @@
-// src/components/auth/AuthGate.tsx
+// src/components/auth/AuthGate.tsx - Complete version with account linking
 import React, { useState } from 'react';
 import { ArrowLeft, X, MapPin, FolderOpen, Route, Star, Check, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import AccountLinkingModal from './AccountLinkingModal';
+import AuthErrorDisplay from './AuthErrorDisplay';
+import { getSpecificErrorMessage } from '@/utils/authErrorHandler';
 
 interface AuthGateProps {
   /** What feature the user was trying to access */
@@ -34,7 +37,15 @@ const AuthGate: React.FC<AuthGateProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<any>(null); // Store full error object
+
+  // Account linking modal state
+  const [showLinkingModal, setShowLinkingModal] = useState(false);
+  const [linkingData, setLinkingData] = useState<{
+    email: string;
+    existingMethods: string[];
+    suggestedAction: 'google' | 'signin' | 'signin-then-link';
+  } | null>(null);
 
   const handleBack = () => {
     navigate(backTo);
@@ -46,32 +57,32 @@ const AuthGate: React.FC<AuthGateProps> = ({
       [e.target.name]: e.target.value
     }));
     // Clear error when user starts typing
-    if (error) setError(null);
+    if (authError) setAuthError(null);
   };
 
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setAuthError(null);
 
     // Validation
     if (!formData.displayName.trim()) {
-      setError('Please enter your full name');
+      setAuthError({ code: 'validation/display-name-required', message: 'Please enter your full name' });
       return;
     }
     if (!formData.email.trim()) {
-      setError('Please enter your email address');
+      setAuthError({ code: 'validation/email-required', message: 'Please enter your email address' });
       return;
     }
     if (!formData.password.trim()) {
-      setError('Please enter a password');
+      setAuthError({ code: 'validation/password-required', message: 'Please enter a password' });
       return;
     }
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setAuthError({ code: 'validation/password-too-short', message: 'Password must be at least 8 characters long' });
       return;
     }
     if (!agreeToTerms) {
-      setError('Please agree to the Terms of Service and Privacy Policy');
+      setAuthError({ code: 'validation/terms-required', message: 'Please agree to the Terms of Service and Privacy Policy' });
       return;
     }
 
@@ -82,14 +93,27 @@ const AuthGate: React.FC<AuthGateProps> = ({
       toast.success('Account created successfully! Welcome to Plaquer.');
       navigate(redirectTo);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account. Please try again.');
+      console.error('Registration error:', err);
+      
+      // Handle account linking scenarios
+      if (err.canSignIn || err.existingMethods) {
+        setLinkingData({
+          email: formData.email,
+          existingMethods: err.existingMethods || [],
+          suggestedAction: err.suggestedAction || 'signin'
+        });
+        setShowLinkingModal(true);
+        setAuthError(null); // Clear error since we're showing the modal
+      } else {
+        setAuthError(err);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleRegister = async () => {
-    setError(null);
+    setAuthError(null);
     setIsLoading(true);
 
     try {
@@ -97,7 +121,20 @@ const AuthGate: React.FC<AuthGateProps> = ({
       toast.success('Account created successfully! Welcome to Plaquer.');
       navigate(redirectTo);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account with Google.');
+      console.error('Google registration error:', err);
+      
+      // Handle account linking scenarios
+      if (err.canLink || err.existingMethods) {
+        setLinkingData({
+          email: err.email || '',
+          existingMethods: err.existingMethods || [],
+          suggestedAction: err.suggestedAction || 'signin-then-link'
+        });
+        setShowLinkingModal(true);
+        setAuthError(null);
+      } else {
+        setAuthError(err);
+      }
       setIsLoading(false);
     }
   };
@@ -109,6 +146,18 @@ const AuthGate: React.FC<AuthGateProps> = ({
         backTo
       }
     });
+  };
+
+  const handleLinkingSuccess = () => {
+    setShowLinkingModal(false);
+    setLinkingData(null);
+    toast.success('Welcome to Plaquer!');
+    navigate(redirectTo);
+  };
+
+  // Helper function to handle password reset
+  const handlePasswordReset = (email: string) => {
+    navigate('/forgot-password', { state: { email, redirectTo, backTo } });
   };
 
   const features = [
@@ -151,6 +200,7 @@ const AuthGate: React.FC<AuthGateProps> = ({
               size="sm" 
               onClick={handleBack}
               className="text-white hover:bg-white/20 h-8 w-8 p-0"
+              disabled={isLoading}
             >
               <ArrowLeft size={18} />
             </Button>
@@ -289,6 +339,7 @@ const AuthGate: React.FC<AuthGateProps> = ({
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
@@ -315,11 +366,17 @@ const AuthGate: React.FC<AuthGateProps> = ({
                   </label>
                 </div>
 
-                {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
-                    {error}
-                  </div>
-                )}
+                {/* Enhanced Error Display */}
+                <AuthErrorDisplay
+                  error={authError}
+                  email={formData.email}
+                  context="signup"
+                  onRetry={() => setAuthError(null)}
+                  onResetPassword={(email) => {
+                    navigate('/forgot-password', { state: { email } });
+                  }}
+                  onSwitchToSignIn={handleSignIn}
+                />
 
                 <Button 
                   type="submit"
@@ -367,6 +424,18 @@ const AuthGate: React.FC<AuthGateProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Account Linking Modal */}
+      {showLinkingModal && linkingData && (
+        <AccountLinkingModal
+          isOpen={showLinkingModal}
+          onClose={handleLinkingClose}
+          email={linkingData.email}
+          existingMethods={linkingData.existingMethods}
+          suggestedAction={linkingData.suggestedAction}
+          onSuccess={handleLinkingSuccess}
+        />
+      )}
     </div>
   );
 };
