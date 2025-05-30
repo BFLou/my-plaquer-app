@@ -1,4 +1,4 @@
-// src/components/plaques/DiscoverFilterDialog.tsx - UPDATED: Integrated with distance filter
+// src/components/plaques/DiscoverFilterDialog.tsx - FIXED: Toggle switches working properly
 import React, { useState, useMemo } from 'react';
 import { 
   Search, X, MapPin, Circle,
@@ -20,11 +20,11 @@ type FilterOption = {
   value: string;
   color?: string;
   count?: number;
-  // NEW: Distance-filtered count
+  // Distance-filtered count
   filteredCount?: number;
 };
 
-// NEW: Distance filter interface
+// Distance filter interface
 interface DistanceFilter {
   enabled: boolean;
   center: [number, number] | null;
@@ -69,7 +69,7 @@ type DiscoverFilterDialogProps = {
   selectedOrganisations?: string[];
   onOrganisationsChange?: (values: string[]) => void;
   
-  // Toggle options
+  // Toggle options - FIXED: Proper boolean handling
   onlyVisited: boolean;
   onVisitedChange: (value: boolean) => void;
   
@@ -80,7 +80,7 @@ type DiscoverFilterDialogProps = {
   onApply: () => void;
   onReset: () => void;
   
-  // NEW: Distance filter integration
+  // Distance filter integration
   distanceFilter?: DistanceFilter;
   allPlaques?: Plaque[];
   isPlaqueVisited?: (id: number) => boolean;
@@ -120,7 +120,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   onApply,
   onReset,
   
-  // NEW: Distance filter props
+  // Distance filter props
   distanceFilter,
   allPlaques = [],
   isPlaqueVisited,
@@ -138,7 +138,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   // Default number of items to show
   const DEFAULT_ITEMS_TO_SHOW = 8;
   
-  // NEW: Filter plaques based on distance filter
+  // Filter plaques based on distance filter
   const distanceFilteredPlaques = useMemo(() => {
     if (!distanceFilter?.enabled || !distanceFilter.center || !allPlaques.length) {
       return allPlaques;
@@ -163,7 +163,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     });
   }, [distanceFilter, allPlaques]);
   
-  // NEW: Enhanced filter options with distance-filtered counts
+  // Enhanced filter options with distance-filtered counts
   const enhancedFilterOptions = useMemo(() => {
     const calculateFilteredCounts = (
       originalOptions: FilterOption[],
@@ -227,7 +227,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     );
   };
   
-  // NEW: Format count display based on distance filter
+  // Format count display based on distance filter
   const formatCount = (option: FilterOption): string => {
     if (distanceFilter?.enabled && option.filteredCount !== undefined) {
       if (option.filteredCount === 0) {
@@ -239,7 +239,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     return option.count ? `(${option.count})` : '';
   };
   
-  // NEW: Check if option should be disabled (no plaques in filtered area)
+  // Check if option should be disabled (no plaques in filtered area)
   const isOptionDisabled = (option: FilterOption): boolean => {
     return distanceFilter?.enabled && option.filteredCount === 0;
   };
@@ -302,7 +302,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   // Get the current category being viewed
   const currentCategory = filterCategories.find(cat => cat.id === currentView);
   
-  // NEW: Calculate filtered toggle counts
+  // Calculate filtered toggle counts
   const filteredToggleCounts = useMemo(() => {
     if (!distanceFilter?.enabled || !allPlaques.length) {
       return { visited: 0, favorites: 0 };
@@ -318,6 +318,17 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     
     return { visited, favorites };
   }, [distanceFilteredPlaques, isPlaqueVisited, isFavorite, distanceFilter]);
+  
+  // FIXED: Toggle handlers with proper event handling
+  const handleVisitedToggle = (checked: boolean) => {
+    console.log('Visited toggle clicked:', checked); // Debug log
+    onVisitedChange(checked);
+  };
+  
+  const handleFavoritesToggle = (checked: boolean) => {
+    console.log('Favorites toggle clicked:', checked); // Debug log
+    onFavoritesChange(checked);
+  };
   
   // Render Main Menu View
   const renderMainMenu = () => (
@@ -338,7 +349,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
         </div>
       </div>
       
-      {/* NEW: Distance filter status */}
+      {/* Distance filter status */}
       {distanceFilter?.enabled && (
         <div className="px-4 py-3 bg-blue-50 border-b">
           <Alert className="border-blue-200">
@@ -384,7 +395,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               <div className="flex items-center">
                 {category.icon}
                 <span className="ml-3 font-medium">{category.name}</span>
-                {/* NEW: Show availability indicator */}
+                {/* Show availability indicator */}
                 {distanceFilter?.enabled && (
                   <span className="ml-2 text-xs text-gray-500">
                     ({availableOptionsCount} available)
@@ -404,7 +415,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
           );
         })}
         
-        {/* Additional Filters */}
+        {/* FIXED: Additional Filters with proper toggle handling */}
         <div className="px-4 py-3">
           <h3 className="font-medium mb-3">Additional Filters</h3>
           
@@ -416,7 +427,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                   <div className="font-medium text-sm">Only Visited</div>
                   <div className="text-xs text-gray-500">
                     Show plaques you've visited
-                    {/* NEW: Show filtered count */}
+                    {/* Show filtered count */}
                     {distanceFilter?.enabled && (
                       <span className="ml-1">
                         ({filteredToggleCounts.visited} in area)
@@ -427,7 +438,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               </div>
               <Switch 
                 checked={onlyVisited}
-                onCheckedChange={onVisitedChange}
+                onCheckedChange={handleVisitedToggle}
                 disabled={distanceFilter?.enabled && filteredToggleCounts.visited === 0}
               />
             </div>
@@ -439,7 +450,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                   <div className="font-medium text-sm">Only Favorites</div>
                   <div className="text-xs text-gray-500">
                     Show only your favorite plaques
-                    {/* NEW: Show filtered count */}
+                    {/* Show filtered count */}
                     {distanceFilter?.enabled && (
                       <span className="ml-1">
                         ({filteredToggleCounts.favorites} in area)
@@ -450,7 +461,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               </div>
               <Switch 
                 checked={onlyFavorites}
-                onCheckedChange={onFavoritesChange}
+                onCheckedChange={handleFavoritesToggle}
                 disabled={distanceFilter?.enabled && filteredToggleCounts.favorites === 0}
               />
             </div>
@@ -513,7 +524,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               ? `${selectedValues.length} ${category.name.toLowerCase()} selected`
               : `Select ${category.name.toLowerCase()} to filter plaques`
             }
-            {/* NEW: Show area context */}
+            {/* Show area context */}
             {distanceFilter?.enabled && (
               <span className="block mt-1 text-xs">
                 In {distanceFilter.locationName} area
