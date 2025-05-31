@@ -1,4 +1,4 @@
-// src/components/auth/AuthGate.tsx - Complete version with account linking
+// src/components/auth/AuthGate.tsx - COMPLETE FIXED
 import React, { useState } from 'react';
 import { ArrowLeft, X, MapPin, FolderOpen, Route, Star, Check, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import AccountLinkingModal from './AccountLinkingModal';
 import AuthErrorDisplay from './AuthErrorDisplay';
-import { getSpecificErrorMessage } from '@/utils/authErrorHandler';
 
 interface AuthGateProps {
   /** What feature the user was trying to access */
@@ -37,7 +36,7 @@ const AuthGate: React.FC<AuthGateProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [authError, setAuthError] = useState<any>(null); // Store full error object
+  const [authError, setAuthError] = useState<any>(null);
 
   // Account linking modal state
   const [showLinkingModal, setShowLinkingModal] = useState(false);
@@ -146,6 +145,12 @@ const AuthGate: React.FC<AuthGateProps> = ({
         backTo
       }
     });
+  };
+
+  // FIXED: Add the missing function
+  const handleLinkingClose = () => {
+    setShowLinkingModal(false);
+    setLinkingData(null);
   };
 
   const handleLinkingSuccess = () => {
