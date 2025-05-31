@@ -1396,3 +1396,46 @@ _::-webkit-full-page-media, _:future, :root .map-container-fullscreen {
     color: #dbeafe !important;
   }
 }
+
+/* Add this to src/styles/map-styles.css - Marker Hover Effects */
+
+/* ==================== MARKER HOVER EFFECTS ==================== */
+
+.marker-hover {
+  transform: scale(1.15) !important;
+  z-index: 1000 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.marker-hover div {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Enhanced popup styling */
+.plaque-popup-container .leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.plaque-popup-container .leaflet-popup-tip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Button hover effects in popups */
+.plaque-popup button {
+  transition: all 0.2s ease !important;
+}
+
+.plaque-popup button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Disabled button styling */
+.plaque-popup button:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}

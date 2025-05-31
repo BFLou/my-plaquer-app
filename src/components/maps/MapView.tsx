@@ -1,4 +1,4 @@
-// src/components/maps/MapView.tsx - Updated to support enhanced distance circle
+// src/components/maps/MapView.tsx - Updated to support both handlers
 import React, { useEffect, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { useMap } from '@/components/maps/core/useMap';
@@ -13,10 +13,11 @@ interface MapViewProps {
   routeMode: boolean;
   routePoints: Plaque[];
   onPlaqueClick: (plaque: Plaque) => void;
+  onAddToRoute?: (plaque: Plaque) => void; // NEW: Separate handler for route actions
   filterCenter: [number, number] | null;
   filterRadius: number;
   filterEnabled: boolean;
-  filterLocationName?: string; // New prop for location name
+  filterLocationName?: string;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -26,6 +27,7 @@ export const MapView: React.FC<MapViewProps> = ({
   routeMode,
   routePoints,
   onPlaqueClick,
+  onAddToRoute, // NEW: Pass through the add to route handler
   filterCenter,
   filterRadius,
   filterEnabled,
@@ -34,9 +36,10 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const { map, isReady } = useMap(mapRef, { center, zoom });
   
-  // Add markers with enhanced clustering
+  // Add markers with enhanced clustering and BOTH handlers
   useMarkers(map, plaques, {
     onMarkerClick: onPlaqueClick,
+    onAddToRoute: onAddToRoute, // Pass the separate route handler
     routeMode
   });
   

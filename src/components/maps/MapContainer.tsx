@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - COMPLETE: Final version with all fixes
+// src/components/maps/MapContainer.tsx - COMPLETE FIXED VERSION
 import React, { useReducer, useMemo, useCallback, useEffect } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -270,19 +270,28 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
    isFavorite
  ]);
 
- // UPDATED: Handle plaque clicks for route mode vs detail view
+ // FIXED: Handle plaque clicks for route mode vs detail view
  const handlePlaqueClick = useCallback((plaque: Plaque) => {
-   if (state.routeMode) {
-     dispatch({ type: 'ADD_TO_ROUTE', plaque });
+   console.log('🗺️ MapContainer: Plaque clicked:', plaque.title, 'Route mode:', state.routeMode);
+   
+   // CRITICAL FIX: Don't auto-add to route on marker click
+   // Let the popup handle both "View Details" and "Add to Route" actions
+   // This allows users to choose what they want to do
+   
+   if (onPlaqueClick) {
+     // Always call the external handler (e.g., to show details)
+     onPlaqueClick(plaque);
    } else {
-     // Show details or call external handler
-     if (onPlaqueClick) {
-       onPlaqueClick(plaque);
-     } else {
-       dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque });
-     }
+     // Fallback: show details in modal
+     dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque });
    }
  }, [state.routeMode, onPlaqueClick]);
+
+ // NEW: Separate handler specifically for adding to route
+ const handleAddToRoute = useCallback((plaque: Plaque) => {
+   console.log('➕ MapContainer: Adding to route:', plaque.title);
+   dispatch({ type: 'ADD_TO_ROUTE', plaque });
+ }, []);
 
  const handleSearchSelect = useCallback((result: any) => {
    dispatch({ type: 'SELECT_RESULT', result });
@@ -516,7 +525,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
        />
      </div>
 
-     {/* UPDATED: Enhanced Route Panel with Walking Distances */}
+     {/* Enhanced Route Panel with Walking Distances */}
      {state.routeMode && (
        <div className="absolute left-56 top-16 z-[1000] w-80 max-w-[calc(100vw-14rem)]">
          <EnhancedRoutePanel
@@ -562,6 +571,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
        routeMode={state.routeMode}
        routePoints={state.routePoints}
        onPlaqueClick={handlePlaqueClick}
+       onAddToRoute={handleAddToRoute}
        filterCenter={state.filterCenter}
        filterRadius={state.filterRadius}
        filterEnabled={state.filterEnabled}
