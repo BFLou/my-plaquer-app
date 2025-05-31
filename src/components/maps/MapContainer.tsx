@@ -1,5 +1,5 @@
-// src/components/maps/MapContainer.tsx - COMPLETE FIXED VERSION
-import React, { useReducer, useMemo, useCallback, useEffect } from 'react';
+// MapContainer.tsx - STRICT: No duplicate toasts
+import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
 import { EnhancedRoutePanel } from './features/RouteBuilder/EnhancedRoutePanel';
@@ -41,13 +41,14 @@ type MapAction =
   | { type: 'SET_ONLY_FAVORITES'; onlyFavorites: boolean }
   | { type: 'RESET_STANDARD_FILTERS' }
   | { type: 'TOGGLE_ROUTE_MODE' }
-  | { type: 'ADD_TO_ROUTE'; plaque: Plaque }
-  | { type: 'REMOVE_FROM_ROUTE'; plaqueId: number }
-  | { type: 'REORDER_ROUTE'; fromIndex: number; toIndex: number }
-  | { type: 'CLEAR_ROUTE' }
+  | { type: 'ADD_TO_ROUTE'; plaque: Plaque; suppressToast?: boolean }
+  | { type: 'REMOVE_FROM_ROUTE'; plaqueId: number; suppressToast?: boolean }
+  | { type: 'REORDER_ROUTE'; fromIndex: number; toIndex: number; suppressToast?: boolean }
+  | { type: 'CLEAR_ROUTE'; suppressToast?: boolean }
   | { type: 'SHOW_PLAQUE_DETAILS'; plaque: Plaque }
   | { type: 'HIDE_PLAQUE_DETAILS' };
 
+// STRICT: No-toast reducer that only handles state changes
 function mapReducer(state: MapState, action: MapAction): MapState {
   switch (action.type) {
     case 'SET_VIEW':
@@ -112,11 +113,11 @@ function mapReducer(state: MapState, action: MapAction): MapState {
      };
    
    case 'ADD_TO_ROUTE':
-     if (state.routePoints.find(p => p.id === action.plaque.id)) {
-       toast.info(`"${action.plaque.title}" is already in your route`);
-       return state;
+     // STRICT: Only update state, no toasts in reducer
+     const existingPlaque = state.routePoints.find(p => p.id === action.plaque.id);
+     if (existingPlaque) {
+       return state; // No change if already exists
      }
-     toast.success(`Added "${action.plaque.title}" to route`);
      return { ...state, routePoints: [...state.routePoints, action.plaque] };
    
    case 'REMOVE_FROM_ROUTE':
@@ -129,11 +130,9 @@ function mapReducer(state: MapState, action: MapAction): MapState {
      const newPoints = [...state.routePoints];
      const [removed] = newPoints.splice(action.fromIndex, 1);
      newPoints.splice(action.toIndex, 0, removed);
-     toast.info('Route reordered');
      return { ...state, routePoints: newPoints };
    
    case 'CLEAR_ROUTE':
-     toast.info('Route cleared');
      return { ...state, routePoints: [] };
    
    case 'SHOW_PLAQUE_DETAILS':
@@ -205,6 +204,52 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
    filterLocation: distanceFilter?.locationName || null,
  });
 
+ // STRICT: Toast management separate from state
+ const toastTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+ const lastActionTime = useRef<Map<string, number>>(new Map());
+
+ const showToastOnce = useCallback((key: string, message: string, type: 'success' | 'info' | 'error' = 'info') => {
+   const now = Date.now();
+   const lastTime = lastActionTime.current.get(key) || 0;
+   
+   // Prevent duplicate toasts within 2 seconds
+   if (now - lastTime < 2000) {
+     console.log(`🔇 Suppressed duplicate toast: ${key}`);
+     return;
+   }
+   
+   // Clear any existing timeout for this key
+   const existingTimeout = toastTimeouts.current.get(key);
+   if (existingTimeout) {
+     clearTimeout(existingTimeout);
+   }
+   
+   // Record this action time
+   lastActionTime.current.set(key, now);
+   
+   // Show the toast
+   switch (type) {
+     case 'success':
+       toast.success(message);
+       break;
+     case 'error':
+       toast.error(message);
+       break;
+     default:
+       toast.info(message);
+   }
+   
+   console.log(`🔊 Showed toast: ${key} - ${message}`);
+   
+   // Clean up after 2 seconds
+   const timeout = setTimeout(() => {
+     lastActionTime.current.delete(key);
+     toastTimeouts.current.delete(key);
+   }, 2000);
+   
+   toastTimeouts.current.set(key, timeout);
+ }, []);
+
  // Filter plaques based on current state
  const visiblePlaques = useMemo(() => {
    let filtered = plaques;
@@ -274,24 +319,31 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
  const handlePlaqueClick = useCallback((plaque: Plaque) => {
    console.log('🗺️ MapContainer: Plaque clicked:', plaque.title, 'Route mode:', state.routeMode);
    
-   // CRITICAL FIX: Don't auto-add to route on marker click
-   // Let the popup handle both "View Details" and "Add to Route" actions
-   // This allows users to choose what they want to do
-   
    if (onPlaqueClick) {
-     // Always call the external handler (e.g., to show details)
      onPlaqueClick(plaque);
    } else {
-     // Fallback: show details in modal
      dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque });
    }
  }, [state.routeMode, onPlaqueClick]);
 
- // NEW: Separate handler specifically for adding to route
+ // STRICT: Add to route with proper toast management
  const handleAddToRoute = useCallback((plaque: Plaque) => {
    console.log('➕ MapContainer: Adding to route:', plaque.title);
+   
+   // Check if already exists before dispatching
+   const alreadyExists = state.routePoints.find(p => p.id === plaque.id);
+   
+   if (alreadyExists) {
+     showToastOnce(`duplicate-${plaque.id}`, `"${plaque.title}" is already in your route`, 'info');
+     return;
+   }
+   
+   // Dispatch the action
    dispatch({ type: 'ADD_TO_ROUTE', plaque });
- }, []);
+   
+   // Show success toast
+   showToastOnce(`added-${plaque.id}`, `Added "${plaque.title}" to route`, 'success');
+ }, [state.routePoints, showToastOnce]);
 
  const handleSearchSelect = useCallback((result: any) => {
    dispatch({ type: 'SELECT_RESULT', result });
@@ -345,11 +397,13 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
        return distance <= defaultRadius;
      }).length;
      
-     toast.success(
-       `Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${defaultRadius}km of ${result.title}`
+     showToastOnce(
+       'location-filter-set',
+       `Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${defaultRadius}km of ${result.title}`,
+       'success'
      );
    }
- }, [plaques, onDistanceFilterChange]);
+ }, [plaques, onDistanceFilterChange, showToastOnce]);
 
  const handleLocationFilterSet = useCallback(async (coords: [number, number]) => {
    dispatch({ type: 'SET_SEARCH', query: '' });
@@ -401,10 +455,12 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
      return distance <= state.filterRadius;
    }).length;
    
-   toast.success(
-     `Location set! Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${state.filterRadius}km`
+   showToastOnce(
+     'manual-location-set',
+     `Location set! Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${state.filterRadius}km`,
+     'success'
    );
- }, [state.filterRadius, plaques, onDistanceFilterChange]);
+ }, [state.filterRadius, plaques, onDistanceFilterChange, showToastOnce]);
 
  const handleRadiusChange = useCallback((radius: number) => {
    dispatch({ type: 'UPDATE_RADIUS', radius });
@@ -432,11 +488,13 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
      
      const radiusText = radius < 1 ? `${Math.round(radius * 1000)}m` : `${radius}km`;
      
-     toast.info(
-       `${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${radiusText} of ${state.filterLocation}`
+     showToastOnce(
+       'radius-update',
+       `${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${radiusText} of ${state.filterLocation}`,
+       'info'
      );
    }
- }, [state.filterEnabled, state.filterCenter, state.filterLocation, plaques, onDistanceFilterChange]);
+ }, [state.filterEnabled, state.filterCenter, state.filterLocation, plaques, onDistanceFilterChange, showToastOnce]);
 
  const handleClearFilter = useCallback(() => {
    dispatch({ type: 'CLEAR_FILTER' });
@@ -450,8 +508,32 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
      });
    }
    
-   toast.info('Distance filter cleared - showing all plaques');
- }, [onDistanceFilterChange]);
+   showToastOnce('filter-cleared', 'Distance filter cleared - showing all plaques', 'info');
+ }, [onDistanceFilterChange, showToastOnce]);
+
+ // Enhanced route handlers with toast management
+ const handleRemoveFromRoute = useCallback((id: number) => {
+   const plaque = state.routePoints.find(p => p.id === id);
+   dispatch({ type: 'REMOVE_FROM_ROUTE', plaqueId: id });
+   
+   if (plaque) {
+     showToastOnce(`removed-${id}`, `Removed "${plaque.title}" from route`, 'info');
+   }
+ }, [state.routePoints, showToastOnce]);
+
+ const handleReorderRoute = useCallback((fromIndex: number, toIndex: number) => {
+   if (fromIndex !== toIndex) {
+     dispatch({ type: 'REORDER_ROUTE', fromIndex, toIndex });
+     showToastOnce('route-reordered', 'Route reordered', 'info');
+   }
+ }, [showToastOnce]);
+
+ const handleClearRoute = useCallback(() => {
+   if (state.routePoints.length > 0) {
+     dispatch({ type: 'CLEAR_ROUTE' });
+     showToastOnce('route-cleared', 'Route cleared', 'info');
+   }
+ }, [state.routePoints.length, showToastOnce]);
 
  // Sync with external distance filter changes
  useEffect(() => {
@@ -473,6 +555,13 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
      }
    }
  }, [distanceFilter, state.filterEnabled, state.filterRadius, state.filterLocation]);
+
+ // Cleanup timeouts on unmount
+ useEffect(() => {
+   return () => {
+     toastTimeouts.current.forEach(timeout => clearTimeout(timeout));
+   };
+ }, []);
 
  return (
    <div className={`relative h-[600px] w-full ${className}`}>
@@ -530,9 +619,9 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
        <div className="absolute left-56 top-16 z-[1000] w-80 max-w-[calc(100vw-14rem)]">
          <EnhancedRoutePanel
            points={state.routePoints}
-           onRemove={(id) => dispatch({ type: 'REMOVE_FROM_ROUTE', plaqueId: id })}
-           onReorder={(from, to) => dispatch({ type: 'REORDER_ROUTE', fromIndex: from, toIndex: to })}
-           onClear={() => dispatch({ type: 'CLEAR_ROUTE' })}
+           onRemove={handleRemoveFromRoute}
+           onReorder={handleReorderRoute}
+           onClear={handleClearRoute}
            onClose={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
          />
        </div>
