@@ -1,4 +1,4 @@
-// src/components/plaques/AddToCollectionDialog.tsx
+// src/components/plaques/AddToCollectionDialog.tsx - Enhanced for map view
 import { useState, useEffect } from 'react';
 import { useCollections } from '../../hooks/useCollection';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,9 +21,17 @@ interface AddToCollectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   plaque: Plaque;
+  style?: React.CSSProperties; // NEW: Add style prop for z-index control
+  className?: string; // NEW: Add className prop
 }
 
-const AddToCollectionDialog = ({ isOpen, onClose, plaque }: AddToCollectionDialogProps) => {
+const AddToCollectionDialog = ({ 
+  isOpen, 
+  onClose, 
+  plaque, 
+  style,
+  className = ''
+}: AddToCollectionDialogProps) => {
   const { user } = useAuth();
   const { collections, loading, addPlaqueToCollection } = useCollections();
   
@@ -97,7 +105,17 @@ const AddToCollectionDialog = ({ isOpen, onClose, plaque }: AddToCollectionDialo
       );
       
       await Promise.all(promises);
-    
+      
+      const collectionNames = selectedCollections
+        .map(id => collections.find(c => c.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+      
+      toast.success(
+        selectedCollections.length === 1 
+          ? `Added to "${collectionNames}"`
+          : `Added to ${selectedCollections.length} collections`
+      );
       
       onClose();
     } catch (err) {
@@ -110,7 +128,10 @@ const AddToCollectionDialog = ({ isOpen, onClose, plaque }: AddToCollectionDialo
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent 
+        className={`sm:max-w-md ${className}`}
+        style={style}
+      >
         <DialogHeader>
           <DialogTitle>Add to Collection</DialogTitle>
         </DialogHeader>
