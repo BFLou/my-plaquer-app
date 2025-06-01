@@ -19,6 +19,7 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { generatePlaqueUrl } from '@/utils/urlUtils';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
@@ -631,23 +632,24 @@ const Discover = () => {
       
       {/* Plaque Detail Modal */}
       {selectedPlaque && (
-        <PlaqueDetail
-          plaque={selectedPlaque}
-          isOpen={!!selectedPlaque}
-          onClose={() => {
-            console.log('Closing plaque detail');
-            setSelectedPlaque(null);
-          }}
-          isFavorite={isFavorite(selectedPlaque.id)}
-          onFavoriteToggle={handleFavoriteToggle}
-          onMarkVisited={handleMarkVisited}
-          nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-          onSelectNearbyPlaque={setSelectedPlaque}
-          isMapView={urlState.view === 'map'}
-          distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
-          formatDistance={formatDistance}
-          showDistance={distanceFilter.enabled}
-        />
+  <PlaqueDetail
+    plaque={selectedPlaque}
+    isOpen={!!selectedPlaque}
+    onClose={() => {
+      console.log('Closing plaque detail');
+      setSelectedPlaque(null);
+    }}
+    isFavorite={isFavorite(selectedPlaque.id)}
+    onFavoriteToggle={handleFavoriteToggle}
+    onMarkVisited={handleMarkVisited}
+    nearbyPlaques={getNearbyPlaques(selectedPlaque)}
+    onSelectNearbyPlaque={setSelectedPlaque}
+    isMapView={urlState.view === 'map'}
+    distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
+    formatDistance={formatDistance}
+    showDistance={distanceFilter.enabled}
+    generateShareUrl={generatePlaqueUrl} // ADD THIS LINE
+  />
       )}
     </PageContainer>
   );

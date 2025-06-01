@@ -1,8 +1,7 @@
-// src/components/plaques/PlaqueDetail.tsx - Complete implementation with map fade effect
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
-  Clock, Share2, Navigation, Plus, Copy, Eye, FileText, FolderOpen
+  Clock, Navigation, Plus, Copy, Eye, FileText, FolderOpen
 } from 'lucide-react';
 import { 
   Dialog as MainDialog,
@@ -77,7 +76,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // State
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   const [showAddToCollection, setShowAddToCollection] = useState(false);
-  const [showShareMenu, setShowShareMenu] = useState(false);
   const [showVisitDialog, setShowVisitDialog] = useState(false);
   const [showFullInscription, setShowFullInscription] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
@@ -87,9 +85,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [visitNotes, setVisitNotes] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
-  
-  // Refs
-  const shareMenuRef = useRef<HTMLDivElement>(null);
 
   // CRITICAL: Early return if no plaque - MUST be before any plaque usage
   if (!plaque) return null;
@@ -231,33 +226,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     }
   };
 
-  const handleShare = async (method: 'native' | 'copy') => {
-    // Use provided URL generator or fallback to current page strategy
-    const plaqueUrl = generateShareUrl 
-      ? generateShareUrl(plaque.id)
-      : (() => {
-          const currentUrl = new URL(window.location.href);
-          return `${currentUrl.origin}${currentUrl.pathname}?plaque=${plaque.id}`;
-        })();
-    
-    const shareData = {
-      title: safeString(plaque.title),
-      text: `Check out this historical plaque: ${safeString(plaque.title)}`,
-      url: plaqueUrl
-    };
-
+  // UPDATED: Simplified copy link functionality
+  const handleCopyLink = async () => {
     try {
-      if (method === 'native' && navigator.share) {
-        await navigator.share(shareData);
-      } else if (method === 'copy') {
-        await navigator.clipboard.writeText(shareData.url);
-        toast.success('Link copied to clipboard!');
-      }
+      // Use provided URL generator or fallback to current page strategy
+      const plaqueUrl = generateShareUrl 
+        ? generateShareUrl(plaque.id)
+        : `${window.location.origin}${window.location.pathname}?plaque=${plaque.id}`;
+      
+      await navigator.clipboard.writeText(plaqueUrl);
+      toast.success('Link copied to clipboard!');
     } catch (error) {
-      console.error('Error sharing:', error);
-      toast.error("Couldn't share this plaque");
+      console.error('Error copying link:', error);
+      toast.error("Couldn't copy link");
     }
-    setShowShareMenu(false);
   };
 
   // Enhanced z-index management for map view
@@ -385,42 +367,15 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                       <Star size={16} className={`sm:w-3.5 sm:h-3.5 ${isPlaqueFavorite ? 'fill-current' : ''}`} />
                     </Button>
                     
-                    {/* Share */}
-                    <div className="relative">
-                      <Button 
-                        onClick={() => setShowShareMenu(!showShareMenu)}
-                        size="sm"
-                        className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors touch-manipulation"
-                        title="Share"
-                      >
-                        <Share2 size={16} className="sm:w-3.5 sm:h-3.5" />
-                      </Button>
-                      
-                      {/* Share menu positioned to not cover image */}
-                      {showShareMenu && (
-                        <div 
-                          ref={shareMenuRef}
-                          className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[120px] z-10"
-                        >
-                          <button 
-                            onClick={() => handleShare('copy')}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 text-sm touch-manipulation"
-                          >
-                            <Copy size={12} />
-                            Copy Link
-                          </button>
-                          {navigator.share && (
-                            <button 
-                              onClick={() => handleShare('native')}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 text-sm touch-manipulation"
-                            >
-                              <Share2 size={12} />
-                              Share...
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    {/* Copy Link */}
+                    <Button 
+                      onClick={handleCopyLink}
+                      size="sm"
+                      className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors touch-manipulation"
+                      title="Copy Link"
+                    >
+                      <Copy size={16} className="sm:w-3.5 sm:h-3.5" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -796,42 +751,15 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                         <Star size={16} className={`sm:w-3.5 sm:h-3.5 ${isPlaqueFavorite ? 'fill-current' : ''}`} />
                       </Button>
                       
-                      {/* Share */}
-                      <div className="relative">
-                        <Button 
-                          onClick={() => setShowShareMenu(!showShareMenu)}
-                          size="sm"
-                          className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors touch-manipulation"
-                          title="Share"
-                        >
-                          <Share2 size={16} className="sm:w-3.5 sm:h-3.5" />
-                        </Button>
-                        
-                        {/* Share menu positioned to not cover image */}
-                        {showShareMenu && (
-                          <div 
-                            ref={shareMenuRef}
-                            className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[120px] z-10"
-                          >
-                            <button 
-                              onClick={() => handleShare('copy')}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 text-sm touch-manipulation"
-                            >
-                              <Copy size={12} />
-                              Copy Link
-                            </button>
-                            {navigator.share && (
-                              <button 
-                                onClick={() => handleShare('native')}
-                                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2 text-sm touch-manipulation"
-                              >
-                                <Share2 size={12} />
-                                Share...
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      {/* Copy Link */}
+                      <Button 
+                        onClick={handleCopyLink}
+                        size="sm"
+                        className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors touch-manipulation"
+                        title="Copy Link"
+                      >
+                        <Copy size={16} className="sm:w-3.5 sm:h-3.5" />
+                      </Button>
                     </div>
                   </div>
                 </div>
