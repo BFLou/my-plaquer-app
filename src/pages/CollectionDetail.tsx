@@ -1,9 +1,9 @@
-// src/pages/CollectionDetail.tsx - Updated with breadcrumb navigation
-import{ useState, useEffect, useRef } from 'react';
+// src/pages/CollectionDetail.tsx - Enhanced with modal URL state management
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Check, Trash2, ArrowLeft, Star, Pencil, Copy, Edit, MapPin, X, Clock
 } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useCollectionDetail } from '../hooks/useCollectionDetail';
 
 // UI Components
@@ -26,13 +26,19 @@ import { MapContainer } from "../components/maps/MapContainer";
 import { useRoutes } from '@/hooks/useRoutes';
 import { PageContainer } from "@/components";
 import { formatTimeAgo } from '../utils/timeUtils';
+import { generatePlaqueUrl } from '@/utils/urlUtils';
 
 const CollectionDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const collectionId = id || '';
   const mapRef = useRef(null);
   const { createRoute } = useRoutes();
+  
+  // NEW: Handle modal plaque from URL
+  const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
   
   // Use our collection detail hook
   const {
@@ -92,10 +98,56 @@ const CollectionDetailPage = () => {
   const [useRoadRouting, setUseRoadRouting] = useState(true);
   const [maintainMapView, setMaintainMapView] = useState(false);
 
+  // NEW: Handle modal plaque from URL
+  useEffect(() => {
+    if (modalPlaqueId && collectionPlaques.length > 0) {
+      const plaque = collectionPlaques.find(p => p.id === modalPlaqueId);
+      if (plaque) {
+        console.log('Opening modal for plaque from URL:', plaque.title);
+        setSelectedPlaque(plaque);
+      } else {
+        // Plaque not found in collection, clear URL param
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('plaque');
+        setSearchParams(newParams, { replace: true });
+      }
+    } else if (!modalPlaqueId) {
+      setSelectedPlaque(null);
+    }
+  }, [modalPlaqueId, collectionPlaques, searchParams, setSearchParams]);
+
   // Update filtered plaques when collection plaques change
   useEffect(() => {
     setFilteredPlaques(collectionPlaques);
   }, [collectionPlaques]);
+
+  // NEW: Enhanced plaque click handler with URL state
+  const handlePlaqueClick = useCallback((plaque) => {
+    console.log('Plaque clicked in collection:', plaque.title);
+    // Update URL with modal plaque parameter for back button support
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('plaque', plaque.id.toString());
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // NEW: Enhanced modal close handler
+  const handleCloseModal = useCallback(() => {
+    console.log('Closing plaque modal in collection');
+    setSelectedPlaque(null);
+    // Remove plaque parameter from URL
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('plaque');
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // NEW: Handle nearby plaque selection in modal
+  const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
+    console.log('Selecting nearby plaque in collection:', nearbyPlaque.title);
+    // Update URL to new plaque
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('plaque', nearbyPlaque.id.toString());
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Add plaque to route
   const addPlaqueToRoute = (plaque) => {
@@ -418,11 +470,11 @@ const CollectionDetailPage = () => {
           ) : viewMode === 'map' ? (
             <div className="relative">
               <div className="h-[450px] sm:h-[650px] rounded-lg overflow-hidden shadow-md">
-                      <MapContainer
-        plaques={filteredPlaques}
-        onPlaqueClick={handlePlaqueClick}
-        className="h-full w-full"
-      />
+                <MapContainer
+                  plaques={filteredPlaques}
+                  onPlaqueClick={handlePlaqueClick}
+                  className="h-full w-full"
+                />
               </div>
             </div>
           ) : viewMode === 'grid' ? (
@@ -437,7 +489,7 @@ const CollectionDetailPage = () => {
               onToggleFavorite={handleTogglePlaqueFavorite}
               onMarkVisited={handleMarkVisited}
               onRemovePlaque={handleRemovePlaque}
-              onPlaqueClick={handleViewPlaque}
+              onPlaqueClick={handlePlaqueClick}
               onAddPlaquesClick={() => {
                 setAddPlaquesModalOpen(true);
                 fetchAvailablePlaques();
@@ -455,7 +507,7 @@ const CollectionDetailPage = () => {
               onToggleFavorite={handleTogglePlaqueFavorite}
               onMarkVisited={handleMarkVisited}
               onRemovePlaque={handleRemovePlaque}
-              onPlaqueClick={handleViewPlaque}
+              onPlaqueClick={handlePlaqueClick}
               onAddPlaquesClick={() => {
                 setAddPlaquesModalOpen(true);
                 fetchAvailablePlaques();
@@ -494,20 +546,24 @@ const CollectionDetailPage = () => {
         />
       )}
       
-      {/* Plaque detail sheet */}
+      {/* Enhanced Plaque detail modal with URL state */}
       {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
           isOpen={!!selectedPlaque}
-          onClose={() => setSelectedPlaque(null)}
+          onClose={handleCloseModal}
           onFavoriteToggle={() => selectedPlaque && handleTogglePlaqueFavorite(selectedPlaque.id)}
           isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
           onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
           nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
+          onSelectNearbyPlaque={handleSelectNearbyPlaque}
+          generateShareUrl={generatePlaqueUrl}
+          context="collection"
+          currentPath={location.pathname}
           onRemove={() => {
             if (selectedPlaque) {
               handleRemovePlaque(selectedPlaque.id);
-              setSelectedPlaque(null);
+              handleCloseModal();
             }
           }}
         />

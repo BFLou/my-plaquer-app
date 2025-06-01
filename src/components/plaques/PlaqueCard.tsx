@@ -1,6 +1,6 @@
-// src/components/plaques/PlaqueCard.tsx - Enhanced with navigation options
+// src/components/plaques/PlaqueCard.tsx - Enhanced with navigation modes - COMPLETE VERSION
 import React, { useState } from 'react';
-import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation } from 'lucide-react';
+import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,11 +49,14 @@ type PlaqueCardProps = {
   showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
-  navigationMode?: NavigationMode; // NEW: Control navigation behavior
+  navigationMode?: NavigationMode; // Control navigation behavior
   // Distance display props
   showDistance?: boolean;
   distance?: number;
   formatDistance?: (distance: number) => string;
+  // Additional props for context
+  context?: string;
+  onFavoriteToggle?: (id: number) => void; // Allow external favorite handling
 };
 
 export const PlaqueCard = ({
@@ -69,11 +72,14 @@ export const PlaqueCard = ({
   showRouteButton = false,
   variant = 'discover',
   className = '',
-  navigationMode = 'modal', // NEW: Default to modal
+  navigationMode = 'modal', // Default to modal
   // Distance props
   showDistance = false,
   distance,
-  formatDistance = (d) => `${d.toFixed(1)} km`
+  formatDistance = (d) => `${d.toFixed(1)} km`,
+  // Additional props
+  context = '',
+  onFavoriteToggle
 }: PlaqueCardProps) => {
   // State for various dialogs and actions
   const [showDropdown, setShowDropdown] = useState(false);
@@ -97,18 +103,28 @@ export const PlaqueCard = ({
   const isFav = isFavorite(plaque.id);
   const visitInfo = getVisitInfo(plaque.id);
 
-  // NEW: Navigation handler
+  // Navigation handler based on mode
   const navigateToPlaque = (plaque: Plaque, mode: NavigationMode) => {
+    console.log(`Navigating to plaque ${plaque.id} with mode: ${mode}`);
+    
     switch (mode) {
       case 'url':
+        // Navigate in same tab
         window.location.href = `/plaque/${plaque.id}`;
         break;
       case 'new-tab':
+        // Open in new tab
         window.open(`/plaque/${plaque.id}`, '_blank');
         break;
       case 'modal':
       default:
-        if (onClick) onClick(plaque);
+        // Use modal callback
+        if (onClick) {
+          console.log('Calling onClick handler for modal navigation');
+          onClick(plaque);
+        } else {
+          console.warn('No onClick handler provided for modal navigation');
+        }
         break;
     }
   };
@@ -120,18 +136,26 @@ export const PlaqueCard = ({
       e.target.closest('button') ||
       e.target.closest('[role="menuitem"]') ||
       e.target.closest('.dropdown-menu') ||
-      e.target.closest('[data-radix-portal]')
+      e.target.closest('[data-radix-portal]') ||
+      e.target.closest('[data-state]') // Radix UI elements
     )) {
+      console.log('Click blocked - interacting with UI element');
       return;
     }
     
-    // NEW: Use navigation mode to determine behavior
+    console.log(`Card clicked for plaque: ${plaque.title}`);
     navigateToPlaque(plaque, navigationMode);
   };
 
   const handleFavoriteToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite(plaque.id);
+    console.log(`Toggling favorite for plaque: ${plaque.id}`);
+    
+    if (onFavoriteToggle) {
+      onFavoriteToggle(plaque.id);
+    } else {
+      toggleFavorite(plaque.id);
+    }
     setShowDropdown(false);
   };
 
@@ -171,6 +195,16 @@ export const PlaqueCard = ({
     if (onAddToRoute) {
       onAddToRoute(plaque);
     }
+  };
+
+  // Handle "View Full Details" button click
+  const handleViewFullDetails = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('View full details clicked');
+    // Always navigate to full page when explicitly requested
+    window.open(`/plaque/${plaque.id}`, '_blank');
+    setShowDropdown(false);
   };
 
   // Quick visit form submission
@@ -227,13 +261,29 @@ export const PlaqueCard = ({
     }
   };
 
+  // Determine hover effects based on navigation mode
+  const getHoverClasses = () => {
+    switch (navigationMode) {
+      case 'new-tab':
+        return 'hover:shadow-lg hover:scale-[1.02]';
+      case 'url':
+        return 'hover:shadow-md hover:ring-2 hover:ring-blue-200';
+      case 'modal':
+      default:
+        return 'hover:shadow-md';
+    }
+  };
+
   return (
     <>
       <Card 
-        className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer group relative h-full ${
+        className={`overflow-hidden transition-all duration-200 cursor-pointer group relative h-full ${
           isSelected ? 'ring-2 ring-blue-500' : ''
-        } ${className}`}
+        } ${getHoverClasses()} ${className}`}
         onClick={handleCardClick}
+        title={navigationMode === 'new-tab' ? 'Click to open in new tab' : 
+              navigationMode === 'url' ? 'Click to view details' : 
+              'Click to view details'}
       >
         {/* Image container */}
         <div className="relative h-32 sm:h-40 bg-blue-50">
@@ -245,6 +295,15 @@ export const PlaqueCard = ({
             plaqueColor={getPlaqueColor()}
           />
           
+          {/* Navigation mode indicator */}
+          {navigationMode === 'new-tab' && (
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="bg-blue-600 text-white p-1 rounded-full">
+                <ExternalLink size={12} />
+              </div>
+            </div>
+          )}
+          
           {/* Actions menu */}
           <div className="absolute top-2 right-2 z-20">
             <DropdownMenu open={showDropdown} onOpenChange={setShowDropdown}>
@@ -253,25 +312,60 @@ export const PlaqueCard = ({
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 rounded-full bg-black/30 hover:bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity p-0"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log('Dropdown menu clicked');
+                  }}
                 >
                   <MoreVertical size={16} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
+                {/* View Full Details option */}
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleViewFullDetails(e as any);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <ExternalLink size={14} className="mr-2 text-blue-600" />
+                  View Full Details
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
                 {/* Visit actions */}
                 {!isVisited ? (
-                  <DropdownMenuItem onSelect={handleQuickMarkVisited}>
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleQuickMarkVisited();
+                    }}
+                    className="cursor-pointer"
+                  >
                     <CheckCircle size={14} className="mr-2 text-green-600" />
                     Mark as visited
                   </DropdownMenuItem>
                 ) : (
                   <>
-                    <DropdownMenuItem onSelect={handleEditVisit}>
+                    <DropdownMenuItem 
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleEditVisit();
+                      }}
+                      className="cursor-pointer"
+                    >
                       <Edit size={14} className="mr-2 text-blue-600" />
                       Edit visit
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleDeleteVisit}>
+                    <DropdownMenuItem 
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleDeleteVisit();
+                      }}
+                      className="cursor-pointer"
+                    >
                       <X size={14} className="mr-2 text-red-600" />
                       Delete visit
                     </DropdownMenuItem>
@@ -279,14 +373,26 @@ export const PlaqueCard = ({
                 )}
                 
                 {/* Favorite action */}
-                <DropdownMenuItem onSelect={handleFavoriteToggle}>
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleFavoriteToggle(e as any);
+                  }}
+                  className="cursor-pointer"
+                >
                   <Star size={14} className={`mr-2 ${isFav ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
                   {isFav ? 'Remove from favorites' : 'Add to favorites'}
                 </DropdownMenuItem>
 
                 {/* Context-specific actions */}
                 {variant === 'discover' && (
-                  <DropdownMenuItem onSelect={handleAddToCollection}>
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleAddToCollection();
+                    }}
+                    className="cursor-pointer"
+                  >
                     <Plus size={14} className="mr-2 text-blue-600" />
                     Add to collection
                   </DropdownMenuItem>
@@ -295,7 +401,13 @@ export const PlaqueCard = ({
                 {variant === 'collection' && onRemovePlaque && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={handleRemove}>
+                    <DropdownMenuItem 
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleRemove();
+                      }}
+                      className="cursor-pointer"
+                    >
                       <Trash2 size={14} className="mr-2 text-red-600" />
                       Remove from collection
                     </DropdownMenuItem>
@@ -373,6 +485,16 @@ export const PlaqueCard = ({
             </p>
           )}
           
+          {/* Navigation mode hint */}
+          {navigationMode === 'new-tab' && (
+            <div className="mt-2">
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                <ExternalLink size={10} className="mr-1" />
+                Opens in new tab
+              </Badge>
+            </div>
+          )}
+          
           {/* Route button */}
           {showRouteButton && onAddToRoute && (
             <div className="mt-3">
@@ -405,7 +527,6 @@ export const PlaqueCard = ({
         </CardContent>
       </Card>
 
-      {/* All the dialogs remain the same */}
       {/* Quick visit dialog */}
       <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
         <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>

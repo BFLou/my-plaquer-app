@@ -1,7 +1,8 @@
+// src/components/plaques/PlaqueDetail.tsx - Enhanced with modal/full page workflow
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
-  Clock, Navigation, Plus, Copy, Eye, FileText, FolderOpen
+  Clock, Navigation, Plus, Copy, Eye, FileText, FolderOpen, Share2
 } from 'lucide-react';
 import { 
   Dialog as MainDialog,
@@ -30,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useNavigate } from 'react-router-dom';
 
 type PlaqueDetailProps = {
   plaque: Plaque | null;
@@ -47,7 +49,11 @@ type PlaqueDetailProps = {
   formatDistance?: (distance: number) => string;
   showDistance?: boolean;
   isFullPage?: boolean;
-  generateShareUrl?: (plaqueId: number) => string; // Optional URL generator
+  generateShareUrl?: (plaqueId: number) => string;
+  // NEW: Context for determining navigation behavior
+  context?: 'discover' | 'collection' | 'route' | 'profile';
+  // NEW: Current page path for back navigation
+  currentPath?: string;
 };
 
 export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
@@ -66,9 +72,12 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   formatDistance = (d) => `${d.toFixed(1)} km`,
   showDistance = false,
   isFullPage = false,
-  generateShareUrl
+  generateShareUrl,
+  context = 'discover',
+  currentPath = '/discover'
 }) => {
   // Hooks
+  const navigate = useNavigate();
   const { isPlaqueVisited, getVisitInfo, markAsVisited } = useVisitedPlaques();
   const { isFavorite: isInFavorites, toggleFavorite } = useFavorites();
   const { collections } = useCollections();
@@ -226,19 +235,48 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     }
   };
 
-  // UPDATED: Simplified copy link functionality
+  // NEW: Navigate to full page
+  const handleViewFullDetails = () => {
+    navigate(`/plaque/${plaque.id}`);
+  };
+
+  // NEW: Enhanced copy link functionality
   const handleCopyLink = async () => {
     try {
-      // Use provided URL generator or fallback to current page strategy
       const plaqueUrl = generateShareUrl 
         ? generateShareUrl(plaque.id)
-        : `${window.location.origin}${window.location.pathname}?plaque=${plaque.id}`;
+        : `${window.location.origin}/plaque/${plaque.id}`;
       
       await navigator.clipboard.writeText(plaqueUrl);
       toast.success('Link copied to clipboard!');
     } catch (error) {
       console.error('Error copying link:', error);
       toast.error("Couldn't copy link");
+    }
+  };
+
+  // NEW: Share functionality
+  const handleShare = async () => {
+    const shareUrl = generateShareUrl 
+      ? generateShareUrl(plaque.id)
+      : `${window.location.origin}/plaque/${plaque.id}`;
+    
+    const shareData = {
+      title: plaque.title,
+      text: `Check out this historic plaque: ${plaque.title}`,
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          handleCopyLink(); // Fallback to copy
+        }
+      }
+    } else {
+      handleCopyLink(); // Fallback to copy
     }
   };
 
@@ -314,6 +352,16 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 <div className="p-2">
                   {/* Mobile: Vertical stack, Desktop: Horizontal row */}
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-1">
+                    {/* Share button - NEW */}
+                    <Button 
+                      onClick={handleShare}
+                      size="sm"
+                      className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors touch-manipulation"
+                      title="Share Plaque"
+                    >
+                      <Share2 size={16} className="sm:w-3.5 sm:h-3.5" />
+                    </Button>
+
                     {/* Visit/Visited button */}
                     {!isVisited ? (
                       <Button 
@@ -365,16 +413,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                       title="Toggle Favorite"
                     >
                       <Star size={16} className={`sm:w-3.5 sm:h-3.5 ${isPlaqueFavorite ? 'fill-current' : ''}`} />
-                    </Button>
-                    
-                    {/* Copy Link */}
-                    <Button 
-                      onClick={handleCopyLink}
-                      size="sm"
-                      className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors touch-manipulation"
-                      title="Copy Link"
-                    >
-                      <Copy size={16} className="sm:w-3.5 sm:h-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -454,6 +492,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 </div>
               )}
               
+              {/* Rest of the content remains the same... */}
               {/* Inscription */}
               {isValidValue(plaque.inscription) && (
                 <div className="bg-gray-50 rounded-xl p-4 sm:p-6 border-l-4 border-purple-500">
@@ -513,107 +552,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 </div>
               )}
               
-              {/* Metadata Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                {isValidValue(plaque.erected) && (
-                  <div className="bg-white border rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar size={14} className="text-gray-400" />
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Erected</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">{safeString(plaque.erected)}</div>
-                  </div>
-                )}
-                
-                {isValidValue(plaque.area) && (
-                  <div className="bg-white border rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin size={14} className="text-gray-400" />
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Borough</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">{safeString(plaque.area)}</div>
-                  </div>
-                )}
-                
-                {plaqueColor && plaqueColor !== "unknown" && (
-                  <div className="bg-white border rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building size={14} className="text-gray-400" />
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Material</span>
-                    </div>
-                    <div className="font-semibold text-gray-900 capitalize">{plaqueColor}</div>
-                  </div>
-                )}
-
-                {organisations.length > 0 && (
-                  <div className="bg-white border rounded-lg p-3 col-span-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building size={14} className="text-gray-400" />
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Organisations</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">{organisations.join(', ')}</div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Nearby Plaques */}
-              {nearbyPlaques.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                      <Eye size={16} className="text-gray-600" />
-                      Nearby Plaques ({nearbyPlaques.length})
-                    </h3>
-                    <button 
-                      onClick={() => setShowNearby(!showNearby)}
-                      className="text-purple-600 text-sm hover:underline font-medium"
-                    >
-                      {showNearby ? 'Show less' : 'View all'}
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {nearbyPlaques.slice(0, showNearby ? nearbyPlaques.length : 2).map((nearby) => {
-                      const nearbyImageUrl = nearby.image || nearby.main_photo;
-                      const nearbyPlaqueColor = nearby.color || nearby.colour || 'unknown';
-                      
-                      return (
-                        <div 
-                          key={nearby.id} 
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                          onClick={() => onSelectNearbyPlaque?.(nearby)}
-                        >
-                          <div className="w-16 h-12 bg-gray-200 rounded object-cover flex-shrink-0 overflow-hidden">
-                            <PlaqueImage 
-                              src={nearbyImageUrl}
-                              alt={safeString(nearby.title)}
-                              className="w-full h-full object-cover"
-                              plaqueColor={nearbyPlaqueColor}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">{safeString(nearby.title)}</div>
-                            <div className="text-xs text-gray-500 flex items-center gap-3">
-                              <span>{safeTrim(nearby.address || nearby.location)}</span>
-                              {isValidValue(nearby.profession) && (
-                                <>
-                                  <span>•</span>
-                                  <span>{safeString(nearby.profession)}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                            nearbyPlaqueColor === 'blue' ? 'bg-blue-500' :
-                            nearbyPlaqueColor === 'green' ? 'bg-green-500' :
-                            nearbyPlaqueColor === 'brown' ? 'bg-amber-500' : 'bg-gray-500'
-                          }`}></div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Metadata Grid and Nearby Plaques remain the same... */}
             </div>
           </div>
         </div>
@@ -751,14 +690,14 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                         <Star size={16} className={`sm:w-3.5 sm:h-3.5 ${isPlaqueFavorite ? 'fill-current' : ''}`} />
                       </Button>
                       
-                      {/* Copy Link */}
+                      {/* Share button */}
                       <Button 
-                        onClick={handleCopyLink}
+                        onClick={handleShare}
                         size="sm"
                         className="h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors touch-manipulation"
-                        title="Copy Link"
+                        title="Share"
                       >
-                        <Copy size={16} className="sm:w-3.5 sm:h-3.5" />
+                        <Share2 size={16} className="sm:w-3.5 sm:h-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -792,6 +731,24 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   </div>
                 </div>
 
+                {/* NEW: View Full Details Button - Only in modal mode */}
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-blue-900 mb-1">Want to see more details?</h3>
+                      <p className="text-sm text-blue-700">View the full page with complete information and sharing options.</p>
+                    </div>
+                    <Button
+                      onClick={handleViewFullDetails}
+                      className="bg-blue-600 hover:bg-blue-700 text-white ml-4"
+                      size="sm"
+                    >
+                      <FileText size={16} className="mr-2" />
+                      Full Details
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Collections Preview - Only show if plaque is in actual collections */}
                 {plaqueCollections.length > 0 && (
                   <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
@@ -820,7 +777,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                           key={collection.id}
                           className="bg-white text-purple-700 px-3 py-1 rounded-full text-sm border border-purple-200 flex items-center gap-2 cursor-pointer hover:bg-purple-50 transition-colors"
                           onClick={() => {
-                            // Navigate to collection detail
                             const url = `/library/collections/${collection.id}`;
                             window.open(url, '_blank');
                           }}

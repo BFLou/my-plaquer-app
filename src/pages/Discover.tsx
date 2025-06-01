@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - COMPLETE FIXED VERSION
+// src/pages/Discover.tsx - Enhanced with modal URL state management
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -17,7 +17,7 @@ import { MapContainer } from '../components/maps/MapContainer';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
 
@@ -34,8 +34,9 @@ interface DistanceFilter {
 const Discover = () => {
   // URL state management
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   
-  // FIXED: Better URL state parsing with fallbacks and debugging
+  // ENHANCED: Better URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {
       view: (searchParams.get('view') as ViewMode) || 'grid',
@@ -45,13 +46,15 @@ const Discover = () => {
       professions: searchParams.get('professions')?.split(',').filter(Boolean) || [],
       onlyVisited: searchParams.get('visited') === 'true',
       onlyFavorites: searchParams.get('favorites') === 'true',
+      // NEW: Modal plaque support
+      modalPlaque: searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null,
     };
     
     console.log('URL State parsed:', state);
     return state;
   }, [searchParams]);
 
-  // FIXED: Optimized URL state update function with correct parameter names
+  // ENHANCED: URL state update function with modal support
   const updateUrlState = useCallback((updates: Partial<typeof urlState>) => {
     const newParams = new URLSearchParams(searchParams);
     
@@ -64,8 +67,9 @@ const Discover = () => {
       colors: 'colors',
       postcodes: 'postcodes',
       professions: 'professions',
-      onlyVisited: 'visited',      // Map onlyVisited to 'visited' URL param
-      onlyFavorites: 'favorites'   // Map onlyFavorites to 'favorites' URL param
+      onlyVisited: 'visited',
+      onlyFavorites: 'favorites',
+      modalPlaque: 'plaque' // NEW: Modal plaque parameter
     };
     
     Object.entries(newState).forEach(([key, value]) => {
@@ -79,10 +83,10 @@ const Discover = () => {
         }
       } else if (value === true) {
         newParams.set(urlParam, 'true');
-      } else if (value === false || value === '') {
+      } else if (value === false || value === '' || value === null) {
         newParams.delete(urlParam);
       } else if (value) {
-        newParams.set(urlParam, value);
+        newParams.set(urlParam, value.toString());
       }
     });
     
@@ -113,6 +117,19 @@ const Discover = () => {
   // External hooks
   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
+
+  // NEW: Handle modal plaque from URL
+  useEffect(() => {
+    if (urlState.modalPlaque) {
+      const plaque = allPlaques.find(p => p.id === urlState.modalPlaque);
+      if (plaque) {
+        console.log('Opening modal for plaque from URL:', plaque.title);
+        setSelectedPlaque(plaque);
+      }
+    } else {
+      setSelectedPlaque(null);
+    }
+  }, [urlState.modalPlaque, allPlaques]);
 
   // Load plaque data
   useEffect(() => {
@@ -176,7 +193,7 @@ const Discover = () => {
     }
   }, []);
 
-  // FIXED: Enhanced filtered plaques with proper boolean filtering and debugging
+  // Enhanced filtered plaques with proper boolean filtering
   const filteredPlaques = useMemo(() => {
     console.log('=== FILTERING DEBUG ===');
     console.log('URL State:', {
@@ -188,9 +205,6 @@ const Discover = () => {
       professions: urlState.professions
     });
     console.log('Total plaques before filtering:', allPlaques.length);
-
-    // Track how many plaques pass each filter for debugging
-    let debugCount = 0;
 
     let filtered = allPlaques.filter((plaque) => {
       // Standard filters
@@ -211,34 +225,19 @@ const Discover = () => {
       const matchesProfession = urlState.professions.length === 0 || 
         (plaque.profession && urlState.professions.includes(plaque.profession));
       
-      // FIXED: Proper boolean filtering for visited and favorites with debugging
+      // Enhanced boolean filtering for visited and favorites
       const plaqueIsVisited = plaque.visited || isPlaqueVisited(plaque.id);
       const plaqueIsFavorite = isFavorite(plaque.id);
       
       const matchesVisited = !urlState.onlyVisited || plaqueIsVisited;
       const matchesFavorite = !urlState.onlyFavorites || plaqueIsFavorite;
 
-      // Debug for the first few plaques when filters are active
-      if ((urlState.onlyVisited || urlState.onlyFavorites) && debugCount < 3) {
-        console.log(`Plaque ${plaque.id} (${plaque.title}):`, {
-          plaqueIsVisited,
-          plaqueIsFavorite,
-          matchesVisited,
-          matchesFavorite,
-          onlyVisitedFilter: urlState.onlyVisited,
-          onlyFavoritesFilter: urlState.onlyFavorites
-        });
-        debugCount++;
-      }
-
-      const passes = matchesSearch && 
+      return matchesSearch && 
              matchesPostcode && 
              matchesColor && 
              matchesProfession && 
              matchesVisited && 
              matchesFavorite;
-
-      return passes;
     });
 
     console.log('After standard filters:', filtered.length);
@@ -295,11 +294,20 @@ const Discover = () => {
     distanceFilter.enabled
   ]);
 
-  // FIXED: Event handlers with proper debugging
+  // NEW: Enhanced event handlers with modal URL state
   const handlePlaqueClick = useCallback((plaque) => {
     console.log('Plaque clicked in Discover:', plaque.title);
-    setSelectedPlaque(plaque);
-  }, []);
+    // Update URL with modal plaque parameter for back button support
+    updateUrlState({ modalPlaque: plaque.id });
+  }, [updateUrlState]);
+
+  // NEW: Enhanced modal close handler
+  const handleCloseModal = useCallback(() => {
+    console.log('Closing plaque modal');
+    setSelectedPlaque(null);
+    // Remove plaque parameter from URL
+    updateUrlState({ modalPlaque: null });
+  }, [updateUrlState]);
 
   const handleFavoriteToggle = useCallback((id) => {
     console.log('Toggle favorite for plaque:', id);
@@ -325,24 +333,20 @@ const Discover = () => {
     }
   }, [markAsVisited]);
 
-  // FIXED: Filter handlers with proper state updates and debugging
+  // Enhanced filter handlers with proper state updates
   const handleVisitedChange = useCallback((value: boolean) => {
     console.log('=== VISITED CHANGE ===');
     console.log('New visited value:', value);
-    console.log('Current URL state before update:', urlState);
     updateUrlState({ onlyVisited: value });
     setCurrentPage(1);
-    console.log('Updated visited filter to:', value);
-  }, [updateUrlState, urlState]);
+  }, [updateUrlState]);
 
   const handleFavoritesChange = useCallback((value: boolean) => {
     console.log('=== FAVORITES CHANGE ===');
     console.log('New favorites value:', value);
-    console.log('Current URL state before update:', urlState);
     updateUrlState({ onlyFavorites: value });
     setCurrentPage(1);
-    console.log('Updated favorites filter to:', value);
-  }, [updateUrlState, urlState]);
+  }, [updateUrlState]);
 
   // Reset filters including distance filter
   const resetFilters = useCallback(() => {
@@ -354,6 +358,7 @@ const Discover = () => {
       professions: [],
       onlyVisited: false,
       onlyFavorites: false,
+      modalPlaque: null // Also clear modal
     });
     setDistanceFilter({
       enabled: false,
@@ -404,6 +409,13 @@ const Discover = () => {
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
     ).slice(0, 3);
   }, [allPlaques]);
+
+  // NEW: Handle nearby plaque selection in modal
+  const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
+    console.log('Selecting nearby plaque:', nearbyPlaque.title);
+    // Update URL to new plaque
+    updateUrlState({ modalPlaque: nearbyPlaque.id });
+  }, [updateUrlState]);
 
   const renderContent = () => {
     if (loading) {
@@ -470,6 +482,8 @@ const Discover = () => {
     const commonProps = {
       showDistance: distanceFilter.enabled,
       formatDistance,
+      // NEW: Always use modal navigation mode in discover
+      navigationMode: 'modal' as const,
     };
 
     if (urlState.view === 'grid') {
@@ -597,7 +611,7 @@ const Discover = () => {
         {renderContent()}
       </div>
       
-      {/* FIXED: Filter Dialog with proper toggle handlers */}
+      {/* Enhanced Filter Dialog with proper toggle handlers */}
       <DiscoverFilterDialog
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -630,26 +644,25 @@ const Discover = () => {
         distanceFilter={distanceFilter}
       />
       
-      {/* Plaque Detail Modal */}
+      {/* Enhanced Plaque Detail Modal with URL state */}
       {selectedPlaque && (
-  <PlaqueDetail
-    plaque={selectedPlaque}
-    isOpen={!!selectedPlaque}
-    onClose={() => {
-      console.log('Closing plaque detail');
-      setSelectedPlaque(null);
-    }}
-    isFavorite={isFavorite(selectedPlaque.id)}
-    onFavoriteToggle={handleFavoriteToggle}
-    onMarkVisited={handleMarkVisited}
-    nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-    onSelectNearbyPlaque={setSelectedPlaque}
-    isMapView={urlState.view === 'map'}
-    distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
-    formatDistance={formatDistance}
-    showDistance={distanceFilter.enabled}
-    generateShareUrl={generatePlaqueUrl} // ADD THIS LINE
-  />
+        <PlaqueDetail
+          plaque={selectedPlaque}
+          isOpen={!!selectedPlaque}
+          onClose={handleCloseModal}
+          isFavorite={isFavorite(selectedPlaque.id)}
+          onFavoriteToggle={handleFavoriteToggle}
+          onMarkVisited={handleMarkVisited}
+          nearbyPlaques={getNearbyPlaques(selectedPlaque)}
+          onSelectNearbyPlaque={handleSelectNearbyPlaque}
+          isMapView={urlState.view === 'map'}
+          distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
+          formatDistance={formatDistance}
+          showDistance={distanceFilter.enabled}
+          generateShareUrl={generatePlaqueUrl}
+          context="discover"
+          currentPath={location.pathname}
+        />
       )}
     </PageContainer>
   );
