@@ -1,4 +1,4 @@
-// src/components/plaques/PlaqueCard.tsx - Fixed with proper imports
+// src/components/plaques/PlaqueCard.tsx - Complete with auth gate integration
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation, ExternalLink, Share2, Copy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -86,7 +86,7 @@ export const PlaqueCard = ({
   const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
   
-  // NEW: Auth gate integration
+  // Auth gate integration
   const { 
     requireAuthForVisit, 
     requireAuthForFavorite, 
@@ -139,7 +139,7 @@ export const PlaqueCard = ({
     navigateToPlaque(plaque, navigationMode);
   };
 
-  // ENHANCED: Favorite toggle with auth gate
+  // Auth-gated action handlers
   const handleFavoriteToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     console.log(`Toggling favorite for plaque: ${plaque.id}`);
@@ -153,7 +153,7 @@ export const PlaqueCard = ({
       setShowDropdown(false);
     };
 
-    // Use auth gate for favorites
+    // Use auth gate for favorites - will go to sign-in for existing user actions
     requireAuthForFavorite(plaque.id, favoriteAction);
   };
 
@@ -162,27 +162,27 @@ export const PlaqueCard = ({
     if (onSelect) onSelect(plaque.id);
   };
 
-  // ENHANCED: Visit handling with auth gate
   const handleQuickMarkVisited = () => {
     const visitAction = () => {
       setShowQuickVisitDialog(true);
       setShowDropdown(false);
     };
 
+    // Use auth gate for visits - will go to sign-in for existing user actions
     requireAuthForVisit(plaque.id, visitAction);
   };
 
-  // ENHANCED: Collection handling with auth gate
   const handleAddToCollection = () => {
     const collectionAction = () => {
       setShowAddToCollection(true);
       setShowDropdown(false);
     };
 
+    // Use auth gate for collections - will go to sign-in for existing user actions
     requireAuthForCollection(plaque.id, collectionAction);
   };
 
-  // These handlers remain the same for authenticated users
+  // These handlers are only called for authenticated users
   const handleEditVisit = () => {
     setShowEditVisitDialog(true);
     setShowDropdown(false);
@@ -401,7 +401,7 @@ export const PlaqueCard = ({
                 
                 <DropdownMenuSeparator />
                 
-                {/* Visit actions - Auth gated */}
+                {/* Visit actions - Always visible, auth gate handles authentication */}
                 {!isVisited ? (
                   <DropdownMenuItem 
                     onSelect={(e) => {
@@ -413,33 +413,35 @@ export const PlaqueCard = ({
                     <CheckCircle size={14} className="mr-2 text-green-600" />
                     Mark as visited
                   </DropdownMenuItem>
-                ) : isAuthenticated ? (
-                  // Only show edit/delete for authenticated users
-                  <>
-                    <DropdownMenuItem 
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleEditVisit();
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <Edit size={14} className="mr-2 text-blue-600" />
-                      Edit visit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleDeleteVisit();
-                      }}
-                      className="cursor-pointer"
-                    >
-                      <X size={14} className="mr-2 text-red-600" />
-                      Delete visit
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
+                ) : (
+                  // Only show edit/delete for authenticated users with actual visit data
+                  isAuthenticated && visitInfo && (
+                    <>
+                      <DropdownMenuItem 
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          handleEditVisit();
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <Edit size={14} className="mr-2 text-blue-600" />
+                        Edit visit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          handleDeleteVisit();
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <X size={14} className="mr-2 text-red-600" />
+                        Delete visit
+                      </DropdownMenuItem>
+                    </>
+                  )
+                )}
                 
-                {/* Favorite action - Auth gated */}
+                {/* Favorite action - Always visible, auth gate handles authentication */}
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     e.preventDefault();
@@ -451,7 +453,7 @@ export const PlaqueCard = ({
                   {isFav ? 'Remove from favorites' : 'Add to favorites'}
                 </DropdownMenuItem>
 
-                {/* Collection action - Auth gated */}
+                {/* Collection action - Always visible, auth gate handles authentication */}
                 {variant === 'discover' && (
                   <DropdownMenuItem 
                     onSelect={(e) => {
@@ -509,7 +511,7 @@ export const PlaqueCard = ({
           </div>
         </div>
         
-        {/* Content - Rest of the component remains the same */}
+        {/* Content */}
         <CardHeader className="pb-2 px-3 sm:px-6">
           <CardTitle className="text-base sm:text-lg font-bold group-hover:text-blue-600 transition-colors line-clamp-2">
             {plaque.title}
@@ -521,7 +523,7 @@ export const PlaqueCard = ({
         </CardHeader>
         
         <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-          {/* Badges and rest of content... */}
+          {/* Badges */}
           <div className="flex flex-wrap gap-1 mb-3">
             {getPlaqueColor() && getPlaqueColor() !== "Unknown" && (
               <Badge 
@@ -595,134 +597,129 @@ export const PlaqueCard = ({
         </CardContent>
       </Card>
 
-      {/* All dialogs remain the same but only show for authenticated users */}
-      {isAuthenticated && (
-        <>
-          {/* Quick visit dialog */}
-          {/* ... existing dialog code ... */}
-
-          {/* Quick visit dialog */}
-          <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
-            <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-              <DialogHeader>
-                <DialogTitle>Mark as Visited</DialogTitle>
-              </DialogHeader>
-              
-              <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Visit Date</label>
-                  <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {format(visitDate, "PPP")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={visitDate}
-                        onSelect={(date) => {
-                          if (date) {
-                            setVisitDate(date);
-                            setShowCalendar(false);
-                          }
-                        }}
-                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes (optional)</label>
-                  <Textarea
-                    placeholder="Any thoughts about your visit?"
-                    value={visitNotes}
-                    onChange={(e) => setVisitNotes(e.target.value)}
-                    rows={3}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
+      {/* All dialogs - Always available, auth gate prevents access if needed */}
+      <>
+        {/* Quick visit dialog */}
+        <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
+          <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Mark as Visited</DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Visit Date</label>
+                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {format(visitDate, "PPP")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={visitDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setVisitDate(date);
+                          setShowCalendar(false);
+                        }
+                      }}
+                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowQuickVisitDialog(false)}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleQuickVisitSubmit}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? 'Saving...' : 'Mark as Visited'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
-          {/* Edit visit dialog */}
-          <EditVisitDialog
-            isOpen={showEditVisitDialog}
-            onClose={() => setShowEditVisitDialog(false)}
-            plaque={plaque}
-            visitId={visitInfo?.id || null}
-            onVisitUpdated={() => {
-              if (onMarkVisited) onMarkVisited(plaque.id);
-            }}
-            onVisitDeleted={() => {
-              if (onMarkVisited) onMarkVisited(plaque.id);
-            }}
-          />
-
-          {/* Delete visit confirmation */}
-          <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Delete Visit</DialogTitle>
-              </DialogHeader>
-              
-              <div className="py-4">
-                <p className="text-sm text-gray-600">
-                  Are you sure you want to delete your visit to this plaque? This action cannot be undone.
-                </p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notes (optional)</label>
+                <Textarea
+                  placeholder="Any thoughts about your visit?"
+                  value={visitNotes}
+                  onChange={(e) => setVisitNotes(e.target.value)}
+                  rows={3}
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
-              
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDeleteVisitConfirm(false)}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive"
-                  onClick={handleConfirmDeleteVisit}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? 'Deleting...' : 'Delete Visit'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowQuickVisitDialog(false)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleQuickVisitSubmit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Saving...' : 'Mark as Visited'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-          {/* Add to collection dialog */}
-          <AddToCollectionDialog
-            isOpen={showAddToCollection}
-            onClose={() => setShowAddToCollection(false)}
-            plaque={plaque}
-          />
-        </>
-      )}
+        {/* Edit visit dialog */}
+        <EditVisitDialog
+          isOpen={showEditVisitDialog}
+          onClose={() => setShowEditVisitDialog(false)}
+          plaque={plaque}
+          visitId={visitInfo?.id || null}
+          onVisitUpdated={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+          onVisitDeleted={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+        />
+
+        {/* Delete visit confirmation */}
+        <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete Visit</DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete your visit to this plaque? This action cannot be undone.
+              </p>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteVisitConfirm(false)}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleConfirmDeleteVisit}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Deleting...' : 'Delete Visit'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add to collection dialog */}
+        <AddToCollectionDialog
+          isOpen={showAddToCollection}
+          onClose={() => setShowAddToCollection(false)}
+          plaque={plaque}
+        />
+      </>
     </>
   );
 };

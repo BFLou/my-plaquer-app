@@ -1,4 +1,4 @@
-// src/hooks/useAuthGate.tsx - Complete enhanced version with full context preservation
+// src/hooks/useAuthGate.tsx - Enhanced with sign-in flow for authenticated actions
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
@@ -9,11 +9,14 @@ interface AuthGateOptions {
   backTo?: string;
   preserveModal?: boolean;
   preserveParams?: boolean;
+  // NEW: Control whether to go to sign-in or sign-up
+  preferSignIn?: boolean;
 }
 
 interface PendingAction {
-  type: 'mark-visited' | 'toggle-favorite' | 'add-to-collection';
-  plaqueId: number;
+  type: 'mark-visited' | 'toggle-favorite' | 'add-to-collection' | 'save-route';
+  plaqueId?: number;
+  routeData?: any;
   data?: any;
 }
 
@@ -133,7 +136,7 @@ export const useAuthGate = () => {
     }
   }, []);
 
-  // Enhanced requireAuth with better context handling
+  // ENHANCED: Smart auth flow routing
   const requireAuth = useCallback((
     action: () => void,
     options: AuthGateOptions = {},
@@ -148,38 +151,32 @@ export const useAuthGate = () => {
         storePendingAction(pendingActionData);
       }
 
-      // Determine the appropriate auth gate URL based on context
-      let authGateUrl = '/join';
-      
-      if (pendingActionData) {
-        switch (pendingActionData.type) {
-          case 'toggle-favorite':
-            authGateUrl = '/join/to-save-favorites';
-            break;
-          case 'mark-visited':
-            authGateUrl = '/join/to-track-visits';
-            break;
-          case 'add-to-collection':
-            authGateUrl = '/join/to-create-collections';
-            break;
-        }
-      } else if (location.pathname.includes('/library/collections')) {
-        authGateUrl = '/join/to-create-collections';
-      } else if (location.pathname.includes('/library/routes')) {
-        authGateUrl = '/join/to-plan-routes';
-      } else if (location.pathname.includes('/library/visits')) {
-        authGateUrl = '/join/to-track-visits';
-      } else if (location.pathname.includes('/library')) {
-        authGateUrl = '/join/to-access-library';
-      } else if (location.pathname.includes('/profile')) {
-        authGateUrl = '/join/to-manage-profile';
-      } else if (location.pathname.includes('/settings')) {
-        authGateUrl = '/join/to-access-settings';
+      // NEW: Determine whether to use sign-in or sign-up flow
+      const useSignInFlow = options.preferSignIn || 
+                           pendingActionData?.type === 'mark-visited' ||
+                           pendingActionData?.type === 'toggle-favorite' ||
+                           pendingActionData?.type === 'add-to-collection' ||
+                           pendingActionData?.type === 'save-route';
+
+      if (useSignInFlow) {
+        console.log('🔑 Navigating to sign-in for authenticated action');
+        navigate('/signin', {
+          state: {
+            featureName: options.featureName,
+            redirectTo: options.redirectTo || location.pathname,
+            backTo: options.backTo || getSmartBackPath(),
+            preserveModal: options.preserveModal,
+            preserveParams: options.preserveParams,
+            pendingAction: pendingActionData
+          }
+        });
+        return;
       }
 
+      // Use auth gate for new feature access
+      const authGateUrl = getAuthGateUrl(pendingActionData, location.pathname);
       console.log('🚪 Navigating to auth gate:', authGateUrl);
 
-      // Navigate to contextual auth gate with state
       navigate(authGateUrl, {
         state: {
           featureName: options.featureName,
@@ -195,6 +192,38 @@ export const useAuthGate = () => {
     // User is authenticated, execute the action immediately
     action();
   }, [user, navigate, location, storeNavigationContext, storePendingAction]);
+
+  // Helper to determine auth gate URL
+  const getAuthGateUrl = useCallback((pendingActionData?: PendingAction, currentPath?: string) => {
+    if (pendingActionData) {
+      switch (pendingActionData.type) {
+        case 'toggle-favorite':
+          return '/join/to-save-favorites';
+        case 'mark-visited':
+          return '/join/to-track-visits';
+        case 'add-to-collection':
+          return '/join/to-create-collections';
+        case 'save-route':
+          return '/join/to-plan-routes';
+      }
+    }
+    
+    if (currentPath?.includes('/library/collections')) {
+      return '/join/to-create-collections';
+    } else if (currentPath?.includes('/library/routes')) {
+      return '/join/to-plan-routes';
+    } else if (currentPath?.includes('/library/visits')) {
+      return '/join/to-track-visits';
+    } else if (currentPath?.includes('/library')) {
+      return '/join/to-access-library';
+    } else if (currentPath?.includes('/profile')) {
+      return '/join/to-manage-profile';
+    } else if (currentPath?.includes('/settings')) {
+      return '/join/to-access-settings';
+    }
+    
+    return '/join';
+  }, []);
 
   // Smart back path determination
   const getSmartBackPath = useCallback(() => {
@@ -268,7 +297,7 @@ export const useAuthGate = () => {
     return targetUrl;
   }, [retrieveNavigationContext]);
 
-  // Specific auth-gated actions with enhanced context
+  // ENHANCED: Specific auth-gated actions with sign-in preference
   const requireAuthForVisit = useCallback((
     plaqueId: number,
     visitAction: () => void,
@@ -280,7 +309,8 @@ export const useAuthGate = () => {
         featureName: 'track your visits',
         redirectTo: location.pathname,
         preserveModal: true,
-        preserveParams: true
+        preserveParams: true,
+        preferSignIn: true // NEW: Prefer sign-in for existing user actions
       },
       {
         type: 'mark-visited',
@@ -300,7 +330,8 @@ export const useAuthGate = () => {
         featureName: 'save favorites',
         redirectTo: location.pathname,
         preserveModal: true,
-        preserveParams: true
+        preserveParams: true,
+        preferSignIn: true // NEW: Prefer sign-in for existing user actions
       },
       {
         type: 'toggle-favorite',
@@ -319,11 +350,33 @@ export const useAuthGate = () => {
         featureName: 'create and manage collections',
         redirectTo: location.pathname,
         preserveModal: true,
-        preserveParams: true
+        preserveParams: true,
+        preferSignIn: true // NEW: Prefer sign-in for existing user actions
       },
       {
         type: 'add-to-collection',
         plaqueId
+      }
+    );
+  }, [requireAuth, location]);
+
+  // NEW: Auth gate for route saving
+  const requireAuthForRoute = useCallback((
+    routeData: any,
+    routeAction: () => void
+  ) => {
+    requireAuth(
+      routeAction,
+      {
+        featureName: 'save routes',
+        redirectTo: location.pathname,
+        preserveModal: false,
+        preserveParams: true,
+        preferSignIn: true // NEW: Prefer sign-in for route saving
+      },
+      {
+        type: 'save-route',
+        routeData
       }
     );
   }, [requireAuth, location]);
@@ -335,6 +388,7 @@ export const useAuthGate = () => {
     requireAuthForVisit,
     requireAuthForFavorite,
     requireAuthForCollection,
+    requireAuthForRoute, // NEW
     retrievePendingAction,
     restoreNavigation,
     clearStoredData,

@@ -31,7 +31,6 @@ export { SearchBar } from './maps/features/Search/SearchBar';
 export { useSearch } from './maps/features/Search/useSearch';
 export { LocationFilter } from './maps/features/LocationFilter/LocationFilter';
 export { useLocationFilter } from './maps/features/LocationFilter/useLocationFilter';
-export { RoutePanel } from './maps/features/RouteBuilder/RoutePanel';
 
 // Map core hooks
 export { useMap } from './maps/core/useMap';

@@ -1,4 +1,4 @@
-// src/components/plaques/PlaqueListItem.tsx - Enhanced with share/copy link functionality
+// src/components/plaques/PlaqueListItem.tsx - Complete with auth gate integration
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar, Navigation, Share2, Copy, ExternalLink } from 'lucide-react';
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useAuthGate } from '@/hooks/useAuthGate';
 import AddToCollectionDialog from './AddToCollectionDialog';
 import EditVisitDialog from './EditVisitDialog';
 import { toast } from 'sonner';
@@ -86,12 +87,20 @@ export const PlaqueListItem = ({
   const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
   
+  // Auth gate integration
+  const { 
+    requireAuthForVisit, 
+    requireAuthForFavorite, 
+    requireAuthForCollection,
+    isAuthenticated 
+  } = useAuthGate();
+  
   // Determine if the plaque is visited and favorited
   const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
   const isFav = isFavorite(plaque.id);
   const visitInfo = getVisitInfo(plaque.id);
 
-  // Event handlers
+  // Event handlers with auth gate integration
   const handleClick = (e: React.MouseEvent) => {
     // Prevent click when interacting with buttons or dropdowns
     if (e.target instanceof Element && (
@@ -108,7 +117,13 @@ export const PlaqueListItem = ({
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite(plaque.id);
+    
+    const favoriteAction = () => {
+      toggleFavorite(plaque.id);
+    };
+
+    // Use auth gate for favorites - will go to sign-in for existing user actions
+    requireAuthForFavorite(plaque.id, favoriteAction);
   };
 
   const handleSelectClick = (e: React.MouseEvent) => {
@@ -117,7 +132,12 @@ export const PlaqueListItem = ({
   };
 
   const handleQuickMarkVisited = () => {
-    setShowQuickVisitDialog(true);
+    const visitAction = () => {
+      setShowQuickVisitDialog(true);
+    };
+
+    // Use auth gate for visits - will go to sign-in for existing user actions
+    requireAuthForVisit(plaque.id, visitAction);
   };
 
   const handleEditVisit = () => {
@@ -133,14 +153,19 @@ export const PlaqueListItem = ({
   };
 
   const handleAddToCollection = () => {
-    setShowAddToCollection(true);
+    const collectionAction = () => {
+      setShowAddToCollection(true);
+    };
+
+    // Use auth gate for collections - will go to sign-in for existing user actions
+    requireAuthForCollection(plaque.id, collectionAction);
   };
 
   const handleAddToRoute = () => {
     if (onAddToRoute) onAddToRoute(plaque);
   };
 
-  // NEW: Share/Copy functionality
+  // Share/Copy functionality (no auth required)
   const handleCopyLink = async () => {
     try {
       const plaqueUrl = generatePlaqueUrl(plaque.id);
@@ -319,7 +344,7 @@ export const PlaqueListItem = ({
                       
                       <DropdownMenuSeparator />
                       
-                      {/* NEW: Share options */}
+                      {/* Share options */}
                       <DropdownMenuItem onSelect={handleShare}>
                         <Share2 size={14} className="mr-2 text-purple-600" />
                         Share Plaque
@@ -332,23 +357,26 @@ export const PlaqueListItem = ({
                       
                       <DropdownMenuSeparator />
                       
-                      {/* Visit actions */}
+                      {/* Visit actions - Always visible, auth gate handles authentication */}
                       {!isVisited ? (
                         <DropdownMenuItem onSelect={handleQuickMarkVisited}>
                           <CheckCircle size={14} className="mr-2 text-green-600" />
                           Mark as visited
                         </DropdownMenuItem>
                       ) : (
-                        <>
-                          <DropdownMenuItem onSelect={handleEditVisit}>
-                            <Edit size={14} className="mr-2 text-blue-600" />
-                            Edit visit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={handleDeleteVisit}>
-                            <X size={14} className="mr-2 text-red-600" />
-                            Delete visit
-                          </DropdownMenuItem>
-                        </>
+                        // Only show edit/delete for authenticated users with actual visit data
+                        isAuthenticated && visitInfo && (
+                          <>
+                            <DropdownMenuItem onSelect={handleEditVisit}>
+                              <Edit size={14} className="mr-2 text-blue-600" />
+                              Edit visit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleDeleteVisit}>
+                              <X size={14} className="mr-2 text-red-600" />
+                              Delete visit
+                            </DropdownMenuItem>
+                          </>
+                        )
                       )}
                       
                       {/* Context-specific actions */}
@@ -366,7 +394,7 @@ export const PlaqueListItem = ({
                         </DropdownMenuItem>
                       )}
 
-                      {variant === 'collection' && onRemovePlaque && (
+                      {variant === 'collection' && onRemovePlaque && isAuthenticated && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onSelect={handleRemove}>

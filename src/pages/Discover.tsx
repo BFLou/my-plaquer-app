@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Updated with auth gate integration and pending action handler
+// src/pages/Discover.tsx - Complete with auth gate integration and pending action handler
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -19,10 +19,11 @@ import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';
 import DiscoverFilters from '../components/discover/DiscoverFilters';
 import { MapContainer } from '../components/maps/MapContainer';
-import PendingActionHandler from '@/components/auth/PendingActionHandler'; // NEW
+import PendingActionHandler from '@/components/auth/PendingActionHandler';
+import AddToCollectionDialog from '@/components/plaques/AddToCollectionDialog';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useAuthGate } from '@/hooks/useAuthGate'; // NEW
+import { useAuthGate } from '@/hooks/useAuthGate';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -45,10 +46,10 @@ const Discover = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   
-  // NEW: Auth gate integration
+  // Auth gate integration
   const { isAuthenticated } = useAuthGate();
   
-  // ENHANCED: Better URL state parsing with modal support
+  // URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {
       view: (searchParams.get('view') as ViewMode) || 'grid',
@@ -65,7 +66,7 @@ const Discover = () => {
     return state;
   }, [searchParams]);
 
-  // ENHANCED: URL state update function with modal support
+  // URL state update function with modal support
   const updateUrlState = useCallback((updates: Partial<typeof urlState>) => {
     const newParams = new URLSearchParams(searchParams);
     
@@ -112,7 +113,7 @@ const Discover = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // NEW: Collection action state for pending actions
+  // Collection and route action state for pending actions
   const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState(null);
 
   // Distance filter state - shared across all views
@@ -132,7 +133,14 @@ const Discover = () => {
   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  // NEW: Handle pending collection action
+  // Handle pending route action
+  const handlePendingRouteAction = useCallback((routeData: any) => {
+    // This could open a save route dialog or handle the route saving
+    console.log('Handle pending route action:', routeData);
+    toast.success('Route ready to save! Please use the Save Route button in the route panel.');
+  }, []);
+
+  // Handle pending collection action
   const handlePendingCollectionAction = useCallback((plaqueId: number) => {
     const plaque = allPlaques.find(p => p.id === plaqueId);
     if (plaque) {
@@ -329,8 +337,6 @@ const Discover = () => {
     updateUrlState({ modalPlaque: null });
   }, [updateUrlState]);
 
-  // REMOVED: Direct favorite toggle handler - now handled by auth gate in components
-
   // Enhanced filter handlers with proper state updates
   const handleVisitedChange = useCallback((value: boolean) => {
     console.log('=== VISITED CHANGE ===');
@@ -371,6 +377,17 @@ const Discover = () => {
   const handleDistanceFilterChange = useCallback((newFilter: Partial<DistanceFilter>) => {
     console.log('Distance filter changed:', newFilter);
     setDistanceFilter(prev => ({ ...prev, ...newFilter }));
+    setCurrentPage(1);
+  }, []);
+
+  // Clear distance filter specifically
+  const handleClearDistanceFilter = useCallback(() => {
+    setDistanceFilter({
+      enabled: false,
+      center: null,
+      radius: 1,
+      locationName: null
+    });
     setCurrentPage(1);
   }, []);
 
@@ -444,6 +461,7 @@ const Discover = () => {
               distanceFilter={distanceFilter}
               isPlaqueVisited={isPlaqueVisited}
               isFavorite={isFavorite}
+              onRouteAction={handlePendingRouteAction} // Handle route saving
             />
           </div>
         </div>
@@ -545,8 +563,11 @@ const Discover = () => {
       hasFooter={urlState.view !== 'map'}
       simplifiedFooter={true}
     >
-      {/* NEW: Pending Action Handler */}
-      <PendingActionHandler onCollectionAction={handlePendingCollectionAction} />
+      {/* Pending Action Handler with both handlers */}
+      <PendingActionHandler 
+        onCollectionAction={handlePendingCollectionAction}
+        onRouteAction={handlePendingRouteAction}
+      />
       
       {/* Header with view tabs and search */}
       <DiscoverHeader
@@ -577,12 +598,7 @@ const Discover = () => {
         }}
         onApplyFilters={(filters) => updateUrlState(filters)}
         distanceFilter={distanceFilter}
-        onClearDistanceFilter={() => setDistanceFilter({
-          enabled: false,
-          center: null,
-          radius: 1,
-          locationName: null
-        })}
+        onClearDistanceFilter={handleClearDistanceFilter}
       />
       
       {/* Status bar */}
@@ -658,7 +674,7 @@ const Discover = () => {
         />
       )}
 
-      {/* NEW: Collection action dialog for pending actions */}
+      {/* Collection action dialog for pending actions */}
       {pendingCollectionPlaque && (
         <AddToCollectionDialog
           isOpen={!!pendingCollectionPlaque}

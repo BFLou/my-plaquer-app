@@ -1,4 +1,4 @@
-// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - COMPLETE FIXED
+// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - Complete with auth gate
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
@@ -23,9 +23,9 @@ import {
   RouteSegment 
 } from '@/services/WalkingDistanceService';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthGate } from '@/hooks/useAuthGate';
 import { useRoutes } from '@/hooks/useRoutes';
 import { toast } from 'sonner';
-// FIXED: Import the actual custom SaveRouteDialog
 import SaveRouteDialog from '@/components/routes/SaveRouteDialog';
 
 interface EnhancedRoutePanelProps {
@@ -35,6 +35,7 @@ interface EnhancedRoutePanelProps {
   onClear: () => void;
   onClose: () => void;
   className?: string;
+  onRouteAction?: (routeData: any) => void; // NEW: Handle pending route actions
 }
 
 export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
@@ -43,9 +44,11 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   onReorder,
   onClear,
   onClose,
-  className = ''
+  className = '',
+  onRouteAction
 }) => {
   const { user } = useAuth();
+  const { requireAuthForRoute } = useAuthGate();
   const { createRoute } = useRoutes ? useRoutes() : { createRoute: null };
   
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -149,57 +152,55 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     setDraggedIndex(null);
   };
   
-  // FIXED: Handle save route with proper custom dialog
+  // ENHANCED: Handle save route with auth gate integration
   const handleSaveRoute = async (data: { name: string; description: string }) => {
-    if (!user) {
-      toast.error("Please sign in to save routes");
-      return;
-    }
-    
     if (points.length < 2) {
       toast.error("A route must have at least 2 stops");
       return;
     }
-    
-    try {
-      setIsSaving(true);
-      
-      if (createRoute) {
-        await createRoute(
-          data.name,
-          data.description,
-          points,
-          displayStats.distance / 1000 // Convert to km
-        );
-        toast.success("Route saved successfully!");
-      } else {
-        // Fallback if useRoutes hook is not available
-        console.warn("createRoute function not available from useRoutes hook");
+
+    const routeData = {
+      name: data.name,
+      description: data.description,
+      points: points,
+      distance: displayStats.distance / 1000 // Convert to km
+    };
+
+    const saveAction = async () => {
+      try {
+        setIsSaving(true);
         
-        // You could implement a fallback here or show an error
-        const routeData = {
-          name: data.name,
-          description: data.description,
-          points: points,
-          distance: displayStats.distance / 1000,
-          created: new Date().toISOString()
-        };
+        if (createRoute) {
+          await createRoute(
+            routeData.name,
+            routeData.description,
+            routeData.points,
+            routeData.distance
+          );
+          toast.success("Route saved successfully!");
+        } else {
+          // Fallback if useRoutes hook is not available
+          console.warn("createRoute function not available from useRoutes hook");
+          
+          // Save to localStorage as fallback
+          const savedRoutes = JSON.parse(localStorage.getItem('savedRoutes') || '[]');
+          savedRoutes.push({ ...routeData, id: Date.now(), created: new Date().toISOString() });
+          localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
+          
+          toast.success("Route saved locally");
+        }
         
-        // Example: Save to localStorage as fallback
-        const savedRoutes = JSON.parse(localStorage.getItem('savedRoutes') || '[]');
-        savedRoutes.push({ ...routeData, id: Date.now() });
-        localStorage.setItem('savedRoutes', JSON.stringify(savedRoutes));
-        
-        toast.success("Route saved locally");
+        setShowSaveDialog(false);
+      } catch (error) {
+        console.error("Error saving route:", error);
+        toast.error("Failed to save route. Please try again.");
+      } finally {
+        setIsSaving(false);
       }
-      
-      setShowSaveDialog(false);
-    } catch (error) {
-      console.error("Error saving route:", error);
-      toast.error("Failed to save route. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
+    };
+
+    // Use auth gate for route saving - will navigate to sign-in for existing users
+    requireAuthForRoute(routeData, saveAction);
   };
   
   const handleExport = () => {
@@ -273,8 +274,8 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     <>
       <div className={`bg-white rounded-lg shadow-lg flex flex-col overflow-hidden ${className}`} 
            style={{
-             width: 'min(90vw, 400px)', // Responsive width: 90% of viewport but max 400px
-             maxHeight: 'min(85vh, 600px)', // Responsive height: 85% of viewport but max 600px
+             width: 'min(90vw, 400px)', // Responsive width
+             maxHeight: 'min(85vh, 600px)', // Responsive height
              minWidth: '280px' // Minimum width for mobile
            }}>
         {/* Header */}
@@ -430,16 +431,16 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
               <Button 
                 size="sm" 
                 onClick={() => setShowSaveDialog(true)}
-                disabled={!user || points.length < 2}
+                disabled={points.length < 2}
                 className="w-full text-xs"
               >
                 <Save size={12} className="mr-1" />
-                {!user ? 'Sign in to Save Route' : 'Save Route'}
+                {points.length < 2 ? 'Need 2+ Stops to Save' : 'Save Route'}
               </Button>
               
-              {!user && (
+              {points.length >= 2 && (
                 <p className="text-xs text-gray-500 text-center">
-                  Sign in to save your routes and access them later
+                  Save your route to access it later and share with others
                 </p>
               )}
             </div>
@@ -447,7 +448,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         )}
       </div>
       
-      {/* FIXED: Use Custom SaveRouteDialog */}
+      {/* Save Route Dialog */}
       <SaveRouteDialog
         isOpen={showSaveDialog}
         onClose={() => setShowSaveDialog(false)}

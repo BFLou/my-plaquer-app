@@ -1,32 +1,66 @@
-// src/pages/SignInPage.tsx - Complete enhanced with navigation restoration
-import React, { useState } from 'react';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+// src/pages/SignInPage.tsx - Enhanced with pending action handling
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, X, Eye, EyeOff, Mail, Lock, CheckCircle, Star, Plus, Route as RouteIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthGate } from '@/hooks/useAuthGate';
+import AccountLinkingModal from '@/components/auth/AccountLinkingModal';
+import AuthErrorDisplay from '@/components/auth/AuthErrorDisplay';
 import { toast } from 'sonner';
 
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signInWithGoogle } = useAuth();
-  const { restoreNavigation } = useAuthGate();
+  const { restoreNavigation, clearStoredData } = useAuthGate();
   
+  // Get state from navigation
+  const navigationState = location.state as any;
+  const pendingAction = navigationState?.pendingAction;
+  const featureName = navigationState?.featureName;
+  const redirectTo = navigationState?.redirectTo || '/discover';
+  const backTo = navigationState?.backTo || '/discover';
+  
+  // Form state
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<any>(null);
 
-  // Get redirect info from location state or default
-  const redirectTo = location.state?.redirectTo || '/library';
-  const backTo = location.state?.backTo || '/discover';
+  // Account linking modal state
+  const [showLinkingModal, setShowLinkingModal] = useState(false);
+  const [linkingData, setLinkingData] = useState<{
+    email: string;
+    existingMethods: string[];
+    suggestedAction: 'google' | 'signin' | 'signin-then-link';
+  } | null>(null);
+
+  // Clean up stored data when component unmounts without successful auth
+  useEffect(() => {
+    return () => {
+      // Only clear if we're navigating away without success
+      // Success cases are handled by PendingActionHandler
+    };
+  }, []);
+
+  const handleBack = () => {
+    // Try to restore navigation context first
+    const restoredUrl = restoreNavigation();
+    if (restoredUrl) {
+      navigate(restoredUrl);
+    } else {
+      navigate(backTo);
+    }
+    
+    // Clear stored data when going back without authenticating
+    clearStoredData();
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -34,12 +68,23 @@ const SignInPage: React.FC = () => {
       [e.target.name]: e.target.value
     }));
     // Clear error when user starts typing
-    if (error) setError(null);
+    if (authError) setAuthError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setAuthError(null);
+
+    // Validation
+    if (!formData.email.trim()) {
+      setAuthError({ code: 'validation/email-required', message: 'Please enter your email address' });
+      return;
+    }
+    if (!formData.password.trim()) {
+      setAuthError({ code: 'validation/password-required', message: 'Please enter your password' });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -50,14 +95,27 @@ const SignInPage: React.FC = () => {
       const restoredUrl = restoreNavigation();
       navigate(restoredUrl || redirectTo);
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      console.error('Sign in error:', err);
+      
+      // Handle account linking scenarios
+      if (err.canSignIn || err.existingMethods) {
+        setLinkingData({
+          email: formData.email,
+          existingMethods: err.existingMethods || [],
+          suggestedAction: err.suggestedAction || 'signin'
+        });
+        setShowLinkingModal(true);
+        setAuthError(null); // Clear error since we're showing the modal
+      } else {
+        setAuthError(err);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setError(null);
+    setAuthError(null);
     setIsLoading(true);
 
     try {
@@ -68,33 +126,95 @@ const SignInPage: React.FC = () => {
       const restoredUrl = restoreNavigation();
       navigate(restoredUrl || redirectTo);
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google.');
+      console.error('Google sign in error:', err);
+      
+      // Handle account linking scenarios
+      if (err.canLink || err.existingMethods) {
+        setLinkingData({
+          email: err.email || '',
+          existingMethods: err.existingMethods || [],
+          suggestedAction: err.suggestedAction || 'signin-then-link'
+        });
+        setShowLinkingModal(true);
+        setAuthError(null);
+      } else {
+        setAuthError(err);
+      }
       setIsLoading(false);
     }
   };
 
-  const handleBack = () => {
-    // Try to restore navigation context first
-    const restoredUrl = restoreNavigation();
-    if (restoredUrl) {
-      navigate(restoredUrl);
-    } else {
-      navigate(backTo);
-    }
-  };
-
   const handleCreateAccount = () => {
-    navigate('/join', { 
-      state: { 
+    navigate('/join', {
+      state: {
         redirectTo,
-        backTo 
+        backTo,
+        featureName
       }
     });
   };
 
+  const handleLinkingClose = () => {
+    setShowLinkingModal(false);
+    setLinkingData(null);
+  };
+
+  const handleLinkingSuccess = () => {
+    setShowLinkingModal(false);
+    setLinkingData(null);
+    toast.success('Welcome back!');
+    
+    // Try to restore navigation context, otherwise use redirect
+    const restoredUrl = restoreNavigation();
+    navigate(restoredUrl || redirectTo);
+  };
+
+  // Helper function to handle password reset
+  const handlePasswordReset = (email: string) => {
+    navigate('/forgot-password', { state: { email, redirectTo, backTo } });
+  };
+
+  // Get action-specific messaging
+  const getActionMessage = () => {
+    if (!pendingAction) return null;
+
+    const actionIcons = {
+      'mark-visited': <CheckCircle className="w-4 h-4 text-green-600" />,
+      'toggle-favorite': <Star className="w-4 h-4 text-amber-600" />,
+      'add-to-collection': <Plus className="w-4 h-4 text-purple-600" />,
+      'save-route': <RouteIcon className="w-4 h-4 text-blue-600" />
+    };
+
+    const actionMessages = {
+      'mark-visited': 'mark this plaque as visited',
+      'toggle-favorite': 'add this plaque to your favorites',
+      'add-to-collection': 'add this plaque to a collection',
+      'save-route': 'save your walking route'
+    };
+
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start gap-3">
+          {actionIcons[pendingAction.type]}
+          <div>
+            <h3 className="font-medium text-blue-900 mb-1">
+              Sign in to {actionMessages[pendingAction.type]}
+            </h3>
+            <p className="text-sm text-blue-700">
+              {pendingAction.type === 'save-route' 
+                ? "We'll save your route once you're signed in."
+                : "We'll complete this action once you're signed in."
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <PageContainer activePage="discover" hasFooter={false}>
-      {/* Header with theme circles - condensed like About page */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-6 px-4 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-white"></div>
@@ -102,68 +222,100 @@ const SignInPage: React.FC = () => {
           <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
         </div>
         
-        <div className="container mx-auto max-w-5xl relative z-10">
+        <div className="container mx-auto max-w-6xl relative z-10">
+          {/* Always show back button */}
           <div className="flex items-center gap-2 mb-4">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleBack}
               className="text-white hover:bg-white/20 h-8 w-8 p-0"
+              disabled={isLoading}
             >
               <ArrowLeft size={18} />
             </Button>
-            <span className="text-white/80 text-sm">Back</span>
+            <span className="text-white/80 text-sm">
+              {pendingAction ? 'Back to browsing' : 'Back'}
+            </span>
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold">Welcome Back</h1>
+            <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
             <p className="opacity-90 mt-1">
-              Sign in to your account to continue your plaque discovery journey
+              {featureName 
+                ? `Sign in to ${featureName} and continue exploring London's historic plaques`
+                : "Sign in to access your saved plaques, collections, and routes"
+              }
             </p>
           </div>
         </div>
       </section>
 
       <div className="container mx-auto max-w-md px-4 py-8">
+        {/* Pending action message */}
+        {getActionMessage()}
+
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Sign In</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Sign In to Your Account</h2>
             <p className="text-gray-600 text-sm">
-              Enter your credentials to access your account
+              Welcome back! Enter your details below.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+          {/* Google Sign In Button */}
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 mb-6 py-3 h-auto"
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4">
+              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            {isLoading ? 'Signing in...' : 'Continue with Google'}
+          </Button>
+
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300"></span>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-2 text-gray-500">or sign in with email</span>
+            </div>
+          </div>
+
+          {/* Email Sign In Form */}
+          <form onSubmit={handleEmailSignIn} className="space-y-4">
             <div>
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                 Email Address
               </Label>
-              <Input 
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="mt-1"
-                placeholder="you@example.com"
-                required
-                disabled={isLoading}
-              />
+              <div className="relative mt-1">
+                <Input 
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="pl-10"
+                  placeholder="you@example.com"
+                  disabled={isLoading}
+                  required
+                />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              </div>
             </div>
 
             <div>
-              <div className="flex justify-between items-center">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => navigate('/forgot-password')}
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </div>
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                Password
+              </Label>
               <div className="relative mt-1">
                 <Input 
                   id="password"
@@ -171,26 +323,44 @@ const SignInPage: React.FC = () => {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleInputChange}
+                  className="pl-10 pr-10"
                   placeholder="Enter your password"
-                  required
                   disabled={isLoading}
-                  className="pr-10"
+                  required
                 />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
-                {error}
-              </div>
-            )}
+            {/* Forgot password link */}
+            <div className="text-right">
+              <button 
+                type="button"
+                onClick={() => handlePasswordReset(formData.email)}
+                className="text-sm text-blue-600 hover:underline"
+                disabled={isLoading}
+              >
+                Forgot your password?
+              </button>
+            </div>
+
+            {/* Enhanced Error Display */}
+            <AuthErrorDisplay
+              error={authError}
+              email={formData.email}
+              context="signin"
+              onRetry={() => setAuthError(null)}
+              onResetPassword={handlePasswordReset}
+              onSwitchToSignUp={handleCreateAccount}
+            />
 
             <Button 
               type="submit"
@@ -208,47 +378,47 @@ const SignInPage: React.FC = () => {
             </Button>
           </form>
 
-          {/* Google Sign In */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300"></span>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-gray-500">or continue with</span>
-            </div>
-          </div>
-
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2 mb-6"
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4">
-              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continue with Google
-          </Button>
-
-          {/* Create Account Link */}
-          <div className="text-center pt-4 border-t border-gray-200">
+          <div className="text-center mt-6">
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
               <button 
                 onClick={handleCreateAccount}
                 className="text-blue-600 hover:underline font-medium"
+                disabled={isLoading}
               >
-                Create one for free
+                Create one now
               </button>
             </p>
           </div>
+
+          {/* Trust indicators */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <CheckCircle className="text-green-500" size={12} />
+                <span>Secure Login</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <CheckCircle className="text-green-500" size={12} />
+                <span>Privacy Protected</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </PageContainer>
+
+      {/* Account Linking Modal */}
+      {showLinkingModal && linkingData && (
+        <AccountLinkingModal
+          isOpen={showLinkingModal}
+          onClose={handleLinkingClose}
+          email={linkingData.email}
+          existingMethods={linkingData.existingMethods}
+          suggestedAction={linkingData.suggestedAction}
+          onSuccess={handleLinkingSuccess}
+        />
+      )}
+    </div>
   );
 };
 
