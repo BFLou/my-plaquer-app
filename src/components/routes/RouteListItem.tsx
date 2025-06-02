@@ -132,12 +132,6 @@ const RouteListItem: React.FC<RouteListItemProps> = ({
           {/* Badges and metadata */}
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center gap-2">
-              {route.views && route.views > 0 && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  <Eye size={12} className="mr-1" />
-                  {route.views} views
-                </Badge>
-              )}
             </div>
             
             <span className="text-xs text-gray-500">

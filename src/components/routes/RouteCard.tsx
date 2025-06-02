@@ -206,12 +206,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
         {/* Footer with badges */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {route.views && route.views > 0 && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <Eye size={12} className="mr-1" />
-                {route.views} views
-              </Badge>
-            )}
+
             
             <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
               Private

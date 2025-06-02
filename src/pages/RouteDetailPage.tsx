@@ -476,22 +476,7 @@ const RouteDetailPage: React.FC = () => {
                   className={`mr-2 ${isFavorite ? "fill-current" : ""}`} 
                 />
                 {isFavorite ? "Favorited" : "Favorite"}
-              </Button>
-              
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const shareUrl = `${window.location.origin}/library/routes/${route.id}`;
-                  copyToClipboard(shareUrl);
-                }}
-                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
-                disabled={isLoading}
-              >
-                <Copy size={16} className="mr-2" />
-                Share
-              </Button>
-              
+              </Button>              
               {/* FIXED: Better dropdown with error handling */}
               <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild>
