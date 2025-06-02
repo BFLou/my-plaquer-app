@@ -731,24 +731,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   </div>
                 </div>
 
-                {/* NEW: View Full Details Button - Only in modal mode */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-blue-900 mb-1">Want to see more details?</h3>
-                      <p className="text-sm text-blue-700">View the full page with complete information and sharing options.</p>
-                    </div>
-                    <Button
-                      onClick={handleViewFullDetails}
-                      className="bg-blue-600 hover:bg-blue-700 text-white ml-4"
-                      size="sm"
-                    >
-                      <FileText size={16} className="mr-2" />
-                      Full Details
-                    </Button>
-                  </div>
-                </div>
-
                 {/* Collections Preview - Only show if plaque is in actual collections */}
                 {plaqueCollections.length > 0 && (
                   <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
@@ -957,6 +939,25 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                     </div>
                   </div>
                 )}
+
+                                {/* NEW: View Full Details Button - Only in modal mode */}
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-blue-900 mb-1">Want to see more details?</h3>
+                      <p className="text-sm text-blue-700">View the full page with complete information and sharing options.</p>
+                    </div>
+                    <Button
+                      onClick={handleViewFullDetails}
+                      className="bg-blue-600 hover:bg-blue-700 text-white ml-4"
+                      size="sm"
+                    >
+                      <FileText size={16} className="mr-2" />
+                      Full Details
+                    </Button>
+                  </div>
+                </div>
+                
               </div>
             </div>
           </div>
