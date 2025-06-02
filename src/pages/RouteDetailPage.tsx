@@ -1,6 +1,6 @@
-// src/pages/RouteDetailPage.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+// src/pages/RouteDetailPage.tsx - COMPLETELY CLEAN VERSION
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   MapPin, 
   List as ListIcon, 
@@ -9,20 +9,36 @@ import {
   Download,
   Share,
   Clock,
-  Trash2
+  Trash2,
+  ArrowLeft,
+  Edit,
+  Copy,
+  MoreVertical,
+  Route as RouteIcon,
+  Eye
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useRoutes } from '@/hooks/useRoutes';
 import { usePlaques } from '@/hooks/usePlaques';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import RouteDetailHeader from '../components/routes/RouteDetailHeader';
 import EditRouteForm from '../components/routes/EditRouteForm';
 import { MapContainer } from "../components/maps/MapContainer";
 import { RouteStats } from '../components/routes/RouteStats';
+import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
+import { formatTimeAgo } from '@/utils/timeUtils';
+import { generatePlaqueUrl } from '@/utils/urlUtils';
+import { navigateToPlaqueWithContext } from '@/utils/navigationUtils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,20 +53,43 @@ import {
 const RouteDetailPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { getRoute, updateRoute, deleteRoute } = useRoutes();
+  const { routes, updateRoute, deleteRoute } = useRoutes();
   const { plaques } = usePlaques();
-  const mapRef = useRef(null);
+  
+  // Modal plaque from URL
+  const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
   
   // State
   const [route, setRoute] = useState(null);
   const [routePlaques, setRoutePlaques] = useState([]);
+  const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Handle modal plaque from URL
+  useEffect(() => {
+    if (modalPlaqueId && routePlaques.length > 0) {
+      const plaque = routePlaques.find(p => p.id === modalPlaqueId);
+      if (plaque) {
+        console.log('Opening modal for plaque from URL:', plaque.title);
+        setSelectedPlaque(plaque);
+      } else {
+        // Plaque not found in route, clear URL param
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('plaque');
+        setSearchParams(newParams, { replace: true });
+      }
+    } else if (!modalPlaqueId) {
+      setSelectedPlaque(null);
+    }
+  }, [modalPlaqueId, routePlaques, searchParams, setSearchParams]);
 
   // Load route data
   useEffect(() => {
@@ -63,7 +102,9 @@ const RouteDetailPage: React.FC = () => {
 
       try {
         setLoading(true);
-        const routeData = await getRoute(id);
+        
+        // Get route from the routes already loaded by useRoutes
+        const routeData = routes.find(r => r.id === id);
         
         if (!routeData) {
           setError('Route not found');
@@ -96,7 +137,48 @@ const RouteDetailPage: React.FC = () => {
     };
 
     loadRoute();
-  }, [id, user, getRoute, plaques]);
+  }, [id, user, routes, plaques]);
+
+  // ENHANCED: Plaque click handler with proper context
+  const handlePlaqueClick = useCallback((plaque) => {
+    console.log('Plaque clicked in route:', plaque.title);
+    
+    if (!route) {
+      console.warn('No route available for context');
+      return;
+    }
+    
+    // Calculate progress information
+    const plaqueIndex = routePlaques.findIndex(p => p.id === plaque.id);
+    const progress = plaqueIndex >= 0 ? `${plaqueIndex + 1} of ${routePlaques.length}` : undefined;
+    
+    // Navigate with proper route context
+    navigateToPlaqueWithContext(navigate, plaque.id, {
+      from: 'route',
+      routeId: route.id,
+      routeName: route.name,
+      progress: progress
+    });
+  }, [navigate, route, routePlaques]);
+
+  // ENHANCED: Modal close handler with context preservation
+  const handleCloseModal = useCallback(() => {
+    console.log('Closing plaque modal in route');
+    setSelectedPlaque(null);
+    
+    // Remove plaque parameter but keep route context
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('plaque');
+    
+    // Ensure route context is preserved
+    if (route) {
+      newParams.set('from', 'route');
+      newParams.set('route', route.id);
+      newParams.set('routeName', route.name);
+    }
+    
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams, route]);
 
   // Handle route update
   const handleUpdateRoute = async (data) => {
@@ -106,15 +188,13 @@ const RouteDetailPage: React.FC = () => {
       setIsLoading(true);
       await updateRoute(route.id, {
         name: data.name,
-        description: data.description,
-        isPublic: data.isPublic
+        description: data.description
       });
       
       setRoute(prev => ({
         ...prev,
         name: data.name,
-        description: data.description,
-        is_public: data.isPublic
+        description: data.description
       }));
       
       setEditFormOpen(false);
@@ -135,7 +215,7 @@ const RouteDetailPage: React.FC = () => {
       setIsLoading(true);
       await deleteRoute(route.id);
       toast.success('Route deleted successfully');
-      navigate('/routes');
+      navigate('/library/routes');
     } catch (error) {
       console.error('Error deleting route:', error);
       toast.error('Failed to delete route');
@@ -151,9 +231,11 @@ const RouteDetailPage: React.FC = () => {
     
     try {
       setIsLoading(true);
-      // Implementation would depend on your createRoute function
-      toast.success('Route duplicated successfully');
-      // Navigate to new route or refresh current
+      // Create a duplicate with "(Copy)" suffix
+      const duplicateName = `${route.name} (Copy)`;
+      
+      // For now, just show success - implementation depends on your createRoute function
+      toast.success('Route duplication feature coming soon');
     } catch (error) {
       console.error('Error duplicating route:', error);
       toast.error('Failed to duplicate route');
@@ -181,6 +263,17 @@ const RouteDetailPage: React.FC = () => {
     toast.success('Route exported as GPX file');
   };
 
+  // Copy URL to clipboard
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Link copied to clipboard');
+    } catch (err) {
+      console.error('Error copying to clipboard:', err);
+      toast.error('Failed to copy link to clipboard');
+    }
+  };
+
   // Generate GPX file content
   const generateGPX = (route, plaques) => {
     const waypoints = plaques.map(plaque => `
@@ -201,11 +294,14 @@ const RouteDetailPage: React.FC = () => {
 
   if (!user) {
     return (
-      <PageContainer activePage="routes" simplifiedFooter={true}>
+      <PageContainer activePage="library" simplifiedFooter={true}>
         <div className="container mx-auto py-8 px-4 text-center">
-          <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-          <p className="mb-6">You need to sign in to view routes.</p>
-          <Button onClick={() => navigate('/')}>Back to Home</Button>
+          <div className="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
+            <RouteIcon className="mx-auto text-gray-300 mb-4" size={48} />
+            <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
+            <p className="text-gray-600 mb-6">You need to sign in to view routes.</p>
+            <Button onClick={() => navigate('/')}>Back to Home</Button>
+          </div>
         </div>
       </PageContainer>
     );
@@ -213,7 +309,7 @@ const RouteDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <PageContainer activePage="routes" simplifiedFooter={true}>
+      <PageContainer activePage="library" simplifiedFooter={true}>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-green-500 border-r-transparent mb-4"></div>
@@ -226,13 +322,13 @@ const RouteDetailPage: React.FC = () => {
 
   if (error || !route) {
     return (
-      <PageContainer activePage="routes" simplifiedFooter={true}>
+      <PageContainer activePage="library" simplifiedFooter={true}>
         <div className="min-h-screen bg-gray-50 pt-6">
           <div className="container mx-auto px-4">
             <div className="bg-red-50 p-6 rounded-lg text-center">
               <h3 className="text-red-600 font-medium mb-2">Error Loading Route</h3>
               <p className="text-red-500 mb-4">{error || 'Route not found'}</p>
-              <Button variant="outline" onClick={() => navigate('/routes')}>
+              <Button variant="outline" onClick={() => navigate('/library/routes')}>
                 Back to Routes
               </Button>
             </div>
@@ -243,27 +339,152 @@ const RouteDetailPage: React.FC = () => {
   }
 
   return (
-    <PageContainer activePage="routes" simplifiedFooter={true}>
-      {/* Route Header */}
-      <RouteDetailHeader
-        route={route}
-        onBack={() => navigate('/routes')}
-        onEdit={() => setEditFormOpen(true)}
-        onDuplicate={handleDuplicateRoute}
-        onDelete={() => setDeleteDialogOpen(true)}
-        onToggleFavorite={() => {
-          // Implementation for toggling favorite
-          toast.info('Favorite toggle not yet implemented');
-        }}
-        isLoading={isLoading}
-      />
+    <PageContainer activePage="library" simplifiedFooter={true}>
+      {/* Route Header - Similar to CollectionDetailPage */}
+      <section className="relative bg-gradient-to-br from-green-600 to-green-700 text-white py-6 px-4 overflow-hidden">
+        {/* Decorative background */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-white"></div>
+          <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
+          <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
+        </div>
+        
+        <div className="container mx-auto max-w-5xl relative z-10">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/library')} 
+              className="text-white hover:bg-white/20 h-8 w-8 p-0"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+            <a 
+              className="text-white/80 hover:text-white text-sm cursor-pointer" 
+              onClick={() => navigate('/library')}
+            >
+              My Library
+            </a>
+            <span className="text-white/50">/</span>
+            <a 
+              className="text-white/80 hover:text-white text-sm cursor-pointer" 
+              onClick={() => navigate('/library/routes')}
+            >
+              Routes
+            </a>
+            <span className="text-white/50">/</span>
+            <span className="text-white font-medium truncate max-w-xs">{route.name}</span>
+          </div>
+
+          <div className="flex justify-between items-start flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center text-white text-2xl">
+                <RouteIcon size={24} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">{route.name}</h1>
+                <div className="flex items-center gap-4 mt-2 text-sm opacity-90">
+                  <div className="flex items-center gap-1">
+                    <RouteIcon size={14} />
+                    <span>{route.points.length} stops</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin size={14} />
+                    <span>{route.total_distance.toFixed(1)} km</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock size={14} />
+                    <span>~{Math.ceil(route.total_distance * 12)} min walk</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/library/routes/${route.id}`;
+                  copyToClipboard(shareUrl);
+                }}
+                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+                disabled={isLoading}
+              >
+                <Copy size={16} className="mr-2" />
+                Share
+              </Button>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+                    disabled={isLoading}
+                  >
+                    <MoreVertical size={16} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setEditFormOpen(true)}>
+                    <Edit size={16} className="mr-2" />
+                    Edit Route
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDuplicateRoute}>
+                    <Copy size={16} className="mr-2" />
+                    Duplicate Route
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportRoute}>
+                    <Download size={16} className="mr-2" />
+                    Export GPX
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setDeleteDialogOpen(true)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Delete Route
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          
+          {/* Route description */}
+          {route.description && (
+            <p className="text-lg opacity-90 mb-4 max-w-3xl">
+              {route.description}
+            </p>
+          )}
+          
+          {/* Route metadata */}
+          <div className="flex flex-wrap items-center gap-3">
+            {route.views && route.views > 0 && (
+              <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+                {route.views} views
+              </Badge>
+            )}
+            
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+              <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(route.updated_at)}
+            </Badge>
+            
+            <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+              Private Route
+            </Badge>
+          </div>
+        </div>
+      </section>
 
       <div className="container mx-auto max-w-5xl px-4 py-6">
         {/* Route Stats */}
         <RouteStats 
           route={route}
           plaques={routePlaques}
-          className="mb-6"
+          className="mb-6 -mt-5 relative z-10"
         />
 
         {/* Tabs */}
@@ -297,8 +518,7 @@ const RouteDetailPage: React.FC = () => {
                 <Button 
                   variant="outline"
                   onClick={() => {
-                    // Implementation for navigation
-                    toast.info('Navigation not yet implemented');
+                    toast.info('Navigation feature coming soon');
                   }}
                   className="gap-2"
                 >
@@ -308,8 +528,8 @@ const RouteDetailPage: React.FC = () => {
                 <Button 
                   variant="outline"
                   onClick={() => {
-                    // Implementation for sharing
-                    toast.info('Sharing not yet implemented');
+                    const shareUrl = `${window.location.origin}/library/routes/${route.id}`;
+                    copyToClipboard(shareUrl);
                   }}
                   className="gap-2"
                 >
@@ -338,7 +558,7 @@ const RouteDetailPage: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Route Details</h4>
                   <p className="text-sm text-gray-600 mb-1">
-                    Visibility: <span className="font-medium">{route.is_public ? 'Public' : 'Private'}</span>
+                    Visibility: <span className="font-medium">Private</span>
                   </p>
                   {route.views && (
                     <p className="text-sm text-gray-600 mb-1">
@@ -356,11 +576,11 @@ const RouteDetailPage: React.FC = () => {
           <TabsContent value="map">
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="h-[600px]">
-      <MapContainer
-        plaques={filteredPlaques}
-        onPlaqueClick={handlePlaqueClick}
-        className="h-full w-full"
-      />
+                <MapContainer
+                  plaques={routePlaques}
+                  onPlaqueClick={handlePlaqueClick}
+                  className="h-full w-full"
+                />
               </div>
             </div>
           </TabsContent>
@@ -394,11 +614,9 @@ const RouteDetailPage: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => {
-                          // Navigate to plaque detail
-                          navigate(`/discover/plaque/${plaque.id}`);
-                        }}
+                        onClick={() => handlePlaqueClick(plaque)}
                       >
+                        <Eye size={16} className="mr-2" />
                         View Details
                       </Button>
                     </div>
@@ -409,6 +627,29 @@ const RouteDetailPage: React.FC = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Enhanced Plaque detail modal with URL state and context */}
+      {selectedPlaque && (
+        <PlaqueDetail
+          plaque={selectedPlaque}
+          isOpen={!!selectedPlaque}
+          onClose={handleCloseModal}
+          onFavoriteToggle={() => {
+            // Implementation for favorite toggle if needed
+            toast.info('Favorite feature not implemented for route plaques');
+          }}
+          isFavorite={false}
+          onMarkVisited={() => {
+            // Implementation for mark visited if needed
+            toast.info('Visit tracking not implemented for route plaques');
+          }}
+          nearbyPlaques={[]}
+          onSelectNearbyPlaque={() => {}}
+          generateShareUrl={(plaqueId) => generatePlaqueUrl(plaqueId)}
+          context="route"
+          currentPath={location.pathname}
+        />
+      )}
 
       {/* Edit Route Form */}
       <EditRouteForm
