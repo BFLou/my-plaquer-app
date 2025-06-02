@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Enhanced with standardized visit functionality
+// src/pages/Discover.tsx - Updated with auth gate integration and pending action handler
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -19,8 +19,10 @@ import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';
 import DiscoverFilters from '../components/discover/DiscoverFilters';
 import { MapContainer } from '../components/maps/MapContainer';
+import PendingActionHandler from '@/components/auth/PendingActionHandler'; // NEW
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useAuthGate } from '@/hooks/useAuthGate'; // NEW
 import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -43,6 +45,9 @@ const Discover = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   
+  // NEW: Auth gate integration
+  const { isAuthenticated } = useAuthGate();
+  
   // ENHANCED: Better URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {
@@ -53,7 +58,6 @@ const Discover = () => {
       professions: searchParams.get('professions')?.split(',').filter(Boolean) || [],
       onlyVisited: searchParams.get('visited') === 'true',
       onlyFavorites: searchParams.get('favorites') === 'true',
-      // NEW: Modal plaque support
       modalPlaque: searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null,
     };
     
@@ -76,7 +80,7 @@ const Discover = () => {
       professions: 'professions',
       onlyVisited: 'visited',
       onlyFavorites: 'favorites',
-      modalPlaque: 'plaque' // NEW: Modal plaque parameter
+      modalPlaque: 'plaque'
     };
     
     Object.entries(newState).forEach(([key, value]) => {
@@ -108,12 +112,8 @@ const Discover = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // NEW: Standardized visit dialog state
-  const [quickVisitPlaque, setQuickVisitPlaque] = useState(null);
-  const [visitDate, setVisitDate] = useState(new Date());
-  const [visitNotes, setVisitNotes] = useState('');
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [isProcessingVisit, setIsProcessingVisit] = useState(false);
+  // NEW: Collection action state for pending actions
+  const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState(null);
 
   // Distance filter state - shared across all views
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>({
@@ -132,7 +132,15 @@ const Discover = () => {
   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  // NEW: Handle modal plaque from URL
+  // NEW: Handle pending collection action
+  const handlePendingCollectionAction = useCallback((plaqueId: number) => {
+    const plaque = allPlaques.find(p => p.id === plaqueId);
+    if (plaque) {
+      setPendingCollectionPlaque(plaque);
+    }
+  }, [allPlaques]);
+
+  // Handle modal plaque from URL
   useEffect(() => {
     if (urlState.modalPlaque) {
       const plaque = allPlaques.find(p => p.id === urlState.modalPlaque);
@@ -308,68 +316,20 @@ const Discover = () => {
     distanceFilter.enabled
   ]);
 
-  // NEW: Enhanced event handlers with modal URL state
+  // Enhanced event handlers with modal URL state
   const handlePlaqueClick = useCallback((plaque) => {
     console.log('Plaque clicked in Discover:', plaque.title);
-    // Update URL with modal plaque parameter for back button support
     updateUrlState({ modalPlaque: plaque.id });
   }, [updateUrlState]);
 
-  // NEW: Enhanced modal close handler
+  // Enhanced modal close handler
   const handleCloseModal = useCallback(() => {
     console.log('Closing plaque modal');
     setSelectedPlaque(null);
-    // Remove plaque parameter from URL
     updateUrlState({ modalPlaque: null });
   }, [updateUrlState]);
 
-  const handleFavoriteToggle = useCallback((id) => {
-    console.log('Toggle favorite for plaque:', id);
-    toggleFavorite(id);
-  }, [toggleFavorite]);
-
-  // NEW: Standardized mark visited handler
-  const handleMarkVisited = useCallback((id) => {
-    console.log('Opening visit dialog for plaque:', id);
-    const plaque = allPlaques.find(p => p.id === id);
-    if (plaque && !isPlaqueVisited(id)) {
-      setQuickVisitPlaque(plaque);
-      setVisitDate(new Date()); // Reset to today
-      setVisitNotes(''); // Clear notes
-    }
-  }, [allPlaques, isPlaqueVisited]);
-
-  // NEW: Standardized visit submission handler
-// In Discover.tsx - Replace the handleVisitSubmit function
-
-const handleVisitSubmit = async () => {
-  if (!quickVisitPlaque) return;
-  
-  setIsProcessingVisit(true);
-  try {
-    console.log('🎯 Discover submitting visit:', {
-      plaqueId: quickVisitPlaque.id,
-      selectedDate: visitDate,
-      formatted: format(visitDate, 'PPP')
-    });
-
-    await markAsVisited(quickVisitPlaque.id, {
-      visitedAt: visitDate.toISOString(),
-      notes: visitNotes,
-    });
-    
-    toast.success(`Marked "${quickVisitPlaque.title}" as visited on ${format(visitDate, 'PPP')}`);
-    setQuickVisitPlaque(null); // Close dialog
-    
-    // FIXED: No need to call any callbacks - the hook updates state automatically
-    
-  } catch (error) {
-    console.error("Error marking as visited:", error);
-    toast.error("Failed to mark as visited");
-  } finally {
-    setIsProcessingVisit(false);
-  }
-};
+  // REMOVED: Direct favorite toggle handler - now handled by auth gate in components
 
   // Enhanced filter handlers with proper state updates
   const handleVisitedChange = useCallback((value: boolean) => {
@@ -396,7 +356,7 @@ const handleVisitSubmit = async () => {
       professions: [],
       onlyVisited: false,
       onlyFavorites: false,
-      modalPlaque: null // Also clear modal
+      modalPlaque: null
     });
     setDistanceFilter({
       enabled: false,
@@ -448,10 +408,9 @@ const handleVisitSubmit = async () => {
     ).slice(0, 3);
   }, [allPlaques]);
 
-  // NEW: Handle nearby plaque selection in modal
+  // Handle nearby plaque selection in modal
   const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
     console.log('Selecting nearby plaque:', nearbyPlaque.title);
-    // Update URL to new plaque
     updateUrlState({ modalPlaque: nearbyPlaque.id });
   }, [updateUrlState]);
 
@@ -520,7 +479,6 @@ const handleVisitSubmit = async () => {
     const commonProps = {
       showDistance: distanceFilter.enabled,
       formatDistance,
-      // NEW: Always use modal navigation mode in discover
       navigationMode: 'modal' as const,
     };
 
@@ -533,8 +491,6 @@ const handleVisitSubmit = async () => {
                 key={plaque.id}
                 plaque={plaque}
                 onClick={handlePlaqueClick}
-                onFavoriteToggle={handleFavoriteToggle}
-                onMarkVisited={handleMarkVisited}
                 distance={distanceFilter.enabled ? getDistanceFromActiveLocation(plaque) : 0}
                 {...commonProps}
               />
@@ -563,8 +519,6 @@ const handleVisitSubmit = async () => {
                 key={plaque.id}
                 plaque={plaque}
                 onClick={handlePlaqueClick}
-                onFavoriteToggle={handleFavoriteToggle}
-                onMarkVisited={handleMarkVisited}
                 distance={distanceFilter.enabled ? getDistanceFromActiveLocation(plaque) : 0}
                 {...commonProps}
               />
@@ -591,6 +545,9 @@ const handleVisitSubmit = async () => {
       hasFooter={urlState.view !== 'map'}
       simplifiedFooter={true}
     >
+      {/* NEW: Pending Action Handler */}
+      <PendingActionHandler onCollectionAction={handlePendingCollectionAction} />
+      
       {/* Header with view tabs and search */}
       <DiscoverHeader
         viewMode={urlState.view}
@@ -682,106 +639,32 @@ const handleVisitSubmit = async () => {
         distanceFilter={distanceFilter}
       />
       
+      {/* Enhanced Plaque Detail Modal with URL state */}
+      {selectedPlaque && (
+        <PlaqueDetail
+          plaque={selectedPlaque}
+          isOpen={!!selectedPlaque}
+          onClose={handleCloseModal}
+          isFavorite={isFavorite(selectedPlaque.id)}
+          nearbyPlaques={getNearbyPlaques(selectedPlaque)}
+          onSelectNearbyPlaque={handleSelectNearbyPlaque}
+          isMapView={urlState.view === 'map'}
+          distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
+          formatDistance={formatDistance}
+          showDistance={distanceFilter.enabled}
+          generateShareUrl={generatePlaqueUrl}
+          context="discover"
+          currentPath={location.pathname}
+        />
+      )}
 
-{/* Enhanced Plaque Detail Modal with URL state */}
-{selectedPlaque && (
-  <PlaqueDetail
-    plaque={selectedPlaque}
-    isOpen={!!selectedPlaque}
-    onClose={handleCloseModal}
-    isFavorite={isFavorite(selectedPlaque.id)}
-    onFavoriteToggle={handleFavoriteToggle}
-    // FIXED: Remove onMarkVisited prop to prevent callback loops
-    // onMarkVisited={handleMarkVisited}  // Remove this line
-    nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-    onSelectNearbyPlaque={handleSelectNearbyPlaque}
-    isMapView={urlState.view === 'map'}
-    distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
-    formatDistance={formatDistance}
-    showDistance={distanceFilter.enabled}
-    generateShareUrl={generatePlaqueUrl}
-    context="discover"
-    currentPath={location.pathname}
-  />
-)}
-
-      {/* NEW: Standardized Visit Dialog */}
-      {quickVisitPlaque && (
-        <Dialog open={!!quickVisitPlaque} onOpenChange={() => setQuickVisitPlaque(null)}>
-          <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-            <DialogHeader>
-              <DialogTitle>Mark "{quickVisitPlaque.title}" as Visited</DialogTitle>
-            </DialogHeader>
-            
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="visit-date">Visit Date</Label>
-                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="visit-date"
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {format(visitDate, "PPP")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={visitDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setVisitDate(date);
-                          setShowCalendar(false);
-                        }
-                      }}
-                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="visit-notes">Notes (optional)</Label>
-                <Textarea
-                  id="visit-notes"
-                  placeholder="Any thoughts about your visit?"
-                  value={visitNotes}
-                  onChange={(e) => setVisitNotes(e.target.value)}
-                  rows={3}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setQuickVisitPlaque(null)}
-                disabled={isProcessingVisit}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleVisitSubmit}
-                disabled={isProcessingVisit}
-              >
-                {isProcessingVisit ? (
-                  <>
-                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
-                    Saving...
-                  </>
-                ) : (
-                  'Mark as Visited'
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* NEW: Collection action dialog for pending actions */}
+      {pendingCollectionPlaque && (
+        <AddToCollectionDialog
+          isOpen={!!pendingCollectionPlaque}
+          onClose={() => setPendingCollectionPlaque(null)}
+          plaque={pendingCollectionPlaque}
+        />
       )}
     </PageContainer>
   );

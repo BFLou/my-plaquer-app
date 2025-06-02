@@ -1,4 +1,4 @@
-// src/App.tsx - Streamlined version
+// src/App.tsx - Updated with PendingActionHandler integration
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
@@ -6,6 +6,7 @@ import { UserProvider } from './contexts/UserContext';
 import { AppRoutes } from './router/AppRoutes';
 import { ScrollToTop } from './components/ScrollToTop';
 import { useGlobalErrorHandlers } from './hooks/useGlobalErrorHandlers';
+import PendingActionHandler from './components/auth/PendingActionHandler';
 import { Toaster } from 'sonner';
 
 // Toaster configuration
@@ -37,6 +38,8 @@ function App() {
       <AuthProvider>
         <UserProvider>
           <ScrollToTop />
+          {/* Global pending action handler */}
+          <PendingActionHandler />
           <AppRoutes />
           <Toaster {...toasterConfig} />
         </UserProvider>

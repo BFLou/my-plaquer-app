@@ -1,4 +1,4 @@
-// src/pages/PlaqueDetailPage.tsx - Enhanced with smart context detection and progressive disclosure
+// src/pages/PlaqueDetailPage.tsx - Enhanced with auth gate integration
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
@@ -30,10 +30,12 @@ import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useCollections } from '@/hooks/useCollection';
+import { useAuthGate } from '@/hooks/useAuthGate'; // NEW: Auth gate integration
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
 import PlaqueImage from '@/components/plaques/PlaqueImage';
 import AddToCollectionDialog from '@/components/plaques/AddToCollectionDialog';
+import PendingActionHandler from '@/components/auth/PendingActionHandler'; // NEW
 import { format } from 'date-fns';
 import { 
   Dialog, 
@@ -84,10 +86,29 @@ const PlaqueDetailPage: React.FC = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   
+  // NEW: Collection action state for pending actions
+  const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState(null);
+  
   // Hooks
   const { isPlaqueVisited, markAsVisited, getVisitInfo } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { collections } = useCollections();
+  
+  // NEW: Auth gate integration
+  const { 
+    requireAuthForVisit, 
+    requireAuthForFavorite, 
+    requireAuthForCollection,
+    isAuthenticated 
+  } = useAuthGate();
+
+  // NEW: Handle pending collection action
+  const handlePendingCollectionAction = useCallback((plaqueId: number) => {
+    const plaqueObj = allPlaques.find(p => p.id === plaqueId);
+    if (plaqueObj) {
+      setPendingCollectionPlaque(plaqueObj);
+    }
+  }, [allPlaques]);
 
   // Smart context detection
   const contextInfo = useMemo((): ContextInfo => {
@@ -326,16 +347,39 @@ const PlaqueDetailPage: React.FC = () => {
     }
   }, [contextInfo, navigate]);
 
+  // ENHANCED: Favorite toggle with auth gate
   const handleFavoriteToggle = useCallback(() => {
     if (!plaque) return;
-    toggleFavorite(plaque.id);
-  }, [plaque, toggleFavorite]);
+    
+    const favoriteAction = () => {
+      toggleFavorite(plaque.id);
+    };
 
+    requireAuthForFavorite(plaque.id, favoriteAction);
+  }, [plaque, toggleFavorite, requireAuthForFavorite]);
+
+  // ENHANCED: Mark visited with auth gate
   const handleMarkVisitedClick = () => {
     if (!plaque || isPlaqueVisited(plaque.id)) return;
-    setVisitDate(new Date());
-    setVisitNotes('');
-    setShowVisitDialog(true);
+    
+    const visitAction = () => {
+      setVisitDate(new Date());
+      setVisitNotes('');
+      setShowVisitDialog(true);
+    };
+
+    requireAuthForVisit(plaque.id, visitAction);
+  };
+
+  // ENHANCED: Add to collection with auth gate
+  const handleAddToCollectionClick = () => {
+    if (!plaque) return;
+    
+    const collectionAction = () => {
+      setShowAddToCollection(true);
+    };
+
+    requireAuthForCollection(plaque.id, collectionAction);
   };
 
   const handleVisitSubmit = async () => {
@@ -572,7 +616,7 @@ const PlaqueDetailPage: React.FC = () => {
     }
   };
 
-  // Render action buttons based on context
+  // ENHANCED: Render action buttons with auth gate integration
   const renderActionButtons = () => {
     const isVisited = plaque?.visited || (plaque && isPlaqueVisited(plaque.id));
     const isFav = plaque && isFavorite(plaque.id);
@@ -629,7 +673,7 @@ const PlaqueDetailPage: React.FC = () => {
           {
             icon: <Plus size={16} className="mr-1" />,
             label: 'Add to Collection',
-            onClick: () => setShowAddToCollection(true)
+            onClick: handleAddToCollectionClick // ENHANCED: Uses auth gate
           },
           {
             icon: <Star size={16} className={`mr-1 ${isFav ? 'fill-current' : ''}`} />,
@@ -665,7 +709,7 @@ const PlaqueDetailPage: React.FC = () => {
             {
               icon: <Plus size={16} className="mr-1" />,
               label: 'Add to Collection',
-              onClick: () => setShowAddToCollection(true)
+              onClick: handleAddToCollectionClick // ENHANCED: Uses auth gate
             },
             {
               icon: <Star size={16} className={`mr-1 ${isFav ? 'fill-current' : ''}`} />,
@@ -689,7 +733,7 @@ const PlaqueDetailPage: React.FC = () => {
           primaryAction = (
             <Button 
               className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-4 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-              onClick={() => setShowAddToCollection(true)}
+              onClick={handleAddToCollectionClick} // ENHANCED: Uses auth gate
             >
               💜 Add to Collection
             </Button>
@@ -789,6 +833,9 @@ const PlaqueDetailPage: React.FC = () => {
 
   return (
     <PageContainer activePage="discover" hasFooter={false}>
+      {/* NEW: Pending Action Handler */}
+      <PendingActionHandler onCollectionAction={handlePendingCollectionAction} />
+      
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto max-w-4xl px-4 py-6">
           {/* Smart Breadcrumb */}
@@ -1118,88 +1165,101 @@ const PlaqueDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Visit Date Picker Dialog */}
-      <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>When did you visit this plaque?</DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="visit-date">Visit Date</Label>
-              
-              <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="visit-date"
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {format(visitDate, "PPP")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <CalendarComponent
-                    mode="single"
-                    selected={visitDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setVisitDate(date);
-                        setShowCalendar(false);
-                      }
-                    }}
-                    initialFocus
-                    disabled={(date) => date > new Date()}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+      {/* Visit Date Picker Dialog - Only show for authenticated users */}
+      {isAuthenticated && (
+        <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>When did you visit this plaque?</DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="visit-date">Visit Date</Label>
+                
+                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="visit-date"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {format(visitDate, "PPP")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={visitDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setVisitDate(date);
+                          setShowCalendar(false);
+                        }
+                      }}
+                      initialFocus
+                      disabled={(date) => date > new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="visit-notes">Notes (optional)</Label>
-              <Textarea
-                id="visit-notes"
-                placeholder="Any memories or observations about your visit?"
-                value={visitNotes}
-                onChange={(e) => setVisitNotes(e.target.value)}
-                rows={3}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="visit-notes">Notes (optional)</Label>
+                <Textarea
+                  id="visit-notes"
+                  placeholder="Any memories or observations about your visit?"
+                  value={visitNotes}
+                  onChange={(e) => setVisitNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowVisitDialog(false)}
-              disabled={isMarkingVisited}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleVisitSubmit}
-              disabled={isMarkingVisited}
-            >
-              {isMarkingVisited ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
-                  Saving...
-                </>
-              ) : (
-                "Save Visit"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowVisitDialog(false)}
+                disabled={isMarkingVisited}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleVisitSubmit}
+                disabled={isMarkingVisited}
+              >
+                {isMarkingVisited ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Visit"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {/* Add to Collection Dialog */}
-      <AddToCollectionDialog
-        isOpen={showAddToCollection}
-        onClose={() => setShowAddToCollection(false)}
-        plaque={plaque}
-      />
+      {/* Add to Collection Dialog - Only show for authenticated users */}
+      {isAuthenticated && (
+        <AddToCollectionDialog
+          isOpen={showAddToCollection}
+          onClose={() => setShowAddToCollection(false)}
+          plaque={plaque}
+        />
+      )}
+
+      {/* NEW: Collection action dialog for pending actions */}
+      {pendingCollectionPlaque && (
+        <AddToCollectionDialog
+          isOpen={!!pendingCollectionPlaque}
+          onClose={() => setPendingCollectionPlaque(null)}
+          plaque={pendingCollectionPlaque}
+        />
+      )}
     </PageContainer>
   );
 };
