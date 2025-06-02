@@ -1,6 +1,6 @@
-// src/components/plaques/PlaqueListItem.tsx - Enhanced with distance display
+// src/components/plaques/PlaqueListItem.tsx - Enhanced with share/copy link functionality
 import React, { useState } from 'react';
-import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar, Navigation } from 'lucide-react';
+import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar, Navigation, Share2, Copy, ExternalLink } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import AddToCollectionDialog from './AddToCollectionDialog';
 import EditVisitDialog from './EditVisitDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { generatePlaqueUrl } from '@/utils/urlUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +47,7 @@ type PlaqueListItemProps = {
   showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
-  // NEW: Distance display props
+  // Distance display props
   showDistance?: boolean;
   distance?: number;
   formatDistance?: (distance: number) => string;
@@ -64,7 +65,7 @@ export const PlaqueListItem = ({
   showRouteButton = false,
   variant = 'discover',
   className = '',
-  // NEW: Distance props
+  // Distance props
   showDistance = false,
   distance,
   formatDistance = (d) => `${d.toFixed(1)} km`
@@ -137,6 +138,44 @@ export const PlaqueListItem = ({
 
   const handleAddToRoute = () => {
     if (onAddToRoute) onAddToRoute(plaque);
+  };
+
+  // NEW: Share/Copy functionality
+  const handleCopyLink = async () => {
+    try {
+      const plaqueUrl = generatePlaqueUrl(plaque.id);
+      await navigator.clipboard.writeText(plaqueUrl);
+      toast.success('Link copied to clipboard!');
+    } catch (error) {
+      console.error('Error copying link:', error);
+      toast.error("Couldn't copy link");
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = generatePlaqueUrl(plaque.id);
+    
+    const shareData = {
+      title: plaque.title,
+      text: `Check out this historic plaque: ${plaque.title}`,
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          handleCopyLink(); // Fallback to copy
+        }
+      }
+    } else {
+      handleCopyLink(); // Fallback to copy
+    }
+  };
+
+  const handleViewFullDetails = () => {
+    window.open(`/plaque/${plaque.id}`, '_blank');
   };
 
   // Quick visit form submission
@@ -272,6 +311,27 @@ export const PlaqueListItem = ({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {/* View Full Details option */}
+                      <DropdownMenuItem onSelect={handleViewFullDetails}>
+                        <ExternalLink size={14} className="mr-2 text-blue-600" />
+                        View Full Details
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      {/* NEW: Share options */}
+                      <DropdownMenuItem onSelect={handleShare}>
+                        <Share2 size={14} className="mr-2 text-purple-600" />
+                        Share Plaque
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem onSelect={handleCopyLink}>
+                        <Copy size={14} className="mr-2 text-gray-600" />
+                        Copy Link
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
                       {/* Visit actions */}
                       {!isVisited ? (
                         <DropdownMenuItem onSelect={handleQuickMarkVisited}>
@@ -335,7 +395,7 @@ export const PlaqueListItem = ({
             
             {/* Badges */}
             <div className="flex flex-wrap items-center gap-1 mb-2">
-              {/* NEW: Distance badge - shows first for prominence */}
+              {/* Distance badge - shows first for prominence */}
               {showDistance && distance !== undefined && distance !== Infinity && (
                 <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
                   <Navigation size={10} className="mr-1" />
@@ -379,7 +439,7 @@ export const PlaqueListItem = ({
               )}
             </div>
 
-            {/* NEW: Route button for mobile */}
+            {/* Route button for mobile */}
             {showRouteButton && onAddToRoute && (
               <div className="mb-2">
                 <Button

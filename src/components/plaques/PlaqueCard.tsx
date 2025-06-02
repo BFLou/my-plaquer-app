@@ -1,6 +1,6 @@
-// src/components/plaques/PlaqueCard.tsx - Enhanced with navigation modes - COMPLETE VERSION
+// src/components/plaques/PlaqueCard.tsx - Enhanced with share/copy link functionality
 import React, { useState } from 'react';
-import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation, ExternalLink } from 'lucide-react';
+import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation, ExternalLink, Share2, Copy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import AddToCollectionDialog from './AddToCollectionDialog';
 import EditVisitDialog from './EditVisitDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { generatePlaqueUrl } from '@/utils/urlUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,14 +50,14 @@ type PlaqueCardProps = {
   showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
-  navigationMode?: NavigationMode; // Control navigation behavior
+  navigationMode?: NavigationMode;
   // Distance display props
   showDistance?: boolean;
   distance?: number;
   formatDistance?: (distance: number) => string;
   // Additional props for context
   context?: string;
-  onFavoriteToggle?: (id: number) => void; // Allow external favorite handling
+  onFavoriteToggle?: (id: number) => void;
 };
 
 export const PlaqueCard = ({
@@ -72,7 +73,7 @@ export const PlaqueCard = ({
   showRouteButton = false,
   variant = 'discover',
   className = '',
-  navigationMode = 'modal', // Default to modal
+  navigationMode = 'modal',
   // Distance props
   showDistance = false,
   distance,
@@ -109,16 +110,13 @@ export const PlaqueCard = ({
     
     switch (mode) {
       case 'url':
-        // Navigate in same tab
         window.location.href = `/plaque/${plaque.id}`;
         break;
       case 'new-tab':
-        // Open in new tab
         window.open(`/plaque/${plaque.id}`, '_blank');
         break;
       case 'modal':
       default:
-        // Use modal callback
         if (onClick) {
           console.log('Calling onClick handler for modal navigation');
           onClick(plaque);
@@ -131,13 +129,12 @@ export const PlaqueCard = ({
 
   // Event handlers
   const handleCardClick = (e: React.MouseEvent) => {
-    // Prevent card click when interacting with buttons or dropdowns
     if (e.target instanceof Element && (
       e.target.closest('button') ||
       e.target.closest('[role="menuitem"]') ||
       e.target.closest('.dropdown-menu') ||
       e.target.closest('[data-radix-portal]') ||
-      e.target.closest('[data-state]') // Radix UI elements
+      e.target.closest('[data-state]')
     )) {
       console.log('Click blocked - interacting with UI element');
       return;
@@ -197,44 +194,71 @@ export const PlaqueCard = ({
     }
   };
 
-  // Handle "View Full Details" button click
   const handleViewFullDetails = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     console.log('View full details clicked');
-    // Always navigate to full page when explicitly requested
     window.open(`/plaque/${plaque.id}`, '_blank');
     setShowDropdown(false);
   };
 
-// In src/components/plaques/PlaqueCard.tsx
-// Replace the handleQuickVisitSubmit function around line 241-258
+  // NEW: Share/Copy functionality
+  const handleCopyLink = async () => {
+    try {
+      const plaqueUrl = generatePlaqueUrl(plaque.id);
+      await navigator.clipboard.writeText(plaqueUrl);
+      toast.success('Link copied to clipboard!');
+      setShowDropdown(false);
+    } catch (error) {
+      console.error('Error copying link:', error);
+      toast.error("Couldn't copy link");
+      setShowDropdown(false);
+    }
+  };
 
-// In PlaqueCard.tsx - Replace the handleQuickVisitSubmit function
-
-const handleQuickVisitSubmit = async () => {
-  setIsProcessing(true);
-  try {
-    await markAsVisited(plaque.id, {
-      visitedAt: visitDate.toISOString(),
-      notes: visitNotes,
-    });
+  const handleShare = async () => {
+    const shareUrl = generatePlaqueUrl(plaque.id);
     
-    // FIXED: Don't call onMarkVisited callback - it causes reopening
-    // The visit state is already updated by the hook
-    toast.success("Marked as visited");
-    setShowQuickVisitDialog(false);
-    setVisitNotes('');
-    setVisitDate(new Date());
-  } catch (error) {
-    console.error("Error marking as visited:", error);
-    toast.error("Failed to mark as visited");
-  } finally {
-    setIsProcessing(false);
-  }
-};
+    const shareData = {
+      title: plaque.title,
+      text: `Check out this historic plaque: ${plaque.title}`,
+      url: shareUrl,
+    };
 
-  // Delete visit confirmation
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        setShowDropdown(false);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          handleCopyLink(); // Fallback to copy
+        }
+      }
+    } else {
+      handleCopyLink(); // Fallback to copy
+    }
+  };
+
+  const handleQuickVisitSubmit = async () => {
+    setIsProcessing(true);
+    try {
+      await markAsVisited(plaque.id, {
+        visitedAt: visitDate.toISOString(),
+        notes: visitNotes,
+      });
+      
+      toast.success("Marked as visited");
+      setShowQuickVisitDialog(false);
+      setVisitNotes('');
+      setVisitDate(new Date());
+    } catch (error) {
+      console.error("Error marking as visited:", error);
+      toast.error("Failed to mark as visited");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleConfirmDeleteVisit = async () => {
     if (!visitInfo) return;
     
@@ -266,7 +290,6 @@ const handleQuickVisitSubmit = async () => {
     }
   };
 
-  // Determine hover effects based on navigation mode
   const getHoverClasses = () => {
     switch (navigationMode) {
       case 'new-tab':
@@ -336,6 +359,31 @@ const handleQuickVisitSubmit = async () => {
                 >
                   <ExternalLink size={14} className="mr-2 text-blue-600" />
                   View Full Details
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {/* NEW: Share options */}
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleShare();
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Share2 size={14} className="mr-2 text-purple-600" />
+                  Share Plaque
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    handleCopyLink();
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Copy size={14} className="mr-2 text-gray-600" />
+                  Copy Link
                 </DropdownMenuItem>
                 
                 <DropdownMenuSeparator />
@@ -532,7 +580,7 @@ const handleQuickVisitSubmit = async () => {
         </CardContent>
       </Card>
 
-      {/* Quick visit dialog */}
+      {/* Dialogs remain unchanged */}
       <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
         <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
@@ -600,7 +648,6 @@ const handleQuickVisitSubmit = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit visit dialog */}
       <EditVisitDialog
         isOpen={showEditVisitDialog}
         onClose={() => setShowEditVisitDialog(false)}
@@ -614,7 +661,6 @@ const handleQuickVisitSubmit = async () => {
         }}
       />
 
-      {/* Delete visit confirmation */}
       <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -646,7 +692,6 @@ const handleQuickVisitSubmit = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add to collection dialog */}
       <AddToCollectionDialog
         isOpen={showAddToCollection}
         onClose={() => setShowAddToCollection(false)}
