@@ -1,4 +1,4 @@
-// src/pages/CollectionDetail.tsx - Enhanced with modal URL state management
+// src/pages/CollectionDetail.tsx - Complete with proper navigation context
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Check, Trash2, ArrowLeft, Star, Pencil, Copy, Edit, MapPin, X, Clock
@@ -27,6 +27,7 @@ import { useRoutes } from '@/hooks/useRoutes';
 import { PageContainer } from "@/components";
 import { formatTimeAgo } from '../utils/timeUtils';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
+import { navigateToPlaqueWithContext } from '@/utils/navigationUtils';
 
 const CollectionDetailPage = () => {
   const { id } = useParams();
@@ -37,7 +38,7 @@ const CollectionDetailPage = () => {
   const mapRef = useRef(null);
   const { createRoute } = useRoutes();
   
-  // NEW: Handle modal plaque from URL
+  // Modal plaque from URL
   const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
   
   // Use our collection detail hook
@@ -98,7 +99,7 @@ const CollectionDetailPage = () => {
   const [useRoadRouting, setUseRoadRouting] = useState(true);
   const [maintainMapView, setMaintainMapView] = useState(false);
 
-  // NEW: Handle modal plaque from URL
+  // Handle modal plaque from URL
   useEffect(() => {
     if (modalPlaqueId && collectionPlaques.length > 0) {
       const plaque = collectionPlaques.find(p => p.id === modalPlaqueId);
@@ -121,33 +122,63 @@ const CollectionDetailPage = () => {
     setFilteredPlaques(collectionPlaques);
   }, [collectionPlaques]);
 
-  // NEW: Enhanced plaque click handler with URL state
+  // ENHANCED: Plaque click handler with proper context
   const handlePlaqueClick = useCallback((plaque) => {
     console.log('Plaque clicked in collection:', plaque.title);
-    // Update URL with modal plaque parameter for back button support
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('plaque', plaque.id.toString());
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+    
+    if (!collection) {
+      console.warn('No collection available for context');
+      return;
+    }
+    
+    // Calculate progress information
+    const plaqueIndex = collectionPlaques.findIndex(p => p.id === plaque.id);
+    const progress = plaqueIndex >= 0 ? `${plaqueIndex + 1} of ${collectionPlaques.length}` : undefined;
+    
+    // Navigate with proper collection context
+    navigateToPlaqueWithContext(navigate, plaque.id, {
+      from: 'collection',
+      collectionId: collection.id,
+      collectionName: collection.name,
+      progress: progress
+    });
+  }, [navigate, collection, collectionPlaques]);
 
-  // NEW: Enhanced modal close handler
+  // ENHANCED: Modal close handler with context preservation
   const handleCloseModal = useCallback(() => {
     console.log('Closing plaque modal in collection');
     setSelectedPlaque(null);
-    // Remove plaque parameter from URL
+    
+    // Remove plaque parameter but keep collection context
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('plaque');
+    
+    // Ensure collection context is preserved
+    if (collection) {
+      newParams.set('from', 'collection');
+      newParams.set('collection', collection.id);
+      newParams.set('collectionName', collection.name);
+    }
+    
     setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, collection]);
 
-  // NEW: Handle nearby plaque selection in modal
+  // ENHANCED: Nearby plaque selection with context
   const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
     console.log('Selecting nearby plaque in collection:', nearbyPlaque.title);
-    // Update URL to new plaque
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('plaque', nearbyPlaque.id.toString());
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+    
+    if (!collection) {
+      console.warn('No collection available for nearby plaque context');
+      return;
+    }
+    
+    // Navigate with collection context maintained
+    navigateToPlaqueWithContext(navigate, nearbyPlaque.id, {
+      from: 'collection',
+      collectionId: collection.id,
+      collectionName: collection.name
+    });
+  }, [navigate, collection]);
 
   // Add plaque to route
   const addPlaqueToRoute = (plaque) => {
@@ -546,7 +577,7 @@ const CollectionDetailPage = () => {
         />
       )}
       
-      {/* Enhanced Plaque detail modal with URL state */}
+      {/* Enhanced Plaque detail modal with URL state and context */}
       {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
@@ -557,15 +588,13 @@ const CollectionDetailPage = () => {
           onMarkVisited={() => selectedPlaque && handleMarkVisited(selectedPlaque.id)}
           nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
           onSelectNearbyPlaque={handleSelectNearbyPlaque}
-          generateShareUrl={generatePlaqueUrl}
+          generateShareUrl={(plaqueId) => generatePlaqueUrl(plaqueId, {
+            from: 'collection',
+            collectionId: collection.id,
+            collectionName: collection.name
+          })}
           context="collection"
           currentPath={location.pathname}
-          onRemove={() => {
-            if (selectedPlaque) {
-              handleRemovePlaque(selectedPlaque.id);
-              handleCloseModal();
-            }
-          }}
         />
       )}
       
@@ -576,6 +605,7 @@ const CollectionDetailPage = () => {
         onAddPlaques={handleAddPlaques}
         availablePlaques={availablePlaques}
         isLoading={isLoading}
+        existingPlaqueIds={collectionPlaques.map(p => p.id)}
       />
       
       {/* Remove single plaque confirmation */}

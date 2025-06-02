@@ -1,45 +1,104 @@
 // src/utils/navigationUtils.ts
-import { Plaque } from '@/types/plaque';
+import { NavigateFunction } from 'react-router-dom';
 
-export type NavigationMode = 'modal' | 'url' | 'new-tab';
+export interface NavigationContext {
+  from?: 'collection' | 'route' | 'search' | 'discover';
+  collectionId?: string;
+  collectionName?: string;
+  routeId?: string;
+  routeName?: string;
+  searchQuery?: string;
+  progress?: string;
+  next?: string;
+}
 
-export const navigateToPlaque = (
-  plaque: Plaque, 
-  mode: NavigationMode = 'modal',
-  onModalOpen?: (plaque: Plaque) => void
+/**
+ * Navigate to plaque detail with proper context preservation
+ */
+export const navigateToPlaqueWithContext = (
+  navigate: NavigateFunction,
+  plaqueId: number,
+  context: NavigationContext
 ) => {
-  switch (mode) {
-    case 'url':
-      // Navigate in same tab
-      window.location.href = `/plaque/${plaque.id}`;
-      break;
-      
-    case 'new-tab':
-      // Open in new tab
-      window.open(`/plaque/${plaque.id}`, '_blank');
-      break;
-      
-    case 'modal':
-    default:
-      // Use modal callback
-      if (onModalOpen) {
-        onModalOpen(plaque);
-      }
-      break;
+  const params = new URLSearchParams();
+  
+  // Add context parameters
+  if (context.from) {
+    params.set('from', context.from);
   }
+  
+  if (context.collectionId) {
+    params.set('collection', context.collectionId);
+  }
+  
+  if (context.collectionName) {
+    params.set('collectionName', context.collectionName);
+  }
+  
+  if (context.routeId) {
+    params.set('route', context.routeId);
+  }
+  
+  if (context.routeName) {
+    params.set('routeName', context.routeName);
+  }
+  
+  if (context.searchQuery) {
+    params.set('search', context.searchQuery);
+  }
+  
+  if (context.progress) {
+    params.set('progress', context.progress);
+  }
+  
+  if (context.next) {
+    params.set('next', context.next);
+  }
+  
+  const url = `/plaque/${plaqueId}${params.toString() ? `?${params.toString()}` : ''}`;
+  navigate(url);
 };
 
-// Helper to determine best navigation mode based on context
-export const getNavigationMode = (context: string): NavigationMode => {
-  switch (context) {
-    case 'discover-grid':
-    case 'discover-list':
-      return 'new-tab'; // Better for browsing
-    case 'map':
-      return 'modal'; // Better UX on maps
-    case 'collection':
-      return 'modal'; // Keep context
-    default:
-      return 'modal';
+/**
+ * Generate plaque URL with context for sharing
+ */
+export const generatePlaqueUrlWithContext = (
+  plaqueId: number,
+  context?: NavigationContext
+): string => {
+  const baseUrl = `${window.location.origin}/plaque/${plaqueId}`;
+  
+  if (!context) return baseUrl;
+  
+  const params = new URLSearchParams();
+  
+  if (context.from) {
+    params.set('from', context.from);
   }
+  
+  if (context.collectionId) {
+    params.set('collection', context.collectionId);
+  }
+  
+  if (context.searchQuery) {
+    params.set('search', context.searchQuery);
+  }
+  
+  return `${baseUrl}${params.toString() ? `?${params.toString()}` : ''}`;
+};
+
+/**
+ * Hook to extract current navigation context from URL
+ */
+export const useNavigationContext = (searchParams: URLSearchParams): NavigationContext => {
+  return {
+    from: searchParams.get('from') as NavigationContext['from'] | undefined,
+    collectionId: searchParams.get('collection') || undefined,
+    collectionName: searchParams.get('collectionName') || undefined,
+    routeId: searchParams.get('route') || undefined,
+    routeName: searchParams.get('routeName') || undefined,
+    searchQuery: searchParams.get('search') || undefined,
+    progress: searchParams.get('progress') || undefined,
+    next: searchParams.get('next') || undefined,
+  };
 };
