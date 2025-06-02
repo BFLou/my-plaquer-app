@@ -30,6 +30,7 @@ const AboutPage = () => {
     email: '',
     message: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Updated to only include the sections we're keeping
   const sectionRefs = {
@@ -96,7 +97,7 @@ const AboutPage = () => {
     }));
   };
 
-  // Handle form submission
+  // Handle form submission with Formspree
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -116,36 +117,37 @@ const AboutPage = () => {
       return;
     }
     
+    setIsSubmitting(true);
+    
     try {
-      // Show loading state
-      const submitButton = e.target.querySelector('button[type="submit"]');
-      const originalText = submitButton.innerHTML;
-      submitButton.disabled = true;
-      submitButton.innerHTML = 'Sending...';
-      
-      // Simulate API call (replace with actual form submission)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Success
-      toast.success('Thank you! Your message has been sent successfully.');
-      setFormData({
-        name: '',
-        email: '',
-        message: ''
+      const response = await fetch('https://formspree.io/f/mkgbnrgn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message
+        })
       });
       
-      // Reset button
-      submitButton.disabled = false;
-      submitButton.innerHTML = originalText;
+      if (response.ok) {
+        toast.success('Thank you! Your message has been sent successfully.');
+        setFormData({
+          name: '',
+          email: '',
+          message: ''
+        });
+      } else {
+        throw new Error('Form submission failed');
+      }
       
     } catch (error) {
       console.error('Error submitting form:', error);
       toast.error('Failed to send message. Please try again.');
-      
-      // Reset button
-      const submitButton = e.target.querySelector('button[type="submit"]');
-      submitButton.disabled = false;
-      submitButton.innerHTML = originalText;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -486,7 +488,7 @@ const AboutPage = () => {
           </div>
         </section>
 
-        {/* Contact Section - Simplified to form and email only */}
+        {/* Contact Section - Updated with Formspree */}
         <section 
           id="contact" 
           ref={sectionRefs.contact}
@@ -512,7 +514,7 @@ const AboutPage = () => {
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                {/* Contact Form */}
+                {/* Contact Form with Formspree */}
                 <div className="bg-white rounded-lg p-6 text-gray-800">
                   <h3 className="text-xl font-bold mb-4">Send us a message</h3>
                   
@@ -524,10 +526,11 @@ const AboutPage = () => {
                       <Input
                         id="name"
                         name="name"
-value={formData.name}
+                        value={formData.name}
                         onChange={handleInputChange}
                         required
                         placeholder="John Doe"
+                        disabled={isSubmitting}
                       />
                     </div>
                     
@@ -543,6 +546,7 @@ value={formData.name}
                         onChange={handleInputChange}
                         required
                         placeholder="john@example.com"
+                        disabled={isSubmitting}
                       />
                     </div>
                     
@@ -558,11 +562,17 @@ value={formData.name}
                         required
                         placeholder="Your message here..."
                         rows={4}
+                        disabled={isSubmitting}
                       />
                     </div>
                     
-                    <Button type="submit" className="w-full gap-2">
-                      <Send size={16} /> Send Message
+                    <Button 
+                      type="submit" 
+                      className="w-full gap-2"
+                      disabled={isSubmitting}
+                    >
+                      <Send size={16} /> 
+                      {isSubmitting ? 'Sending...' : 'Send Message'}
                     </Button>
                   </form>
                 </div>
