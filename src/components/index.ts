@@ -16,9 +16,7 @@ export type { Plaque } from '@/types/plaque';
 export { PlaqueListItem } from './plaques/PlaqueListItem';
 export { PlaqueDetail } from './plaques/PlaqueDetail';
 export { PlaqueImage } from './plaques/PlaqueImage';
-export { PlaqueBadge } from './plaques/PlaqueBadge';
 export { default as Pagination } from './plaques/Pagination';
-export { default as VisitLogger } from './plaques/VisitLogger';
 
 // Collection components
 export { CollectionStats } from './collections/CollectionStats';
@@ -34,7 +32,6 @@ export { useSearch } from './maps/features/Search/useSearch';
 export { LocationFilter } from './maps/features/LocationFilter/LocationFilter';
 export { useLocationFilter } from './maps/features/LocationFilter/useLocationFilter';
 export { RoutePanel } from './maps/features/RouteBuilder/RoutePanel';
-export { MapControls } from './maps/features/Controls/MapControls';
 
 // Map core hooks
 export { useMap } from './maps/core/useMap';
@@ -57,16 +54,7 @@ export { EmptyState } from './common/EmptyState'; // MAIN EmptyState export
 export { ActionBar, type ActionBarButton } from './common/ActionBar';
 export { ViewToggle, type ViewMode } from './common/ViewToggle';
 export { FilterBar } from './common/FilterBar';
-export { FilterSheet } from './common/FilterSheet';
-export { ImprovedFilterSheet } from './common/ImprovedFilterSheet';
-export { MultiSelectFilter } from './common/MultiSelectFilter';
-export { SearchHero } from './common/SearchHero';
 export { SearchableFilterBar } from './common/SearchableFilterBar';
-export { StatCard } from './common/StatCard';
-export { FeatureCard } from './common/FeatureCard';
-
-// Icons
-export { RouteIcon } from './icons/RouteIcon';
 
 // UI components
 export * from './ui/alert-dialog';
