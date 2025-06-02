@@ -140,10 +140,6 @@ export const RouteStats: React.FC<RouteStatsProps> = ({
             <h4 className="font-medium text-gray-900">Engagement</h4>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Views:</span>
-                <span className="text-sm font-medium">{route.views || 0}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Visibility:</span>
                 <Badge variant={route.is_public ? "default" : "secondary"}>
                   {route.is_public ? 'Public' : 'Private'}

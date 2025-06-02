@@ -1,4 +1,4 @@
-// src/pages/RoutesManagementPage.tsx - Complete version with proper syntax
+// src/pages/RoutesManagementPage.tsx - Enhanced with working actions
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -9,7 +9,9 @@ import {
   Grid,
   List,
   ArrowLeft,
-  X
+  X,
+  Star,
+  Trash2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,8 +28,11 @@ import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import RouteCard from '@/components/routes/RouteCard';
+import RouteListItem from '@/components/routes/RouteListItem';
 import EditRouteForm from '@/components/routes/EditRouteForm';
 import { PageContainer } from "@/components";
+import { ActionBar } from "@/components/common/ActionBar";
+import { EmptyState } from '@/components/common/EmptyState';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,24 +45,26 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type ViewMode = 'grid' | 'list';
-type SortOption = 'recent' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
+type SortOption = 'recent' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc' | 'most_waypoints' | 'least_waypoints';
 
 const RoutesManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { routes, loading, updateRoute, deleteRoute, createRoute } = useRoutes();
+  const { routes, loading, updateRoute, deleteRoute, duplicateRoute } = useRoutes();
   
   // UI State
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('recent');
-  const [showOnlyPublic, setShowOnlyPublic] = useState(false);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [selectedRoutes, setSelectedRoutes] = useState<string[]>([]);
   
   // Edit/Delete state
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [routeToEdit, setRouteToEdit] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [routeToDelete, setRouteToDelete] = useState(null);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Filter and sort routes
@@ -68,10 +75,10 @@ const RoutesManagementPage: React.FC = () => {
         route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (route.description && route.description.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      // Public filter
-      const matchesPublic = !showOnlyPublic || route.is_public;
+      // Favorites filter
+      const matchesFavorites = !showOnlyFavorites || route.is_favorite;
       
-      return matchesSearch && matchesPublic;
+      return matchesSearch && matchesFavorites;
     })
     .sort((a, b) => {
       switch (sortOption) {
@@ -91,10 +98,28 @@ const RoutesManagementPage: React.FC = () => {
           return a.total_distance - b.total_distance;
         case 'distance_desc':
           return b.total_distance - a.total_distance;
+        case 'most_waypoints':
+          return b.points.length - a.points.length;
+        case 'least_waypoints':
+          return a.points.length - b.points.length;
         default:
           return 0;
       }
     });
+
+  // Handle toggle route selection
+  const handleToggleSelect = (routeId: string) => {
+    setSelectedRoutes(prev => 
+      prev.includes(routeId) 
+        ? prev.filter(id => id !== routeId)
+        : [...prev, routeId]
+    );
+  };
+
+  // Handle clear all selections
+  const handleClearSelections = () => {
+    setSelectedRoutes([]);
+  };
 
   // Handle actions
   const handleViewRoute = (route: any) => {
@@ -109,7 +134,6 @@ const RoutesManagementPage: React.FC = () => {
   const handleSaveRoute = async (data: {
     name: string;
     description: string;
-    isPublic: boolean;
   }) => {
     if (!routeToEdit) return;
 
@@ -118,8 +142,7 @@ const RoutesManagementPage: React.FC = () => {
       
       await updateRoute(routeToEdit.id, {
         name: data.name,
-        description: data.description,
-        isPublic: data.isPublic
+        description: data.description
       });
       
       setEditFormOpen(false);
@@ -137,25 +160,10 @@ const RoutesManagementPage: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Create mock plaque objects from route points
-      const mockPlaques = route.points.map(point => ({
-        id: point.plaque_id,
-        title: point.title,
-        latitude: point.lat,
-        longitude: point.lng
-      }));
-      
-      const duplicatedRoute = await createRoute(
-        `${route.name} (Copy)`,
-        mockPlaques,
-        route.total_distance,
-        route.description || '',
-        false // Make duplicate private by default
-      );
-      
-      toast.success('Route duplicated successfully');
+      const duplicatedRoute = await duplicateRoute(route, `${route.name} (Copy)`);
       
       if (duplicatedRoute) {
+        toast.success('Route duplicated successfully');
         navigate(`/library/routes/${duplicatedRoute.id}`);
       }
     } catch (error) {
@@ -190,8 +198,81 @@ const RoutesManagementPage: React.FC = () => {
     }
   };
 
+  // Handle toggle favorite for single route
+  const handleToggleFavorite = async (route: any) => {
+    try {
+      setIsLoading(true);
+      
+      await updateRoute(route.id, {
+        is_favorite: !route.is_favorite
+      });
+      
+      toast.success(route.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorite status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle batch operations
+  const handleBatchFavorite = async () => {
+    try {
+      setIsLoading(true);
+      
+      const promises = selectedRoutes.map(routeId => {
+        const route = routes.find(r => r.id === routeId);
+        if (route) {
+          return updateRoute(routeId, {
+            is_favorite: true
+          });
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(promises);
+      
+      setSelectedRoutes([]);
+      toast.success(`${selectedRoutes.length} routes added to favorites`);
+    } catch (error) {
+      console.error('Error batch favoriting routes:', error);
+      toast.error('Failed to update favorites');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleBatchDelete = () => {
+    setBatchDeleteDialogOpen(true);
+  };
+
+  const confirmBatchDelete = async () => {
+    try {
+      setIsLoading(true);
+      
+      const promises = selectedRoutes.map(routeId => deleteRoute(routeId));
+      await Promise.all(promises);
+      
+      setBatchDeleteDialogOpen(false);
+      setSelectedRoutes([]);
+      toast.success(`${selectedRoutes.length} routes deleted successfully`);
+    } catch (error) {
+      console.error('Error batch deleting routes:', error);
+      toast.error('Failed to delete routes');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Get active filters count
-  const activeFiltersCount = (searchQuery ? 1 : 0) + (showOnlyPublic ? 1 : 0);
+  const activeFiltersCount = (searchQuery ? 1 : 0) + (showOnlyFavorites ? 1 : 0);
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setShowOnlyFavorites(false);
+  };
 
   if (!user) {
     return (
@@ -277,10 +358,10 @@ const RoutesManagementPage: React.FC = () => {
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {routes.filter(r => r.is_public).length}
+              <div className="text-2xl font-bold text-amber-600">
+                {routes.filter(r => r.is_favorite).length}
               </div>
-              <div className="text-sm text-gray-500">Public Routes</div>
+              <div className="text-sm text-gray-500">Favorite Routes</div>
             </div>
           </div>
         </div>
@@ -320,23 +401,37 @@ const RoutesManagementPage: React.FC = () => {
                   <SelectItem value="name_desc">Name Z-A</SelectItem>
                   <SelectItem value="distance_asc">Shortest First</SelectItem>
                   <SelectItem value="distance_desc">Longest First</SelectItem>
+                  <SelectItem value="most_waypoints">Most Waypoints</SelectItem>
+                  <SelectItem value="least_waypoints">Least Waypoints</SelectItem>
                 </SelectContent>
               </Select>
 
               <Button
-                variant={showOnlyPublic ? "default" : "outline"}
+                variant={showOnlyFavorites ? "default" : "outline"}
                 size="sm"
-                onClick={() => setShowOnlyPublic(!showOnlyPublic)}
+                onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
                 className="gap-1"
               >
-                <Filter size={16} />
-                Public Only
+                <Star size={16} className={showOnlyFavorites ? "fill-current" : ""} />
+                Favorites Only
                 {activeFiltersCount > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center">
                     {activeFiltersCount}
                   </Badge>
                 )}
               </Button>
+
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="gap-1"
+                >
+                  <X size={16} />
+                  Clear Filters
+                </Button>
+              )}
             </div>
 
             {/* View Controls */}
@@ -378,10 +473,7 @@ const RoutesManagementPage: React.FC = () => {
             ) : (
               <Button 
                 variant="outline" 
-                onClick={() => {
-                  setSearchQuery('');
-                  setShowOnlyPublic(false);
-                }}
+                onClick={handleClearFilters}
               >
                 Clear Filters
               </Button>
@@ -393,19 +485,58 @@ const RoutesManagementPage: React.FC = () => {
             : 'space-y-3'
           }>
             {filteredAndSortedRoutes.map(route => (
-              <RouteCard
-                key={route.id}
-                route={route}
-                onView={handleViewRoute}
-                onEdit={handleEditRoute}
-                onDuplicate={handleDuplicateRoute}
-                onDelete={handleDeleteRoute}
-                className={viewMode === 'list' ? 'max-w-none' : ''}
-              />
+              viewMode === 'grid' ? (
+                <RouteCard
+                  key={route.id}
+                  route={route}
+                  onView={handleViewRoute}
+                  onEdit={handleEditRoute}
+                  onDuplicate={handleDuplicateRoute}
+                  onDelete={handleDeleteRoute}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              ) : (
+                <RouteListItem
+                  key={route.id}
+                  route={route}
+                  isSelected={selectedRoutes.includes(route.id)}
+                  onToggleSelect={() => handleToggleSelect(route.id)}
+                  onView={handleViewRoute}
+                  onEdit={handleEditRoute}
+                  onDuplicate={handleDuplicateRoute}
+                  onDelete={handleDeleteRoute}
+                  onToggleFavorite={handleToggleFavorite}
+                  showSelection={true}
+                />
+              )
             ))}
           </div>
         )}
       </div>
+
+      {/* Action bar for selected routes */}
+      {selectedRoutes.length > 0 && (
+        <ActionBar
+          title={selectedRoutes.length === 1 ? "route selected" : "routes selected"}
+          count={selectedRoutes.length}
+          buttons={[
+            {
+              label: "Add to Favorites",
+              icon: <Star size={16} />,
+              onClick: handleBatchFavorite,
+              disabled: isLoading
+            },
+            {
+              label: "Delete",
+              variant: "destructive",
+              icon: <Trash2 size={16} />,
+              onClick: handleBatchDelete,
+              disabled: isLoading
+            }
+          ]}
+          onClearSelection={handleClearSelections}
+        />
+      )}
 
       {/* Edit Route Form */}
       <EditRouteForm
@@ -419,7 +550,7 @@ const RoutesManagementPage: React.FC = () => {
         isSaving={isLoading}
       />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Single Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -436,6 +567,28 @@ const RoutesManagementPage: React.FC = () => {
               className="bg-red-600 hover:bg-red-700"
             >
               {isLoading ? 'Deleting...' : 'Delete Route'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Delete Confirmation Dialog */}
+      <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedRoutes.length} Routes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete these {selectedRoutes.length} routes? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmBatchDelete}
+              disabled={isLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isLoading ? 'Deleting...' : `Delete ${selectedRoutes.length} Routes`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

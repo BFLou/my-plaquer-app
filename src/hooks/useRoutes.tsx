@@ -1,4 +1,4 @@
-// src/hooks/useRoutes.ts - COMPLETE: Enhanced with walking distance integration
+// src/hooks/useRoutes.tsx - Updated with proper duplicate function and favorite support
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { 
@@ -56,12 +56,12 @@ export const useRoutes = () => {
     loadRoutes();
   }, [user?.uid]);
 
-  // ENHANCED: Create route with real walking distances
+  // Create route with real walking distances
   const createRoute = async (
     name: string,
     description: string,
     points: Plaque[],
-    totalDistance?: number // Optional - will calculate if not provided
+    totalDistance?: number
   ): Promise<RouteData | null> => {
     if (!user?.uid) {
       toast.error('You must be logged in to create routes');
@@ -82,7 +82,7 @@ export const useRoutes = () => {
         
         try {
           const routeData = await calculateMultiWaypointRoute(points);
-          finalDistance = routeData.totalDistance / 1000; // Convert to km
+          finalDistance = routeData.totalDistance / 1000;
           
           if (routeData.error) {
             toast.warning('Some distances estimated due to API limitations');
@@ -105,7 +105,7 @@ export const useRoutes = () => {
               const endLng = parseFloat(end.longitude as string);
               
               // Haversine distance * walking factor
-              const R = 6371; // Earth's radius in km
+              const R = 6371;
               const dLat = (endLat - startLat) * Math.PI / 180;
               const dLng = (endLng - startLng) * Math.PI / 180;
               const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -114,7 +114,7 @@ export const useRoutes = () => {
               const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
               const distance = R * c;
               
-              fallbackDistance += distance * 1.4; // Walking factor
+              fallbackDistance += distance * 1.4;
             }
           }
           
@@ -133,7 +133,6 @@ export const useRoutes = () => {
 
       if (result.success && result.data) {
         toast.success('Route saved successfully!');
-        // Refresh routes list
         await loadRoutes();
         return result.data;
       } else {
@@ -147,14 +146,14 @@ export const useRoutes = () => {
     }
   };
 
-  // ENHANCED: Create route with pre-calculated walking data
+  // Create route with pre-calculated walking data
   const createRouteWithWalkingData = async (
     name: string,
     description: string,
     points: Plaque[],
     walkingData: {
-      totalDistance: number; // in meters
-      totalDuration: number; // in seconds
+      totalDistance: number;
+      totalDuration: number;
       segments: any[];
     }
   ): Promise<RouteData | null> => {
@@ -164,7 +163,6 @@ export const useRoutes = () => {
     }
 
     try {
-      // Convert distance to km for storage
       const distanceInKm = walkingData.totalDistance / 1000;
       
       const result = await saveRouteToFirebase(
@@ -176,9 +174,6 @@ export const useRoutes = () => {
       );
 
       if (result.success && result.data) {
-        // Store additional walking data in a separate field if needed
-        // For now, we'll just use the basic route structure
-        
         toast.success(`Route saved! ${Math.round(walkingData.totalDistance / 1000 * 10) / 10}km walking distance`);
         await loadRoutes();
         return result.data;
@@ -193,7 +188,7 @@ export const useRoutes = () => {
     }
   };
 
-  // Update route function with proper toast handling
+  // Update route function
   const updateRoute = async (
     routeId: string,
     updates: {
@@ -201,6 +196,7 @@ export const useRoutes = () => {
       description?: string;
       points?: Plaque[];
       totalDistance?: number;
+      is_favorite?: boolean;
     }
   ): Promise<RouteData | null> => {
     if (!user?.uid) {
@@ -214,14 +210,13 @@ export const useRoutes = () => {
         try {
           toast.info('Recalculating walking distances...');
           const routeData = await calculateMultiWaypointRoute(updates.points);
-          updates.totalDistance = routeData.totalDistance / 1000; // Convert to km
+          updates.totalDistance = routeData.totalDistance / 1000;
           
           if (routeData.error) {
             toast.warning('Some distances estimated due to API limitations');
           }
         } catch (walkingError) {
           console.warn('Failed to recalculate walking distances:', walkingError);
-          // Keep the original totalDistance or calculate fallback
         }
       }
 
@@ -233,7 +228,6 @@ export const useRoutes = () => {
 
       if (result.success && result.data) {
         toast.success('Route updated successfully!');
-        // Refresh routes list
         await loadRoutes();
         return result.data;
       } else {
@@ -247,7 +241,7 @@ export const useRoutes = () => {
     }
   };
 
-  // Delete route with proper toast handling
+  // Delete route
   const deleteRoute = async (routeId: string): Promise<boolean> => {
     if (!user?.uid) {
       toast.error('You must be logged in to delete routes');
@@ -259,7 +253,6 @@ export const useRoutes = () => {
 
       if (result.success) {
         toast.success('Route deleted successfully!');
-        // Refresh routes list
         await loadRoutes();
         return true;
       } else {
@@ -333,7 +326,7 @@ export const useRoutes = () => {
     }
   };
 
-  // ENHANCED: Duplicate route with walking distance recalculation
+  // Duplicate route - ENHANCED: Proper implementation with plaque reconstruction
   const duplicateRoute = async (originalRoute: RouteData, newName?: string): Promise<RouteData | null> => {
     if (!user?.uid) {
       toast.error('You must be logged in to duplicate routes');
@@ -363,11 +356,23 @@ export const useRoutes = () => {
 
       const duplicatedName = newName || `${originalRoute.name} (Copy)`;
       
-      return await createRoute(
+      // Create the duplicate with the same distance to avoid recalculation
+      const result = await saveRouteToFirebase(
         duplicatedName,
-        originalRoute.description || '',
-        plaques
+        plaques,
+        originalRoute.total_distance,
+        user.uid,
+        originalRoute.description || ''
       );
+
+      if (result.success && result.data) {
+        toast.success('Route duplicated successfully!');
+        await loadRoutes();
+        return result.data;
+      } else {
+        toast.error(result.error?.message || 'Failed to duplicate route');
+        throw new Error(result.error?.message || 'Failed to duplicate route');
+      }
     } catch (error) {
       console.error('Error duplicating route:', error);
       toast.error('Failed to duplicate route. Please try again.');
@@ -380,10 +385,10 @@ export const useRoutes = () => {
     loading,
     error,
     createRoute,
-    createRouteWithWalkingData, // NEW: Enhanced creation with walking data
+    createRouteWithWalkingData,
     updateRoute,
     deleteRoute,
-    duplicateRoute, // NEW: Duplicate functionality
+    duplicateRoute,
     getRoute,
     loadRoutes,
     getUserRouteStats

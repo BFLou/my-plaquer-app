@@ -1,4 +1,4 @@
-// src/services/RouteService.ts - FIXED: Removed duplicate toasts
+// src/services/RouteService.ts - Updated with favorite support
 import { 
   collection, 
   addDoc, 
@@ -33,7 +33,8 @@ export interface RouteData {
   created_at?: any;
   updated_at?: any;
   user_id: string;
-  is_public: boolean; // Keep the field but always set to false
+  is_public: boolean;
+  is_favorite?: boolean; // Added favorite support
   views?: number;
 }
 
@@ -43,7 +44,7 @@ export interface RouteServiceError {
 }
 
 /**
- * Save a route to Firebase - FIXED: No toasts, returns success/error info
+ * Save a route to Firebase
  */
 export const saveRouteToFirebase = async (
   name: string,
@@ -99,7 +100,7 @@ export const saveRouteToFirebase = async (
       order: index
     }));
     
-    // Create route data - Always private
+    // Create route data - Always private, not favorite by default
     const routeData: RouteData = {
       name: name.trim(),
       description: description.trim(),
@@ -109,6 +110,7 @@ export const saveRouteToFirebase = async (
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
       is_public: false, // Always false - all routes are private
+      is_favorite: false, // Not favorite by default
       views: 0
     };
     
@@ -136,7 +138,7 @@ export const saveRouteToFirebase = async (
 };
 
 /**
- * Update an existing route in Firebase - FIXED: No toasts, returns success/error info
+ * Update an existing route in Firebase
  */
 export const updateRouteInFirebase = async (
   routeId: string,
@@ -145,6 +147,7 @@ export const updateRouteInFirebase = async (
     description?: string;
     points?: Plaque[];
     totalDistance?: number;
+    is_favorite?: boolean; // Added favorite support
   },
   userId: string
 ): Promise<{ success: boolean; data?: RouteData; error?: RouteServiceError }> => {
@@ -206,6 +209,10 @@ export const updateRouteInFirebase = async (
       updateData.description = updates.description.trim();
     }
     
+    if (updates.is_favorite !== undefined) {
+      updateData.is_favorite = updates.is_favorite;
+    }
+    
     // Format points if provided
     if (updates.points) {
       if (updates.points.length < 2) {
@@ -244,7 +251,9 @@ export const updateRouteInFirebase = async (
       }));
       
       // Recalculate distance if points changed
-      updateData.total_distance = calculateRouteDistance(updates.points);
+      if (calculateRouteDistance) {
+        updateData.total_distance = calculateRouteDistance(updates.points);
+      }
     } else if (updates.totalDistance !== undefined) {
       updateData.total_distance = updates.totalDistance;
     }
@@ -275,7 +284,7 @@ export const updateRouteInFirebase = async (
 };
 
 /**
- * Delete a route from Firebase - FIXED: No toasts, returns success/error info
+ * Delete a route from Firebase
  */
 export const deleteRouteFromFirebase = async (
   routeId: string,

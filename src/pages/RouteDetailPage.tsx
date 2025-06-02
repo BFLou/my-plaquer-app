@@ -1,4 +1,4 @@
-// src/pages/RouteDetailPage.tsx - COMPLETELY CLEAN VERSION
+// src/pages/RouteDetailPage.tsx - Fixed with proper route loading
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
@@ -15,7 +15,8 @@ import {
   Copy,
   MoreVertical,
   Route as RouteIcon,
-  Eye
+  Eye,
+  Star
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRoutes } from '@/hooks/useRoutes';
-import { usePlaques } from '@/hooks/usePlaques';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import EditRouteForm from '../components/routes/EditRouteForm';
@@ -49,6 +49,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+// Import plaque data for matching route points
+import plaqueData from '../data/plaque_data.json';
+import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 
 const RouteDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -56,8 +59,7 @@ const RouteDetailPage: React.FC = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { routes, updateRoute, deleteRoute } = useRoutes();
-  const { plaques } = usePlaques();
+  const { routes, updateRoute, deleteRoute, duplicateRoute, getRoute } = useRoutes();
   
   // Modal plaque from URL
   const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
@@ -72,6 +74,7 @@ const RouteDetailPage: React.FC = () => {
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Handle modal plaque from URL
   useEffect(() => {
@@ -91,7 +94,7 @@ const RouteDetailPage: React.FC = () => {
     }
   }, [modalPlaqueId, routePlaques, searchParams, setSearchParams]);
 
-  // Load route data
+  // Load route data - FIXED: Better route loading logic
   useEffect(() => {
     const loadRoute = async () => {
       if (!id || !user) {
@@ -102,30 +105,53 @@ const RouteDetailPage: React.FC = () => {
 
       try {
         setLoading(true);
+        setError(null);
         
-        // Get route from the routes already loaded by useRoutes
-        const routeData = routes.find(r => r.id === id);
+        console.log('Loading route with ID:', id);
+        console.log('Available routes:', routes);
+        
+        // First try to find route in already loaded routes
+        let routeData = routes.find(r => r.id === id);
+        
+        // If not found in loaded routes, try to fetch it directly
+        if (!routeData) {
+          console.log('Route not found in loaded routes, fetching directly...');
+          routeData = await getRoute(id);
+        }
         
         if (!routeData) {
+          console.error('Route not found');
           setError('Route not found');
           setLoading(false);
           return;
         }
 
+        console.log('Route loaded successfully:', routeData);
         setRoute(routeData);
+        setIsFavorite(routeData.is_favorite || false);
 
         // Get plaque details for route points
         if (routeData.points && routeData.points.length > 0) {
-          const plaqueIds = routeData.points.map(point => point.plaque_id);
-          const matchedPlaques = plaques.filter(plaque => 
-            plaqueIds.includes(plaque.id)
-          ).map(plaque => ({
-            ...plaque,
-            // Add order from route points
-            order: routeData.points.find(p => p.plaque_id === plaque.id)?.order || 0
-          })).sort((a, b) => a.order - b.order);
-          
-          setRoutePlaques(matchedPlaques);
+          try {
+            // Load plaque data
+            const adaptedPlaques = adaptPlaquesData(plaqueData);
+            
+            const plaqueIds = routeData.points.map(point => point.plaque_id);
+            const matchedPlaques = adaptedPlaques.filter(plaque => 
+              plaqueIds.includes(plaque.id)
+            ).map(plaque => ({
+              ...plaque,
+              // Add order from route points
+              order: routeData.points.find(p => p.plaque_id === plaque.id)?.order || 0
+            })).sort((a, b) => a.order - b.order);
+            
+            console.log('Matched plaques:', matchedPlaques);
+            setRoutePlaques(matchedPlaques);
+          } catch (plaqueError) {
+            console.error('Error loading plaque data:', plaqueError);
+            // Continue without plaque data
+            setRoutePlaques([]);
+          }
         }
 
         setLoading(false);
@@ -136,8 +162,11 @@ const RouteDetailPage: React.FC = () => {
       }
     };
 
-    loadRoute();
-  }, [id, user, routes, plaques]);
+    // Only load if we have required data
+    if (id && user) {
+      loadRoute();
+    }
+  }, [id, user, routes, getRoute]);
 
   // ENHANCED: Plaque click handler with proper context
   const handlePlaqueClick = useCallback((plaque) => {
@@ -180,25 +209,56 @@ const RouteDetailPage: React.FC = () => {
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams, route]);
 
+  // Handle toggle favorite
+  const handleToggleFavorite = async () => {
+    if (!route) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Update the route with new favorite status
+      const updatedRoute = await updateRoute(route.id, {
+        is_favorite: !isFavorite
+      });
+      
+      if (updatedRoute) {
+        setIsFavorite(!isFavorite);
+        setRoute(prev => ({
+          ...prev,
+          is_favorite: !isFavorite
+        }));
+        
+        toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('Failed to update favorite status');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Handle route update
   const handleUpdateRoute = async (data) => {
     if (!route) return;
 
     try {
       setIsLoading(true);
-      await updateRoute(route.id, {
+      const updatedRoute = await updateRoute(route.id, {
         name: data.name,
         description: data.description
       });
       
-      setRoute(prev => ({
-        ...prev,
-        name: data.name,
-        description: data.description
-      }));
-      
-      setEditFormOpen(false);
-      toast.success('Route updated successfully');
+      if (updatedRoute) {
+        setRoute(prev => ({
+          ...prev,
+          name: data.name,
+          description: data.description
+        }));
+        
+        setEditFormOpen(false);
+        toast.success('Route updated successfully');
+      }
     } catch (error) {
       console.error('Error updating route:', error);
       toast.error('Failed to update route');
@@ -213,9 +273,12 @@ const RouteDetailPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await deleteRoute(route.id);
-      toast.success('Route deleted successfully');
-      navigate('/library/routes');
+      const success = await deleteRoute(route.id);
+      
+      if (success) {
+        toast.success('Route deleted successfully');
+        navigate('/library/routes');
+      }
     } catch (error) {
       console.error('Error deleting route:', error);
       toast.error('Failed to delete route');
@@ -231,11 +294,13 @@ const RouteDetailPage: React.FC = () => {
     
     try {
       setIsLoading(true);
-      // Create a duplicate with "(Copy)" suffix
-      const duplicateName = `${route.name} (Copy)`;
       
-      // For now, just show success - implementation depends on your createRoute function
-      toast.success('Route duplication feature coming soon');
+      const duplicatedRoute = await duplicateRoute(route);
+      
+      if (duplicatedRoute) {
+        toast.success('Route duplicated successfully');
+        navigate(`/library/routes/${duplicatedRoute.id}`);
+      }
     } catch (error) {
       console.error('Error duplicating route:', error);
       toast.error('Failed to duplicate route');
@@ -292,6 +357,7 @@ const RouteDetailPage: React.FC = () => {
 </gpx>`;
   };
 
+  // Show authentication required
   if (!user) {
     return (
       <PageContainer activePage="library" simplifiedFooter={true}>
@@ -307,6 +373,7 @@ const RouteDetailPage: React.FC = () => {
     );
   }
 
+  // Show loading state
   if (loading) {
     return (
       <PageContainer activePage="library" simplifiedFooter={true}>
@@ -320,6 +387,7 @@ const RouteDetailPage: React.FC = () => {
     );
   }
 
+  // Show error state
   if (error || !route) {
     return (
       <PageContainer activePage="library" simplifiedFooter={true}>
@@ -328,7 +396,11 @@ const RouteDetailPage: React.FC = () => {
             <div className="bg-red-50 p-6 rounded-lg text-center">
               <h3 className="text-red-600 font-medium mb-2">Error Loading Route</h3>
               <p className="text-red-500 mb-4">{error || 'Route not found'}</p>
-              <Button variant="outline" onClick={() => navigate('/library/routes')}>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">Route ID: {id}</p>
+                <p className="text-sm text-gray-600">Available routes: {routes.length}</p>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/library/routes')} className="mt-4">
                 Back to Routes
               </Button>
             </div>
@@ -340,7 +412,7 @@ const RouteDetailPage: React.FC = () => {
 
   return (
     <PageContainer activePage="library" simplifiedFooter={true}>
-      {/* Route Header - Similar to CollectionDetailPage */}
+      {/* Route Header */}
       <section className="relative bg-gradient-to-br from-green-600 to-green-700 text-white py-6 px-4 overflow-hidden">
         {/* Decorative background */}
         <div className="absolute inset-0 opacity-10">
@@ -403,6 +475,22 @@ const RouteDetailPage: React.FC = () => {
             
             <div className="flex gap-2">
               <Button 
+                variant={isFavorite ? "default" : "outline"}
+                size="sm"
+                onClick={handleToggleFavorite}
+                className={isFavorite 
+                  ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-400" 
+                  : "bg-white/10 text-white border-white/20 hover:bg-white/20"}
+                disabled={isLoading}
+              >
+                <Star 
+                  size={16} 
+                  className={`mr-2 ${isFavorite ? "fill-current" : ""}`} 
+                />
+                {isFavorite ? "Favorited" : "Favorite"}
+              </Button>
+              
+              <Button 
                 variant="outline"
                 size="sm"
                 onClick={() => {
@@ -432,7 +520,7 @@ const RouteDetailPage: React.FC = () => {
                     <Edit size={16} className="mr-2" />
                     Edit Route
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDuplicateRoute}>
+                  <DropdownMenuItem onClick={handleDuplicateRoute} disabled={isLoading}>
                     <Copy size={16} className="mr-2" />
                     Duplicate Route
                   </DropdownMenuItem>
@@ -475,6 +563,12 @@ const RouteDetailPage: React.FC = () => {
             <Badge variant="outline" className="bg-white/20 text-white border-white/30">
               Private Route
             </Badge>
+
+            {isFavorite && (
+              <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+                <Star size={12} className="mr-1 fill-current" /> Favorite
+              </Badge>
+            )}
           </div>
         </div>
       </section>
@@ -635,12 +729,10 @@ const RouteDetailPage: React.FC = () => {
           isOpen={!!selectedPlaque}
           onClose={handleCloseModal}
           onFavoriteToggle={() => {
-            // Implementation for favorite toggle if needed
             toast.info('Favorite feature not implemented for route plaques');
           }}
           isFavorite={false}
           onMarkVisited={() => {
-            // Implementation for mark visited if needed
             toast.info('Visit tracking not implemented for route plaques');
           }}
           nearbyPlaques={[]}

@@ -127,12 +127,6 @@ const RouteDetailHeader: React.FC<RouteDetailHeaderProps> = ({
                   <Copy size={16} className="mr-2" />
                   Duplicate Route
                 </DropdownMenuItem>
-                {onShare && (
-                  <DropdownMenuItem onClick={onShare}>
-                    <Share size={16} className="mr-2" />
-                    Share Route
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={onDelete}
