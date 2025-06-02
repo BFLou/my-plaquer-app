@@ -39,10 +39,6 @@ export { useMarkers } from './maps/core/useMarkers';
 export { useRoute } from './maps/core/useRoute';
 export { useDistanceCircle } from './maps/core/useDistanceCircle';
 
-// Profile components
-export { default as UserCollectionsPanel } from './profile/UserCollectionsPanel';
-export { default as VisitedPlaquesPanel } from './profile/VisitedPlaquesPanel';
-
 // Error Boundary and Route components
 export { MapErrorBoundary } from './ErrorBoundary';
 export { OptimizedRoute } from './OptimizedRoute';
