@@ -210,15 +210,18 @@ export const PlaqueCard = ({
 // In src/components/plaques/PlaqueCard.tsx
 // Replace the handleQuickVisitSubmit function around line 241-258
 
+// In PlaqueCard.tsx - Replace the handleQuickVisitSubmit function
+
 const handleQuickVisitSubmit = async () => {
   setIsProcessing(true);
   try {
     await markAsVisited(plaque.id, {
-      visitedAt: visitDate.toISOString(), // ✅ Use selected date
+      visitedAt: visitDate.toISOString(),
       notes: visitNotes,
     });
     
-    if (onMarkVisited) onMarkVisited(plaque.id);
+    // FIXED: Don't call onMarkVisited callback - it causes reopening
+    // The visit state is already updated by the hook
     toast.success("Marked as visited");
     setShowQuickVisitDialog(false);
     setVisitNotes('');

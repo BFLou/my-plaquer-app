@@ -340,31 +340,36 @@ const Discover = () => {
   }, [allPlaques, isPlaqueVisited]);
 
   // NEW: Standardized visit submission handler
-  const handleVisitSubmit = async () => {
-    if (!quickVisitPlaque) return;
-    
-    setIsProcessingVisit(true);
-    try {
-      console.log('🎯 Discover submitting visit:', {
-        plaqueId: quickVisitPlaque.id,
-        selectedDate: visitDate,
-        formatted: format(visitDate, 'PPP')
-      });
+// In Discover.tsx - Replace the handleVisitSubmit function
 
-      await markAsVisited(quickVisitPlaque.id, {
-        visitedAt: visitDate.toISOString(),
-        notes: visitNotes,
-      });
-      
-      toast.success(`Marked "${quickVisitPlaque.title}" as visited on ${format(visitDate, 'PPP')}`);
-      setQuickVisitPlaque(null);
-    } catch (error) {
-      console.error("Error marking as visited:", error);
-      toast.error("Failed to mark as visited");
-    } finally {
-      setIsProcessingVisit(false);
-    }
-  };
+const handleVisitSubmit = async () => {
+  if (!quickVisitPlaque) return;
+  
+  setIsProcessingVisit(true);
+  try {
+    console.log('🎯 Discover submitting visit:', {
+      plaqueId: quickVisitPlaque.id,
+      selectedDate: visitDate,
+      formatted: format(visitDate, 'PPP')
+    });
+
+    await markAsVisited(quickVisitPlaque.id, {
+      visitedAt: visitDate.toISOString(),
+      notes: visitNotes,
+    });
+    
+    toast.success(`Marked "${quickVisitPlaque.title}" as visited on ${format(visitDate, 'PPP')}`);
+    setQuickVisitPlaque(null); // Close dialog
+    
+    // FIXED: No need to call any callbacks - the hook updates state automatically
+    
+  } catch (error) {
+    console.error("Error marking as visited:", error);
+    toast.error("Failed to mark as visited");
+  } finally {
+    setIsProcessingVisit(false);
+  }
+};
 
   // Enhanced filter handlers with proper state updates
   const handleVisitedChange = useCallback((value: boolean) => {
@@ -677,26 +682,28 @@ const Discover = () => {
         distanceFilter={distanceFilter}
       />
       
-      {/* Enhanced Plaque Detail Modal with URL state */}
-      {selectedPlaque && (
-        <PlaqueDetail
-          plaque={selectedPlaque}
-          isOpen={!!selectedPlaque}
-          onClose={handleCloseModal}
-          isFavorite={isFavorite(selectedPlaque.id)}
-          onFavoriteToggle={handleFavoriteToggle}
-          onMarkVisited={handleMarkVisited}
-          nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-          onSelectNearbyPlaque={handleSelectNearbyPlaque}
-          isMapView={urlState.view === 'map'}
-          distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
-          formatDistance={formatDistance}
-          showDistance={distanceFilter.enabled}
-          generateShareUrl={generatePlaqueUrl}
-          context="discover"
-          currentPath={location.pathname}
-        />
-      )}
+
+{/* Enhanced Plaque Detail Modal with URL state */}
+{selectedPlaque && (
+  <PlaqueDetail
+    plaque={selectedPlaque}
+    isOpen={!!selectedPlaque}
+    onClose={handleCloseModal}
+    isFavorite={isFavorite(selectedPlaque.id)}
+    onFavoriteToggle={handleFavoriteToggle}
+    // FIXED: Remove onMarkVisited prop to prevent callback loops
+    // onMarkVisited={handleMarkVisited}  // Remove this line
+    nearbyPlaques={getNearbyPlaques(selectedPlaque)}
+    onSelectNearbyPlaque={handleSelectNearbyPlaque}
+    isMapView={urlState.view === 'map'}
+    distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
+    formatDistance={formatDistance}
+    showDistance={distanceFilter.enabled}
+    generateShareUrl={generatePlaqueUrl}
+    context="discover"
+    currentPath={location.pathname}
+  />
+)}
 
       {/* NEW: Standardized Visit Dialog */}
       {quickVisitPlaque && (

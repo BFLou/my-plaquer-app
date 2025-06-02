@@ -158,29 +158,6 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
               rows={3}
             />
           </div>
-
-          {/* Rating */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Your rating:</label>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((value) => (
-                <Button
-                  key={value}
-                  variant="ghost"
-                  size="sm"
-                  className={`px-2 ${
-                    rating >= value ? 'text-amber-500' : 'text-gray-300'
-                  }`}
-                  onClick={() => handleSetRating(value)}
-                >
-                  <Star
-                    size={20}
-                    className={rating >= value ? 'fill-amber-500' : ''}
-                  />
-                </Button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <DialogFooter className="flex justify-between sm:justify-between">

@@ -196,6 +196,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
 
 // Replace handleVisitSubmit in PlaqueDetail.tsx with this:
 
+// In PlaqueDetail.tsx - Replace the handleVisitSubmit function
+
 const handleVisitSubmit = async () => {
   setIsMarkingVisited(true);
   try {
@@ -216,10 +218,9 @@ const handleVisitSubmit = async () => {
     toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
     setShowVisitDialog(false);
     
-    // Notify parent if needed
-    if (onMarkVisited) {
-      onMarkVisited(plaque.id);
-    }
+    // FIXED: Don't call onMarkVisited here - it causes the dialog to reopen
+    // The state is already updated via the markAsVisited hook
+    
   } catch (error) {
     console.error("Error marking as visited:", error);
     toast.error("Failed to mark as visited");
