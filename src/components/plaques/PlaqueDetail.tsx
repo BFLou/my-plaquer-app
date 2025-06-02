@@ -192,27 +192,41 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     setShowVisitDialog(true);
   };
 
-  const handleVisitSubmit = async () => {
-    setIsMarkingVisited(true);
-    try {
-      await markAsVisited(plaque.id, {
-        visitedAt: visitDate.toISOString(),
-        notes: visitNotes,
-      });
-      
-      if (onMarkVisited) {
-        onMarkVisited(plaque.id);
-      }
-      
-      toast.success("Plaque marked as visited");
-      setShowVisitDialog(false);
-    } catch (error) {
-      console.error("Error marking as visited:", error);
-      toast.error("Failed to mark as visited");
-    } finally {
-      setIsMarkingVisited(false);
+// In PlaqueDetail.tsx, modify handleVisitSubmit to preserve the date locally:
+
+// Replace handleVisitSubmit in PlaqueDetail.tsx with this:
+
+const handleVisitSubmit = async () => {
+  setIsMarkingVisited(true);
+  try {
+    console.log('🎯 PlaqueDetail submitting visit:', {
+      plaqueId: plaque.id,
+      selectedDate: visitDate,
+      isoString: visitDate.toISOString(),
+      formatted: format(visitDate, 'PPP')
+    });
+
+    // Call simplified markAsVisited - it handles everything
+    await markAsVisited(plaque.id, {
+      visitedAt: visitDate.toISOString(),
+      notes: visitNotes,
+    });
+    
+    // Success! The hook has already updated its state
+    toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
+    setShowVisitDialog(false);
+    
+    // Notify parent if needed
+    if (onMarkVisited) {
+      onMarkVisited(plaque.id);
     }
-  };
+  } catch (error) {
+    console.error("Error marking as visited:", error);
+    toast.error("Failed to mark as visited");
+  } finally {
+    setIsMarkingVisited(false);
+  }
+};
 
   const handleAddToCollection = () => {
     setShowAddToCollection(true);

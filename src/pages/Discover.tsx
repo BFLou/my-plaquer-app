@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Enhanced with modal URL state management
+// src/pages/Discover.tsx - Enhanced with standardized visit functionality
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -9,6 +9,11 @@ import { PlaqueListItem } from "@/components/plaques/PlaqueListItem";
 import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Pagination from '@/components/plaques/Pagination';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';
@@ -20,6 +25,8 @@ import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
+import { format } from 'date-fns';
+import { Calendar } from 'lucide-react';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
@@ -100,6 +107,13 @@ const Discover = () => {
   const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // NEW: Standardized visit dialog state
+  const [quickVisitPlaque, setQuickVisitPlaque] = useState(null);
+  const [visitDate, setVisitDate] = useState(new Date());
+  const [visitNotes, setVisitNotes] = useState('');
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [isProcessingVisit, setIsProcessingVisit] = useState(false);
 
   // Distance filter state - shared across all views
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>({
@@ -314,24 +328,43 @@ const Discover = () => {
     toggleFavorite(id);
   }, [toggleFavorite]);
 
-  const handleMarkVisited = useCallback(async (id) => {
-    console.log('Mark visited for plaque:', id);
+  // NEW: Standardized mark visited handler
+  const handleMarkVisited = useCallback((id) => {
+    console.log('Opening visit dialog for plaque:', id);
+    const plaque = allPlaques.find(p => p.id === id);
+    if (plaque && !isPlaqueVisited(id)) {
+      setQuickVisitPlaque(plaque);
+      setVisitDate(new Date()); // Reset to today
+      setVisitNotes(''); // Clear notes
+    }
+  }, [allPlaques, isPlaqueVisited]);
+
+  // NEW: Standardized visit submission handler
+  const handleVisitSubmit = async () => {
+    if (!quickVisitPlaque) return;
+    
+    setIsProcessingVisit(true);
     try {
-      await markAsVisited(id, {
-        visitedAt: new Date().toISOString(),
-        notes: '',
+      console.log('🎯 Discover submitting visit:', {
+        plaqueId: quickVisitPlaque.id,
+        selectedDate: visitDate,
+        formatted: format(visitDate, 'PPP')
+      });
+
+      await markAsVisited(quickVisitPlaque.id, {
+        visitedAt: visitDate.toISOString(),
+        notes: visitNotes,
       });
       
-      setAllPlaques(prev => prev.map(p => 
-        p.id === id ? { ...p, visited: true } : p
-      ));
-      
-      toast.success("Marked as visited");
+      toast.success(`Marked "${quickVisitPlaque.title}" as visited on ${format(visitDate, 'PPP')}`);
+      setQuickVisitPlaque(null);
     } catch (error) {
       console.error("Error marking as visited:", error);
       toast.error("Failed to mark as visited");
+    } finally {
+      setIsProcessingVisit(false);
     }
-  }, [markAsVisited]);
+  };
 
   // Enhanced filter handlers with proper state updates
   const handleVisitedChange = useCallback((value: boolean) => {
@@ -663,6 +696,85 @@ const Discover = () => {
           context="discover"
           currentPath={location.pathname}
         />
+      )}
+
+      {/* NEW: Standardized Visit Dialog */}
+      {quickVisitPlaque && (
+        <Dialog open={!!quickVisitPlaque} onOpenChange={() => setQuickVisitPlaque(null)}>
+          <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle>Mark "{quickVisitPlaque.title}" as Visited</DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="visit-date">Visit Date</Label>
+                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="visit-date"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {format(visitDate, "PPP")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={visitDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setVisitDate(date);
+                          setShowCalendar(false);
+                        }
+                      }}
+                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="visit-notes">Notes (optional)</Label>
+                <Textarea
+                  id="visit-notes"
+                  placeholder="Any thoughts about your visit?"
+                  value={visitNotes}
+                  onChange={(e) => setVisitNotes(e.target.value)}
+                  rows={3}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setQuickVisitPlaque(null)}
+                disabled={isProcessingVisit}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleVisitSubmit}
+                disabled={isProcessingVisit}
+              >
+                {isProcessingVisit ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
+                    Saving...
+                  </>
+                ) : (
+                  'Mark as Visited'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </PageContainer>
   );

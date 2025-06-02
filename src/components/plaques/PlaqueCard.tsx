@@ -207,27 +207,29 @@ export const PlaqueCard = ({
     setShowDropdown(false);
   };
 
-  // Quick visit form submission
-  const handleQuickVisitSubmit = async () => {
-    setIsProcessing(true);
-    try {
-      await markAsVisited(plaque.id, {
-        visitedAt: visitDate.toISOString(),
-        notes: visitNotes,
-      });
-      
-      if (onMarkVisited) onMarkVisited(plaque.id);
-      toast.success("Marked as visited");
-      setShowQuickVisitDialog(false);
-      setVisitNotes('');
-      setVisitDate(new Date());
-    } catch (error) {
-      console.error("Error marking as visited:", error);
-      toast.error("Failed to mark as visited");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+// In src/components/plaques/PlaqueCard.tsx
+// Replace the handleQuickVisitSubmit function around line 241-258
+
+const handleQuickVisitSubmit = async () => {
+  setIsProcessing(true);
+  try {
+    await markAsVisited(plaque.id, {
+      visitedAt: visitDate.toISOString(), // ✅ Use selected date
+      notes: visitNotes,
+    });
+    
+    if (onMarkVisited) onMarkVisited(plaque.id);
+    toast.success("Marked as visited");
+    setShowQuickVisitDialog(false);
+    setVisitNotes('');
+    setVisitDate(new Date());
+  } catch (error) {
+    console.error("Error marking as visited:", error);
+    toast.error("Failed to mark as visited");
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // Delete visit confirmation
   const handleConfirmDeleteVisit = async () => {
