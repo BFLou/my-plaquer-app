@@ -1,4 +1,4 @@
-// src/pages/SignInPage.tsx
+// src/pages/SignInPage.tsx - Complete enhanced with navigation restoration
 import React, { useState } from 'react';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthGate } from '@/hooks/useAuthGate';
 import { toast } from 'sonner';
 
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signInWithGoogle } = useAuth();
+  const { restoreNavigation } = useAuthGate();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -43,7 +45,10 @@ const SignInPage: React.FC = () => {
     try {
       await signIn(formData.email, formData.password);
       toast.success('Welcome back!');
-      navigate(redirectTo);
+      
+      // Try to restore navigation context, otherwise use redirect
+      const restoredUrl = restoreNavigation();
+      navigate(restoredUrl || redirectTo);
     } catch (err: any) {
       setError(err.message || 'Failed to sign in. Please check your credentials.');
     } finally {
@@ -58,7 +63,10 @@ const SignInPage: React.FC = () => {
     try {
       await signInWithGoogle();
       toast.success('Welcome back!');
-      navigate(redirectTo);
+      
+      // Try to restore navigation context, otherwise use redirect
+      const restoredUrl = restoreNavigation();
+      navigate(restoredUrl || redirectTo);
     } catch (err: any) {
       setError(err.message || 'Failed to sign in with Google.');
       setIsLoading(false);
@@ -66,11 +74,17 @@ const SignInPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigate(backTo);
+    // Try to restore navigation context first
+    const restoredUrl = restoreNavigation();
+    if (restoredUrl) {
+      navigate(restoredUrl);
+    } else {
+      navigate(backTo);
+    }
   };
 
   const handleCreateAccount = () => {
-    navigate('/auth-required', { 
+    navigate('/join', { 
       state: { 
         redirectTo,
         backTo 

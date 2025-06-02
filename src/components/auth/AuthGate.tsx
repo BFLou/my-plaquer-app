@@ -1,12 +1,13 @@
-// src/components/auth/AuthGate.tsx - COMPLETE FIXED
-import React, { useState } from 'react';
+// src/components/auth/AuthGate.tsx - Enhanced with context support and navigation restoration
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, X, MapPin, FolderOpen, Route, Star, Check, Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthGate } from '@/hooks/useAuthGate';
 import { toast } from 'sonner';
 import AccountLinkingModal from './AccountLinkingModal';
 import AuthErrorDisplay from './AuthErrorDisplay';
@@ -18,15 +19,26 @@ interface AuthGateProps {
   redirectTo?: string;
   /** Where the back button should go */
   backTo?: string;
+  /** Context for the auth gate (affects messaging and flow) */
+  context?: 'favorites' | 'visits' | 'collections' | 'library' | 'routes' | 'profile' | 'settings' | 'general';
 }
 
 const AuthGate: React.FC<AuthGateProps> = ({ 
   featureName = "advanced features",
   redirectTo = "/library", 
-  backTo = "/discover"
+  backTo = "/discover",
+  context = "general"
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register, signInWithGoogle } = useAuth();
+  const { restoreNavigation, clearStoredData } = useAuthGate();
+  
+  // Get state from navigation (if passed via navigate state)
+  const navigationState = location.state as any;
+  const finalFeatureName = navigationState?.featureName || featureName;
+  const finalRedirectTo = navigationState?.redirectTo || redirectTo;
+  const finalBackTo = navigationState?.backTo || backTo;
   
   const [formData, setFormData] = useState({
     displayName: '',
@@ -46,8 +58,25 @@ const AuthGate: React.FC<AuthGateProps> = ({
     suggestedAction: 'google' | 'signin' | 'signin-then-link';
   } | null>(null);
 
+  // Clean up stored data when component unmounts
+  useEffect(() => {
+    return () => {
+      // Don't clear if user successfully authenticated (will be handled by PendingActionHandler)
+      // Only clear if user navigates away without authenticating
+    };
+  }, []);
+
   const handleBack = () => {
-    navigate(backTo);
+    // Try to restore navigation context first
+    const restoredUrl = restoreNavigation();
+    if (restoredUrl) {
+      navigate(restoredUrl);
+    } else {
+      navigate(finalBackTo);
+    }
+    
+    // Clear stored data when going back without authenticating
+    clearStoredData();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +119,10 @@ const AuthGate: React.FC<AuthGateProps> = ({
     try {
       await register(formData.email, formData.password, formData.displayName);
       toast.success('Account created successfully! Welcome to Plaquer.');
-      navigate(redirectTo);
+      
+      // Try to restore navigation context, otherwise use redirect
+      const restoredUrl = restoreNavigation();
+      navigate(restoredUrl || finalRedirectTo);
     } catch (err: any) {
       console.error('Registration error:', err);
       
@@ -118,7 +150,10 @@ const AuthGate: React.FC<AuthGateProps> = ({
     try {
       await signInWithGoogle();
       toast.success('Account created successfully! Welcome to Plaquer.');
-      navigate(redirectTo);
+      
+      // Try to restore navigation context, otherwise use redirect
+      const restoredUrl = restoreNavigation();
+      navigate(restoredUrl || finalRedirectTo);
     } catch (err: any) {
       console.error('Google registration error:', err);
       
@@ -141,13 +176,12 @@ const AuthGate: React.FC<AuthGateProps> = ({
   const handleSignIn = () => {
     navigate('/signin', {
       state: {
-        redirectTo,
-        backTo
+        redirectTo: finalRedirectTo,
+        backTo: finalBackTo
       }
     });
   };
 
-  // FIXED: Add the missing function
   const handleLinkingClose = () => {
     setShowLinkingModal(false);
     setLinkingData(null);
@@ -157,36 +191,163 @@ const AuthGate: React.FC<AuthGateProps> = ({
     setShowLinkingModal(false);
     setLinkingData(null);
     toast.success('Welcome to Plaquer!');
-    navigate(redirectTo);
+    
+    // Try to restore navigation context, otherwise use redirect
+    const restoredUrl = restoreNavigation();
+    navigate(restoredUrl || finalRedirectTo);
   };
 
   // Helper function to handle password reset
   const handlePasswordReset = (email: string) => {
-    navigate('/forgot-password', { state: { email, redirectTo, backTo } });
+    navigate('/forgot-password', { state: { email, redirectTo: finalRedirectTo, backTo: finalBackTo } });
   };
 
-  const features = [
-    {
-      icon: <Star className="text-amber-600" size={18} />,
-      title: "Save favorites",
-      description: "Keep track of your most interesting finds"
-    },
-    {
-      icon: <MapPin className="text-blue-600" size={18} />,
-      title: "Track your visits",
-      description: "Remember every plaque you've discovered"
-    },
-    {
-      icon: <FolderOpen className="text-purple-600" size={18} />,
-      title: "Create collections",
-      description: "Organize plaques by theme or location"
-    },
-    {
-      icon: <Route className="text-green-600" size={18} />,
-      title: "Plan walking routes", 
-      description: "Connect multiple plaques in custom routes"
+  // Get context-specific features and messaging
+  const getContextFeatures = () => {
+    switch (context) {
+      case 'favorites':
+        return [
+          {
+            icon: <Star className="text-amber-600" size={18} />,
+            title: "Save favorites",
+            description: "Keep track of your most interesting finds"
+          },
+          {
+            icon: <Check className="text-green-600" size={18} />,
+            title: "Quick access",
+            description: "Access your favorites from any device"
+          },
+          {
+            icon: <Eye className="text-blue-600" size={18} />,
+            title: "Track discoveries",
+            description: "See which plaques you've bookmarked"
+          }
+        ];
+      
+      case 'visits':
+        return [
+          {
+            icon: <Check className="text-green-600" size={18} />,
+            title: "Track your visits",
+            description: "Remember every plaque you've discovered"
+          },
+          {
+            icon: <MapPin className="text-blue-600" size={18} />,
+            title: "Location history",
+            description: "See where you've been on the map"
+          },
+          {
+            icon: <Star className="text-amber-600" size={18} />,
+            title: "Add notes",
+            description: "Record memories from your visits"
+          }
+        ];
+      
+      case 'collections':
+        return [
+          {
+            icon: <FolderOpen className="text-purple-600" size={18} />,
+            title: "Create collections",
+            description: "Organize plaques by theme or location"
+          },
+          {
+            icon: <Star className="text-amber-600" size={18} />,
+            title: "Curate themes",
+            description: "Group plaques by interests or areas"
+          },
+          {
+            icon: <Eye className="text-blue-600" size={18} />,
+            title: "Share discoveries",
+            description: "Show friends your themed collections"
+          }
+        ];
+      
+      case 'routes':
+        return [
+          {
+            icon: <Route className="text-green-600" size={18} />,
+            title: "Plan walking routes",
+            description: "Connect multiple plaques in custom routes"
+          },
+          {
+            icon: <MapPin className="text-blue-600" size={18} />,
+            title: "Navigate easily",
+            description: "Get directions between plaque locations"
+          },
+          {
+            icon: <Star className="text-amber-600" size={18} />,
+            title: "Save for later",
+            description: "Access your routes anytime"
+          }
+        ];
+      
+      case 'library':
+        return [
+          {
+            icon: <FolderOpen className="text-purple-600" size={18} />,
+            title: "Personal library",
+            description: "All your collections in one place"
+          },
+          {
+            icon: <Check className="text-green-600" size={18} />,
+            title: "Visit tracking",
+            description: "See your exploration progress"
+          },
+          {
+            icon: <Route className="text-green-600" size={18} />,
+            title: "Route planning",
+            description: "Create and manage walking routes"
+          }
+        ];
+      
+      default:
+        return [
+          {
+            icon: <Star className="text-amber-600" size={18} />,
+            title: "Save favorites",
+            description: "Keep track of your most interesting finds"
+          },
+          {
+            icon: <MapPin className="text-blue-600" size={18} />,
+            title: "Track your visits",
+            description: "Remember every plaque you've discovered"
+          },
+          {
+            icon: <FolderOpen className="text-purple-600" size={18} />,
+            title: "Create collections",
+            description: "Organize plaques by theme or location"
+          },
+          {
+            icon: <Route className="text-green-600" size={18} />,
+            title: "Plan walking routes",
+            description: "Connect multiple plaques in custom routes"
+          }
+        ];
     }
-  ];
+  };
+
+  const features = getContextFeatures();
+
+  const getContextTitle = () => {
+    switch (context) {
+      case 'favorites':
+        return 'Start Saving Favorites';
+      case 'visits':
+        return 'Start Tracking Visits';
+      case 'collections':
+        return 'Start Creating Collections';
+      case 'routes':
+        return 'Start Planning Routes';
+      case 'library':
+        return 'Access Your Library';
+      case 'profile':
+        return 'Manage Your Profile';
+      case 'settings':
+        return 'Access Settings';
+      default:
+        return 'Unlock More Features';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -209,13 +370,13 @@ const AuthGate: React.FC<AuthGateProps> = ({
             >
               <ArrowLeft size={18} />
             </Button>
-            <span className="text-white/80 text-sm">Back to Discover</span>
+            <span className="text-white/80 text-sm">Back</span>
           </div>
 
           <div>
-            <h1 className="text-3xl font-bold mb-2">Unlock More Features</h1>
+            <h1 className="text-3xl font-bold mb-2">{getContextTitle()}</h1>
             <p className="opacity-90 mt-1">
-              Create a free account to unlock all features and start building your personal collection of London's historic plaques
+              Create a free account to {finalFeatureName} and start building your personal collection of London's historic plaques
             </p>
           </div>
         </div>
@@ -235,7 +396,7 @@ const AuthGate: React.FC<AuthGateProps> = ({
               </p>
             </div>
 
-            {/* Features list - more compact */}
+            {/* Features list - context-specific */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-1 gap-3">
               {features.map((feature, index) => (
                 <div key={index} className="flex items-start gap-3 p-3 bg-white rounded-lg shadow-sm">
