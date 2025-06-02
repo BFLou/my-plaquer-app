@@ -1,13 +1,10 @@
-// src/pages/RouteDetailPage.tsx - Fixed with proper route loading
+// src/pages/RouteDetailPage.tsx - FIXED: Simplified and more robust
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
   MapPin, 
-  List as ListIcon, 
-  Map as MapIcon,
   Navigation,
   Download,
-  Share,
   Clock,
   Trash2,
   ArrowLeft,
@@ -59,7 +56,7 @@ const RouteDetailPage: React.FC = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { routes, updateRoute, deleteRoute, duplicateRoute, getRoute } = useRoutes();
+  const { routes, updateRoute, deleteRoute, duplicateRoute } = useRoutes();
   
   // Modal plaque from URL
   const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
@@ -75,28 +72,12 @@ const RouteDetailPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mapError, setMapError] = useState(false);
 
-  // Handle modal plaque from URL
+  // FIXED: Simplified route loading
   useEffect(() => {
-    if (modalPlaqueId && routePlaques.length > 0) {
-      const plaque = routePlaques.find(p => p.id === modalPlaqueId);
-      if (plaque) {
-        console.log('Opening modal for plaque from URL:', plaque.title);
-        setSelectedPlaque(plaque);
-      } else {
-        // Plaque not found in route, clear URL param
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('plaque');
-        setSearchParams(newParams, { replace: true });
-      }
-    } else if (!modalPlaqueId) {
-      setSelectedPlaque(null);
-    }
-  }, [modalPlaqueId, routePlaques, searchParams, setSearchParams]);
-
-  // Load route data - FIXED: Better route loading logic
-  useEffect(() => {
-    const loadRoute = async () => {
+    const loadRouteData = async () => {
       if (!id || !user) {
         setError('Route ID or user not available');
         setLoading(false);
@@ -108,53 +89,26 @@ const RouteDetailPage: React.FC = () => {
         setError(null);
         
         console.log('Loading route with ID:', id);
-        console.log('Available routes:', routes);
         
-        // First try to find route in already loaded routes
-        let routeData = routes.find(r => r.id === id);
+        // SIMPLIFIED: Just find in existing routes first
+        const existingRoute = routes.find(r => r.id === id);
         
-        // If not found in loaded routes, try to fetch it directly
-        if (!routeData) {
-          console.log('Route not found in loaded routes, fetching directly...');
-          routeData = await getRoute(id);
-        }
-        
-        if (!routeData) {
-          console.error('Route not found');
+        if (existingRoute) {
+          console.log('Found route in existing data:', existingRoute);
+          setRoute(existingRoute);
+          setIsFavorite(existingRoute.is_favorite || false);
+          
+          // Load plaque data
+          await loadRoutePlaques(existingRoute);
+          setLoading(false);
+        } else if (routes.length > 0) {
+          // Routes are loaded but route not found
+          console.log('Route not found in loaded routes');
           setError('Route not found');
           setLoading(false);
-          return;
         }
-
-        console.log('Route loaded successfully:', routeData);
-        setRoute(routeData);
-        setIsFavorite(routeData.is_favorite || false);
-
-        // Get plaque details for route points
-        if (routeData.points && routeData.points.length > 0) {
-          try {
-            // Load plaque data
-            const adaptedPlaques = adaptPlaquesData(plaqueData);
-            
-            const plaqueIds = routeData.points.map(point => point.plaque_id);
-            const matchedPlaques = adaptedPlaques.filter(plaque => 
-              plaqueIds.includes(plaque.id)
-            ).map(plaque => ({
-              ...plaque,
-              // Add order from route points
-              order: routeData.points.find(p => p.plaque_id === plaque.id)?.order || 0
-            })).sort((a, b) => a.order - b.order);
-            
-            console.log('Matched plaques:', matchedPlaques);
-            setRoutePlaques(matchedPlaques);
-          } catch (plaqueError) {
-            console.error('Error loading plaque data:', plaqueError);
-            // Continue without plaque data
-            setRoutePlaques([]);
-          }
-        }
-
-        setLoading(false);
+        // If routes array is empty, the useRoutes hook is still loading
+        
       } catch (err) {
         console.error('Error loading route:', err);
         setError('Failed to load route');
@@ -162,61 +116,57 @@ const RouteDetailPage: React.FC = () => {
       }
     };
 
-    // Only load if we have required data
-    if (id && user) {
-      loadRoute();
-    }
-  }, [id, user, routes, getRoute]);
+    loadRouteData();
+  }, [id, user, routes]);
 
-  // ENHANCED: Plaque click handler with proper context
-  const handlePlaqueClick = useCallback((plaque) => {
-    console.log('Plaque clicked in route:', plaque.title);
-    
-    if (!route) {
-      console.warn('No route available for context');
-      return;
+  // Separate function to load route plaques
+  const loadRoutePlaques = async (routeData) => {
+    try {
+      if (routeData.points && routeData.points.length > 0) {
+        const adaptedPlaques = adaptPlaquesData(plaqueData);
+        const plaqueIds = routeData.points.map(point => point.plaque_id);
+        
+        const matchedPlaques = adaptedPlaques
+          .filter(plaque => plaqueIds.includes(plaque.id))
+          .map(plaque => ({
+            ...plaque,
+            order: routeData.points.find(p => p.plaque_id === plaque.id)?.order || 0
+          }))
+          .sort((a, b) => a.order - b.order);
+        
+        console.log('Loaded route plaques:', matchedPlaques.length);
+        setRoutePlaques(matchedPlaques);
+      }
+    } catch (error) {
+      console.error('Error loading plaque data:', error);
+      setRoutePlaques([]);
     }
-    
-    // Calculate progress information
-    const plaqueIndex = routePlaques.findIndex(p => p.id === plaque.id);
-    const progress = plaqueIndex >= 0 ? `${plaqueIndex + 1} of ${routePlaques.length}` : undefined;
-    
-    // Navigate with proper route context
-    navigateToPlaqueWithContext(navigate, plaque.id, {
-      from: 'route',
-      routeId: route.id,
-      routeName: route.name,
-      progress: progress
-    });
-  }, [navigate, route, routePlaques]);
+  };
 
-  // ENHANCED: Modal close handler with context preservation
-  const handleCloseModal = useCallback(() => {
-    console.log('Closing plaque modal in route');
-    setSelectedPlaque(null);
-    
-    // Remove plaque parameter but keep route context
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete('plaque');
-    
-    // Ensure route context is preserved
-    if (route) {
-      newParams.set('from', 'route');
-      newParams.set('route', route.id);
-      newParams.set('routeName', route.name);
+  // Handle modal plaque from URL
+  useEffect(() => {
+    if (modalPlaqueId && routePlaques.length > 0) {
+      const plaque = routePlaques.find(p => p.id === modalPlaqueId);
+      if (plaque) {
+        setSelectedPlaque(plaque);
+      } else {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('plaque');
+        setSearchParams(newParams, { replace: true });
+      }
+    } else if (!modalPlaqueId) {
+      setSelectedPlaque(null);
     }
-    
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams, route]);
+  }, [modalPlaqueId, routePlaques, searchParams, setSearchParams]);
 
-  // Handle toggle favorite
+  // FIXED: Safer action handlers with error boundaries
   const handleToggleFavorite = async () => {
     if (!route) return;
 
     try {
       setIsLoading(true);
+      setDropdownOpen(false); // Close dropdown
       
-      // Update the route with new favorite status
       const updatedRoute = await updateRoute(route.id, {
         is_favorite: !isFavorite
       });
@@ -238,7 +188,52 @@ const RouteDetailPage: React.FC = () => {
     }
   };
 
-  // Handle route update
+  const handleEditRoute = () => {
+    setDropdownOpen(false);
+    setEditFormOpen(true);
+  };
+
+  const handleDuplicateRoute = async () => {
+    if (!route) return;
+    
+    try {
+      setIsLoading(true);
+      setDropdownOpen(false);
+      
+      const duplicatedRoute = await duplicateRoute(route);
+      
+      if (duplicatedRoute) {
+        toast.success('Route duplicated successfully');
+        navigate(`/library/routes/${duplicatedRoute.id}`);
+      }
+    } catch (error) {
+      console.error('Error duplicating route:', error);
+      toast.error('Failed to duplicate route');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteRoute = async () => {
+    if (!route) return;
+
+    try {
+      setIsLoading(true);
+      const success = await deleteRoute(route.id);
+      
+      if (success) {
+        toast.success('Route deleted successfully');
+        navigate('/library/routes');
+      }
+    } catch (error) {
+      console.error('Error deleting route:', error);
+      toast.error('Failed to delete route');
+    } finally {
+      setIsLoading(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   const handleUpdateRoute = async (data) => {
     if (!route) return;
 
@@ -267,68 +262,32 @@ const RouteDetailPage: React.FC = () => {
     }
   };
 
-  // Handle route deletion
-  const handleDeleteRoute = async () => {
-    if (!route) return;
-
-    try {
-      setIsLoading(true);
-      const success = await deleteRoute(route.id);
-      
-      if (success) {
-        toast.success('Route deleted successfully');
-        navigate('/library/routes');
-      }
-    } catch (error) {
-      console.error('Error deleting route:', error);
-      toast.error('Failed to delete route');
-    } finally {
-      setIsLoading(false);
-      setDeleteDialogOpen(false);
-    }
-  };
-
-  // Handle route duplication
-  const handleDuplicateRoute = async () => {
-    if (!route) return;
-    
-    try {
-      setIsLoading(true);
-      
-      const duplicatedRoute = await duplicateRoute(route);
-      
-      if (duplicatedRoute) {
-        toast.success('Route duplicated successfully');
-        navigate(`/library/routes/${duplicatedRoute.id}`);
-      }
-    } catch (error) {
-      console.error('Error duplicating route:', error);
-      toast.error('Failed to duplicate route');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle route export
+  // Export and share handlers
   const handleExportRoute = () => {
-    if (!route || !routePlaques.length) return;
+    setDropdownOpen(false);
+    
+    if (!route || !routePlaques.length) {
+      toast.error('No route data to export');
+      return;
+    }
 
-    // Create GPX data
-    const gpxData = generateGPX(route, routePlaques);
-    
-    // Download as file
-    const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${route.name.replace(/\s+/g, '-').toLowerCase()}.gpx`;
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    toast.success('Route exported as GPX file');
+    try {
+      const gpxData = generateGPX(route, routePlaques);
+      const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${route.name.replace(/\s+/g, '-').toLowerCase()}.gpx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      toast.success('Route exported as GPX file');
+    } catch (error) {
+      console.error('Error exporting route:', error);
+      toast.error('Failed to export route');
+    }
   };
 
-  // Copy URL to clipboard
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -339,7 +298,6 @@ const RouteDetailPage: React.FC = () => {
     }
   };
 
-  // Generate GPX file content
   const generateGPX = (route, plaques) => {
     const waypoints = plaques.map(plaque => `
     <wpt lat="${plaque.latitude}" lon="${plaque.longitude}">
@@ -357,7 +315,42 @@ const RouteDetailPage: React.FC = () => {
 </gpx>`;
   };
 
-  // Show authentication required
+  // Plaque handlers
+  const handlePlaqueClick = useCallback((plaque) => {
+    if (!route) return;
+    
+    const plaqueIndex = routePlaques.findIndex(p => p.id === plaque.id);
+    const progress = plaqueIndex >= 0 ? `${plaqueIndex + 1} of ${routePlaques.length}` : undefined;
+    
+    navigateToPlaqueWithContext(navigate, plaque.id, {
+      from: 'route',
+      routeId: route.id,
+      routeName: route.name,
+      progress: progress
+    });
+  }, [navigate, route, routePlaques]);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedPlaque(null);
+    
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('plaque');
+    
+    if (route) {
+      newParams.set('from', 'route');
+      newParams.set('route', route.id);
+      newParams.set('routeName', route.name);
+    }
+    
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams, route]);
+
+  // Handle map error
+  const handleMapError = () => {
+    setMapError(true);
+  };
+
+  // Auth check
   if (!user) {
     return (
       <PageContainer activePage="library" simplifiedFooter={true}>
@@ -373,7 +366,7 @@ const RouteDetailPage: React.FC = () => {
     );
   }
 
-  // Show loading state
+  // Loading state
   if (loading) {
     return (
       <PageContainer activePage="library" simplifiedFooter={true}>
@@ -387,7 +380,7 @@ const RouteDetailPage: React.FC = () => {
     );
   }
 
-  // Show error state
+  // Error state
   if (error || !route) {
     return (
       <PageContainer activePage="library" simplifiedFooter={true}>
@@ -396,10 +389,6 @@ const RouteDetailPage: React.FC = () => {
             <div className="bg-red-50 p-6 rounded-lg text-center">
               <h3 className="text-red-600 font-medium mb-2">Error Loading Route</h3>
               <p className="text-red-500 mb-4">{error || 'Route not found'}</p>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">Route ID: {id}</p>
-                <p className="text-sm text-gray-600">Available routes: {routes.length}</p>
-              </div>
               <Button variant="outline" onClick={() => navigate('/library/routes')} className="mt-4">
                 Back to Routes
               </Button>
@@ -414,7 +403,6 @@ const RouteDetailPage: React.FC = () => {
     <PageContainer activePage="library" simplifiedFooter={true}>
       {/* Route Header */}
       <section className="relative bg-gradient-to-br from-green-600 to-green-700 text-white py-6 px-4 overflow-hidden">
-        {/* Decorative background */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-white"></div>
           <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
@@ -504,7 +492,8 @@ const RouteDetailPage: React.FC = () => {
                 Share
               </Button>
               
-              <DropdownMenu>
+              {/* FIXED: Better dropdown with error handling */}
+              <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="outline"
@@ -515,23 +504,40 @@ const RouteDetailPage: React.FC = () => {
                     <MoreVertical size={16} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setEditFormOpen(true)}>
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-48 z-[9999]"
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                >
+                  <DropdownMenuItem 
+                    onClick={handleEditRoute}
+                    disabled={isLoading}
+                  >
                     <Edit size={16} className="mr-2" />
                     Edit Route
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDuplicateRoute} disabled={isLoading}>
+                  <DropdownMenuItem 
+                    onClick={handleDuplicateRoute} 
+                    disabled={isLoading}
+                  >
                     <Copy size={16} className="mr-2" />
                     Duplicate Route
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportRoute}>
+                  <DropdownMenuItem 
+                    onClick={handleExportRoute}
+                    disabled={isLoading}
+                  >
                     <Download size={16} className="mr-2" />
                     Export GPX
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
-                    onClick={() => setDeleteDialogOpen(true)}
-                    className="text-red-600 hover:text-red-700"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setDeleteDialogOpen(true);
+                    }}
+                    className="text-red-600 hover:text-red-700 focus:text-red-700"
+                    disabled={isLoading}
                   >
                     <Trash2 size={16} className="mr-2" />
                     Delete Route
@@ -550,12 +556,6 @@ const RouteDetailPage: React.FC = () => {
           
           {/* Route metadata */}
           <div className="flex flex-wrap items-center gap-3">
-            {route.views && route.views > 0 && (
-              <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-                {route.views} views
-              </Badge>
-            )}
-            
             <Badge variant="outline" className="bg-white/20 text-white border-white/30">
               <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(route.updated_at)}
             </Badge>
@@ -598,7 +598,7 @@ const RouteDetailPage: React.FC = () => {
                   onClick={() => setActiveTab('map')}
                   className="gap-2"
                 >
-                  <MapIcon size={16} />
+                  <MapPin size={16} />
                   View on Map
                 </Button>
                 <Button 
@@ -627,7 +627,7 @@ const RouteDetailPage: React.FC = () => {
                   }}
                   className="gap-2"
                 >
-                  <Share size={16} />
+                  <Copy size={16} />
                   Share Route
                 </Button>
               </div>
@@ -654,11 +654,6 @@ const RouteDetailPage: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-1">
                     Visibility: <span className="font-medium">Private</span>
                   </p>
-                  {route.views && (
-                    <p className="text-sm text-gray-600 mb-1">
-                      Views: <span className="font-medium">{route.views}</span>
-                    </p>
-                  )}
                   <p className="text-sm text-gray-600">
                     Created: <span className="font-medium">{new Date(route.created_at?.toDate ? route.created_at.toDate() : route.created_at).toLocaleDateString()}</span>
                   </p>
@@ -669,16 +664,27 @@ const RouteDetailPage: React.FC = () => {
 
           <TabsContent value="map">
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="h-[600px]">
-                <RouteMapContainer
-                  route={route}
-                  plaques={routePlaques}
-                  onPlaqueClick={handlePlaqueClick}
-                  className="h-full w-full"
-                  showRoute={true}
-                  routeColor="#22c55e"
-                />
-              </div>
+              {mapError ? (
+                <div className="h-[600px] flex items-center justify-center bg-gray-50">
+                  <div className="text-center">
+                    <MapPin className="mx-auto text-gray-300 mb-4" size={48} />
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">Map Loading Error</h3>
+                    <p className="text-gray-500 mb-4">There was an issue loading the map. Please try again.</p>
+                    <Button onClick={() => setMapError(false)}>Retry</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-[600px]">
+                  <RouteMapContainer
+                    route={route}
+                    plaques={routePlaques}
+                    onPlaqueClick={handlePlaqueClick}
+                    className="h-full w-full"
+                    showRoute={true}
+                    routeColor="#22c55e"
+                  />
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -725,7 +731,7 @@ const RouteDetailPage: React.FC = () => {
         </Tabs>
       </div>
 
-      {/* Enhanced Plaque detail modal with URL state and context */}
+      {/* Plaque detail modal */}
       {selectedPlaque && (
         <PlaqueDetail
           plaque={selectedPlaque}
