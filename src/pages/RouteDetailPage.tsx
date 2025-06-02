@@ -33,7 +33,7 @@ import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import EditRouteForm from '../components/routes/EditRouteForm';
-import { MapContainer } from "../components/maps/MapContainer";
+import RouteMapContainer from "../components/maps/RouteMapContainer";
 import { RouteStats } from '../components/routes/RouteStats';
 import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import { formatTimeAgo } from '@/utils/timeUtils';
@@ -670,10 +670,13 @@ const RouteDetailPage: React.FC = () => {
           <TabsContent value="map">
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="h-[600px]">
-                <MapContainer
+                <RouteMapContainer
+                  route={route}
                   plaques={routePlaques}
                   onPlaqueClick={handlePlaqueClick}
                   className="h-full w-full"
+                  showRoute={true}
+                  routeColor="#22c55e"
                 />
               </div>
             </div>

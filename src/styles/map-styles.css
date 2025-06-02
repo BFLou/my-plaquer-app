@@ -1439,3 +1439,258 @@ _::-webkit-full-page-media, _:future, :root .map-container-fullscreen {
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* Enhanced Route Map Styles - Add to your global CSS */
+
+/* ==================== ROUTE VISUALIZATION STYLES ==================== */
+
+/* Route line animations */
+.walking-route-line {
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  filter: drop-shadow(0 2px 4px rgba(34, 197, 94, 0.3)) !important;
+  transition: stroke-width 0.2s ease !important;
+  animation: route-draw 2s ease-out forwards, route-pulse 3s ease-in-out infinite 2s;
+}
+
+.walking-route-line:hover {
+  stroke-width: 6px !important;
+}
+
+/* Route drawing animation */
+@keyframes route-draw {
+  from {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dasharray: 10, 5;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Subtle pulsing animation for route */
+@keyframes route-pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Route stop markers */
+.route-stop-marker {
+  animation: marker-bounce 0.6s ease-out forwards;
+  z-index: 1000 !important;
+}
+
+.route-stop-marker:hover {
+  transform: scale(1.1) !important;
+  z-index: 1001 !important;
+}
+
+/* Marker bounce animation */
+@keyframes marker-bounce {
+  0% {
+    transform: translateY(-50px) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(5px) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Route info overlay */
+.route-info-overlay {
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  animation: info-slide-in 0.5s ease-out forwards;
+}
+
+@keyframes info-slide-in {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Start marker special styling */
+.route-start-marker {
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3) !important;
+  animation: start-pulse 2s infinite;
+}
+
+@keyframes start-pulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+  }
+}
+
+/* End marker special styling */
+.route-end-marker {
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
+  animation: end-pulse 2s infinite 0.5s;
+}
+
+@keyframes end-pulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+  }
+}
+
+/* Waypoint marker styling */
+.route-waypoint-marker {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Loading state for route calculation */
+.route-calculating {
+  position: relative;
+}
+
+.route-calculating::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid rgba(34, 197, 94, 0.3);
+  border-top: 3px solid #22c55e;
+  border-radius: 50%;
+  animation: route-spinner 1s linear infinite;
+  z-index: 1000;
+}
+
+@keyframes route-spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced popup styling for route stops */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Route stop popup specific styling */
+.route-stop-popup {
+  min-width: 200px;
+}
+
+.route-stop-popup .stop-number {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .route-info-overlay {
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+  }
+  
+  .walking-route-line {
+    stroke-width: 5px !important;
+  }
+  
+  .route-stop-marker {
+    transform: scale(0.9) !important;
+  }
+  
+  .route-stop-marker:hover {
+    transform: scale(1.0) !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .walking-route-line {
+    stroke: #000 !important;
+    stroke-width: 6px !important;
+  }
+  
+  .route-stop-marker {
+    border: 3px solid #000 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .walking-route-line,
+  .route-stop-marker,
+  .route-info-overlay {
+    animation: none !important;
+  }
+  
+  .route-start-marker,
+  .route-end-marker {
+    animation: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .walking-route-line {
+    stroke: #000 !important;
+    stroke-width: 2px !important;
+    stroke-dasharray: none !important;
+  }
+  
+  .route-info-overlay {
+    background: white !important;
+    color: black !important;
+    border: 2px solid black !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .route-info-overlay {
+    background: rgba(17, 24, 39, 0.95) !important;
+    color: white !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .leaflet-popup-content-wrapper {
+    background: #1f2937 !important;
+    color: white !important;
+  }
+}
