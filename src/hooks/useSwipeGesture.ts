@@ -1,5 +1,5 @@
 // src/hooks/useSwipeGesture.ts
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 
 export type SwipeDirection = 'up' | 'down' | 'left' | 'right';
 
