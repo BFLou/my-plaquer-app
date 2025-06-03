@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Complete with auth gate integration and pending action handler
+// src/pages/Discover.tsx - Mobile-optimized with touch-friendly components
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -8,10 +8,13 @@ import { PlaqueCard } from "@/components/plaques/PlaqueCard";
 import { PlaqueListItem } from "@/components/plaques/PlaqueListItem";
 import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { MobileButton } from "@/components/ui/mobile-button";
+import { MobileDialog } from "@/components/ui/mobile-dialog";
+import { MobileInput } from "@/components/ui/mobile-input";
+import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
+import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MobileTextarea } from "@/components/ui/mobile-textarea";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Pagination from '@/components/plaques/Pagination';
@@ -24,12 +27,14 @@ import AddToCollectionDialog from '@/components/plaques/AddToCollectionDialog';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuthGate } from '@/hooks/useAuthGate';
+import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
 import { format } from 'date-fns';
-import { Calendar } from 'lucide-react';
+import { Calendar, Filter, MapPin, Grid, List, Search, X, Navigation } from 'lucide-react';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
@@ -46,13 +51,16 @@ const Discover = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   
+  // Mobile optimizations
+  const { isKeyboardOpen, keyboardHeight } = useKeyboardDetection();
+  
   // Auth gate integration
   const { isAuthenticated } = useAuthGate();
   
   // URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {
-      view: (searchParams.get('view') as ViewMode) || 'grid',
+      view: (searchParams.get('view') as ViewMode) || (isMobile() ? 'list' : 'grid'), // Default to list on mobile
       search: searchParams.get('search') || '',
       colors: searchParams.get('colors')?.split(',').filter(Boolean) || [],
       postcodes: searchParams.get('postcodes')?.split(',').filter(Boolean) || [],
@@ -66,7 +74,7 @@ const Discover = () => {
     return state;
   }, [searchParams]);
 
-  // URL state update function with modal support
+  // URL state update function with mobile optimization
   const updateUrlState = useCallback((updates: Partial<typeof urlState>) => {
     const newParams = new URLSearchParams(searchParams);
     
@@ -112,6 +120,7 @@ const Discover = () => {
   const [selectedPlaque, setSelectedPlaque] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Collection and route action state for pending actions
   const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState(null);
@@ -135,7 +144,6 @@ const Discover = () => {
 
   // Handle pending route action
   const handlePendingRouteAction = useCallback((routeData: any) => {
-    // This could open a save route dialog or handle the route saving
     console.log('Handle pending route action:', routeData);
     toast.success('Route ready to save! Please use the Save Route button in the route panel.');
   }, []);
@@ -327,6 +335,7 @@ const Discover = () => {
   // Enhanced event handlers with modal URL state
   const handlePlaqueClick = useCallback((plaque) => {
     console.log('Plaque clicked in Discover:', plaque.title);
+    triggerHapticFeedback('selection');
     updateUrlState({ modalPlaque: plaque.id });
   }, [updateUrlState]);
 
@@ -341,6 +350,7 @@ const Discover = () => {
   const handleVisitedChange = useCallback((value: boolean) => {
     console.log('=== VISITED CHANGE ===');
     console.log('New visited value:', value);
+    triggerHapticFeedback('light');
     updateUrlState({ onlyVisited: value });
     setCurrentPage(1);
   }, [updateUrlState]);
@@ -348,6 +358,7 @@ const Discover = () => {
   const handleFavoritesChange = useCallback((value: boolean) => {
     console.log('=== FAVORITES CHANGE ===');
     console.log('New favorites value:', value);
+    triggerHapticFeedback('light');
     updateUrlState({ onlyFavorites: value });
     setCurrentPage(1);
   }, [updateUrlState]);
@@ -355,6 +366,7 @@ const Discover = () => {
   // Reset filters including distance filter
   const resetFilters = useCallback(() => {
     console.log('Resetting all filters');
+    triggerHapticFeedback('medium');
     updateUrlState({
       search: '',
       colors: [],
@@ -391,6 +403,21 @@ const Discover = () => {
     setCurrentPage(1);
   }, []);
 
+  // View mode handler with mobile optimization
+  const handleViewModeChange = useCallback((view: ViewMode) => {
+    triggerHapticFeedback('light');
+    updateUrlState({ view });
+    
+    // Reset page when changing view modes
+    setCurrentPage(1);
+  }, [updateUrlState]);
+
+  // Search handler with mobile optimization
+  const handleSearchChange = useCallback((search: string) => {
+    updateUrlState({ search });
+    setCurrentPage(1);
+  }, [updateUrlState]);
+
   // Distance helper functions
   const getDistanceFromActiveLocation = useCallback((plaque) => {
     if (!distanceFilter.enabled || !distanceFilter.center || !plaque.latitude || !plaque.longitude) {
@@ -409,13 +436,13 @@ const Discover = () => {
     return `${distanceKm.toFixed(1)} km`;
   }, []);
 
-  // Pagination
-  const itemsPerPage = 12;
+  // Mobile-optimized pagination
+  const itemsPerPage = isMobile() ? (urlState.view === 'list' ? 8 : 6) : 12;
   const totalPages = Math.ceil(filteredPlaques.length / itemsPerPage);
   const paginatedPlaques = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredPlaques.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredPlaques, currentPage]);
+  }, [filteredPlaques, currentPage, itemsPerPage]);
 
   // Get nearby plaques for detail view
   const getNearbyPlaques = useCallback((currentPlaque) => {
@@ -428,22 +455,66 @@ const Discover = () => {
   // Handle nearby plaque selection in modal
   const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
     console.log('Selecting nearby plaque:', nearbyPlaque.title);
+    triggerHapticFeedback('selection');
     updateUrlState({ modalPlaque: nearbyPlaque.id });
   }, [updateUrlState]);
+
+  // Mobile-specific handlers
+  const handleQuickLocationAccess = () => {
+    triggerHapticFeedback('medium');
+    
+    if (navigator.geolocation) {
+      const loadingToast = toast.loading("Finding your location...");
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          toast.dismiss(loadingToast);
+          triggerHapticFeedback('success');
+          const { latitude, longitude } = position.coords;
+          
+          setDistanceFilter({
+            enabled: true,
+            center: [latitude, longitude],
+            radius: 2,
+            locationName: 'Your Location'
+          });
+          
+          // Switch to map view on mobile for better location experience
+          if (isMobile()) {
+            updateUrlState({ view: 'map' });
+          }
+          
+          toast.success('Showing plaques near you');
+        },
+        (error) => {
+          toast.dismiss(loadingToast);
+          triggerHapticFeedback('error');
+          toast.error("Could not determine your location. Please allow location access.");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000
+        }
+      );
+    } else {
+      toast.error("Geolocation is not supported by your browser");
+    }
+  };
 
   const renderContent = () => {
     if (loading) {
       return urlState.view === 'map' ? (
-        <div className="h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
+        <div className="h-[500px] md:h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
           <div className="flex flex-col items-center">
-            <div className="animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-            <p className="mt-4 text-gray-600">Loading map...</p>
+            <div className="animate-spin h-8 w-8 md:h-10 md:w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+            <p className="mt-4 text-gray-600 text-sm md:text-base">Loading map...</p>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse"></div>
+            <div key={i} className="h-48 md:h-64 bg-gray-100 rounded-lg animate-pulse"></div>
           ))}
         </div>
       );
@@ -452,7 +523,7 @@ const Discover = () => {
     if (urlState.view === 'map') {
       return (
         <div className="relative">
-          <div className="h-[650px]">
+          <div className="h-[500px] md:h-[650px]">
             <MapContainer
               plaques={filteredPlaques}
               onPlaqueClick={handlePlaqueClick}
@@ -461,7 +532,7 @@ const Discover = () => {
               distanceFilter={distanceFilter}
               isPlaqueVisited={isPlaqueVisited}
               isFavorite={isFavorite}
-              onRouteAction={handlePendingRouteAction} // Handle route saving
+              onRouteAction={handlePendingRouteAction}
             />
           </div>
         </div>
@@ -481,13 +552,17 @@ const Discover = () => {
           }
           actionButton={
             activeFiltersCount > 0 ? (
-              <Button onClick={resetFilters} variant="outline">
+              <MobileButton onClick={resetFilters} variant="outline" touchOptimized>
                 Clear Filters
-              </Button>
+              </MobileButton>
             ) : urlState.search.trim() ? (
-              <Button onClick={() => updateUrlState({ search: '' })} variant="outline">
+              <MobileButton 
+                onClick={() => updateUrlState({ search: '' })} 
+                variant="outline"
+                touchOptimized
+              >
                 Clear Search
-              </Button>
+              </MobileButton>
             ) : null
           }
         />
@@ -503,7 +578,7 @@ const Discover = () => {
     if (urlState.view === 'grid') {
       return (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {paginatedPlaques.map((plaque) => (
               <PlaqueCard
                 key={plaque.id}
@@ -516,11 +591,19 @@ const Discover = () => {
           </div>
           
           {totalPages > 1 && (
-            <div className="mt-8">
+            <div className="mt-6 md:mt-8">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={setCurrentPage}
+                onPageChange={(page) => {
+                  triggerHapticFeedback('light');
+                  setCurrentPage(page);
+                  
+                  // Scroll to top on mobile
+                  if (isMobile()) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
               />
             </div>
           )}
@@ -531,7 +614,7 @@ const Discover = () => {
     if (urlState.view === 'list') {
       return (
         <>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {paginatedPlaques.map((plaque) => (
               <PlaqueListItem
                 key={plaque.id}
@@ -544,11 +627,19 @@ const Discover = () => {
           </div>
           
           {totalPages > 1 && (
-            <div className="mt-8">
+            <div className="mt-6 md:mt-8">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={setCurrentPage}
+                onPageChange={(page) => {
+                  triggerHapticFeedback('light');
+                  setCurrentPage(page);
+                  
+                  // Scroll to top on mobile
+                  if (isMobile()) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
               />
             </div>
           )}
@@ -562,21 +653,26 @@ const Discover = () => {
       activePage="discover"
       hasFooter={urlState.view !== 'map'}
       simplifiedFooter={true}
+      paddingBottom={isKeyboardOpen ? 'none' : 'mobile-nav'}
+      className={isKeyboardOpen ? 'keyboard-open' : ''}
     >
-      {/* Pending Action Handler with both handlers */}
+      {/* Pending Action Handler */}
       <PendingActionHandler 
         onCollectionAction={handlePendingCollectionAction}
         onRouteAction={handlePendingRouteAction}
       />
       
-      {/* Header with view tabs and search */}
+      {/* Mobile-optimized Header with view tabs and search */}
       <DiscoverHeader
         viewMode={urlState.view}
-        onViewModeChange={(view) => updateUrlState({ view })}
+        onViewModeChange={handleViewModeChange}
         searchValue={urlState.search}
-        onSearchChange={(search) => updateUrlState({ search })}
+        onSearchChange={handleSearchChange}
         activeFiltersCount={activeFiltersCount}
-        onOpenFilters={() => setFiltersOpen(true)}
+        onOpenFilters={() => {
+          triggerHapticFeedback('light');
+          setFiltersOpen(true);
+        }}
       />
       
       {/* Active filters display with distance filter */}
@@ -602,27 +698,82 @@ const Discover = () => {
       />
       
       {/* Status bar */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-medium text-gray-600">
+      <div className="container mx-auto px-4 py-3 md:py-4">
+        <div className="flex justify-between items-center mb-3 md:mb-4">
+          <h2 className="text-sm md:text-base font-medium text-gray-600">
             {loading ? "Loading plaques..." : (
               <>
                 {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
                 {distanceFilter.enabled && distanceFilter.locationName && (
-                  <span className="ml-2 text-green-600">
+                  <span className="ml-2 text-green-600 text-xs md:text-sm">
                     within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
                   </span>
                 )}
               </>
             )}
           </h2>
+          
+          {/* Mobile quick actions button */}
+          {isMobile() && (
+            <MobileButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowQuickActions(true)}
+              className="text-xs"
+              touchOptimized
+            >
+              Quick Actions
+            </MobileButton>
+          )}
         </div>
         
         {/* Main Content */}
         {renderContent()}
       </div>
       
-      {/* Enhanced Filter Dialog with proper toggle handlers */}
+      {/* Floating Action Button for location access */}
+      {isMobile() && urlState.view !== 'map' && (
+        <FloatingActionButton
+          onClick={handleQuickLocationAccess}
+          icon={<Navigation size={20} />}
+          variant="default"
+        />
+      )}
+      
+      {/* Bottom Action Bar for mobile view switching */}
+      {isMobile() && urlState.view === 'map' && (
+        <BottomActionBar background="white">
+          <MobileButton
+            variant={urlState.view === 'list' ? 'default' : 'outline'}
+            onClick={() => handleViewModeChange('list')}
+            className="flex-1"
+            touchOptimized
+          >
+            <List size={16} className="mr-2" />
+            List
+          </MobileButton>
+          <MobileButton
+            variant={urlState.view === 'grid' ? 'default' : 'outline'}
+            onClick={() => handleViewModeChange('grid')}
+            className="flex-1"
+            touchOptimized
+          >
+            <Grid size={16} className="mr-2" />
+            Grid
+          </MobileButton>
+          <MobileButton
+            onClick={handleQuickLocationAccess}
+            variant="outline"
+            className="flex-1"
+            touchOptimized
+          >
+            <Navigation size={16} className="mr-2" />
+            Near Me
+          </MobileButton>
+        </BottomActionBar>
+      )}
+      
+      {/* Enhanced Filter Dialog with mobile optimization */}
       <DiscoverFilterDialog
         isOpen={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -645,15 +796,105 @@ const Discover = () => {
         onlyFavorites={urlState.onlyFavorites}
         onFavoritesChange={handleFavoritesChange}
         
-        onApply={() => setFiltersOpen(false)}
+        onApply={() => {
+          triggerHapticFeedback('light');
+          setFiltersOpen(false);
+        }}
         onReset={resetFilters}
         
-        // Pass additional props for toggle count calculations
         allPlaques={allPlaques}
         isPlaqueVisited={isPlaqueVisited}
         isFavorite={isFavorite}
         distanceFilter={distanceFilter}
       />
+      
+      {/* Mobile Quick Actions Dialog */}
+      <MobileDialog
+        isOpen={showQuickActions}
+        onClose={() => setShowQuickActions(false)}
+        title="Quick Actions"
+        size="sm"
+      >
+        <div className="p-4 space-y-3">
+          <MobileButton
+            onClick={() => {
+              setShowQuickActions(false);
+              handleQuickLocationAccess();
+            }}
+            className="w-full justify-start"
+            variant="outline"
+            touchOptimized
+          >
+            <Navigation size={16} className="mr-3" />
+            Find Plaques Near Me
+          </MobileButton>
+          
+          <MobileButton
+            onClick={() => {
+              setShowQuickActions(false);
+              setFiltersOpen(true);
+            }}
+            className="w-full justify-start"
+            variant="outline"
+            touchOptimized
+          >
+            <Filter size={16} className="mr-3" />
+            Open Filters
+          </MobileButton>
+          
+          <MobileButton
+            onClick={() => {
+              setShowQuickActions(false);
+              resetFilters();
+            }}
+            className="w-full justify-start"
+            variant="outline"
+            touchOptimized
+          >
+            <X size={16} className="mr-3" />
+            Clear All Filters
+          </MobileButton>
+          
+          <div className="border-t pt-3">
+            <p className="text-xs text-gray-500 mb-2">Switch View</p>
+            <div className="grid grid-cols-3 gap-2">
+              <MobileButton
+                variant={urlState.view === 'list' ? 'default' : 'outline'}
+                onClick={() => {
+                  setShowQuickActions(false);
+                  handleViewModeChange('list');
+                }}
+                size="sm"
+                touchOptimized
+              >
+                <List size={14} />
+              </MobileButton>
+              <MobileButton
+                variant={urlState.view === 'grid' ? 'default' : 'outline'}
+                onClick={() => {
+                  setShowQuickActions(false);
+                  handleViewModeChange('grid');
+                }}
+                size="sm"
+                touchOptimized
+              >
+                <Grid size={14} />
+              </MobileButton>
+              <MobileButton
+                variant={urlState.view === 'map' ? 'default' : 'outline'}
+                onClick={() => {
+                  setShowQuickActions(false);
+                  handleViewModeChange('map');
+                }}
+                size="sm"
+                touchOptimized
+              >
+                <MapPin size={14} />
+              </MobileButton>
+            </div>
+          </div>
+        </div>
+      </MobileDialog>
       
       {/* Enhanced Plaque Detail Modal with URL state */}
       {selectedPlaque && (
