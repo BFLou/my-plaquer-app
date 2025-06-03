@@ -5,10 +5,16 @@
  * allowing for clean imports throughout the application.
  */
 
-// Layout components
+// Layout components (including mobile navigation)
 export { NavBar } from './layout/NavBar';
 export { Footer } from './layout/Footer';
 export { PageContainer } from './layout/PageContainer';
+export { MobileNavBar } from './layout/MobileNavBar';
+export { MobileHeader } from './layout/MobileHeader';
+export { MobileBreadcrumb } from './layout/MobileBreadcrumb';
+export { FloatingActionButton } from './layout/FloatingActionButton';
+export { BottomActionBar } from './layout/BottomActionBar';
+export { SwipeableModal } from './layout/SwipeableModal';
 
 // Plaque components
 export { PlaqueCard } from './plaques/PlaqueCard';
@@ -20,9 +26,8 @@ export { default as Pagination } from './plaques/Pagination';
 
 // Collection components
 export { CollectionStats } from './collections/CollectionStats';
-// REMOVED: export { default as EmptyState } from './collections/EmptyState';
 
-// Map components - NEW SECTION
+// Map components
 export { MapContainer } from './maps/MapContainer';
 export { MapView } from './maps/MapView';
 
@@ -44,8 +49,8 @@ export { OptimizedRoute } from './OptimizedRoute';
 export { NotFoundPage } from './NotFoundPage';
 export { ScrollToTop } from './ScrollToTop';
 
-// Common components - FIXED: Use one EmptyState export
-export { EmptyState } from './common/EmptyState'; // MAIN EmptyState export
+// Common components
+export { EmptyState } from './common/EmptyState';
 export { ActionBar, type ActionBarButton } from './common/ActionBar';
 export { ViewToggle, type ViewMode } from './common/ViewToggle';
 export { FilterBar } from './common/FilterBar';
@@ -75,7 +80,16 @@ export * from './ui/textarea';
 export * from './ui/tooltip';
 export { Toaster } from './ui/sonner';
 
-// src/hooks/index.ts
+// Mobile utilities
+export { 
+  isMobile, 
+  isIOS, 
+  useMobileNavigation, 
+  triggerHapticFeedback, 
+  initMobileOptimizations 
+} from '../utils/mobileUtils';
+
+// Hooks
 export { useAuth } from '../hooks/useAuth';
 export { useCollections } from '../hooks/useCollection';
 export { useCollectionActions } from '../hooks/useCollectionActions';

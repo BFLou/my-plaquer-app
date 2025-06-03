@@ -1,0 +1,269 @@
+/* src/styles/mobile-navigation.css - Mobile navigation specific styles */
+
+/* ==================== SAFE AREA SUPPORT ==================== */
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-pl {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-pr {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ==================== MOBILE NAVIGATION BAR ==================== */
+.mobile-nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background-color: white;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-nav-item {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-item.active {
+  transform: translateY(-2px);
+}
+
+.mobile-nav-indicator {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mobile-nav-item.active .mobile-nav-indicator {
+  opacity: 1;
+}
+
+.mobile-nav-auth-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background-color: #f59e0b;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+/* ==================== MOBILE HEADER ==================== */
+.mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-header.transparent {
+  background-color: transparent;
+  border-bottom: none;
+}
+
+.mobile-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  min-height: 56px;
+}
+
+.mobile-header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-header-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-header-title h1 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-header-title p {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* ==================== FLOATING ACTION BUTTON ==================== */
+.fab {
+  position: fixed;
+  bottom: 80px; /* Above mobile nav */
+  right: 16px;
+  z-index: 40;
+  border-radius: 50%;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.fab.with-label {
+  border-radius: 24px;
+}
+
+.fab:active {
+  transform: translateY(0);
+}
+
+/* Ripple effect for FAB */
+.fab::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.fab:active::before {
+  width: 100px;
+  height: 100px;
+}
+
+/* ==================== BOTTOM ACTION BAR ==================== */
+.bottom-action-bar {
+  position: fixed;
+  bottom: 64px; /* Above mobile nav */
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+.bottom-action-bar.white {
+  background-color: white;
+  border-top: 1px solid #e5e7eb;
+}
+
+.bottom-action-bar.gray {
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.bottom-action-bar-content {
+  display: flex;
+  gap: 12px;
+}
+
+/* ==================== SWIPEABLE MODAL ==================== */
+.swipeable-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.swipeable-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  max-height: 90vh;
+  overflow: hidden;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.swipeable-modal.open {
+  transform: translateY(0);
+}
+
+.swipeable-modal-handle {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+
+.swipeable-modal-handle-bar {
+  width: 32px;
+  height: 4px;
+  background-color: #d1d5db;
+  border-radius: 2px;
+}
+
+.swipeable-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.swipeable-modal-content {
+  overflow-y: auto;
+  max-height: calc(90vh - 120px);
+}
+
+/* ==================== MOBILE BREADCRUMB ==================== */
+.mobile-breadcrumb {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-breadcrumb::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-brea

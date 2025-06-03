@@ -1,4 +1,4 @@
-// src/App.tsx - Updated with PendingActionHandler integration
+// src/App.tsx - Updated with mobile navigation integration
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
@@ -8,6 +8,10 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { useGlobalErrorHandlers } from './hooks/useGlobalErrorHandlers';
 import PendingActionHandler from './components/auth/PendingActionHandler';
 import { Toaster } from 'sonner';
+import { initMobileOptimizations } from './utils/mobileUtils';
+
+// Import mobile navigation CSS
+import './styles/mobile-navigation.css';
 
 // Toaster configuration
 const toasterConfig = {
@@ -33,6 +37,11 @@ function App() {
   // Set up global error handling and resource preloading
   useGlobalErrorHandlers();
 
+  // Initialize mobile optimizations once
+  React.useEffect(() => {
+    initMobileOptimizations();
+  }, []);
+
   return (
     <Router>
       <AuthProvider>
@@ -45,6 +54,7 @@ function App() {
         </UserProvider>
       </AuthProvider>
     </Router>
-  ); 
+  );
+}
 
 export default App;
