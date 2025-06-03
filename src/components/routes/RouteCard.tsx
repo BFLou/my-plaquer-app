@@ -1,4 +1,4 @@
-// src/components/routes/RouteCard.tsx - Enhanced version
+// src/components/routes/RouteCard.tsx
 import React, { useState } from 'react';
 import { 
   Route as RouteIcon, 
@@ -59,7 +59,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
     setIsMenuOpen(false);
   };
 
-  // Handle click events
+  // Handle click events with proper mobile support
   const handleClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -79,42 +79,42 @@ const RouteCard: React.FC<RouteCardProps> = ({
       {/* Top color bar */}
       <div className="h-2 w-full bg-green-500"></div>
       
-      <div className="p-4">
-        {/* Header */}
+      <div className="p-3 sm:p-4">
+        {/* Header - Mobile Optimized */}
         <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
             {showSelection && onToggleSelect && (
               <div 
-                className="flex-shrink-0"
+                className="flex-shrink-0 mt-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleSelect();
                 }}
               >
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors min-w-[20px] min-h-[20px] ${
                   isSelected 
                     ? 'bg-green-500 border-green-500 text-white' 
                     : 'border-gray-300 hover:border-green-400'
                 }`}>
-                  {isSelected && <CheckCircle size={14} />}
+                  {isSelected && <CheckCircle size={12} />}
                 </div>
               </div>
             )}
             
-            <div className="bg-green-100 text-green-600 w-12 h-12 rounded-lg flex items-center justify-center shrink-0">
-              <RouteIcon size={20} />
+            <div className="bg-green-100 text-green-600 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0">
+              <RouteIcon size={16} className="sm:w-5 sm:h-5" />
             </div>
             
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg group-hover:text-green-600 transition-colors line-clamp-1" title={route.name}>
+              <div className="flex items-start gap-2 mb-1">
+                <h3 className="font-semibold text-sm sm:text-lg group-hover:text-green-600 transition-colors line-clamp-2 flex-1" title={route.name}>
                   {route.name}
                 </h3>
                 {route.is_favorite && (
-                  <Star size={16} className="fill-amber-400 text-amber-400 flex-shrink-0" />
+                  <Star size={14} className="fill-amber-400 text-amber-400 flex-shrink-0 mt-0.5" />
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500">
                 Updated {formatTimeAgo(route.updated_at)}
               </p>
             </div>
@@ -125,7 +125,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 h-8 w-8 p-0"
+                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0 h-8 w-8 p-0 min-w-[32px] min-h-[32px]"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical size={16} />
@@ -180,38 +180,34 @@ const RouteCard: React.FC<RouteCardProps> = ({
           </DropdownMenu>
         </div>
         
-        {/* Description */}
+        {/* Description - Mobile Optimized */}
         {route.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{route.description}</p>
+          <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">{route.description}</p>
         )}
         
-        {/* Route Stats */}
+        {/* Route Stats - Mobile Optimized */}
         <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-1">
-              <MapPin size={14} />
+          <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 overflow-x-auto">
+            <div className="flex items-center gap-1 whitespace-nowrap">
+              <MapPin size={12} className="sm:w-3.5 sm:h-3.5" />
               <span>{route.points.length} stops</span>
             </div>
-            <div className="flex items-center gap-1">
-              <RouteIcon size={14} />
+            <div className="flex items-center gap-1 whitespace-nowrap">
+              <RouteIcon size={12} className="sm:w-3.5 sm:h-3.5" />
               <span>{route.total_distance.toFixed(1)} km</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Clock size={14} />
+            <div className="flex items-center gap-1 whitespace-nowrap">
+              <Clock size={12} className="sm:w-3.5 sm:h-3.5" />
               <span>~{walkingTime} min</span>
             </div>
           </div>
         </div>
         
-        {/* Footer with badges */}
+        {/* Footer with badges - Mobile Optimized */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-
-            
-            <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-              Private
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs">
+            Private
+          </Badge>
         </div>
       </div>
     </div>

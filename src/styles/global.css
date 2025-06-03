@@ -79,3 +79,86 @@
       height: 450px; /* Shorter map on mobile */
     }
   }
+
+  /* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Improve tap targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Prevent zoom on form inputs */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Remove tap highlights on iOS */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve touch scrolling */
+  .overflow-scroll, .overflow-y-scroll, .overflow-x-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Safe area support */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Touch-friendly utilities */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile-specific animations */
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-bounce {
+    animation: mobile-bounce 0.3s ease-out;
+  }
+}
+
+@keyframes mobile-bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Keyboard detection */
+.keyboard-open {
+  /* Apply styles when mobile keyboard is open */
+  padding-bottom: 0;
+}
+
+/* Orientation-specific styles */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Landscape mobile styles */
+  .mobile-landscape-compact {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+*/

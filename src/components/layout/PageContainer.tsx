@@ -2,7 +2,7 @@
 import React from 'react';
 import NavBar from './NavBar';
 import Footer from './Footer';
-import { MobileNavBar } from '@/components/navigation/MobileNavBar';
+import { MobileNavBar } from '@/components/layout/MobileNavBar';
 
 type PageContainerProps = {
   children: React.ReactNode;

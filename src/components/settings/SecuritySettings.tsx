@@ -110,130 +110,74 @@ const SecuritySettings: React.FC = () => {
   };
 
   const renderPasswordSection = () => {
-    if (authProviders.hasPassword) {
-      // User has email/password authentication - show password change form
-      return (
-        <SettingsCard 
-          title="Change Password"
-          description="Update your password to keep your account secure"
-        >
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            {passwordError && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{passwordError}</AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <div className="relative">
-                <Input
-                  id="currentPassword"
-                  type={showPassword ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="pr-10"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+  if (authProviders.hasPassword) {
+    return (
+      <SettingsCard 
+        title="Change Password"
+        description="Update your password to keep your account secure"
+      >
+        <form onSubmit={handlePasswordChange} className="space-y-4">
+          {passwordError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{passwordError}</AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="space-y-2">
+            <Label htmlFor="currentPassword">Current Password</Label>
+            <div className="relative">
+              <MobileInput
+                id="currentPassword"
+                type={showPassword ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="pr-12"
                 disabled={isLoading}
               />
-              <p className="text-xs text-gray-500">
-                Must be at least 8 characters long
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Updating Password...' : 'Update Password'}
-            </Button>
-          </form>
-        </SettingsCard>
-      );
-    } else if (authProviders.hasGoogle) {
-      // User signed in with Google - show Google account management
-      return (
-        <SettingsCard 
-          title="Password Management"
-          description="Your account is secured through Google"
-        >
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Shield className="text-blue-600" size={20} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-blue-900 mb-2">Google Account Security</h4>
-                  <p className="text-sm text-blue-700 mb-4">
-                    Your password is managed by Google. To change your password or update security settings, 
-                    you'll need to do so through your Google Account.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.open('https://myaccount.google.com/security', '_blank')}
-                    className="gap-2"
-                  >
-                    <ExternalLink size={16} />
-                    Manage Google Account Security
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h5 className="font-medium mb-2">What you can manage through Google:</h5>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0"></div>
-                  <span>Change your password</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0"></div>
-                  <span>Enable two-factor authentication</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0"></div>
-                  <span>Review recent security activity</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-1.5 flex-shrink-0"></div>
-                  <span>Manage connected apps and sites</span>
-                </li>
-              </ul>
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
-        </SettingsCard>
-      );
+          
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">New Password</Label>
+            <MobileInput
+              id="newPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={isLoading}
+            />
+            <p className="text-xs text-gray-500">
+              Must be at least 8 characters long
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <MobileInput
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+          
+          <Button type="submit" className="w-full h-12" disabled={isLoading}>
+            {isLoading ? 'Updating Password...' : 'Update Password'}
+          </Button>
+        </form>
+      </SettingsCard>
+    );
+    
     } else {
       // Fallback for other authentication methods
       return (

@@ -28,62 +28,65 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({
   totalRouteDistance,
   className = ''
 }) => {
+  const stats = [
+    {
+      icon: FolderOpen,
+      value: totalCollections,
+      label: 'Collections',
+      color: 'purple'
+    },
+    {
+      icon: Target,
+      value: totalPlaquesInCollections,
+      label: 'Collected',
+      color: 'blue'
+    },
+    {
+      icon: RouteIcon,
+      value: totalRoutes,
+      label: 'Routes',
+      color: 'green'
+    },
+    {
+      icon: TrendingUp,
+      value: `${totalRouteDistance.toFixed(1)}km`,
+      label: 'Planned',
+      color: 'amber'
+    },
+    {
+      icon: Clock,
+      value: totalVisits,
+      label: 'Visits',
+      color: 'red'
+    },
+    {
+      icon: MapPin,
+      value: uniquePlaquesVisited,
+      label: 'Unique',
+      color: 'indigo'
+    }
+  ];
+
   return (
     <div className={`bg-white rounded-lg shadow-sm p-4 ${className}`}>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {/* Collections */}
-        <div className="text-center">
-          <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
-            <FolderOpen size={20} />
-          </div>
-          <div className="text-lg font-bold text-purple-600">{totalCollections}</div>
-          <div className="text-xs text-gray-500">Collections</div>
-        </div>
-
-        {/* Plaques in Collections */}
-        <div className="text-center">
-          <div className="bg-blue-100 text-blue-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
-            <Target size={20} />
-          </div>
-          <div className="text-lg font-bold text-blue-600">{totalPlaquesInCollections}</div>
-          <div className="text-xs text-gray-500">Collected</div>
-        </div>
-
-        {/* Routes */}
-        <div className="text-center">
-          <div className="bg-green-100 text-green-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
-            <RouteIcon size={20} />
-          </div>
-          <div className="text-lg font-bold text-green-600">{totalRoutes}</div>
-          <div className="text-xs text-gray-500">Routes</div>
-        </div>
-
-        {/* Route Distance */}
-        <div className="text-center">
-          <div className="bg-amber-100 text-amber-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
-            <TrendingUp size={20} />
-          </div>
-          <div className="text-lg font-bold text-amber-600">{totalRouteDistance.toFixed(1)}</div>
-          <div className="text-xs text-gray-500">km Planned</div>
-        </div>
-
-        {/* Visits */}
-        <div className="text-center">
-          <div className="bg-red-100 text-red-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
-            <Clock size={20} />
-          </div>
-          <div className="text-lg font-bold text-red-600">{totalVisits}</div>
-          <div className="text-xs text-gray-500">Visits</div>
-        </div>
-
-        {/* Unique Plaques Visited */}
-        <div className="text-center">
-          <div className="bg-indigo-100 text-indigo-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
-            <MapPin size={20} />
-          </div>
-          <div className="text-lg font-bold text-indigo-600">{uniquePlaquesVisited}</div>
-          <div className="text-xs text-gray-500">Unique Visits</div>
-        </div>
+      {/* Mobile: 2 columns, Tablet: 3 columns, Desktop: 6 columns */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div key={index} className="text-center">
+              <div className={`bg-${stat.color}-100 text-${stat.color}-600 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mx-auto mb-2`}>
+                <Icon size={16} className="sm:w-5 sm:h-5" />
+              </div>
+              <div className={`text-base sm:text-lg font-bold text-${stat.color}-600`}>
+                {typeof stat.value === 'string' ? stat.value : stat.value}
+              </div>
+              <div className="text-xs text-gray-500 leading-tight">
+                {stat.label}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
