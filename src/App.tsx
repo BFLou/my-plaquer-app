@@ -45,6 +45,6 @@ function App() {
         </UserProvider>
       </AuthProvider>
     </Router>
-}
+  ); 
 
 export default App;
