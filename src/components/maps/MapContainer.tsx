@@ -585,15 +585,20 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       }}
     >
       {/* Enhanced Search Bar - Mobile optimized positioning */}
-      <div className={`absolute ${mobile ? 'top-2 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} z-[1000] ${mobile ? 'w-auto' : 'w-full max-w-md px-4'}`}>
-        <SearchBar 
-          plaques={plaques}
-          value={state.searchQuery}
-          onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
-          onSelect={handleSearchSelect}
-          onLocationSelect={handleLocationSelect}
-        />
-      </div>
+<div className={`
+  absolute z-[1001] 
+  ${mobile ? 'top-2 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} 
+  ${mobile ? 'w-auto' : 'w-full max-w-sm px-4'}
+`}>
+  <SearchBar 
+    plaques={plaques}
+    value={state.searchQuery}
+    onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
+    onSelect={handleSearchSelect}
+    onLocationSelect={handleLocationSelect}
+  />
+</div>
+
 
       {/* Unified Control Panel - Mobile optimized positioning */}
       <div className={`absolute ${mobile ? 'top-16 left-2' : 'top-16 left-4'} z-[1000]`}>
