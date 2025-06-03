@@ -1,4 +1,4 @@
-// src/pages/SignInPage.tsx - Enhanced with pending action handling
+// src/pages/SignInPage.tsx - Enhanced with working back button
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, X, Eye, EyeOff, Mail, Lock, CheckCircle, Star, Plus, Route as RouteIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -17,7 +17,7 @@ const SignInPage: React.FC = () => {
   const { signIn, signInWithGoogle } = useAuth();
   const { restoreNavigation, clearStoredData } = useAuthGate();
   
-  // Get state from navigation
+  // Get state from navigation with fallbacks
   const navigationState = location.state as any;
   const pendingAction = navigationState?.pendingAction;
   const featureName = navigationState?.featureName;
@@ -49,17 +49,47 @@ const SignInPage: React.FC = () => {
     };
   }, []);
 
+  // Enhanced back button handler with multiple fallback strategies
   const handleBack = () => {
-    // Try to restore navigation context first
-    const restoredUrl = restoreNavigation();
-    if (restoredUrl) {
-      navigate(restoredUrl);
-    } else {
-      navigate(backTo);
-    }
+    console.log('🔙 Back button clicked');
+    console.log('Navigation state:', navigationState);
+    console.log('Current location:', location);
     
-    // Clear stored data when going back without authenticating
-    clearStoredData();
+    try {
+      // Strategy 1: Try to restore navigation context from auth gate
+      const restoredUrl = restoreNavigation();
+      if (restoredUrl && restoredUrl !== window.location.pathname) {
+        console.log('🔄 Restoring navigation to:', restoredUrl);
+        navigate(restoredUrl);
+        return;
+      }
+      
+      // Strategy 2: Use backTo from navigation state
+      if (backTo && backTo !== window.location.pathname) {
+        console.log('🎯 Using backTo:', backTo);
+        navigate(backTo);
+        return;
+      }
+      
+      // Strategy 3: Check if we can go back in browser history
+      if (window.history.length > 1) {
+        console.log('📚 Using browser history back');
+        navigate(-1);
+        return;
+      }
+      
+      // Strategy 4: Fallback to discover page
+      console.log('🏠 Fallback to discover');
+      navigate('/discover');
+      
+    } catch (error) {
+      console.error('Error in back navigation:', error);
+      // Final fallback
+      navigate('/discover');
+    } finally {
+      // Clear stored data when going back without authenticating
+      clearStoredData();
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,6 +242,13 @@ const SignInPage: React.FC = () => {
     );
   };
 
+  // Get dynamic back button text based on context
+  const getBackButtonText = () => {
+    if (pendingAction) return 'Back to browsing';
+    if (featureName) return 'Back';
+    return 'Back';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -223,19 +260,20 @@ const SignInPage: React.FC = () => {
         </div>
         
         <div className="container mx-auto max-w-6xl relative z-10">
-          {/* Always show back button */}
+          {/* Enhanced back button - always show */}
           <div className="flex items-center gap-2 mb-4">
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleBack}
-              className="text-white hover:bg-white/20 h-8 w-8 p-0"
+              className="text-white hover:bg-white/20 h-8 w-8 p-0 transition-colors"
               disabled={isLoading}
+              title="Go back to previous page"
             >
               <ArrowLeft size={18} />
             </Button>
             <span className="text-white/80 text-sm">
-              {pendingAction ? 'Back to browsing' : 'Back'}
+              {getBackButtonText()}
             </span>
           </div>
 

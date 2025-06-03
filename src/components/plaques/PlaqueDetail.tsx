@@ -1,4 +1,4 @@
-// src/components/plaques/PlaqueDetail.tsx - Enhanced with modal/full page workflow
+// src/components/plaques/PlaqueDetail.tsx - COMPLETE with auth gate integration
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
@@ -17,6 +17,7 @@ import PlaqueImage from './PlaqueImage';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useCollections } from '@/hooks/useCollection';
+import { useAuthGate } from '@/hooks/useAuthGate';
 import AddToCollectionDialog from './AddToCollectionDialog';
 import { toast } from 'sonner';
 import { 
@@ -50,9 +51,9 @@ type PlaqueDetailProps = {
   showDistance?: boolean;
   isFullPage?: boolean;
   generateShareUrl?: (plaqueId: number) => string;
-  // NEW: Context for determining navigation behavior
+  // Context for determining navigation behavior
   context?: 'discover' | 'collection' | 'route' | 'profile';
-  // NEW: Current page path for back navigation
+  // Current page path for back navigation
   currentPath?: string;
 };
 
@@ -81,6 +82,14 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const { isPlaqueVisited, getVisitInfo, markAsVisited } = useVisitedPlaques();
   const { isFavorite: isInFavorites, toggleFavorite } = useFavorites();
   const { collections } = useCollections();
+  
+  // Auth gate integration
+  const { 
+    requireAuthForVisit, 
+    requireAuthForFavorite, 
+    requireAuthForCollection,
+    isAuthenticated 
+  } = useAuthGate();
   
   // State
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
@@ -176,61 +185,40 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const locationDisplay = safeTrim(plaque.location || plaque.address);
   const imageUrl = plaque.image || plaque.main_photo;
 
-  // Handlers
+  // Enhanced handlers with auth gate integration
   const handleFavoriteToggle = () => {
-    if (onFavoriteToggle) {
-      onFavoriteToggle(plaque.id);
-    } else {
-      toggleFavorite(plaque.id);
-    }
+    const favoriteAction = () => {
+      if (onFavoriteToggle) {
+        onFavoriteToggle(plaque.id);
+      } else {
+        toggleFavorite(plaque.id);
+      }
+    };
+
+    // Use auth gate for favorites - will go to sign-in for existing user actions
+    requireAuthForFavorite(plaque.id, favoriteAction);
   };
 
   const handleMarkVisitedClick = () => {
     if (isVisited) return;
-    setVisitDate(new Date());
-    setVisitNotes('');
-    setShowVisitDialog(true);
+    
+    const visitAction = () => {
+      setVisitDate(new Date());
+      setVisitNotes('');
+      setShowVisitDialog(true);
+    };
+
+    // Use auth gate for visits - will go to sign-in for existing user actions
+    requireAuthForVisit(plaque.id, visitAction);
   };
 
-// In PlaqueDetail.tsx, modify handleVisitSubmit to preserve the date locally:
-
-// Replace handleVisitSubmit in PlaqueDetail.tsx with this:
-
-// In PlaqueDetail.tsx - Replace the handleVisitSubmit function
-
-const handleVisitSubmit = async () => {
-  setIsMarkingVisited(true);
-  try {
-    console.log('🎯 PlaqueDetail submitting visit:', {
-      plaqueId: plaque.id,
-      selectedDate: visitDate,
-      isoString: visitDate.toISOString(),
-      formatted: format(visitDate, 'PPP')
-    });
-
-    // Call simplified markAsVisited - it handles everything
-    await markAsVisited(plaque.id, {
-      visitedAt: visitDate.toISOString(),
-      notes: visitNotes,
-    });
-    
-    // Success! The hook has already updated its state
-    toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
-    setShowVisitDialog(false);
-    
-    // FIXED: Don't call onMarkVisited here - it causes the dialog to reopen
-    // The state is already updated via the markAsVisited hook
-    
-  } catch (error) {
-    console.error("Error marking as visited:", error);
-    toast.error("Failed to mark as visited");
-  } finally {
-    setIsMarkingVisited(false);
-  }
-};
-
   const handleAddToCollection = () => {
-    setShowAddToCollection(true);
+    const collectionAction = () => {
+      setShowAddToCollection(true);
+    };
+
+    // Use auth gate for collections - will go to sign-in for existing user actions
+    requireAuthForCollection(plaque.id, collectionAction);
   };
 
   const handleAddToRoute = () => {
@@ -250,12 +238,12 @@ const handleVisitSubmit = async () => {
     }
   };
 
-  // NEW: Navigate to full page
+  // Navigate to full page
   const handleViewFullDetails = () => {
     navigate(`/plaque/${plaque.id}`);
   };
 
-  // NEW: Enhanced copy link functionality
+  // Enhanced copy link functionality
   const handleCopyLink = async () => {
     try {
       const plaqueUrl = generateShareUrl 
@@ -270,7 +258,7 @@ const handleVisitSubmit = async () => {
     }
   };
 
-  // NEW: Share functionality
+  // Share functionality
   const handleShare = async () => {
     const shareUrl = generateShareUrl 
       ? generateShareUrl(plaque.id)
@@ -295,13 +283,44 @@ const handleVisitSubmit = async () => {
     }
   };
 
+  // Visit form submission
+  const handleVisitSubmit = async () => {
+    setIsMarkingVisited(true);
+    try {
+      console.log('🎯 PlaqueDetail submitting visit:', {
+        plaqueId: plaque.id,
+        selectedDate: visitDate,
+        isoString: visitDate.toISOString(),
+        formatted: format(visitDate, 'PPP')
+      });
+
+      // Call simplified markAsVisited - it handles everything
+      await markAsVisited(plaque.id, {
+        visitedAt: visitDate.toISOString(),
+        notes: visitNotes,
+      });
+      
+      // Success! The hook has already updated its state
+      toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
+      setShowVisitDialog(false);
+      
+      // The state is already updated via the markAsVisited hook
+      
+    } catch (error) {
+      console.error("Error marking as visited:", error);
+      toast.error("Failed to mark as visited");
+    } finally {
+      setIsMarkingVisited(false);
+    }
+  };
+
   // Enhanced z-index management for map view
   const dialogZIndex = isMapView ? 9999 : 1000;
   const sheetClassName = isMapView 
     ? `${className} z-[9999] [&>div]:z-[9999]` 
     : className;
 
-  // NEW: If full page mode, render without Dialog wrapper
+  // If full page mode, render without Dialog wrapper
   if (isFullPage) {
     return (
       <div className={`fixed inset-0 bg-white z-50 overflow-hidden ${className}`}>
@@ -367,7 +386,7 @@ const handleVisitSubmit = async () => {
                 <div className="p-2">
                   {/* Mobile: Vertical stack, Desktop: Horizontal row */}
                   <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-1">
-                    {/* Share button - NEW */}
+                    {/* Share button */}
                     <Button 
                       onClick={handleShare}
                       size="sm"
@@ -507,7 +526,6 @@ const handleVisitSubmit = async () => {
                 </div>
               )}
               
-              {/* Rest of the content remains the same... */}
               {/* Inscription */}
               {isValidValue(plaque.inscription) && (
                 <div className="bg-gray-50 rounded-xl p-4 sm:p-6 border-l-4 border-purple-500">
@@ -567,7 +585,107 @@ const handleVisitSubmit = async () => {
                 </div>
               )}
               
-              {/* Metadata Grid and Nearby Plaques remain the same... */}
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                {isValidValue(plaque.erected) && (
+                  <div className="bg-white border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Calendar size={14} className="text-gray-400" />
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Erected</span>
+                    </div>
+                    <div className="font-semibold text-gray-900">{safeString(plaque.erected)}</div>
+                  </div>
+                )}
+                
+                {isValidValue(plaque.area) && (
+                  <div className="bg-white border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin size={14} className="text-gray-400" />
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Borough</span>
+                    </div>
+                    <div className="font-semibold text-gray-900">{safeString(plaque.area)}</div>
+                  </div>
+                )}
+                
+                {plaqueColor && plaqueColor !== "unknown" && (
+                  <div className="bg-white border rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Building size={14} className="text-gray-400" />
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Material</span>
+                    </div>
+                    <div className="font-semibold text-gray-900 capitalize">{plaqueColor}</div>
+                  </div>
+                )}
+
+                {organisations.length > 0 && (
+                  <div className="bg-white border rounded-lg p-3 col-span-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Building size={14} className="text-gray-400" />
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Organisations</span>
+                    </div>
+                    <div className="font-semibold text-gray-900">{organisations.join(', ')}</div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Nearby Plaques */}
+              {nearbyPlaques.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                      <Eye size={16} className="text-gray-600" />
+                      Nearby Plaques ({nearbyPlaques.length})
+                    </h3>
+                    <button 
+                      onClick={() => setShowNearby(!showNearby)}
+                      className="text-purple-600 text-sm hover:underline font-medium"
+                    >
+                      {showNearby ? 'Show less' : 'View all'}
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {nearbyPlaques.slice(0, showNearby ? nearbyPlaques.length : 2).map((nearby) => {
+                      const nearbyImageUrl = nearby.image || nearby.main_photo;
+                      const nearbyPlaqueColor = nearby.color || nearby.colour || 'unknown';
+                      
+                      return (
+                        <div 
+                          key={nearby.id} 
+                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                          onClick={() => onSelectNearbyPlaque?.(nearby)}
+                        >
+                          <div className="w-16 h-12 bg-gray-200 rounded object-cover flex-shrink-0 overflow-hidden">
+                            <PlaqueImage 
+                              src={nearbyImageUrl}
+                              alt={safeString(nearby.title)}
+                              className="w-full h-full object-cover"
+                              plaqueColor={nearbyPlaqueColor}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">{safeString(nearby.title)}</div>
+                            <div className="text-xs text-gray-500 flex items-center gap-3">
+                              <span>{safeTrim(nearby.address || nearby.location)}</span>
+                              {isValidValue(nearby.profession) && (
+                                <>
+                                  <span>•</span>
+                                  <span>{safeString(nearby.profession)}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                            nearbyPlaqueColor === 'blue' ? 'bg-blue-500' :
+                            nearbyPlaqueColor === 'green' ? 'bg-green-500' :
+                            nearbyPlaqueColor === 'brown' ? 'bg-amber-500' : 'bg-gray-500'
+                          }`}></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -577,7 +695,7 @@ const handleVisitSubmit = async () => {
 
   return (
     <>
-      {/* ENHANCED: Custom backdrop with map fade effect */}
+      {/* Enhanced backdrop with map fade effect */}
       {isOpen && isMapView && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] transition-all duration-300 ease-in-out"
@@ -955,7 +1073,7 @@ const handleVisitSubmit = async () => {
                   </div>
                 )}
 
-                                {/* NEW: View Full Details Button - Only in modal mode */}
+                {/* View Full Details Button - Only in modal mode */}
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
