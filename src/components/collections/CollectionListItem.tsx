@@ -1,7 +1,7 @@
-// src/components/collections/CollectionListItem.tsx
+// src/components/collections/CollectionListItem.tsx - COMPLETE MOBILE OPTIMIZED
 import React from 'react';
 import { CheckCircle, Star, MoreHorizontal, MapPin } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { MobileButton } from "@/components/ui/mobile-button";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatTimeAgo, getPlaqueCount } from '../../utils/collectionHelpers';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 
 const CollectionListItem = ({
   collection,
@@ -23,19 +24,24 @@ const CollectionListItem = ({
   onClick,
   className = ''
 }) => {
-  // Handle click events
+  const mobile = isMobile();
+  
+  // Handle click events with mobile optimization
   const handleClick = (e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
+      if (mobile) triggerHapticFeedback('selection');
       if (onToggleSelect) onToggleSelect(collection.id);
     } else if (!e.target.closest('button') && onClick) {
+      if (mobile) triggerHapticFeedback('light');
       onClick(collection.id);
     }
   };
   
-  // Handle menu operations
+  // Handle menu operations with haptic feedback
   const handleMenuOperation = (e, operation) => {
     e.stopPropagation();
+    if (mobile) triggerHapticFeedback('selection');
     if (operation) operation(collection.id);
   };
   
@@ -84,7 +90,7 @@ const CollectionListItem = ({
     
     return {
       borderLeftColor: borderColor,
-      borderLeftWidth: '4px'
+      borderLeftWidth: mobile ? '6px' : '4px'
     };
   };
   
@@ -92,73 +98,251 @@ const CollectionListItem = ({
     <div 
       className={`bg-white rounded-lg shadow hover:shadow-md transition ${
         isSelected ? 'ring-2 ring-blue-500' : ''
-      } overflow-hidden cursor-pointer group ${className}`}
+      } overflow-hidden cursor-pointer group ${className} ${
+        mobile ? 'active:scale-[0.99] active:shadow-sm' : ''
+      }`}
       onClick={handleClick}
-      style={getLeftBorderStyle()}
+      style={{
+        ...getLeftBorderStyle(),
+        minHeight: mobile ? '80px' : '60px',
+        touchAction: 'manipulation'
+      }}
     >
-      <div className="flex items-center p-3">
-        <div className={`h-12 w-12 rounded-lg ${collection.color} flex items-center justify-center text-white text-2xl mr-4 flex-shrink-0`}>
+      <div className={`flex items-center ${mobile ? 'p-4' : 'p-3'}`}>
+        {/* Collection Icon - Mobile optimized */}
+        <div className={`${mobile ? 'h-16 w-16' : 'h-12 w-12'} rounded-lg ${collection.color} flex items-center justify-center text-white ${mobile ? 'text-3xl' : 'text-2xl'} mr-4 flex-shrink-0 shadow-sm`}>
           {collection.icon}
         </div>
         
+        {/* Content Section - Mobile optimized */}
         <div className="flex-grow min-w-0">
           <div className="flex items-center">
-            <h3 className="font-semibold text-gray-800 truncate mr-2">{collection.name}</h3>
+            <h3 className={`font-semibold text-gray-800 truncate mr-2 ${mobile ? 'text-lg' : 'text-base'}`}>
+              {collection.name}
+            </h3>
             {collection.is_favorite && (
-              <Star size={16} className="fill-amber-400 text-amber-400 flex-shrink-0" />
+              <Star size={mobile ? 18 : 16} className="fill-amber-400 text-amber-400 flex-shrink-0" />
             )}
             {isSelected && (
-              <div className="bg-blue-100 text-blue-600 p-1 rounded-full ml-1 flex-shrink-0">
-                <CheckCircle size={14} />
+              <div className={`bg-blue-100 text-blue-600 p-1 rounded-full ml-1 flex-shrink-0 ${mobile ? 'p-1.5' : ''}`}>
+                <CheckCircle size={mobile ? 16 : 14} />
               </div>
             )}
           </div>
           
+          {/* Description - Mobile responsive */}
           {collection.description && (
-            <p className="text-sm text-gray-600 truncate">{collection.description}</p>
+            <p className={`${mobile ? 'text-base' : 'text-sm'} text-gray-600 truncate ${mobile ? 'mt-1' : ''}`}>
+              {collection.description}
+            </p>
           )}
           
-          <div className="flex items-center gap-3 mt-1">
-            <Badge variant="outline" className="flex items-center gap-1 bg-gray-50 py-0.5">
-              <MapPin size={12} /> {plaqueCount}
+          {/* Metadata Row - Mobile optimized */}
+          <div className={`flex items-center gap-3 ${mobile ? 'mt-2' : 'mt-1'}`}>
+            <Badge 
+              variant="outline" 
+              className={`flex items-center gap-1 bg-gray-50 ${mobile ? 'py-1 px-2' : 'py-0.5'}`}
+            >
+              <MapPin size={mobile ? 14 : 12} /> 
+              {plaqueCount}
             </Badge>
-            <span className="text-xs text-gray-400">
+            <span className={`${mobile ? 'text-sm' : 'text-xs'} text-gray-400`}>
               Updated {formatTimeAgo(collection.updated_at)}
             </span>
           </div>
+          
+          {/* Tags on Mobile */}
+          {mobile && collection.tags && collection.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {collection.tags.slice(0, 3).map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {collection.tags.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{collection.tags.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 rounded-full hover:bg-gray-100 p-0 flex-shrink-0 ml-2"
-            >
-              <span className="sr-only">Options</span>
-              <MoreHorizontal size={16} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onEdit)}>
-              Edit Collection
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onDuplicate)}>
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => handleMenuOperation(e, onToggleFavorite)}>
-              {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              className="text-red-600 focus:text-red-600 focus:bg-red-50"
-              onClick={(e) => handleMenuOperation(e, onDelete)}
-            >
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Actions Section - Mobile optimized */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Mobile Quick Actions */}
+          {mobile && (
+            <div className="flex flex-col gap-1 mr-2">
+              <MobileButton
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHapticFeedback(collection.is_favorite ? 'light' : 'success');
+                  if (onToggleFavorite) onToggleFavorite(collection.id);
+                }}
+                className="h-8 w-8 p-0 text-amber-500 hover:text-amber-600"
+              >
+                <Star size={14} className={collection.is_favorite ? 'fill-current' : ''} />
+              </MobileButton>
+              
+              <MobileButton
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHapticFeedback('selection');
+                  if (onEdit) onEdit(collection.id);
+                }}
+                className="h-8 w-8 p-0 text-blue-500 hover:text-blue-600"
+              >
+                ✏️
+              </MobileButton>
+            </div>
+          )}
+          
+          {/* Dropdown Menu - Mobile optimized */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <MobileButton 
+                variant="ghost" 
+                size="sm" 
+                className={`${mobile ? 'h-12 w-12' : 'h-8 w-8'} rounded-full hover:bg-gray-100 p-0 flex-shrink-0 ml-2`}
+              >
+                <span className="sr-only">Options</span>
+                <MoreHorizontal size={mobile ? 20 : 16} />
+              </MobileButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className={mobile ? 'w-56' : 'w-48'}>
+              <DropdownMenuItem 
+                onClick={(e) => handleMenuOperation(e, onEdit)}
+                className={mobile ? 'py-3 text-base' : ''}
+              >
+                Edit Collection
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={(e) => handleMenuOperation(e, onDuplicate)}
+                className={mobile ? 'py-3 text-base' : ''}
+              >
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={(e) => handleMenuOperation(e, onToggleFavorite)}
+                className={mobile ? 'py-3 text-base' : ''}
+              >
+                {collection.is_favorite ? 'Remove Favorite' : 'Add to Favorites'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className={`text-red-600 focus:text-red-600 focus:bg-red-50 ${mobile ? 'py-3 text-base' : ''}`}
+                onClick={(e) => handleMenuOperation(e, onDelete)}
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
+      
+      {/* Mobile-specific touch feedback overlay */}
+      {mobile && (
+        <div className="absolute inset-0 bg-black opacity-0 group-active:opacity-5 transition-opacity pointer-events-none" />
+      )}
+      
+      {/* Mobile-specific styles */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .collection-list-item {
+            margin-bottom: 0.75rem;
+          }
+          
+          .collection-list-item:active {
+            transform: scale(0.99);
+            transition: transform 0.1s ease;
+          }
+          
+          .collection-list-item .quick-action {
+            min-height: 44px;
+            min-width: 44px;
+          }
+          
+          .collection-list-item .dropdown-trigger {
+            min-height: 48px;
+            min-width: 48px;
+          }
+          
+          .collection-list-item .icon-container {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
+          
+          .collection-list-item .metadata-row {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          }
+        }
+        
+        /* Touch optimization */
+        .collection-list-item {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+          -webkit-touch-callout: none;
+          user-select: none;
+        }
+        
+        /* Improve readability on mobile */
+        @media (max-width: 768px) {
+          .collection-list-item .description {
+            line-height: 1.4;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            display: -webkit-box;
+          }
+        }
+        
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+          .collection-list-item {
+            transition: none;
+          }
+          
+          .collection-list-item:active {
+            transform: none;
+          }
+        }
+        
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+          .collection-list-item {
+            border: 2px solid #000;
+          }
+          
+          .collection-list-item.selected {
+            border-color: #0066cc;
+            border-width: 3px;
+          }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+          .collection-list-item {
+            background-color: #1f2937;
+            border-color: #374151;
+          }
+          
+          .collection-list-item .text-gray-800 {
+            color: #f9fafb;
+          }
+          
+          .collection-list-item .text-gray-600 {
+            color: #d1d5db;
+          }
+          
+          .collection-list-item .text-gray-400 {
+            color: #9ca3af;
+          }
+        }
+      `}</style>
     </div>
   );
 };

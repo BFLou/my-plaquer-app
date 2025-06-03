@@ -1,4 +1,4 @@
-// src/components/maps/features/UnifiedControlPanel.tsx - REFINED: Compact and mobile-friendly
+// src/components/maps/features/UnifiedControlPanel.tsx - COMPLETE MOBILE OPTIMIZED
 import React, { useState } from 'react';
 import { 
   MapPin, 
@@ -10,13 +10,16 @@ import {
   Target,
   Settings
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { MobileButton } from "@/components/ui/mobile-button";
+import { MobileInput } from "@/components/ui/mobile-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plaque } from '@/types/plaque';
 import { LocationFilter } from './LocationFilter/LocationFilter';
 import DiscoverFilterDialog from '../../plaques/DiscoverFilterDialog';
 import { capitalizeWords } from '@/utils/stringUtils';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
+import { useSafeArea } from '@/hooks/useSafeArea';
 
 // Distance filter interface
 interface DistanceFilter {
@@ -89,6 +92,11 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
   isFavorite,
   className = ''
 }) => {
+  // Mobile detection and responsive setup
+  const mobile = isMobile();
+  const safeArea = useSafeArea();
+  
+  // State management
   const [showDistanceFilter, setShowDistanceFilter] = useState(false);
   const [showStandardFilters, setShowStandardFilters] = useState(false);
 
@@ -145,25 +153,43 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
   }, [plaques]);
 
   const handleResetAll = () => {
+    if (mobile) {
+      triggerHapticFeedback('medium');
+    }
     onClearDistanceFilter();
     onResetStandardFilters();
     onResetView();
   };
 
+  const handleButtonClick = (action: string, callback: () => void) => {
+    if (mobile) {
+      triggerHapticFeedback('selection');
+    }
+    console.log(`Control panel: ${action}`);
+    callback();
+  };
+
   return (
     <>
-      <Card className={`w-40 sm:w-48 shadow-lg backdrop-blur-sm bg-white/95 border border-gray-200/50 ${className}`}>
-        <CardContent className="p-2 space-y-1">
+      {/* Main Control Panel Card */}
+      <Card 
+        className={`${mobile ? 'w-36' : 'w-40 sm:w-48'} shadow-lg backdrop-blur-sm bg-white/95 border border-gray-200/50 ${className}`}
+        style={{
+          marginLeft: mobile ? safeArea.left : undefined,
+          marginTop: mobile ? safeArea.top : undefined
+        }}
+      >
+        <CardContent className={`${mobile ? 'p-1.5' : 'p-2'} space-y-1`}>
           
           {/* Distance Filter Button */}
-          <Button
+          <MobileButton
             variant={distanceFilter.enabled ? "default" : "outline"}
             size="sm"
-            className="w-full justify-between h-8 text-left text-xs font-medium"
-            onClick={() => setShowDistanceFilter(true)}
+            className={`w-full justify-between ${mobile ? 'h-10 text-xs' : 'h-8 text-xs'} font-medium`}
+            onClick={() => handleButtonClick('Distance Filter', () => setShowDistanceFilter(true))}
           >
             <div className="flex items-center gap-1.5">
-              <MapPin size={14} />
+              <MapPin size={mobile ? 16 : 14} />
               <span className="truncate">Distance</span>
             </div>
             {distanceFilter.enabled && (
@@ -173,17 +199,17 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                   : `${distanceFilter.radius}km`}
               </Badge>
             )}
-          </Button>
+          </MobileButton>
 
           {/* Standard Filters Button */}
-          <Button
+          <MobileButton
             variant={activeStandardFiltersCount > 0 ? "default" : "outline"}
             size="sm"
-            className="w-full justify-between h-8 text-left text-xs font-medium"
-            onClick={() => setShowStandardFilters(true)}
+            className={`w-full justify-between ${mobile ? 'h-10 text-xs' : 'h-8 text-xs'} font-medium`}
+            onClick={() => handleButtonClick('Standard Filters', () => setShowStandardFilters(true))}
           >
             <div className="flex items-center gap-1.5">
-              <Filter size={14} />
+              <Filter size={mobile ? 16 : 14} />
               <span className="truncate">Filters</span>
             </div>
             {activeStandardFiltersCount > 0 && (
@@ -191,17 +217,17 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                 {activeStandardFiltersCount}
               </Badge>
             )}
-          </Button>
+          </MobileButton>
 
           {/* Route Planning Button */}
-          <Button
+          <MobileButton
             variant={routeMode ? "default" : "outline"}
             size="sm"
-            className="w-full justify-between h-8 text-left text-xs font-medium"
-            onClick={onToggleRoute}
+            className={`w-full justify-between ${mobile ? 'h-10 text-xs' : 'h-8 text-xs'} font-medium`}
+            onClick={() => handleButtonClick('Route Toggle', onToggleRoute)}
           >
             <div className="flex items-center gap-1.5">
-              <Route size={14} />
+              <Route size={mobile ? 16 : 14} />
               <span className="truncate">{routeMode ? "Planning" : "Route"}</span>
             </div>
             {routePointsCount > 0 && (
@@ -209,47 +235,57 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                 {routePointsCount}
               </Badge>
             )}
-          </Button>
+          </MobileButton>
 
           {/* Reset Button */}
-          <Button
+          <MobileButton
             variant="outline"
             size="sm"
-            className="w-full justify-start h-8 text-left text-xs font-medium text-gray-600 hover:text-gray-800"
-            onClick={handleResetAll}
+            className={`w-full justify-start ${mobile ? 'h-10 text-xs' : 'h-8 text-xs'} font-medium text-gray-600 hover:text-gray-800`}
+            onClick={() => handleButtonClick('Reset All', handleResetAll)}
           >
             <div className="flex items-center gap-1.5">
-              <RotateCcw size={14} />
+              <RotateCcw size={mobile ? 16 : 14} />
               <span>Reset</span>
             </div>
-          </Button>
+          </MobileButton>
 
         </CardContent>
       </Card>
 
-      {/* Distance Filter Modal - Compact design */}
+      {/* Distance Filter Modal - Mobile optimized */}
       {showDistanceFilter && (
         <div className="fixed inset-0 z-[9998] flex items-center justify-center p-3 sm:p-4">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDistanceFilter(false)} />
-          <div className="relative z-[9999] w-full max-w-sm sm:max-w-md max-h-[85vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col">
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
+            onClick={() => setShowDistanceFilter(false)} 
+          />
+          <div 
+            className={`relative z-[9999] ${mobile ? 'w-[95vw]' : 'w-full max-w-sm sm:max-w-md'} max-h-[85vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col`}
+            style={{
+              marginBottom: mobile ? safeArea.bottom : undefined
+            }}
+          >
             
             {/* Compact Header */}
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-3 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Target size={18} />
-                  <h2 className="text-lg font-semibold">Distance Filter</h2>
+                  <h2 className={`${mobile ? 'text-lg' : 'text-lg'} font-semibold`}>Distance Filter</h2>
                 </div>
-                <button
+                <MobileButton
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowDistanceFilter(false)}
-                  className="h-8 w-8 p-1 rounded-full hover:bg-white/20 flex items-center justify-center"
+                  className="h-8 w-8 p-1 rounded-full hover:bg-white/20 text-white"
                 >
                   <X size={16} />
-                </button>
+                </MobileButton>
               </div>
               
               {distanceFilter.enabled && distanceFilter.locationName && (
-                <div className="text-sm text-blue-100 mt-1">
+                <div className={`text-sm text-blue-100 mt-1 ${mobile ? 'text-base' : ''}`}>
                   Active: {distanceFilter.locationName}
                 </div>
               )}
@@ -258,16 +294,19 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
             {/* Compact Content */}
             <div className="flex-grow overflow-auto p-4">
               {!distanceFilter.enabled ? (
-                // Setup new distance filter - Compact
+                // Setup new distance filter - Mobile optimized
                 <div className="space-y-4">
-                  <div className="text-sm text-gray-600">
+                  <div className={`${mobile ? 'text-base' : 'text-sm'} text-gray-600`}>
                     Set a location to find plaques within a specific distance.
                   </div>
                   
                   {/* My Location Button */}
-                  <button
+                  <MobileButton
+                    variant="outline"
+                    className="w-full p-3 justify-start"
                     onClick={async () => {
                       if (navigator.geolocation) {
+                        if (mobile) triggerHapticFeedback('selection');
                         navigator.geolocation.getCurrentPosition(
                           (position) => {
                             const coords: [number, number] = [
@@ -276,34 +315,34 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                             ];
                             onSetLocation(coords);
                             setShowDistanceFilter(false);
+                            if (mobile) triggerHapticFeedback('success');
                           },
                           (error) => console.error('Error getting location:', error)
                         );
                       }
                     }}
-                    className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
                   >
-                    <div className="bg-blue-100 p-2 rounded-full">
+                    <div className="bg-blue-100 p-2 rounded-full mr-3">
                       <Target size={16} className="text-blue-600" />
                     </div>
                     <div className="text-left">
-                      <div className="font-medium text-sm">Use my location</div>
-                      <div className="text-xs text-gray-500">Find nearby plaques</div>
+                      <div className={`font-medium ${mobile ? 'text-base' : 'text-sm'}`}>Use my location</div>
+                      <div className={`${mobile ? 'text-sm' : 'text-xs'} text-gray-500`}>Find nearby plaques</div>
                     </div>
-                  </button>
+                  </MobileButton>
                   
-                  {/* Manual Address Input - Compact */}
+                  {/* Manual Address Input */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className={`${mobile ? 'text-base' : 'text-sm'} font-medium text-gray-700`}>
                       Or enter location:
                     </label>
                     <div className="flex gap-2">
-                      <input
-                        type="text"
+                      <MobileInput
                         placeholder="London postcode or area..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        className="flex-1"
                         onKeyDown={async (e) => {
                           if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                            if (mobile) triggerHapticFeedback('selection');
                             try {
                               const query = e.currentTarget.value.includes('London') 
                                 ? e.currentTarget.value 
@@ -321,58 +360,63 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                                 ];
                                 onSetLocation(coords);
                                 setShowDistanceFilter(false);
+                                if (mobile) triggerHapticFeedback('success');
                               }
                             } catch (error) {
                               console.error('Error searching location:', error);
                             }
                           }
                         }}
+                        preventZoom={true}
                       />
                     </div>
                   </div>
                 </div>
               ) : (
-                // Manage existing distance filter - Compact
+                // Manage existing distance filter
                 <div className="space-y-4">
-                  {/* Current Location Display - Compact */}
+                  {/* Current Location Display */}
                   <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
-                    <div className="text-lg font-bold text-green-600">
+                    <div className={`${mobile ? 'text-xl' : 'text-lg'} font-bold text-green-600`}>
                       {distanceFilter.radius < 1 
                         ? `${Math.round(distanceFilter.radius * 1000)}m` 
                         : `${distanceFilter.radius}km`}
                     </div>
-                    <div className="text-sm text-green-700 truncate">
+                    <div className={`${mobile ? 'text-base' : 'text-sm'} text-green-700 truncate`}>
                       from {distanceFilter.locationName}
                     </div>
                   </div>
 
-                  {/* Quick Distance Presets - Compact Grid */}
+                  {/* Quick Distance Presets */}
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-700">Quick distances:</div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className={`${mobile ? 'text-base' : 'text-sm'} font-medium text-gray-700`}>
+                      Quick distances:
+                    </div>
+                    <div className={`grid ${mobile ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                       {[0.5, 1, 1.5, 2, 3, 5].map((distance) => (
-                        <button
+                        <MobileButton
                           key={distance}
-                          onClick={() => onRadiusChange(distance)}
-                          className={`
-                            h-8 px-2 text-xs font-medium rounded-md transition-all
-                            ${Math.abs(distanceFilter.radius - distance) < 0.01
-                              ? 'bg-blue-500 text-white border-blue-600'
-                              : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-50'
-                            }
-                          `}
+                          variant={Math.abs(distanceFilter.radius - distance) < 0.01 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            if (mobile) triggerHapticFeedback('selection');
+                            onRadiusChange(distance);
+                          }}
+                          className={`${mobile ? 'h-10 text-sm' : 'h-8 text-xs'} font-medium`}
                         >
                           {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
-                        </button>
+                        </MobileButton>
                       ))}
                     </div>
                   </div>
                   
-                  {/* Custom Slider - Compact */}
+                  {/* Custom Slider */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <div className="text-sm font-medium text-gray-700">Custom:</div>
-                      <div className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      <div className={`${mobile ? 'text-base' : 'text-sm'} font-medium text-gray-700`}>
+                        Custom:
+                      </div>
+                      <div className={`${mobile ? 'text-base' : 'text-sm'} font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded`}>
                         {distanceFilter.radius < 1 
                           ? `${Math.round(distanceFilter.radius * 1000)}m` 
                           : `${distanceFilter.radius}km`}
@@ -385,8 +429,11 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
                       max="10"
                       step="0.1"
                       value={distanceFilter.radius}
-                      onChange={(e) => onRadiusChange(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      onChange={(e) => {
+                        if (mobile) triggerHapticFeedback('light');
+                        onRadiusChange(parseFloat(e.target.value));
+                      }}
+                      className={`w-full ${mobile ? 'h-3' : 'h-2'} bg-gray-200 rounded-lg appearance-none cursor-pointer`}
                     />
                     <div className="flex justify-between text-xs text-gray-400">
                       <span>100m</span>
@@ -400,32 +447,35 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
 
             {/* Compact Footer Actions */}
             <div className="p-3 border-t bg-gray-50">
-              <div className="flex gap-2">
+              <div className={`flex gap-2 ${mobile ? 'flex-col' : ''}`}>
                 {distanceFilter.enabled ? (
                   <>
-                    <button
+                    <MobileButton
+                      variant="outline"
                       onClick={() => {
+                        if (mobile) triggerHapticFeedback('medium');
                         onClearDistanceFilter();
                         setShowDistanceFilter(false);
                       }}
-                      className="flex-1 px-3 py-2 bg-white border border-red-300 text-red-600 rounded-md hover:bg-red-50 transition-colors font-medium text-sm"
+                      className={`${mobile ? 'w-full' : 'flex-1'} border-red-300 text-red-600 hover:bg-red-50`}
                     >
                       Clear
-                    </button>
-                    <button
+                    </MobileButton>
+                    <MobileButton
                       onClick={() => setShowDistanceFilter(false)}
-                      className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm"
+                      className={`${mobile ? 'w-full' : 'flex-1'} bg-blue-600 hover:bg-blue-700`}
                     >
                       Done
-                    </button>
+                    </MobileButton>
                   </>
                 ) : (
-                  <button
+                  <MobileButton
+                    variant="outline"
                     onClick={() => setShowDistanceFilter(false)}
-                    className="w-full px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium text-sm"
+                    className="w-full bg-gray-600 text-white hover:bg-gray-700"
                   >
                     Cancel
-                  </button>
+                  </MobileButton>
                 )}
               </div>
             </div>
@@ -433,7 +483,7 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
         </div>
       )}
 
-      {/* Standard Filters Dialog */}
+      {/* Standard Filters Dialog - Mobile optimized */}
       <DiscoverFilterDialog
         isOpen={showStandardFilters}
         onClose={() => setShowStandardFilters(false)}
@@ -456,8 +506,12 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
         onlyFavorites={onlyFavorites}
         onFavoritesChange={onFavoritesChange}
         
-        onApply={() => setShowStandardFilters(false)}
+        onApply={() => {
+          if (mobile) triggerHapticFeedback('success');
+          setShowStandardFilters(false);
+        }}
         onReset={() => {
+          if (mobile) triggerHapticFeedback('medium');
           onResetStandardFilters();
           setShowStandardFilters(false);
         }}

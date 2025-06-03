@@ -1,25 +1,17 @@
-// src/components/plaques/EditVisitDialog.tsx
+// src/components/plaques/EditVisitDialog.tsx - Mobile optimized
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Calendar as CalendarIcon, Star, Trash2 } from 'lucide-react';
+import { MobileDialog } from '@/components/ui/mobile-dialog';
+import { MobileButton } from '@/components/ui/mobile-button';
+import { MobileTextarea } from '@/components/ui/mobile-textarea';
+import { Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { Plaque } from '@/types/plaque';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
+import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 import { toast } from 'sonner';
+import { triggerHapticFeedback } from '@/utils/mobileUtils';
 
 interface EditVisitDialogProps {
   isOpen: boolean;
@@ -40,12 +32,12 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
 }) => {
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
-  const [rating, setRating] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { updateVisit, removeVisit, visits } = useVisitedPlaques();
+  const { isKeyboardOpen, keyboardHeight } = useKeyboardDetection();
 
   useEffect(() => {
     if (isOpen && visitId) {
@@ -58,36 +50,37 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
           setVisitDate(date);
         }
         setNotes(visitData.notes || '');
-        setRating(visitData.rating || 0);
       }
     }
   }, [isOpen, visitId, visits]);
 
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
+      triggerHapticFeedback('selection');
       setVisitDate(date);
       setShowDatePicker(false);
     }
   };
 
-  const handleSetRating = (value: number) => {
-    setRating((prev) => (prev === value ? 0 : value));
-  };
-
   const handleSave = async () => {
     if (!visitId) return;
+    
     setIsLoading(true);
+    triggerHapticFeedback('light');
+    
     try {
       await updateVisit(visitId, {
         visitedAt: visitDate.toISOString(),
         notes,
-        rating,
       });
+      
+      triggerHapticFeedback('success');
       toast.success('Visit updated successfully');
       onVisitUpdated();
       onClose();
     } catch (error) {
       console.error('Error updating visit:', error);
+      triggerHapticFeedback('error');
       toast.error('Failed to update visit');
     } finally {
       setIsLoading(false);
@@ -96,14 +89,19 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
 
   const handleDelete = async () => {
     if (!visitId) return;
+    
     setIsLoading(true);
+    triggerHapticFeedback('light');
+    
     try {
       await removeVisit(visitId);
+      triggerHapticFeedback('success');
       toast.success('Visit record deleted');
       onVisitDeleted ? onVisitDeleted() : onVisitUpdated();
       onClose();
     } catch (error) {
       console.error('Error deleting visit:', error);
+      triggerHapticFeedback('error');
       toast.error('Failed to delete visit');
     } finally {
       setIsLoading(false);
@@ -111,30 +109,74 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
     }
   };
 
+  const handleDeleteClick = () => {
+    triggerHapticFeedback('warning');
+    setIsDeleteConfirmOpen(true);
+  };
+
   if (!plaque) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Visit - {plaque.title}</DialogTitle>
-        </DialogHeader>
+    <>
+      <MobileDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title={`Edit Visit - ${plaque.title}`}
+        size="md"
+        className={isKeyboardOpen ? `mb-[${keyboardHeight}px]` : ''}
+        footer={
+          <div className="flex flex-col sm:flex-row justify-between gap-3 w-full">
+            <MobileButton
+              variant="outline"
+              onClick={handleDeleteClick}
+              className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100 flex-1 sm:flex-initial"
+              disabled={isLoading}
+            >
+              <Trash2 size={18} className="mr-2" />
+              Delete
+            </MobileButton>
 
-        <div className="py-4 space-y-4">
-          {/* Date */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Visit Date:</label>
+            <div className="flex flex-col sm:flex-row gap-3 flex-1">
+              <MobileButton 
+                variant="outline" 
+                onClick={onClose} 
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Cancel
+              </MobileButton>
+              <MobileButton 
+                onClick={handleSave} 
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {isLoading ? 'Saving...' : 'Save Changes'}
+              </MobileButton>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-6">
+          {/* Date Selection - Mobile optimized */}
+          <div className="space-y-3">
+            <label className="text-base font-medium block">Visit Date:</label>
             <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
               <PopoverTrigger asChild>
-                <Button
+                <MobileButton
                   variant="outline"
-                  className="w-full justify-start text-left font-normal"
+                  className="w-full justify-start text-left font-normal h-12"
+                  touchOptimized={true}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(visitDate, 'PPP')}
-                </Button>
+                  <CalendarIcon className="mr-3 h-5 w-5" />
+                  <span className="text-base">{format(visitDate, 'PPP')}</span>
+                </MobileButton>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent 
+                className="w-auto p-0" 
+                align="start"
+                side="bottom"
+                sideOffset={8}
+              >
                 <Calendar
                   mode="single"
                   selected={visitDate}
@@ -143,73 +185,74 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
                     date > new Date() || date < new Date('1900-01-01')
                   }
                   initialFocus
+                  className="rounded-md border"
                 />
               </PopoverContent>
             </Popover>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Notes:</label>
-            <Textarea
-              placeholder="What did you find interesting?"
+          {/* Notes - Mobile optimized */}
+          <div className="space-y-3">
+            <label className="text-base font-medium block">Notes:</label>
+            <MobileTextarea
+              placeholder="What did you find interesting about this visit?"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              rows={4}
+              className="resize-none"
+              preventZoom={true}
             />
+            <div className="text-sm text-gray-500">
+              {notes.length}/500 characters
+            </div>
           </div>
         </div>
+      </MobileDialog>
 
-        <DialogFooter className="flex justify-between sm:justify-between">
-          <Button
-            variant="outline"
-            onClick={() => setIsDeleteConfirmOpen(true)}
-            className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-            disabled={isLoading}
-          >
-            <Trash2 size={16} className="mr-2" />
-            Delete
-          </Button>
-
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-
-      {/* Delete Confirmation */}
-      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p>Are you sure you want to delete this visit? This cannot be undone.</p>
-          </div>
-          <DialogFooter>
-            <Button
+      {/* Delete Confirmation Dialog - Mobile optimized */}
+      <MobileDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="Confirm Deletion"
+        size="sm"
+        footer={
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <MobileButton
               variant="outline"
               onClick={() => setIsDeleteConfirmOpen(false)}
               disabled={isLoading}
+              className="flex-1"
             >
               Cancel
-            </Button>
-            <Button
+            </MobileButton>
+            <MobileButton
               variant="destructive"
               onClick={handleDelete}
               disabled={isLoading}
+              className="flex-1"
             >
               {isLoading ? 'Deleting...' : 'Delete Visit'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Dialog>
+            </MobileButton>
+          </div>
+        }
+      >
+        <div className="py-4">
+          <p className="text-base text-gray-700 leading-relaxed">
+            Are you sure you want to delete this visit record? This action cannot be undone.
+          </p>
+          <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-sm text-red-800">
+              <strong>Visit Date:</strong> {format(visitDate, 'PPP')}
+            </p>
+            {notes && (
+              <p className="text-sm text-red-800 mt-1">
+                <strong>Notes:</strong> {notes.substring(0, 100)}{notes.length > 100 ? '...' : ''}
+              </p>
+            )}
+          </div>
+        </div>
+      </MobileDialog>
+    </>
   );
 };
 

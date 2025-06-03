@@ -1,19 +1,25 @@
-// src/components/plaques/PlaqueListItem.tsx - Complete with auth gate integration
+// src/components/plaques/PlaqueListItem.tsx - Mobile optimized with swipe actions
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar, Navigation, Share2, Copy, ExternalLink } from 'lucide-react';
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { MobileButton } from "@/components/ui/mobile-button";
+import { MobileDialog } from "@/components/ui/mobile-dialog";
+import { MobileInput } from "@/components/ui/mobile-input";
+import { MobileTextarea } from "@/components/ui/mobile-textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuthGate } from '@/hooks/useAuthGate';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 import AddToCollectionDialog from './AddToCollectionDialog';
 import EditVisitDialog from './EditVisitDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
+import { triggerHapticFeedback } from '@/utils/mobileUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,14 +27,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
   Popover,
@@ -48,7 +46,6 @@ type PlaqueListItemProps = {
   showRouteButton?: boolean;
   variant?: 'discover' | 'collection';
   className?: string;
-  // Distance display props
   showDistance?: boolean;
   distance?: number;
   formatDistance?: (distance: number) => string;
@@ -66,7 +63,6 @@ export const PlaqueListItem = ({
   showRouteButton = false,
   variant = 'discover',
   className = '',
-  // Distance props
   showDistance = false,
   distance,
   formatDistance = (d) => `${d.toFixed(1)} km`
@@ -76,6 +72,7 @@ export const PlaqueListItem = ({
   const [showQuickVisitDialog, setShowQuickVisitDialog] = useState(false);
   const [showEditVisitDialog, setShowEditVisitDialog] = useState(false);
   const [showDeleteVisitConfirm, setShowDeleteVisitConfirm] = useState(false);
+  const [showSwipeActions, setShowSwipeActions] = useState(false);
   
   // Quick visit form state
   const [visitDate, setVisitDate] = useState<Date>(new Date());
@@ -86,6 +83,7 @@ export const PlaqueListItem = ({
   // Use hooks for consistent state management
   const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo } = useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { isKeyboardOpen, keyboardHeight } = useKeyboardDetection();
   
   // Auth gate integration
   const { 
@@ -100,7 +98,25 @@ export const PlaqueListItem = ({
   const isFav = isFavorite(plaque.id);
   const visitInfo = getVisitInfo(plaque.id);
 
-  // Event handlers with auth gate integration
+  // Swipe gesture handling for mobile actions
+  const { handleTouchStart, handleTouchEnd, handleTouchMove } = useSwipeGesture({
+    onSwipe: (direction, distance) => {
+      if (direction === 'right' && distance > 80) {
+        // Swipe right for favorite toggle
+        triggerHapticFeedback('selection');
+        handleFavoriteClick();
+      } else if (direction === 'left' && distance > 80) {
+        // Swipe left for quick actions
+        triggerHapticFeedback('selection');
+        setShowSwipeActions(true);
+        setTimeout(() => setShowSwipeActions(false), 3000);
+      }
+    },
+    threshold: 80,
+    timeThreshold: 400
+  });
+
+  // Event handlers with auth gate integration and haptic feedback
   const handleClick = (e: React.MouseEvent) => {
     // Prevent click when interacting with buttons or dropdowns
     if (e.target instanceof Element && (
@@ -112,22 +128,23 @@ export const PlaqueListItem = ({
       return;
     }
     
+    triggerHapticFeedback('selection');
     if (onClick) onClick(plaque);
   };
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleFavoriteClick = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     
     const favoriteAction = () => {
       toggleFavorite(plaque.id);
     };
 
-    // Use auth gate for favorites - will go to sign-in for existing user actions
     requireAuthForFavorite(plaque.id, favoriteAction);
   };
 
   const handleSelectClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    triggerHapticFeedback('selection');
     if (onSelect) onSelect(plaque.id);
   };
 
@@ -136,7 +153,6 @@ export const PlaqueListItem = ({
       setShowQuickVisitDialog(true);
     };
 
-    // Use auth gate for visits - will go to sign-in for existing user actions
     requireAuthForVisit(plaque.id, visitAction);
   };
 
@@ -145,10 +161,12 @@ export const PlaqueListItem = ({
   };
 
   const handleDeleteVisit = () => {
+    triggerHapticFeedback('warning');
     setShowDeleteVisitConfirm(true);
   };
 
   const handleRemove = () => {
+    triggerHapticFeedback('warning');
     if (onRemovePlaque) onRemovePlaque(plaque.id);
   };
 
@@ -157,11 +175,11 @@ export const PlaqueListItem = ({
       setShowAddToCollection(true);
     };
 
-    // Use auth gate for collections - will go to sign-in for existing user actions
     requireAuthForCollection(plaque.id, collectionAction);
   };
 
   const handleAddToRoute = () => {
+    triggerHapticFeedback('light');
     if (onAddToRoute) onAddToRoute(plaque);
   };
 
@@ -170,9 +188,11 @@ export const PlaqueListItem = ({
     try {
       const plaqueUrl = generatePlaqueUrl(plaque.id);
       await navigator.clipboard.writeText(plaqueUrl);
+      triggerHapticFeedback('success');
       toast.success('Link copied to clipboard!');
     } catch (error) {
       console.error('Error copying link:', error);
+      triggerHapticFeedback('error');
       toast.error("Couldn't copy link");
     }
   };
@@ -189,23 +209,27 @@ export const PlaqueListItem = ({
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
+        triggerHapticFeedback('success');
       } catch (error) {
         if (error.name !== 'AbortError') {
-          handleCopyLink(); // Fallback to copy
+          handleCopyLink();
         }
       }
     } else {
-      handleCopyLink(); // Fallback to copy
+      handleCopyLink();
     }
   };
 
   const handleViewFullDetails = () => {
+    triggerHapticFeedback('selection');
     window.open(`/plaque/${plaque.id}`, '_blank');
   };
 
   // Quick visit form submission
   const handleQuickVisitSubmit = async () => {
     setIsProcessing(true);
+    triggerHapticFeedback('light');
+    
     try {
       await markAsVisited(plaque.id, {
         visitedAt: visitDate.toISOString(),
@@ -213,12 +237,14 @@ export const PlaqueListItem = ({
       });
       
       if (onMarkVisited) onMarkVisited(plaque.id);
+      triggerHapticFeedback('success');
       toast.success("Marked as visited");
       setShowQuickVisitDialog(false);
       setVisitNotes('');
       setVisitDate(new Date());
     } catch (error) {
       console.error("Error marking as visited:", error);
+      triggerHapticFeedback('error');
       toast.error("Failed to mark as visited");
     } finally {
       setIsProcessing(false);
@@ -230,12 +256,16 @@ export const PlaqueListItem = ({
     if (!visitInfo) return;
     
     setIsProcessing(true);
+    triggerHapticFeedback('light');
+    
     try {
       await removeVisit(visitInfo.id);
+      triggerHapticFeedback('success');
       toast.success("Visit deleted");
       setShowDeleteVisitConfirm(false);
     } catch (error) {
       console.error("Error deleting visit:", error);
+      triggerHapticFeedback('error');
       toast.error("Failed to delete visit");
     } finally {
       setIsProcessing(false);
@@ -260,120 +290,116 @@ export const PlaqueListItem = ({
   return (
     <>
       <Card 
-        className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
+        className={`overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 touch-manipulation relative ${
           isSelected ? 'ring-2 ring-blue-500' : ''
-        } ${className}`}
+        } ${showSwipeActions ? 'shadow-lg scale-[1.02]' : ''} ${className}`}
         onClick={handleClick}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
       >
+        {/* Swipe action indicator */}
+        {showSwipeActions && (
+          <div className="absolute inset-0 bg-blue-50 border-2 border-blue-200 rounded-lg z-10 flex items-center justify-center">
+            <div className="text-blue-600 text-center">
+              <div className="text-lg font-semibold">Quick Actions Available</div>
+              <div className="text-sm">Tap menu for options</div>
+            </div>
+          </div>
+        )}
+
         <div className="flex">
-          {/* Image */}
-          <div className="relative w-20 h-20 sm:w-32 sm:h-32 shrink-0">
+          {/* Image - Mobile optimized */}
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0">
             <PlaqueImage 
               src={getImageUrl()}
               alt={plaque.title} 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover rounded-l-lg"
               placeholderClassName="bg-blue-50"
               plaqueColor={getPlaqueColor()}
             />
           </div>
           
-          {/* Content */}
-          <div className="flex-grow p-3 sm:p-4 min-w-0">
+          {/* Content - Mobile optimized */}
+          <div className="flex-grow p-4 min-w-0">
             <div className="flex justify-between items-start mb-2">
-              <div className="min-w-0 flex-grow pr-2">
-                <h3 className="font-semibold text-sm sm:text-base line-clamp-2 mb-1">
+              <div className="min-w-0 flex-grow pr-3">
+                <h3 className="font-semibold text-base sm:text-lg line-clamp-2 mb-2 leading-tight">
                   {plaque.title}
                 </h3>
-                <p className="text-gray-500 text-xs sm:text-sm flex items-start">
-                  <MapPin size={12} className="mr-1 mt-0.5 shrink-0" /> 
+                <p className="text-gray-500 text-sm sm:text-base flex items-start">
+                  <MapPin size={14} className="mr-2 mt-0.5 shrink-0" /> 
                   <span className="line-clamp-2">{getLocationDisplay()}</span>
                 </p>
               </div>
               
-              {/* Actions */}
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                {/* Mobile: Simple buttons */}
-                <div className="flex sm:hidden gap-1">
-                  {!isVisited && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 text-green-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleQuickMarkVisited();
-                      }}
-                    >
-                      <CheckCircle size={14} />
-                    </Button>
-                  )}
-                  
-                  <Button 
+              {/* Actions - Mobile friendly layout */}
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Mobile: Essential actions only */}
+                <div className="flex sm:hidden items-center gap-1">
+                  <MobileButton 
                     variant="ghost" 
                     size="sm" 
-                    className={`h-8 w-8 p-0 ${isFav ? 'text-amber-500' : 'text-gray-400'}`}
+                    className={`w-9 h-9 p-0 ${isFav ? 'text-amber-500' : 'text-gray-400'}`}
                     onClick={handleFavoriteClick}
-                  >
-                    <Star size={14} className={isFav ? 'fill-amber-500' : ''} />
-                  </Button>
-                </div>
-
-                {/* Desktop: Dropdown menu */}
-                <div className="hidden sm:flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={`h-8 w-8 p-0 ${isFav ? 'text-amber-500' : 'text-gray-400'}`}
-                    onClick={handleFavoriteClick}
+                    touchOptimized={true}
                   >
                     <Star size={16} className={isFav ? 'fill-amber-500' : ''} />
-                  </Button>
+                  </MobileButton>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                      <MobileButton 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-9 h-9 p-0" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHapticFeedback('selection');
+                        }}
+                        touchOptimized={true}
+                      >
                         <MoreVertical size={16} />
-                      </Button>
+                      </MobileButton>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {/* View Full Details option */}
-                      <DropdownMenuItem onSelect={handleViewFullDetails}>
-                        <ExternalLink size={14} className="mr-2 text-blue-600" />
-                        View Full Details
+                    <DropdownMenuContent align="end" className="w-56">
+                      {/* View Full Details */}
+                      <DropdownMenuItem onSelect={handleViewFullDetails} className="py-3">
+                        <ExternalLink size={16} className="mr-3 text-blue-600" />
+                        <span className="text-base">View Full Details</span>
                       </DropdownMenuItem>
                       
                       <DropdownMenuSeparator />
                       
                       {/* Share options */}
-                      <DropdownMenuItem onSelect={handleShare}>
-                        <Share2 size={14} className="mr-2 text-purple-600" />
-                        Share Plaque
+                      <DropdownMenuItem onSelect={handleShare} className="py-3">
+                        <Share2 size={16} className="mr-3 text-purple-600" />
+                        <span className="text-base">Share Plaque</span>
                       </DropdownMenuItem>
                       
-                      <DropdownMenuItem onSelect={handleCopyLink}>
-                        <Copy size={14} className="mr-2 text-gray-600" />
-                        Copy Link
+                      <DropdownMenuItem onSelect={handleCopyLink} className="py-3">
+                        <Copy size={16} className="mr-3 text-gray-600" />
+                        <span className="text-base">Copy Link</span>
                       </DropdownMenuItem>
                       
                       <DropdownMenuSeparator />
                       
-                      {/* Visit actions - Always visible, auth gate handles authentication */}
+                      {/* Visit actions */}
                       {!isVisited ? (
-                        <DropdownMenuItem onSelect={handleQuickMarkVisited}>
-                          <CheckCircle size={14} className="mr-2 text-green-600" />
-                          Mark as visited
+                        <DropdownMenuItem onSelect={handleQuickMarkVisited} className="py-3">
+                          <CheckCircle size={16} className="mr-3 text-green-600" />
+                          <span className="text-base">Mark as visited</span>
                         </DropdownMenuItem>
                       ) : (
-                        // Only show edit/delete for authenticated users with actual visit data
                         isAuthenticated && visitInfo && (
                           <>
-                            <DropdownMenuItem onSelect={handleEditVisit}>
-                              <Edit size={14} className="mr-2 text-blue-600" />
-                              Edit visit
+                            <DropdownMenuItem onSelect={handleEditVisit} className="py-3">
+                              <Edit size={16} className="mr-3 text-blue-600" />
+                              <span className="text-base">Edit visit</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={handleDeleteVisit}>
-                              <X size={14} className="mr-2 text-red-600" />
-                              Delete visit
+                            <DropdownMenuItem onSelect={handleDeleteVisit} className="py-3">
+                              <X size={16} className="mr-3 text-red-600" />
+                              <span className="text-base">Delete visit</span>
                             </DropdownMenuItem>
                           </>
                         )
@@ -381,25 +407,117 @@ export const PlaqueListItem = ({
                       
                       {/* Context-specific actions */}
                       {variant === 'discover' && (
-                        <DropdownMenuItem onSelect={handleAddToCollection}>
-                          <Plus size={14} className="mr-2 text-blue-600" />
-                          Add to collection
+                        <DropdownMenuItem onSelect={handleAddToCollection} className="py-3">
+                          <Plus size={16} className="mr-3 text-blue-600" />
+                          <span className="text-base">Add to collection</span>
                         </DropdownMenuItem>
                       )}
 
                       {onAddToRoute && (
-                        <DropdownMenuItem onSelect={handleAddToRoute}>
-                          <Plus size={14} className="mr-2 text-green-600" />
-                          Add to route
+                        <DropdownMenuItem onSelect={handleAddToRoute} className="py-3">
+                          <Plus size={16} className="mr-3 text-green-600" />
+                          <span className="text-base">Add to route</span>
                         </DropdownMenuItem>
                       )}
 
                       {variant === 'collection' && onRemovePlaque && isAuthenticated && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={handleRemove}>
-                            <Trash2 size={14} className="mr-2 text-red-600" />
-                            Remove from collection
+                          <DropdownMenuItem onSelect={handleRemove} className="py-3">
+                            <Trash2 size={16} className="mr-3 text-red-600" />
+                            <span className="text-base">Remove from collection</span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Desktop: Show favorite and dropdown */}
+                <div className="hidden sm:flex items-center gap-2">
+                  <MobileButton 
+                    variant="ghost" 
+                    size="sm" 
+                    className={`w-10 h-10 p-0 ${isFav ? 'text-amber-500' : 'text-gray-400'}`}
+                    onClick={handleFavoriteClick}
+                    touchOptimized={true}
+                  >
+                    <Star size={18} className={isFav ? 'fill-amber-500' : ''} />
+                  </MobileButton>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <MobileButton 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-10 h-10 p-0" 
+                        onClick={(e) => e.stopPropagation()}
+                        touchOptimized={true}
+                      >
+                        <MoreVertical size={18} />
+                      </MobileButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {/* Same menu items as mobile */}
+                      <DropdownMenuItem onSelect={handleViewFullDetails} className="py-3">
+                        <ExternalLink size={16} className="mr-3 text-blue-600" />
+                        <span className="text-base">View Full Details</span>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      <DropdownMenuItem onSelect={handleShare} className="py-3">
+                        <Share2 size={16} className="mr-3 text-purple-600" />
+                        <span className="text-base">Share Plaque</span>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem onSelect={handleCopyLink} className="py-3">
+                        <Copy size={16} className="mr-3 text-gray-600" />
+                        <span className="text-base">Copy Link</span>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      
+                      {!isVisited ? (
+                        <DropdownMenuItem onSelect={handleQuickMarkVisited} className="py-3">
+                          <CheckCircle size={16} className="mr-3 text-green-600" />
+                          <span className="text-base">Mark as visited</span>
+                        </DropdownMenuItem>
+                      ) : (
+                        isAuthenticated && visitInfo && (
+                          <>
+                            <DropdownMenuItem onSelect={handleEditVisit} className="py-3">
+                              <Edit size={16} className="mr-3 text-blue-600" />
+                              <span className="text-base">Edit visit</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleDeleteVisit} className="py-3">
+                              <X size={16} className="mr-3 text-red-600" />
+                              <span className="text-base">Delete visit</span>
+                            </DropdownMenuItem>
+                          </>
+                        )
+                      )}
+                      
+                      {variant === 'discover' && (
+                        <DropdownMenuItem onSelect={handleAddToCollection} className="py-3">
+                          <Plus size={16} className="mr-3 text-blue-600" />
+                          <span className="text-base">Add to collection</span>
+                        </DropdownMenuItem>
+                      )}
+
+                      {onAddToRoute && (
+                        <DropdownMenuItem onSelect={handleAddToRoute} className="py-3">
+                          <Plus size={16} className="mr-3 text-green-600" />
+                          <span className="text-base">Add to route</span>
+                        </DropdownMenuItem>
+                      )}
+
+                      {variant === 'collection' && onRemovePlaque && isAuthenticated && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onSelect={handleRemove} className="py-3">
+                            <Trash2 size={16} className="mr-3 text-red-600" />
+                            <span className="text-base">Remove from collection</span>
                           </DropdownMenuItem>
                         </>
                       )}
@@ -407,26 +525,26 @@ export const PlaqueListItem = ({
                   </DropdownMenu>
                 </div>
                 
-                {/* Selection checkbox */}
+                {/* Selection checkbox - Mobile optimized */}
                 {showSelection && onSelect && (
                   <div 
-                    className={`w-6 h-6 rounded-full flex items-center justify-center cursor-pointer ${
-                      isSelected ? 'bg-blue-500 text-white' : 'border border-gray-300'
+                    className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer touch-manipulation ${
+                      isSelected ? 'bg-blue-500 text-white' : 'border-2 border-gray-300'
                     }`}
                     onClick={handleSelectClick}
                   >
-                    {isSelected && <CheckCircle size={14} />}
+                    {isSelected && <CheckCircle size={16} />}
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Badges */}
-            <div className="flex flex-wrap items-center gap-1 mb-2">
+            {/* Badges - Mobile optimized */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
               {/* Distance badge - shows first for prominence */}
               {showDistance && distance !== undefined && distance !== Infinity && (
-                <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-200">
-                  <Navigation size={10} className="mr-1" />
+                <Badge variant="secondary" className="text-sm bg-green-50 text-green-700 border-green-200 py-1 px-2">
+                  <Navigation size={12} className="mr-1" />
                   {formatDistance(distance)}
                 </Badge>
               )}
@@ -434,7 +552,7 @@ export const PlaqueListItem = ({
               {getPlaqueColor() && getPlaqueColor() !== "Unknown" && (
                 <Badge 
                   variant="outline" 
-                  className={`text-xs ${
+                  className={`text-sm py-1 px-2 ${
                     getPlaqueColor() === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                     getPlaqueColor() === 'green' ? 'bg-green-50 text-green-700 border-green-200' :
                     getPlaqueColor() === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -447,47 +565,48 @@ export const PlaqueListItem = ({
               )}
               
               {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
-                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs">
+                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-sm py-1 px-2">
                   {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
                    (plaque.lead_subject_primary_role as string).slice(1)}
                 </Badge>
               )}
               
               {isVisited && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                  <CheckCircle size={10} className="mr-1" /> 
+                <Badge variant="secondary" className="bg-green-100 text-green-800 text-sm py-1 px-2">
+                  <CheckCircle size={12} className="mr-1" /> 
                   {formatVisitDate()}
                 </Badge>
               )}
 
               {isFav && (
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
-                  <Star size={10} className="mr-1 fill-amber-600" /> Favorite
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-sm py-1 px-2">
+                  <Star size={12} className="mr-1 fill-amber-600" /> Favorite
                 </Badge>
               )}
             </div>
 
-            {/* Route button for mobile */}
+            {/* Route button for mobile - Mobile optimized */}
             {showRouteButton && onAddToRoute && (
-              <div className="mb-2">
-                <Button
+              <div className="mb-3">
+                <MobileButton
                   size="sm"
                   variant="outline"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleAddToRoute();
                   }}
-                  className="h-7 text-xs"
+                  className="h-9 text-sm"
+                  touchOptimized={true}
                 >
-                  <Plus size={12} className="mr-1" />
+                  <Plus size={14} className="mr-2" />
                   Add to Route
-                </Button>
+                </MobileButton>
               </div>
             )}
             
             {/* Short description preview */}
             {plaque.inscription && (
-              <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+              <p className="text-sm sm:text-base text-gray-600 line-clamp-2 leading-relaxed">
                 {plaque.inscription}
               </p>
             )}
@@ -495,26 +614,49 @@ export const PlaqueListItem = ({
         </div>
       </Card>
 
-      {/* Quick visit dialog */}
-      <Dialog open={showQuickVisitDialog} onOpenChange={setShowQuickVisitDialog}>
-        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle>Mark as Visited</DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Visit Date</label>
+      {/* Mobile optimized dialogs */}
+      <>
+        {/* Quick visit dialog */}
+        <MobileDialog
+          isOpen={showQuickVisitDialog}
+          onClose={() => setShowQuickVisitDialog(false)}
+          title="Mark as Visited"
+          size="md"
+          className={isKeyboardOpen ? `mb-[${keyboardHeight}px]` : ''}
+          footer={
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <MobileButton
+                variant="outline"
+                onClick={() => setShowQuickVisitDialog(false)}
+                disabled={isProcessing}
+                className="flex-1"
+              >
+                Cancel
+              </MobileButton>
+              <MobileButton 
+                onClick={handleQuickVisitSubmit}
+                disabled={isProcessing}
+                className="flex-1"
+              >
+                {isProcessing ? 'Saving...' : 'Mark as Visited'}
+              </MobileButton>
+            </div>
+          }
+        >
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <label className="text-base font-medium">Visit Date</label>
               <Popover open={showCalendar} onOpenChange={setShowCalendar}>
                 <PopoverTrigger asChild>
-                  <Button
+                  <MobileButton
                     variant="outline"
-                    className="w-full justify-start text-left font-normal"
+                    className="w-full justify-start text-left font-normal h-12"
                     onClick={(e) => e.stopPropagation()}
+                    touchOptimized={true}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {format(visitDate, "PPP")}
-                  </Button>
+                    <Calendar className="mr-3 h-5 w-5" />
+                    <span className="text-base">{format(visitDate, "PPP")}</span>
+                  </MobileButton>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarComponent
@@ -522,6 +664,7 @@ export const PlaqueListItem = ({
                     selected={visitDate}
                     onSelect={(date) => {
                       if (date) {
+                        triggerHapticFeedback('selection');
                         setVisitDate(date);
                         setShowCalendar(false);
                       }
@@ -533,88 +676,74 @@ export const PlaqueListItem = ({
               </Popover>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (optional)</label>
-              <Textarea
+            <div className="space-y-3">
+              <label className="text-base font-medium">Notes (optional)</label>
+              <MobileTextarea
                 placeholder="Any thoughts about your visit?"
                 value={visitNotes}
                 onChange={(e) => setVisitNotes(e.target.value)}
-                rows={3}
+                rows={4}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
           </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowQuickVisitDialog(false)}
-              disabled={isProcessing}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleQuickVisitSubmit}
-              disabled={isProcessing}
-            >
-              {isProcessing ? 'Saving...' : 'Mark as Visited'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </MobileDialog>
 
-      {/* Edit visit dialog */}
-      <EditVisitDialog
-        isOpen={showEditVisitDialog}
-        onClose={() => setShowEditVisitDialog(false)}
-        plaque={plaque}
-        visitId={visitInfo?.id || null}
-        onVisitUpdated={() => {
-          if (onMarkVisited) onMarkVisited(plaque.id);
-        }}
-        onVisitDeleted={() => {
-          if (onMarkVisited) onMarkVisited(plaque.id);
-        }}
-      />
+        {/* Edit visit dialog */}
+        <EditVisitDialog
+          isOpen={showEditVisitDialog}
+          onClose={() => setShowEditVisitDialog(false)}
+          plaque={plaque}
+          visitId={visitInfo?.id || null}
+          onVisitUpdated={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+          onVisitDeleted={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+        />
 
-      {/* Delete visit confirmation */}
-      <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Visit</DialogTitle>
-          </DialogHeader>
-          
+        {/* Delete visit confirmation */}
+        <MobileDialog
+          isOpen={showDeleteVisitConfirm}
+          onClose={() => setShowDeleteVisitConfirm(false)}
+          title="Delete Visit"
+          size="sm"
+          footer={
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <MobileButton
+                variant="outline"
+                onClick={() => setShowDeleteVisitConfirm(false)}
+                disabled={isProcessing}
+                className="flex-1"
+              >
+                Cancel
+              </MobileButton>
+              <MobileButton 
+                variant="destructive"
+                onClick={handleConfirmDeleteVisit}
+                disabled={isProcessing}
+                className="flex-1"
+              >
+                {isProcessing ? 'Deleting...' : 'Delete Visit'}
+              </MobileButton>
+            </div>
+          }
+        >
           <div className="py-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-base text-gray-600 leading-relaxed">
               Are you sure you want to delete your visit to this plaque? This action cannot be undone.
             </p>
           </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteVisitConfirm(false)}
-              disabled={isProcessing}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive"
-              onClick={handleConfirmDeleteVisit}
-              disabled={isProcessing}
-            >
-              {isProcessing ? 'Deleting...' : 'Delete Visit'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </MobileDialog>
 
-      {/* Add to collection dialog */}
-      <AddToCollectionDialog
-        isOpen={showAddToCollection}
-        onClose={() => setShowAddToCollection(false)}
-        plaque={plaque}
-      />
+        {/* Add to collection dialog */}
+        <AddToCollectionDialog
+          isOpen={showAddToCollection}
+          onClose={() => setShowAddToCollection(false)}
+          plaque={plaque}
+        />
+      </>
     </>
   );
 };

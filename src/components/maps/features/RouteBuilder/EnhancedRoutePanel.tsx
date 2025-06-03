@@ -1,4 +1,4 @@
-// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - Complete with auth gate
+// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - MOBILE OPTIMIZED
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
@@ -13,7 +13,7 @@ import {
   Save,
   Loader
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MobileButton } from "@/components/ui/mobile-button";
 import { Badge } from '@/components/ui/badge';
 import { Plaque } from '@/types/plaque';
 import { 
@@ -27,6 +27,9 @@ import { useAuthGate } from '@/hooks/useAuthGate';
 import { useRoutes } from '@/hooks/useRoutes';
 import { toast } from 'sonner';
 import SaveRouteDialog from '@/components/routes/SaveRouteDialog';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
+import { useSafeArea } from '@/hooks/useSafeArea';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
 interface EnhancedRoutePanelProps {
   points: Plaque[];
@@ -35,7 +38,7 @@ interface EnhancedRoutePanelProps {
   onClear: () => void;
   onClose: () => void;
   className?: string;
-  onRouteAction?: (routeData: any) => void; // NEW: Handle pending route actions
+  onRouteAction?: (routeData: any) => void;
 }
 
 export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
@@ -51,6 +54,11 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   const { requireAuthForRoute } = useAuthGate();
   const { createRoute } = useRoutes ? useRoutes() : { createRoute: null };
   
+  // Mobile detection and responsive setup
+  const mobile = isMobile();
+  const safeArea = useSafeArea();
+  
+  // State management
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -64,6 +72,22 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     segments: RouteSegment[];
     error?: string;
   } | null>(null);
+  
+  // Swipe gesture for mobile collapse/expand
+  const { handleTouchStart, handleTouchEnd } = useSwipeGesture({
+    onSwipe: (direction) => {
+      if (mobile) {
+        if (direction === 'up' && isCollapsed) {
+          setIsCollapsed(false);
+          triggerHapticFeedback('light');
+        } else if (direction === 'down' && !isCollapsed) {
+          setIsCollapsed(true);
+          triggerHapticFeedback('light');
+        }
+      }
+    },
+    threshold: 50
+  });
   
   // Calculate walking route when points change
   useEffect(() => {
@@ -134,7 +158,11 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     error: undefined
   };
   
+  // Mobile drag handlers with haptic feedback
   const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (mobile) {
+      triggerHapticFeedback('medium');
+    }
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -147,12 +175,15 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     if (draggedIndex !== null && draggedIndex !== dropIndex) {
+      if (mobile) {
+        triggerHapticFeedback('success');
+      }
       onReorder(draggedIndex, dropIndex);
     }
     setDraggedIndex(null);
   };
   
-  // ENHANCED: Handle save route with auth gate integration
+  // Handle save route with auth gate integration
   const handleSaveRoute = async (data: { name: string; description: string }) => {
     if (points.length < 2) {
       toast.error("A route must have at least 2 stops");
@@ -199,7 +230,6 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
       }
     };
 
-    // Use auth gate for route saving - will navigate to sign-in for existing users
     requireAuthForRoute(routeData, saveAction);
   };
   
@@ -207,6 +237,10 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     if (points.length < 2) {
       toast.error("Need at least 2 points to export");
       return;
+    }
+    
+    if (mobile) {
+      triggerHapticFeedback('success');
     }
     
     const waypoints = points.map((point, index) => `
@@ -248,23 +282,60 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     toast.success("Route exported as GPX file");
   };
   
+  const handleToggleCollapsed = () => {
+    if (mobile) {
+      triggerHapticFeedback('selection');
+    }
+    setIsCollapsed(!isCollapsed);
+  };
+  
+  const handleRemovePoint = (id: number) => {
+    if (mobile) {
+      triggerHapticFeedback('light');
+    }
+    onRemove(id);
+  };
+  
+  const handleClearRoute = () => {
+    if (mobile) {
+      triggerHapticFeedback('medium');
+    }
+    onClear();
+  };
+  
+  // Mobile responsive dimensions
+  const panelWidth = mobile ? '100%' : 'min(90vw, 400px)';
+  const panelHeight = mobile ? 
+    isCollapsed ? 'auto' : 'min(50vh, 400px)' : 
+    'min(85vh, 600px)';
+  
   if (points.length === 0) {
     return (
-      <div className={`bg-white rounded-lg shadow-lg p-4 w-80 sm:w-96 z-40 ${className}`}>
+      <div 
+        className={`bg-white rounded-lg shadow-lg ${mobile ? 'p-3' : 'p-4'} z-40 ${className}`}
+        style={{ 
+          width: panelWidth,
+          marginBottom: mobile ? safeArea.bottom : undefined 
+        }}
+      >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-medium flex items-center gap-2">
+          <h3 className={`${mobile ? 'text-base' : 'text-sm'} font-medium flex items-center gap-2`}>
             <Route size={16} className="text-green-600" />
             Route Planner
           </h3>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+          <MobileButton variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
             <X size={16} />
-          </Button>
+          </MobileButton>
         </div>
         
         <div className="text-center py-8">
           <Route className="mx-auto text-gray-300 mb-3" size={32} />
-          <p className="text-sm text-gray-500 mb-2">Click on plaques to build your route</p>
-          <p className="text-xs text-gray-400">Routes will show real walking distances</p>
+          <p className={`${mobile ? 'text-base' : 'text-sm'} text-gray-500 mb-2`}>
+            Click on plaques to build your route
+          </p>
+          <p className={`${mobile ? 'text-sm' : 'text-xs'} text-gray-400`}>
+            Routes will show real walking distances
+          </p>
         </div>
       </div>
     );
@@ -272,43 +343,66 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   
   return (
     <>
-      <div className={`bg-white rounded-lg shadow-lg flex flex-col overflow-hidden ${className}`} 
-           style={{
-             width: 'min(90vw, 400px)', // Responsive width
-             maxHeight: 'min(85vh, 600px)', // Responsive height
-             minWidth: '280px' // Minimum width for mobile
-           }}>
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b flex-shrink-0">
+      <div 
+        className={`bg-white rounded-lg shadow-lg flex flex-col overflow-hidden ${className}`}
+        style={{
+          width: panelWidth,
+          height: panelHeight,
+          maxHeight: mobile ? '60vh' : 'min(85vh, 600px)',
+          minWidth: mobile ? 'auto' : '280px',
+          marginBottom: mobile ? safeArea.bottom : undefined
+        }}
+        onTouchStart={mobile ? handleTouchStart : undefined}
+        onTouchEnd={mobile ? handleTouchEnd : undefined}
+      >
+        {/* Header with mobile-optimized touch area */}
+        <div 
+          className={`flex justify-between items-center ${mobile ? 'p-3' : 'p-4'} border-b flex-shrink-0 ${
+            mobile ? 'bg-gray-50' : ''
+          }`}
+          onClick={mobile ? handleToggleCollapsed : undefined}
+        >
           <div className="flex items-center gap-2 min-w-0">
             <Route size={16} className="text-green-600 flex-shrink-0" />
-            <h3 className="text-sm font-medium truncate">Route Planner</h3>
+            <h3 className={`${mobile ? 'text-base' : 'text-sm'} font-medium truncate`}>
+              Route Planner
+            </h3>
             <Badge variant="secondary" className="text-xs flex-shrink-0">
               {points.length} stops
             </Badge>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button 
+            {mobile && (
+              <MobileButton 
+                variant="ghost" 
+                size="sm" 
+                className="h-7 w-7 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleCollapsed();
+                }}
+              >
+                {isCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </MobileButton>
+            )}
+            <MobileButton 
               variant="ghost" 
               size="sm" 
-              className="h-7 w-7 p-0"
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="h-7 w-7 p-0" 
+              onClick={onClose}
             >
-              {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-            </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
               <X size={16} />
-            </Button>
+            </MobileButton>
           </div>
         </div>
         
         {!isCollapsed && (
           <>
-            {/* Enhanced Route Stats */}
-            <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border-b flex-shrink-0">
-              <div className="flex justify-between items-center text-sm">
+            {/* Route Stats - Mobile optimized */}
+            <div className={`${mobile ? 'p-3' : 'p-4'} bg-gradient-to-r from-green-50 to-blue-50 border-b flex-shrink-0`}>
+              <div className={`flex justify-between items-center ${mobile ? 'text-base' : 'text-sm'}`}>
                 <div className="flex items-center gap-1">
-                  <MapPin size={14} className="text-green-600" />
+                  <MapPin size={mobile ? 16 : 14} className="text-green-600" />
                   <span className="font-medium">
                     {isCalculating ? (
                       <div className="flex items-center gap-1">
@@ -324,7 +418,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <Clock size={14} className="text-blue-600" />
+                  <Clock size={mobile ? 16 : 14} className="text-blue-600" />
                   <span className="font-medium">
                     {isCalculating ? '...' : formatDuration(displayStats.duration)}
                   </span>
@@ -345,25 +439,30 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
               )}
             </div>
             
-            {/* Route Points - Scrollable */}
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <div className="p-4 space-y-3">
+            {/* Route Points - Scrollable with mobile optimization */}
+            <div className="flex-1 overflow-y-auto min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className={`${mobile ? 'p-3' : 'p-4'} space-y-3`}>
                 {points.map((point, index) => {
                   const segmentData = routeData?.segments.find(s => s.from.id === point.id);
                   
                   return (
                     <div key={point.id}>
-                      {/* Route Point */}
+                      {/* Route Point with mobile-optimized touch targets */}
                       <div 
-                        className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-move transition-colors"
+                        className={`flex items-center gap-3 ${mobile ? 'p-4' : 'p-3'} border rounded-lg hover:bg-gray-50 cursor-move transition-colors ${
+                          mobile ? 'active:bg-gray-100' : ''
+                        }`}
                         draggable
                         onDragStart={(e) => handleDragStart(e, index)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, index)}
                       >
-                        <GripVertical size={16} className="text-gray-400 touch-manipulation flex-shrink-0" />
+                        <GripVertical 
+                          size={mobile ? 20 : 16} 
+                          className="text-gray-400 touch-manipulation flex-shrink-0" 
+                        />
                         
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 ${
+                        <div className={`${mobile ? 'w-10 h-10' : 'w-8 h-8'} rounded-full flex items-center justify-center ${mobile ? 'text-base' : 'text-sm'} font-bold text-white flex-shrink-0 ${
                           index === 0 ? 'bg-green-500' : 
                           index === points.length - 1 ? 'bg-red-500' : 
                           'bg-blue-500'
@@ -372,25 +471,27 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                         </div>
                         
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{point.title}</div>
-                          <div className="text-xs text-gray-500 truncate">
+                          <div className={`${mobile ? 'text-base' : 'text-sm'} font-medium truncate`}>
+                            {point.title}
+                          </div>
+                          <div className={`${mobile ? 'text-sm' : 'text-xs'} text-gray-500 truncate`}>
                             {point.location || point.address}
                           </div>
                         </div>
                         
-                        <Button
+                        <MobileButton
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                          onClick={() => onRemove(point.id)}
+                          className={`${mobile ? 'h-10 w-10' : 'h-8 w-8'} p-0 text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0`}
+                          onClick={() => handleRemovePoint(point.id)}
                         >
-                          <X size={14} />
-                        </Button>
+                          <X size={mobile ? 16 : 14} />
+                        </MobileButton>
                       </div>
                       
-                      {/* Segment Info */}
+                      {/* Segment Info - Mobile optimized */}
                       {segmentData && index < points.length - 1 && (
-                        <div className="ml-8 mt-2 mb-2 text-xs text-gray-500 flex items-center gap-2">
+                        <div className={`${mobile ? 'ml-10' : 'ml-8'} mt-2 mb-2 ${mobile ? 'text-sm' : 'text-xs'} text-gray-500 flex items-center gap-2`}>
                           <div className="w-px h-4 bg-gray-300"></div>
                           <span className="bg-gray-100 px-2 py-1 rounded text-nowrap">
                             {formatDistance(segmentData.route.distance)} • {formatDuration(segmentData.route.duration)}
@@ -403,43 +504,43 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
               </div>
             </div>
             
-            {/* Actions */}
-            <div className="p-4 border-t space-y-3 flex-shrink-0">
-              <div className="grid grid-cols-2 gap-2">
-                <Button 
+            {/* Actions - Mobile optimized */}
+            <div className={`${mobile ? 'p-3' : 'p-4'} border-t space-y-3 flex-shrink-0`}>
+              <div className={`grid ${mobile ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-2'}`}>
+                <MobileButton 
                   variant="outline" 
                   size="sm" 
                   onClick={handleExport} 
-                  className="text-xs"
+                  className={mobile ? 'w-full text-sm' : 'text-xs'}
                   disabled={points.length < 2}
                 >
-                  <Download size={12} className="mr-1" />
+                  <Download size={mobile ? 16 : 12} className="mr-1" />
                   Export GPX
-                </Button>
+                </MobileButton>
                 
-                <Button 
+                <MobileButton 
                   variant="outline" 
                   size="sm" 
-                  onClick={onClear} 
-                  className="text-xs text-red-600 hover:text-red-700"
+                  onClick={handleClearRoute} 
+                  className={`${mobile ? 'w-full text-sm' : 'text-xs'} text-red-600 hover:text-red-700`}
                 >
-                  <X size={12} className="mr-1" />
+                  <X size={mobile ? 16 : 12} className="mr-1" />
                   Clear All
-                </Button>
+                </MobileButton>
               </div>
               
-              <Button 
+              <MobileButton 
                 size="sm" 
                 onClick={() => setShowSaveDialog(true)}
                 disabled={points.length < 2}
-                className="w-full text-xs"
+                className={`w-full ${mobile ? 'text-sm h-12' : 'text-xs'}`}
               >
-                <Save size={12} className="mr-1" />
+                <Save size={mobile ? 16 : 12} className="mr-1" />
                 {points.length < 2 ? 'Need 2+ Stops to Save' : 'Save Route'}
-              </Button>
+              </MobileButton>
               
               {points.length >= 2 && (
-                <p className="text-xs text-gray-500 text-center">
+                <p className={`${mobile ? 'text-sm' : 'text-xs'} text-gray-500 text-center`}>
                   Save your route to access it later and share with others
                 </p>
               )}
@@ -448,13 +549,13 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         )}
       </div>
       
-      {/* Save Route Dialog */}
+      {/* Save Route Dialog - Mobile optimized */}
       <SaveRouteDialog
         isOpen={showSaveDialog}
         onClose={() => setShowSaveDialog(false)}
         onSave={handleSaveRoute}
         routePoints={points}
-        routeDistance={displayStats.distance / 1000} // Convert to km
+        routeDistance={displayStats.distance / 1000}
         useImperial={false}
         isSaving={isSaving}
       />

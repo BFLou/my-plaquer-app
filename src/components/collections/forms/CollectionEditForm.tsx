@@ -1,4 +1,4 @@
-// src/features/collections/components/forms/CollectionEditForm.tsx
+// src/components/collections/forms/CollectionEditForm.tsx - COMPLETE MOBILE OPTIMIZED
 import React, { useState, useEffect } from 'react';
 import {
   Sheet,
@@ -7,16 +7,19 @@ import {
   SheetTitle,
   SheetFooter
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { MobileButton } from "@/components/ui/mobile-button";
+import { MobileInput } from "@/components/ui/mobile-input";
+import { MobileTextarea } from "@/components/ui/mobile-textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { X } from 'lucide-react';
 import { Collection } from '../CollectionCard';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
+import { useSafeArea } from '@/hooks/useSafeArea';
+import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 
-// Available icons and colors with improved selection
+// Available icons and colors
 const icons = [
   '🎭', '🎶', '📚', '🏛️', '🏙️', '🌟', '🧠', '🏆', '🧪', '🎨', '🌍', '🎓', 
   '🏺', '⚔️', '🎬', '🚀', '🦄', '🌈', '🪷', '🌵', '🍦', '🧁', '🎠', '🦋', 
@@ -62,6 +65,11 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
   isLoading,
   collection
 }) => {
+  // Mobile detection and responsive setup
+  const mobile = isMobile();
+  const safeArea = useSafeArea();
+  const { isKeyboardOpen } = useKeyboardDetection();
+  
   // Form state
   const [formState, setFormState] = useState<CollectionFormData>({
     name: '',
@@ -93,6 +101,11 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
   
   // Update a single field
   const handleChange = (field: keyof CollectionFormData, value: any) => {
+    // Add haptic feedback for mobile
+    if (mobile) {
+      triggerHapticFeedback('selection');
+    }
+    
     setFormState(prev => ({
       ...prev,
       [field]: value
@@ -116,6 +129,9 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
   // Handle tag input
   const handleAddTag = () => {
     if (tagInput.trim() && !formState.tags?.includes(tagInput.trim())) {
+      if (mobile) {
+        triggerHapticFeedback('light');
+      }
       setFormState(prev => ({
         ...prev,
         tags: [...(prev.tags || []), tagInput.trim()]
@@ -125,6 +141,9 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
   };
   
   const handleRemoveTag = (tag: string) => {
+    if (mobile) {
+      triggerHapticFeedback('light');
+    }
     setFormState(prev => ({
       ...prev,
       tags: prev.tags?.filter(t => t !== tag) || []
@@ -184,6 +203,9 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
     
     // Validate form
     if (validateForm()) {
+      if (mobile) {
+        triggerHapticFeedback('success');
+      }
       onSubmit(formState);
     }
   };
@@ -193,24 +215,34 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
   
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Edit Collection</SheetTitle>
+      <SheetContent 
+        side="right" 
+        className={`${mobile ? 'w-full' : 'sm:max-w-md'} overflow-y-auto`}
+        style={{
+          paddingBottom: mobile ? Math.max(safeArea.bottom + 20, 40) : undefined
+        }}
+      >
+        <SheetHeader className={mobile ? 'pb-4' : 'pb-6'}>
+          <SheetTitle className={mobile ? 'text-xl' : 'text-lg'}>
+            Edit Collection
+          </SheetTitle>
         </SheetHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6 pt-6">
+          {/* Collection Name */}
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-base">
+            <Label htmlFor="name" className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
               Collection Name <span className="text-red-500">*</span>
             </Label>
-            <Input
+            <MobileInput
               id="name"
               value={formState.name}
               onChange={(e) => handleChange('name', e.target.value)}
               placeholder="e.g., Literary London"
               className={`w-full ${errors.name && touched.name ? 'border-red-500' : ''}`}
               disabled={isLoading}
-              autoFocus
+              autoFocus={!mobile}
+              preventZoom={true}
             />
             {errors.name && touched.name && (
               <p className="text-red-500 text-xs mt-1">{errors.name}</p>
@@ -220,16 +252,20 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
             </p>
           </div>
           
+          {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-base">Description (optional)</Label>
-            <Textarea
+            <Label htmlFor="description" className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+              Description (optional)
+            </Label>
+            <MobileTextarea
               id="description"
               value={formState.description}
               onChange={(e) => handleChange('description', e.target.value)}
               placeholder="What's this collection about?"
               className={`w-full ${errors.description && touched.description ? 'border-red-500' : ''}`}
               disabled={isLoading}
-              rows={3}
+              rows={mobile ? 4 : 3}
+              preventZoom={true}
             />
             {errors.description && touched.description && (
               <p className="text-red-500 text-xs mt-1">{errors.description}</p>
@@ -239,47 +275,63 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
             </p>
           </div>
           
+          {/* Icon Selection */}
           <div className="space-y-3">
-            <Label className="text-base">Choose an Icon</Label>
-            <div className="grid grid-cols-8 sm:grid-cols-9 gap-3">
+            <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+              Choose an Icon
+            </Label>
+            <div className={`grid ${mobile ? 'grid-cols-6 gap-4' : 'grid-cols-8 sm:grid-cols-9 gap-3'}`}>
               {icons.map((icon) => (
-                <div 
+                <button
                   key={icon}
+                  type="button"
                   onClick={() => !isLoading && handleChange('icon', icon)}
-                  className={`w-10 h-10 rounded-full ${formState.color} flex items-center justify-center text-white text-xl cursor-pointer ${
+                  className={`${mobile ? 'h-14 w-14' : 'h-10 w-10'} rounded-full ${formState.color} flex items-center justify-center text-white ${mobile ? 'text-2xl' : 'text-xl'} cursor-pointer ${
                     formState.icon === icon ? 'ring-2 ring-offset-2 ring-blue-400' : ''
-                  } hover:scale-110 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } hover:scale-110 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${
+                    mobile ? 'active:scale-95' : ''
+                  }`}
+                  disabled={isLoading}
                 >
                   {icon}
-                </div>
+                </button>
               ))}
             </div>
           </div>
           
+          {/* Color Selection */}
           <div className="space-y-3">
-            <Label className="text-base">Choose a Color</Label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+              Choose a Color
+            </Label>
+            <div className={`grid ${mobile ? 'grid-cols-2 gap-4' : 'grid-cols-3 sm:grid-cols-6 gap-3'}`}>
               {colors.map((color) => (
-                <div 
+                <button
                   key={color.value}
+                  type="button"
                   onClick={() => !isLoading && handleChange('color', color.value)}
                   className="relative"
+                  disabled={isLoading}
                 >
-                  <div className={`w-full h-12 rounded-lg ${color.value} cursor-pointer ${
+                  <div className={`w-full ${mobile ? 'h-16' : 'h-12'} rounded-lg ${color.value} cursor-pointer ${
                     formState.color === color.value ? 'ring-2 ring-offset-2 ring-blue-400' : ''
-                  } hover:scale-105 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  } hover:scale-105 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${
+                    mobile ? 'active:scale-95' : ''
+                  }`}>
                   </div>
-                  <span className={`absolute inset-0 flex items-center justify-center text-sm font-medium ${color.textColor}`}>
+                  <span className={`absolute inset-0 flex items-center justify-center ${mobile ? 'text-base' : 'text-sm'} font-medium ${color.textColor}`}>
                     {color.name}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
           
           {/* Tags */}
           <div className="space-y-3">
-            <Label className="text-base">Tags (optional)</Label>
+            <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+              Tags (optional)
+            </Label>
             <div className="flex flex-wrap gap-2 mb-2">
               {formState.tags && formState.tags.length > 0 ? (
                 formState.tags.map((tag) => (
@@ -299,49 +351,63 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
                 <span className="text-gray-400 text-sm">No tags added yet</span>
               )}
             </div>
-            <div className="flex gap-2">
-              <Input 
+            <div className={`flex gap-2 ${mobile ? 'flex-col' : ''}`}>
+              <MobileInput 
                 placeholder="Add a tag..."
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                 disabled={isLoading}
+                className={mobile ? 'mb-2' : 'flex-1'}
+                preventZoom={true}
               />
-              <Button 
+              <MobileButton 
                 type="button" 
                 onClick={handleAddTag}
                 disabled={!tagInput.trim() || isLoading}
+                className={mobile ? 'w-full' : ''}
               >
                 Add
-              </Button>
+              </MobileButton>
             </div>
           </div>
           
           {/* Public/Private Toggle */}
-          <div className="flex items-center justify-between">
+          <div className={`flex items-center ${mobile ? 'flex-col items-start gap-4' : 'justify-between'}`}>
             <div>
-              <Label htmlFor="isPublic" className="text-base">Public Collection</Label>
-              <p className="text-sm text-gray-500">Anyone with the link can view this collection</p>
+              <Label htmlFor="isPublic" className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+                Public Collection
+              </Label>
+              <p className={`${mobile ? 'text-base' : 'text-sm'} text-gray-500`}>
+                Anyone with the link can view this collection
+              </p>
             </div>
             <Switch
               id="isPublic"
               checked={formState.isPublic}
               onCheckedChange={(checked) => handleChange('isPublic', checked)}
               disabled={isLoading}
+              className={mobile ? 'scale-125' : ''}
             />
           </div>
           
           {/* Preview */}
           <div className="pt-2 pb-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3">Preview</h3>
+            <h3 className={`${mobile ? 'text-base' : 'text-sm'} font-medium text-gray-500 mb-3`}>
+              Preview
+            </h3>
             <div className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="flex items-start gap-4">
-                <div className={`w-16 h-16 rounded-lg ${formState.color} flex items-center justify-center text-white text-3xl shadow-sm`}>
+                <div className={`${mobile ? 'w-20 h-20' : 'w-16 h-16'} rounded-lg ${formState.color} flex items-center justify-center text-white ${mobile ? 'text-4xl' : 'text-3xl'} shadow-sm`}>
                   {formState.icon}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{formState.name || "Your Collection Name"}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">{formState.description || "Collection description will appear here"}</p>
+                  <h3 className={`font-semibold ${mobile ? 'text-xl' : 'text-lg'}`}>
+                    {formState.name || "Your Collection Name"}
+                  </h3>
+                  <p className={`${mobile ? 'text-base' : 'text-sm'} text-gray-600 line-clamp-2`}>
+                    {formState.description || "Collection description will appear here"}
+                  </p>
                   
                   {formState.tags && formState.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -355,8 +421,14 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
             </div>
           </div>
           
-          <SheetFooter className="flex justify-end gap-3 pt-4 border-t">
-            <Button 
+          {/* Footer Actions */}
+          <div 
+            className={`flex ${mobile ? 'flex-col gap-4' : 'justify-end gap-3'} pt-4 border-t`}
+            style={{
+              paddingBottom: isKeyboardOpen && mobile ? '20px' : undefined
+            }}
+          >
+            <MobileButton 
               type="button" 
               variant="outline" 
               onClick={() => {
@@ -364,12 +436,14 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
                 onClose();
               }}
               disabled={isLoading}
+              className={mobile ? 'w-full' : ''}
             >
               Cancel
-            </Button>
-            <Button 
+            </MobileButton>
+            <MobileButton 
               type="submit"
               disabled={!formState.name.trim() || isLoading}
+              className={mobile ? 'w-full' : ''}
             >
               {isLoading ? (
                 <>
@@ -377,8 +451,8 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
                   Saving...
                 </>
               ) : 'Save Changes'}
-            </Button>
-          </SheetFooter>
+            </MobileButton>
+          </div>
         </form>
       </SheetContent>
     </Sheet>

@@ -1,4 +1,4 @@
-// MapContainer.tsx - COMPLETE implementation with auth integration and route support
+// MapContainer.tsx - MOBILE OPTIMIZED with responsive design
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -7,6 +7,8 @@ import { UnifiedControlPanel } from './features/UnifiedControlPanel';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from './utils/routeUtils';
 import { toast } from 'sonner';
+import { isMobile, getViewportHeight } from '@/utils/mobileUtils';
+import { useSafeArea } from '@/hooks/useSafeArea';
 
 interface MapState {
   center: [number, number];
@@ -113,10 +115,9 @@ function mapReducer(state: MapState, action: MapAction): MapState {
       };
     
     case 'ADD_TO_ROUTE':
-      // Only update state, no toasts in reducer
       const existingPlaque = state.routePoints.find(p => p.id === action.plaque.id);
       if (existingPlaque) {
-        return state; // No change if already exists
+        return state;
       }
       return { ...state, routePoints: [...state.routePoints, action.plaque] };
     
@@ -183,7 +184,7 @@ interface MapContainerProps {
   };
   isPlaqueVisited?: (id: number) => boolean;
   isFavorite?: (id: number) => boolean;
-  onRouteAction?: (routeData: any) => void; // Handle route actions from pending auth
+  onRouteAction?: (routeData: any) => void;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = (props) => {
@@ -195,8 +196,13 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     distanceFilter,
     isPlaqueVisited,
     isFavorite,
-    onRouteAction // Extract route action handler
+    onRouteAction
   } = props;
+
+  // Mobile detection and responsive setup
+  const mobile = isMobile();
+  const safeArea = useSafeArea();
+  const viewportHeight = getViewportHeight();
 
   const [state, dispatch] = useReducer(mapReducer, {
     ...initialState,
@@ -206,7 +212,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     filterLocation: distanceFilter?.locationName || null,
   });
 
-  // Toast management separate from state
+  // Toast management
   const toastTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const lastActionTime = useRef<Map<string, number>>(new Map());
 
@@ -214,22 +220,18 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     const now = Date.now();
     const lastTime = lastActionTime.current.get(key) || 0;
     
-    // Prevent duplicate toasts within 2 seconds
     if (now - lastTime < 2000) {
       console.log(`🔇 Suppressed duplicate toast: ${key}`);
       return;
     }
     
-    // Clear any existing timeout for this key
     const existingTimeout = toastTimeouts.current.get(key);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
     
-    // Record this action time
     lastActionTime.current.set(key, now);
     
-    // Show the toast
     switch (type) {
       case 'success':
         toast.success(message);
@@ -243,7 +245,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     
     console.log(`🔊 Showed toast: ${key} - ${message}`);
     
-    // Clean up after 2 seconds
     const timeout = setTimeout(() => {
       lastActionTime.current.delete(key);
       toastTimeouts.current.delete(key);
@@ -256,7 +257,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
   const visiblePlaques = useMemo(() => {
     let filtered = plaques;
     
-    // Apply search filter (only when no distance filter is active)
     if (state.searchQuery && !state.filterEnabled) {
       const query = state.searchQuery.toLowerCase();
       filtered = filtered.filter(p => 
@@ -266,7 +266,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       );
     }
     
-    // Apply distance filter (this overrides text search when active)
     if (state.filterEnabled && state.filterCenter) {
       filtered = plaques.filter(p => {
         if (!p.latitude || !p.longitude) return false;
@@ -280,7 +279,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       });
     }
     
-    // Apply standard filters
     filtered = filtered.filter(p => {
       const matchesColor = state.selectedColors.length === 0 || 
         (p.color && state.selectedColors.includes(p.color.toLowerCase()));
@@ -317,7 +315,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     isFavorite
   ]);
 
-  // Handle plaque clicks for route mode vs detail view
+  // Handle plaque clicks
   const handlePlaqueClick = useCallback((plaque: Plaque) => {
     console.log('🗺️ MapContainer: Plaque clicked:', plaque.title, 'Route mode:', state.routeMode);
     
@@ -332,7 +330,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
   const handleAddToRoute = useCallback((plaque: Plaque) => {
     console.log('➕ MapContainer: Adding to route:', plaque.title);
     
-    // Check if already exists before dispatching
     const alreadyExists = state.routePoints.find(p => p.id === plaque.id);
     
     if (alreadyExists) {
@@ -340,13 +337,11 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       return;
     }
     
-    // Dispatch the action
     dispatch({ type: 'ADD_TO_ROUTE', plaque });
-    
-    // Show success toast
     showToastOnce(`added-${plaque.id}`, `Added "${plaque.title}" to route`, 'success');
   }, [state.routePoints, showToastOnce]);
 
+  // Search handlers
   const handleSearchSelect = useCallback((result: any) => {
     dispatch({ type: 'SELECT_RESULT', result });
     
@@ -407,6 +402,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     }
   }, [plaques, onDistanceFilterChange, showToastOnce]);
 
+  // Location filter handlers
   const handleLocationFilterSet = useCallback(async (coords: [number, number]) => {
     dispatch({ type: 'SET_SEARCH', query: '' });
     
@@ -513,7 +509,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     showToastOnce('filter-cleared', 'Distance filter cleared - showing all plaques', 'info');
   }, [onDistanceFilterChange, showToastOnce]);
 
-  // Enhanced route handlers with toast management
+  // Route handlers
   const handleRemoveFromRoute = useCallback((id: number) => {
     const plaque = state.routePoints.find(p => p.id === id);
     dispatch({ type: 'REMOVE_FROM_ROUTE', plaqueId: id });
@@ -565,10 +561,31 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     };
   }, []);
 
+  // Calculate responsive map height
+  const getMapHeight = () => {
+    if (mobile) {
+      // On mobile, use viewport height minus safe areas and approximate header height
+      const headerHeight = 120; // Approximate header + search bar height
+      const availableHeight = viewportHeight - safeArea.top - safeArea.bottom - headerHeight;
+      return Math.max(availableHeight, 300); // Minimum 300px height
+    }
+    return 600; // Desktop default
+  };
+
+  const mapHeight = getMapHeight();
+
   return (
-    <div className={`relative h-[600px] w-full ${className}`}>
-      {/* Enhanced Search Bar */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-md px-4">
+    <div 
+      className={`relative w-full ${className}`}
+      style={{ 
+        height: `${mapHeight}px`,
+        paddingTop: mobile ? safeArea.top : undefined,
+        paddingLeft: mobile ? safeArea.left : undefined,
+        paddingRight: mobile ? safeArea.right : undefined
+      }}
+    >
+      {/* Enhanced Search Bar - Mobile optimized positioning */}
+      <div className={`absolute ${mobile ? 'top-2 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} z-[1000] ${mobile ? 'w-auto' : 'w-full max-w-md px-4'}`}>
         <SearchBar 
           plaques={plaques}
           value={state.searchQuery}
@@ -578,8 +595,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         />
       </div>
 
-      {/* Unified Control Panel */}
-      <div className="absolute top-16 left-4 z-[1000]">
+      {/* Unified Control Panel - Mobile optimized positioning */}
+      <div className={`absolute ${mobile ? 'top-16 left-2' : 'top-16 left-4'} z-[1000]`}>
         <UnifiedControlPanel
           distanceFilter={{
             enabled: state.filterEnabled,
@@ -616,46 +633,61 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         />
       </div>
 
-      {/* Enhanced Route Panel with Walking Distances and Route Action Support */}
+      {/* Enhanced Route Panel - Mobile responsive positioning */}
       {state.routeMode && (
-        <div className="absolute left-56 top-16 z-[1000] w-80 max-w-[calc(100vw-14rem)]">
+        <div className={`absolute ${
+          mobile 
+            ? 'bottom-4 left-2 right-2' 
+            : 'left-56 top-16'
+        } z-[1000] ${
+          mobile 
+            ? 'w-auto' 
+            : 'w-80 max-w-[calc(100vw-14rem)]'
+        }`}>
           <EnhancedRoutePanel
             points={state.routePoints}
             onRemove={handleRemoveFromRoute}
             onReorder={handleReorderRoute}
             onClear={handleClearRoute}
             onClose={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
-            onRouteAction={onRouteAction} // Pass route action handler for pending auth
+            onRouteAction={onRouteAction}
+            className={mobile ? 'w-full' : ''}
           />
         </div>
       )}
 
-      {/* Enhanced Status Bar */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white rounded-lg shadow-lg px-3 py-2 text-sm">
-        <div className="flex items-center gap-2">
+      {/* Enhanced Status Bar - Mobile responsive positioning */}
+      <div className={`absolute ${
+        mobile 
+          ? 'bottom-2 left-2 right-2' 
+          : 'bottom-4 left-4'
+      } z-[1000] bg-white rounded-lg shadow-lg px-3 py-2 text-sm ${
+        mobile ? 'w-auto' : ''
+      }`}>
+        <div className={`flex items-center ${mobile ? 'justify-center' : 'gap-2'} ${mobile ? 'flex-wrap' : ''}`}>
           <span className="font-medium">{visiblePlaques.length}</span> of{' '}
           <span className="font-medium">{plaques.length}</span> plaques
           {state.filterEnabled && state.filterLocation && (
-            <div className="ml-2 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+            <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs`}>
               Within {state.filterRadius < 1 
                 ? `${Math.round(state.filterRadius * 1000)}m` 
                 : `${state.filterRadius}km`} of {state.filterLocation}
             </div>
           )}
           {state.searchQuery && !state.filterEnabled && (
-            <div className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+            <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs`}>
               Matching "{state.searchQuery}"
             </div>
           )}
           {state.routeMode && (
-            <div className="ml-2 px-2 py-1 bg-green-50 text-green-700 rounded text-xs">
+            <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-green-50 text-green-700 rounded text-xs`}>
               Route Mode: {state.routePoints.length} stops
             </div>
           )}
         </div>
       </div>
 
-      {/* The Map */}
+      {/* The Map - Responsive height */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}

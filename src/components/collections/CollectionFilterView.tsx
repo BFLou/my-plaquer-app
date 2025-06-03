@@ -1,9 +1,9 @@
-// src/components/collections/CollectionFilterView.tsx
+// src/components/collections/CollectionFilterView.tsx - COMPLETE MOBILE OPTIMIZED
 import React, { useState } from 'react';
-import { Search, Grid, List, Map } from 'lucide-react';
+import { Search, Grid, List, Map, X } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { MobileInput } from "@/components/ui/mobile-input";
+import { MobileButton } from "@/components/ui/mobile-button";
 import { Badge } from "@/components/ui/badge";
 import { capitalizeWords } from '@/utils/stringUtils';
 import {
@@ -12,6 +12,8 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import AddPlaquesButton from './AddPlaquesButton';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
+import { useSafeArea } from '@/hooks/useSafeArea';
 
 type ViewMode = 'grid' | 'list' | 'map';
 
@@ -42,6 +44,11 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   className = '',
   showMapView = true,
 }) => {
+  // Mobile detection and responsive setup
+  const mobile = isMobile();
+  const safeArea = useSafeArea();
+  
+  // State management
   const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
@@ -80,101 +87,251 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
     }
   }, [filteredPlaques, onFilterChange]);
 
-  // Clear search
+  // Clear search with haptic feedback
   const clearSearch = () => {
+    if (mobile) {
+      triggerHapticFeedback('light');
+    }
     setSearchQuery('');
     setSelectedProfessions([]);
   };
 
+  // Handle view mode change with haptic feedback
+  const handleViewModeChange = (newMode: ViewMode) => {
+    if (mobile) {
+      triggerHapticFeedback('selection');
+    }
+    setViewMode(newMode);
+  };
+
+  // Handle add plaques with haptic feedback
+  const handleAddPlaques = () => {
+    if (mobile) {
+      triggerHapticFeedback('medium');
+    }
+    onAddPlaquesClick();
+  };
+
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* Mobile/Desktop View */}
+    <div 
+      className={`space-y-4 ${className}`}
+      style={{
+        paddingLeft: mobile ? safeArea.left : undefined,
+        paddingRight: mobile ? safeArea.right : undefined
+      }}
+    >
+      {/* Main Filter Container - Mobile optimized */}
       <div className="bg-white rounded-lg shadow-sm p-3">
-        {/* Search Input */}
+        {/* Search Input - Mobile optimized */}
         <div className="relative w-full mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <Input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={mobile ? 18 : 16} />
+          <MobileInput
             placeholder="Search plaques..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-9 w-full"
+            className={`pl-${mobile ? '10' : '9'} pr-${mobile ? '10' : '9'} w-full ${mobile ? 'h-12' : ''}`}
+            preventZoom={true}
           />
           {searchQuery && (
-            <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              onClick={() => setSearchQuery('')}
+            <MobileButton
+              variant="ghost"
+              size="sm"
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+              onClick={clearSearch}
             >
-              <X size={16} />
-            </button>
+              <X size={mobile ? 18 : 16} />
+            </MobileButton>
           )}
         </div>
 
-        {/* View Toggle and Add Button */}
-        <div className="flex justify-between items-center">
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} defaultValue="grid">
-            <TabsList>
-              <TabsTrigger value="grid" className="flex items-center gap-1.5">
-                <Grid size={14} />
-                <span className="hidden sm:inline">Grid</span>
+        {/* View Toggle and Add Button Container */}
+        <div className={`flex ${mobile ? 'flex-col space-y-3' : 'justify-between items-center'}`}>
+          {/* View Mode Tabs - Mobile optimized */}
+          <Tabs 
+            value={viewMode} 
+            onValueChange={(v) => handleViewModeChange(v as ViewMode)} 
+            defaultValue="grid"
+            className={mobile ? 'w-full' : ''}
+          >
+            <TabsList className={mobile ? 'w-full grid grid-cols-3' : ''}>
+              <TabsTrigger 
+                value="grid" 
+                className={`flex items-center gap-1.5 ${mobile ? 'flex-1' : ''}`}
+              >
+                <Grid size={mobile ? 16 : 14} />
+                <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>Grid</span>
               </TabsTrigger>
-              <TabsTrigger value="list" className="flex items-center gap-1.5">
-                <List size={14} />
-                <span className="hidden sm:inline">List</span>
+              <TabsTrigger 
+                value="list" 
+                className={`flex items-center gap-1.5 ${mobile ? 'flex-1' : ''}`}
+              >
+                <List size={mobile ? 16 : 14} />
+                <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>List</span>
               </TabsTrigger>
               {showMapView && (
-                <TabsTrigger value="map" className="flex items-center gap-1.5">
-                  <Map size={14} />
-                  <span className="hidden sm:inline">Map</span>
+                <TabsTrigger 
+                  value="map" 
+                  className={`flex items-center gap-1.5 ${mobile ? 'flex-1' : ''}`}
+                >
+                  <Map size={mobile ? 16 : 14} />
+                  <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>Map</span>
                 </TabsTrigger>
               )}
             </TabsList>
           </Tabs>
           
-          <AddPlaquesButton 
-            onAddPlaques={onAddPlaquesClick} 
-            isLoading={isLoading}
-            className="hidden sm:flex"
-          />
-        </div>
-        
-        {/* Mobile Add Plaques Button */}
-        <div className="sm:hidden mt-3">
-          <AddPlaquesButton 
-            onAddPlaques={onAddPlaquesClick} 
-            isLoading={isLoading}
-            className="w-full"
-          />
+          {/* Add Plaques Button - Mobile optimized */}
+          <div className={mobile ? 'w-full' : ''}>
+            <AddPlaquesButton 
+              onAddPlaques={handleAddPlaques} 
+              isLoading={isLoading}
+              className={`${mobile ? 'w-full h-12' : 'hidden sm:flex'}`}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Active filters */}
+      {/* Active Filters Display - Mobile optimized */}
       {searchQuery && (
-        <div className="bg-blue-50 p-2 rounded-lg border border-blue-100 flex items-center justify-between">
+        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center justify-between">
           <div className="flex items-center">
-            <Badge className="bg-blue-100 text-blue-700 border-none">
+            <Badge className={`bg-blue-100 text-blue-700 border-none ${mobile ? 'text-sm px-3 py-1' : ''}`}>
               Search: {searchQuery}
             </Badge>
           </div>
-          <Button 
+          <MobileButton 
             variant="ghost" 
             size="sm" 
             onClick={clearSearch}
-            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800"
+            className={`${mobile ? 'h-8 px-3' : 'h-7 px-2'} text-xs text-blue-600 hover:text-blue-800`}
           >
             Clear
-          </Button>
+          </MobileButton>
         </div>
       )}
 
-      {/* Display filter status if active */}
+      {/* Filter Status - Mobile optimized */}
       {searchQuery && filteredPlaques.length !== plaques.length && (
-        <div className="text-sm text-gray-500 px-1">
+        <div className={`${mobile ? 'text-base' : 'text-sm'} text-gray-500 px-1`}>
           Showing {filteredPlaques.length} of {plaques.length} plaques
         </div>
       )}
 
-      {/* Children (actual content) */}
-      {children}
+      {/* Mobile-specific profession filter (if needed) */}
+      {mobile && professionStats.length > 1 && (
+        <div className="bg-white rounded-lg shadow-sm p-3">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Filter by Profession</h4>
+          <div className="flex flex-wrap gap-2">
+            {professionStats.slice(0, 5).map(({ profession, count }) => (
+              <MobileButton
+                key={profession}
+                variant={selectedProfessions.includes(profession) ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  triggerHapticFeedback('selection');
+                  setSelectedProfessions(prev => 
+                    prev.includes(profession) 
+                      ? prev.filter(p => p !== profession)
+                      : [...prev, profession]
+                  );
+                }}
+                className="text-xs"
+              >
+                {profession} ({count})
+              </MobileButton>
+            ))}
+            {selectedProfessions.length > 0 && (
+              <MobileButton
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  triggerHapticFeedback('light');
+                  setSelectedProfessions([]);
+                }}
+                className="text-xs text-red-600"
+              >
+                Clear
+              </MobileButton>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Children (actual content) with mobile optimization */}
+      <div 
+        className="min-h-0 flex-1"
+        style={{
+          marginBottom: mobile ? Math.max(safeArea.bottom, 20) : undefined
+        }}
+      >
+        {children}
+      </div>
+
+      {/* Mobile-only floating add button (alternative position) */}
+      {mobile && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <AddPlaquesButton 
+            onAddPlaques={handleAddPlaques} 
+            isLoading={isLoading}
+            className="h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white p-0"
+          />
+        </div>
+      )}
+
+      {/* Mobile-specific styles */}
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .collection-filter-view {
+            padding: 0.5rem;
+          }
+          
+          .collection-filter-view .search-input {
+            font-size: 16px !important; /* Prevent zoom on iOS */
+          }
+          
+          .collection-filter-view .view-tabs {
+            width: 100%;
+          }
+          
+          .collection-filter-view .add-button {
+            width: 100%;
+            min-height: 48px;
+          }
+          
+          .collection-filter-view .filter-badge {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+          }
+          
+          .collection-filter-view .profession-button {
+            min-height: 40px;
+            font-size: 0.75rem;
+          }
+        }
+        
+        /* Touch optimization */
+        .collection-filter-view button,
+        .collection-filter-view [role="button"] {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Improve scroll performance on mobile */
+        .collection-filter-view {
+          -webkit-overflow-scrolling: touch;
+          overflow-x: hidden;
+        }
+        
+        /* Floating button animation */
+        .floating-add-button {
+          animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-4px); }
+        }
+      `}</style>
     </div>
   );
 };
