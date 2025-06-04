@@ -63,7 +63,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasSearched, setHasSearched] = useState(false);
-  const [totalCount, setTotalCount] = useState(0);
+  const [setTotalCount] = useState(0);
   const [activeTab, setActiveTab] = useState('search');
   const [selectedPlaques, setSelectedPlaques] = useState<Plaque[]>([]);
   

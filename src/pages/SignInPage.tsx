@@ -1,6 +1,6 @@
 // src/pages/SignInPage.tsx - Enhanced with working back button
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, X, Eye, EyeOff, Mail, Lock, CheckCircle, Star, Plus, Route as RouteIcon } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, CheckCircle, Star, Plus, Route as RouteIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

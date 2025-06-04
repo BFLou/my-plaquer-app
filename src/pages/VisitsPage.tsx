@@ -5,9 +5,7 @@ import {
   ArrowLeft, 
   CheckCircle, 
   Calendar, 
-  MapPin,
   Search,
-  Filter,
   Grid,
   List,
   X
@@ -15,7 +13,6 @@ import {
 import { PageContainer } from "@/components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from '@/hooks/useAuth';

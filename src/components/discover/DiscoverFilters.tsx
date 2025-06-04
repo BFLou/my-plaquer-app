@@ -4,10 +4,9 @@
 
 // src/components/discover/DiscoverFilters.tsx
 import React, { useState } from 'react';
-import { X, Crosshair, MapPin, Filter, ChevronDown } from 'lucide-react';
+import { X, MapPin, Filter, ChevronDown } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { capitalizeWords } from '@/utils/stringUtils';
 import DiscoverFilterDialog from '../plaques/DiscoverFilterDialog';
@@ -50,10 +49,7 @@ interface DiscoverFiltersProps {
 const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   urlState,
   activeFiltersCount,
-  activeLocation,
-  maxDistance,
-  hideOutsidePlaques,
-  formatDistance,
+
   onRemoveFilter,
   onResetFilters,
   filtersOpen,
@@ -118,7 +114,7 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
               
               {/* Show first 2 filters on mobile */}
               <div className="hidden sm:flex items-center gap-1 overflow-hidden">
-                {allActiveFilters.slice(0, 2).map((filter, index) => (
+                {allActiveFilters.slice(0, 2).map((filter) => (
                   <Badge key={`${filter.type}-${filter.value}`} variant="secondary" className="gap-1 text-xs">
                     <span className="truncate max-w-[100px]">{filter.label}</span>
                     <button

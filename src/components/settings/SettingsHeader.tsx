@@ -1,6 +1,6 @@
 // src/components/settings/SettingsHeader.tsx
 import React from 'react';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
 interface SettingsHeaderProps {

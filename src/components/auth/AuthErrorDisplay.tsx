@@ -8,7 +8,6 @@ import { getAuthErrorMessage, getSuggestedActions, ErrorDisplayProps } from '@/u
 const AuthErrorDisplay: React.FC<ErrorDisplayProps> = ({
   error,
   email,
-  context = 'signin',
   onRetry,
   onResetPassword,
   onSwitchToSignUp,

@@ -1,6 +1,5 @@
 // src/hooks/useCollectionsList.ts
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useCollections } from '@/hooks/useCollection';
 import { getPlaqueCount } from '@/utils/collectionHelpers';
 

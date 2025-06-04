@@ -4,8 +4,7 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle,
-  SheetFooter
+  SheetTitle
 } from "@/components/ui/sheet";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileInput } from "@/components/ui/mobile-input";

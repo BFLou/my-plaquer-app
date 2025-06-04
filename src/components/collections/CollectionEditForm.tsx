@@ -7,7 +7,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { CollectionForm } from '@/components/collections/CollectionForm';
-import { Collection } from '../CollectionCard';
+import { Collection } from './CollectionCard';
 
 type CollectionEditFormProps = {
   isOpen: boolean;

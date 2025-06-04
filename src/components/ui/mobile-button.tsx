@@ -3,7 +3,8 @@ import React from 'react';
 import { Button, ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-interface MobileButtonProps extends ButtonProps {
+interface MobileButtonProps extends Omit<ButtonProps, 'children'> {
+  children?: React.ReactNode;
   touchOptimized?: boolean;
 }
 

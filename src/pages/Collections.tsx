@@ -1,12 +1,11 @@
 // src/pages/Collections.tsx - Updated with breadcrumb navigation
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   MapPin, Star, Trash2, FolderOpen, Plus, 
-  Search, Grid, List, X, 
-  CheckCircle, MoreHorizontal, Package, ArrowLeft
+  Search, Grid, List, X, ArrowLeft
 } from 'lucide-react';
 import { PageContainer } from "@/components";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useCollectionsList } from '../hooks/useCollectionsList';
 import { useCollectionActions } from '../hooks/useCollectionActions';
 
@@ -18,8 +17,6 @@ import DeleteCollectionDialog from '../components/collections/DeleteCollectionDi
 import { EmptyState } from '@/components/common/EmptyState';
 import { ActionBar } from '@/components/common/ActionBar';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
   Select,

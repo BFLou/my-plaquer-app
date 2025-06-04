@@ -5,7 +5,6 @@ import {
   MapPin, 
   Calendar, 
   ArrowRight, 
-  TrendingUp,
   Clock,
   CheckCircle,
   MoreHorizontal,

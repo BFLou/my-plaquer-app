@@ -5,17 +5,14 @@ import {
   Filter, 
   Route, 
   RotateCcw,
-  ChevronDown,
   X,
-  Target,
-  Settings
+  Target
 } from 'lucide-react';
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileInput } from "@/components/ui/mobile-input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plaque } from '@/types/plaque';
-import { LocationFilter } from './LocationFilter/LocationFilter';
 import DiscoverFilterDialog from '../../plaques/DiscoverFilterDialog';
 import { capitalizeWords } from '@/utils/stringUtils';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
@@ -72,7 +69,6 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = ({
   onRadiusChange,
   onClearDistanceFilter,
   plaques,
-  visiblePlaques,
   selectedColors,
   selectedPostcodes,
   selectedProfessions,

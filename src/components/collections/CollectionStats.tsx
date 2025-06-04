@@ -1,6 +1,6 @@
 // src/components/collections/CollectionStats.jsx
-import React, { useState } from 'react';
-import { Clock, CheckCircle, User, MapPin, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, User, MapPin, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { capitalizeWords } from '@/utils/stringUtils';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge"; // Add the missing import

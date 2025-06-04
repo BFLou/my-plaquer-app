@@ -1,10 +1,8 @@
 // src/pages/CollectionDetail.tsx - Complete mobile-optimized collection detail page
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Check, Trash2, Star, Pencil, Copy, Edit, MapPin, X, Clock, 
-  ArrowLeft, MoreVertical, Plus, Grid, List, Map as MapIcon,
-  Eye, Share2, Filter, Search, Download, Route as RouteIcon,
-  Calendar, Users, BookOpen, Navigation
+  Check, Trash2, Star, Pencil, Edit, MapPin, X, Clock, 
+  ArrowLeft, Plus, Grid, List, Map as MapIcon, Share2, Download, Route as RouteIcon
 } from 'lucide-react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useCollectionDetail } from '../hooks/useCollectionDetail';
@@ -54,7 +52,6 @@ const CollectionDetailPage = () => {
   const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
   
   // Mobile-specific state
-  const [showMobileActions, setShowMobileActions] = useState(false);
   const [mobileViewMode, setMobileViewMode] = useState<'overview' | 'plaques' | 'map'>('overview');
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showRouteBuilder, setShowRouteBuilder] = useState(false);
@@ -80,7 +77,6 @@ const CollectionDetailPage = () => {
     handleMarkVisited,
     handleToggleFavorite,
     handleDeleteCollection,
-    handleDuplicateCollection,
     handleRemovePlaque,
     confirmRemovePlaque,
     confirmRemovePlaqueOpen,
@@ -88,7 +84,6 @@ const CollectionDetailPage = () => {
     plaqueToRemove,
     handleAddPlaques,
     handleRemovePlaques,
-    handleViewPlaque,
     selectedPlaque,
     setSelectedPlaque,
     getNearbyPlaques,

@@ -26,12 +26,10 @@ type CollectionPlaqueListProps = {
 const CollectionPlaqueList: React.FC<CollectionPlaqueListProps> = ({
   plaques,
   isLoading = false,
-  favorites,
   selectedPlaques,
   searchQuery,
   onClearSearch,
   onToggleSelect,
-  onToggleFavorite,
   onMarkVisited,
   onRemovePlaque,
   onPlaqueClick,

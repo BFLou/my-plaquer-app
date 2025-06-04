@@ -1,7 +1,7 @@
 // src/components/plaques/DiscoverFilterDialog.tsx - Mobile optimized with swipe navigation
 import React, { useState, useMemo } from 'react';
 import { 
-  Search, X, MapPin, Circle,
+  Search, MapPin, Circle,
   User, Star, CheckCircle, ArrowLeft, ArrowRight, Calendar,
   Crosshair, AlertCircle, ChevronDown, ChevronUp
 } from 'lucide-react';

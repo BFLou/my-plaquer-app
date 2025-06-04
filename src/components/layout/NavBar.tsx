@@ -1,6 +1,6 @@
 // src/components/layout/NavBar.tsx (Updated with separator and consistent styling)
 import React, { useState } from 'react';
-import { MapPin, X, MoreHorizontal, BookOpen } from 'lucide-react';
+import { X, MoreHorizontal, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/hooks/useAuth';

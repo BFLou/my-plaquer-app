@@ -1,7 +1,6 @@
 // src/components/maps/features/Search/SearchBar.tsx - FIXED: Proper sizing and z-index
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X, MapPin, Building, Mail, Target } from 'lucide-react';
-import { MobileInput } from '@/components/ui/mobile-input';
 import { Badge } from '@/components/ui/badge';
 import { useSearch } from './useSearch';
 import { Plaque } from '@/types/plaque';

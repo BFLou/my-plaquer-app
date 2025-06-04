@@ -26,12 +26,10 @@ type CollectionPlaqueGridProps = {
 const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
   plaques,
   isLoading = false,
-  favorites,
   selectedPlaques,
   searchQuery,
   onClearSearch,
   onToggleSelect,
-  onToggleFavorite,
   onMarkVisited,
   onRemovePlaque,
   onPlaqueClick,

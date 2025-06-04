@@ -10,13 +10,8 @@ import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { MobileInput } from "@/components/ui/mobile-input";
 import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
-import { Label } from "@/components/ui/label";
-import { MobileTextarea } from "@/components/ui/mobile-textarea";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Pagination from '@/components/plaques/Pagination';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';
@@ -32,8 +27,7 @@ import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
-import { format } from 'date-fns';
-import { Calendar, Filter, MapPin, Grid, List, Search, X, Navigation } from 'lucide-react';
+import { Filter, MapPin, Grid, List, Navigation } from 'lucide-react';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 
 export type ViewMode = 'grid' | 'list' | 'map';
@@ -50,13 +44,7 @@ const Discover = () => {
   // URL state management
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  
-  // Mobile optimizations
-  const { isKeyboardOpen, keyboardHeight } = useKeyboardDetection();
-  
-  // Auth gate integration
-  const { isAuthenticated } = useAuthGate();
-  
+    
   // URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {

@@ -18,8 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
-import plaqueExplorers from '@/assets/images/plaquer-explorer.jpg';
-
 
 const AboutPage = () => {
   const navigate = useNavigate();

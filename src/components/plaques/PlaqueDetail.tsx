@@ -1,8 +1,8 @@
 // src/components/plaques/PlaqueDetail.tsx - COMPLETE with auth gate integration
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
-  Clock, Navigation, Plus, Copy, Eye, FileText, FolderOpen, Share2
+  Navigation, Plus, Eye, FileText, FolderOpen, Share2
 } from 'lucide-react';
 import { 
   Dialog as MainDialog,
@@ -11,7 +11,6 @@ import {
   DialogTitle as MainDialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';

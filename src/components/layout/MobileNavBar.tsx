@@ -1,7 +1,7 @@
 // src/components/layout/MobileNavBar.tsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, BookOpen, User, MapPin } from 'lucide-react';
+import { Home, Search, BookOpen, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 type NavItem = {
