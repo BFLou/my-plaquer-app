@@ -445,41 +445,41 @@ export const useCollections = () => {
     }
   }, [user, getCollection]);
 
-  // Remove multiple plaques from a collection
-  const removePlaquesFromCollection = useCallback(async (collectionId: string, plaqueIds: number[]) => {
-    if (!user) throw new Error('You must be logged in to update a collection');
-    if (plaqueIds.length === 0) return getCollection(collectionId);
+// Remove multiple plaques from a collection
+const removePlaquesFromCollection = useCallback(async (collectionId: string, plaqueIds: number[]) => {
+  if (!user) throw new Error('You must be logged in to update a collection');
+  if (plaqueIds.length === 0) return getCollection(collectionId);
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
+  try {
+    const docRef = doc(db, 'collections', collectionId);
+    const docSnap = await getDoc(docRef);
 
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
-      }
-
-      // Get current plaques array
-      const currentData = docSnap.data();
-      const currentPlaques = currentData.plaques || [];
-
-      // Filter out plaques to remove
-      const updatedPlaques = currentPlaques.filter(id => !plaqueIds.includes(id));
-      
-      await updateDoc(docRef, {
-        plaques: updatedPlaques,
-        updated_at: serverTimestamp()
-      });
-
-      toast.success(`${plaqueIds.length} plaques removed from collection`);
-      
-      return getCollection(collectionId);
-    } catch (err) {
-      console.error('Error removing plaques from collection:', err);
-      toast.error('Failed to remove plaques from collection');
-      throw err;
+    // Verify ownership
+    if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+      throw new Error('Collection not found or access denied');
     }
-  }, [user, getCollection]);
+
+    // Get current plaques array
+    const currentData = docSnap.data();
+    const currentPlaques = currentData.plaques || [];
+
+    // Filter out plaques to remove
+    const updatedPlaques = currentPlaques.filter((id: number) => !plaqueIds.includes(id));
+    
+    await updateDoc(docRef, {
+      plaques: updatedPlaques,
+      updated_at: serverTimestamp()
+    });
+
+    toast.success(`${plaqueIds.length} plaques removed from collection`);
+    
+    return getCollection(collectionId);
+  } catch (err) {
+    console.error('Error removing plaques from collection:', err);
+    toast.error('Failed to remove plaques from collection');
+    throw err;
+  }
+}, [user, getCollection]);
 
   // Duplicate a collection
   const duplicateCollection = useCallback(async (collectionId: string, newName?: string) => {

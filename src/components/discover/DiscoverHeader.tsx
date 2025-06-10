@@ -28,6 +28,14 @@ const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     // Search is handled in real-time via onSearchChange
   };
 
+  // FIXED: Handle the string to ViewMode conversion
+  const handleViewModeChange = (value: string) => {
+    // Type guard to ensure the value is a valid ViewMode
+    if (value === 'grid' || value === 'list' || value === 'map') {
+      onViewModeChange(value as ViewMode);
+    }
+  };
+
   return (
     <div className="bg-white border-b border-gray-200 sticky top-[61px] z-50">
       <div className="container mx-auto px-4 py-3">
@@ -35,7 +43,7 @@ const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
           {/* View Mode Tabs - Mobile Optimized */}
           <Tabs 
             value={viewMode} 
-            onValueChange={onViewModeChange}
+            onValueChange={handleViewModeChange}
             className="w-full"
           >
             <TabsList className="w-full h-12">

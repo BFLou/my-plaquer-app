@@ -1,11 +1,10 @@
 // src/pages/ProfilePage.tsx - Mobile-optimized dashboard
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft,
   User, 
   Settings, 
-  Camera,
   Edit,
   BookOpen,
   MapPin,
@@ -15,9 +14,7 @@ import {
   CheckCircle,
   TrendingUp,
   Award,
-  Calendar,
   FolderOpen,
-  MoreHorizontal,
   Eye,
   Share2
 } from 'lucide-react';
@@ -74,7 +71,7 @@ const ACHIEVEMENTS = [
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { collections } = useCollections();
   const { visits } = useVisitedPlaques();
   const { routes } = useRoutes();
@@ -86,7 +83,6 @@ const ProfilePage = () => {
   const [selectedStatType, setSelectedStatType] = useState<'visits' | 'collections' | 'routes' | null>(null);
 
   // Calculate stats
-  const totalVisits = visits.length;
   const totalCollections = collections.length;
   const totalRoutes = routes.length;
   const uniquePlaquesVisited = new Set(visits.map(v => v.plaque_id)).size;
@@ -94,10 +90,13 @@ const ProfilePage = () => {
   // Calculate this month's visits
   const thisMonth = new Date();
   const firstDayOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1);
-  const thisMonthVisits = visits.filter(visit => {
-    const visitDate = visit.visited_at?.toDate ? visit.visited_at.toDate() : new Date(visit.visited_at);
-    return visitDate >= firstDayOfMonth;
-  }).length;
+// Line 94 - Remove toDate() calls since visited_at is already Date
+const thisMonthVisits = visits.filter(visit => {
+  const visitDate = visit.visited_at instanceof Date 
+    ? visit.visited_at 
+    : new Date(visit.visited_at);
+  return visitDate >= firstDayOfMonth;
+}).length;
 
   // Calculate level based on visits
   const calculateLevel = (visits: number) => {
@@ -227,30 +226,31 @@ const ProfilePage = () => {
     setShowStatsDetail(true);
   };
 
-  const handleShare = async () => {
-    triggerHapticFeedback('light');
-    
-    const shareText = `I've visited ${uniquePlaquesVisited} historic plaques in London using Plaquer! 🏛️`;
-    const shareUrl = window.location.origin;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'My Plaquer Journey',
-          text: shareText,
-          url: shareUrl
-        });
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-          toast.success('Shared to clipboard!');
-        }
+const handleShare = async () => {
+  triggerHapticFeedback('light');
+  
+  const shareText = `I've visited ${uniquePlaquesVisited} historic plaques in London using Plaquer! 🏛️`;
+  const shareUrl = window.location.origin;
+  
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'My Plaquer Journey',
+        text: shareText,
+        url: shareUrl
+      });
+    } catch (error) {
+      // Proper error type checking
+      if (error instanceof Error && error.name !== 'AbortError') {
+        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        toast.success('Shared to clipboard!');
       }
-    } else {
-      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-      toast.success('Shared to clipboard!');
     }
-  };
+  } else {
+    await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+    toast.success('Shared to clipboard!');
+  }
+};
 
   // Profile actions for mobile header
   const profileActions = [
@@ -465,7 +465,7 @@ const ProfilePage = () => {
       
       <div className="container mx-auto max-w-5xl px-4">
         {/* Desktop Stats Banner */}
-        <div className="hidden md:block bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
+        <div className="md:block bg-white rounded-lg shadow-sm p-3 flex justify-between items-center -mt-5 mb-6 relative z-10">
           <div className="flex gap-4 items-center">
             <div className="text-center px-3 py-1">
               <div className="text-lg font-bold text-blue-600">{uniquePlaquesVisited}</div>
@@ -752,9 +752,9 @@ const ProfilePage = () => {
                 </p>
                 {achievement.isUnlocked && (
                   <div className="mt-2">
-                    <Badge size="sm" className="bg-white/50 text-current border-current/20">
-                      Unlocked!
-                    </Badge>
+<Badge className="bg-white/50 text-current border-current/20">
+  Unlocked!
+</Badge>
                   </div>
                 )}
               </div>

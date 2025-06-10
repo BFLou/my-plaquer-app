@@ -24,7 +24,6 @@ const AddToCollectionDialog = ({
   isOpen, 
   onClose, 
   plaque, 
-  style,
   className = ''
 }: AddToCollectionDialogProps) => {
   const { user } = useAuth();

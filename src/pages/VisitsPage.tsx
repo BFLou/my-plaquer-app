@@ -1,5 +1,5 @@
 // src/pages/VisitsPage.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -32,6 +32,24 @@ const VisitsPage = () => {
   const [sortOrder, setSortOrder] = useState('recent');
   const [ratingFilter, setRatingFilter] = useState('all');
 
+  // Helper function to safely convert visit timestamp to Date
+  const getVisitDate = (visitedAt: any): Date => {
+    if (!visitedAt) return new Date();
+    
+    // If it's a Firestore Timestamp, use toDate()
+    if (visitedAt.toDate && typeof visitedAt.toDate === 'function') {
+      return visitedAt.toDate();
+    }
+    
+    // If it's already a Date object, return it
+    if (visitedAt instanceof Date) {
+      return visitedAt;
+    }
+    
+    // If it's a string or number, try to create a Date
+    return new Date(visitedAt);
+  };
+
   // Calculate stats
   const totalVisits = visits.length;
   const uniquePlaquesVisited = new Set(visits.map(v => v.plaque_id)).size;
@@ -40,7 +58,7 @@ const VisitsPage = () => {
   const thisMonth = new Date();
   const firstDayOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1);
   const thisMonthVisits = visits.filter(visit => {
-    const visitDate = visit.visited_at?.toDate ? visit.visited_at.toDate() : new Date(visit.visited_at);
+    const visitDate = getVisitDate(visit.visited_at);
     return visitDate >= firstDayOfMonth;
   }).length;
 

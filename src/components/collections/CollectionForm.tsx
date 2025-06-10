@@ -14,7 +14,7 @@ export type CollectionFormData = {
   description: string;
   icon: string;
   color: string;
-  tags?: string[];
+  tags: string[]; // FIXED: Made tags required (not optional) for consistent typing
 };
 
 type CollectionFormProps = {
@@ -39,13 +39,13 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   const safeArea = useSafeArea();
   const { isKeyboardOpen } = useKeyboardDetection();
   
-  // Form state
+  // Form state - FIXED: Always initialize tags as empty array
   const [formState, setFormState] = useState<CollectionFormData>({
     name: initialValues.name || '',
     description: initialValues.description || '',
     icon: initialValues.icon || '🎭',
     color: initialValues.color || 'bg-blue-500',
-    tags: initialValues.tags || []
+    tags: initialValues.tags || [] // FIXED: Always ensure tags is an array
   });
   
   // Form validation state
@@ -75,12 +75,13 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     { name: 'Emerald', value: 'bg-emerald-500', textColor: 'text-white' },
   ];
   
-  // Update form state when initialValues change
+  // Update form state when initialValues change - FIXED: Ensure tags is always an array
   useEffect(() => {
     if (initialValues) {
       setFormState(prev => ({
         ...prev,
-        ...initialValues
+        ...initialValues,
+        tags: initialValues.tags || [] // FIXED: Always ensure tags is an array
       }));
     }
   }, [initialValues]);
@@ -112,7 +113,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     }
   };
   
-  // Handle tag input
+  // Handle tag input - FIXED: No null check needed since tags is always array
   const handleAddTag = () => {
     if (tagInput.trim() && !formState.tags.includes(tagInput.trim())) {
       if (mobile) {
@@ -281,7 +282,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           </div>
         </div>
         
-        {/* Tags */}
+        {/* Tags - FIXED: No null checks needed since tags is always array */}
         <div className="space-y-3">
           <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
             Tags (optional)

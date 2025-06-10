@@ -10,7 +10,8 @@ import {
   Share2, 
   BookOpen,
   Route,
-  Send
+  Send,
+  LucideIcon
 } from 'lucide-react';
 import { PageContainer } from '@/components';
 import { Button } from "@/components/ui/button";
@@ -19,11 +20,40 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 
+// Type definitions
+type SectionKey = 'mission' | 'features' | 'data' | 'contact';
+
+interface FormData {
+  name: string;
+  email: string;
+  message: string;
+}
+
+interface Feature {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  color: string;
+  isComingSoon: boolean;
+}
+
+interface CounterAnimationProps {
+  end: number;
+  duration?: number;
+  label: string;
+  icon: LucideIcon;
+}
+
 const AboutPage = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('mission');
-  const [animationTriggered, setAnimationTriggered] = useState({});
-  const [formData, setFormData] = useState({
+  const [activeSection, setActiveSection] = useState<SectionKey>('mission');
+  const [animationTriggered, setAnimationTriggered] = useState<Record<SectionKey, boolean>>({
+    mission: false,
+    features: false,
+    data: false,
+    contact: false
+  });
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     message: ''
@@ -32,24 +62,24 @@ const AboutPage = () => {
   
   // Updated to only include the sections we're keeping
   const sectionRefs = {
-    mission: useRef(null),
-    features: useRef(null),
-    data: useRef(null),
-    contact: useRef(null)
+    mission: useRef<HTMLElement>(null),
+    features: useRef<HTMLElement>(null),
+    data: useRef<HTMLElement>(null),
+    contact: useRef<HTMLElement>(null)
   };
 
   // Observer for scroll animations
   useEffect(() => {
-    const observerOptions = {
+    const observerOptions: IntersectionObserverInit = {
       root: null,
       rootMargin: '-100px 0px 0px 0px', // Offset to account for sticky header
       threshold: 0.25
     };
 
-    const observerCallback = (entries) => {
-      entries.forEach(entry => {
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry: IntersectionObserverEntry) => {
         if (entry.isIntersecting) {
-          const sectionId = entry.target.id;
+          const sectionId = entry.target.id as SectionKey;
           setAnimationTriggered(prev => ({ ...prev, [sectionId]: true }));
           
           // Set active section for nav highlighting
@@ -61,7 +91,7 @@ const AboutPage = () => {
     const observer = new IntersectionObserver(observerCallback, observerOptions);
     
     // Observe all section refs
-    Object.entries(sectionRefs).forEach(([key, ref]) => {
+    Object.entries(sectionRefs).forEach(([, ref]) => {
       if (ref.current) {
         observer.observe(ref.current);
       }
@@ -77,17 +107,18 @@ const AboutPage = () => {
   }, []);
 
   // Fixed scroll to section - adding offset for sticky header
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (sectionId: SectionKey) => {
     setActiveSection(sectionId);
     const yOffset = -80; // Adjust this value based on your header height
     const element = sectionRefs[sectionId].current;
-    const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-    
-    window.scrollTo({top: y, behavior: 'smooth'});
+    if (element) {
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({top: y, behavior: 'smooth'});
+    }
   };
 
   // Handle form input changes
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -96,7 +127,7 @@ const AboutPage = () => {
   };
 
   // Handle form submission with Formspree
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // Basic validation
@@ -150,7 +181,7 @@ const AboutPage = () => {
   };
 
   // Feature cards data - updated with coming soon badges
-  const features = [
+  const features: Feature[] = [
     {
       icon: Map,
       title: "Interactive Map",
@@ -196,9 +227,9 @@ const AboutPage = () => {
   ];
 
   // Stats counter animation - removed Active Explorers
-  const CounterAnimation = ({ end, duration = 2000, label, icon: Icon }) => {
+  const CounterAnimation = ({ end, duration = 2000, label, icon: Icon }: CounterAnimationProps) => {
     const [count, setCount] = useState(0);
-    const counterRef = useRef(null);
+    const counterRef = useRef<HTMLDivElement>(null);
     const [hasAnimated, setHasAnimated] = useState(false);
     
     useEffect(() => {
@@ -208,7 +239,7 @@ const AboutPage = () => {
             setHasAnimated(true);
             
             const startTime = performance.now();
-            const updateCounter = (currentTime) => {
+            const updateCounter = (currentTime: number) => {
               const elapsedTime = currentTime - startTime;
               const progress = Math.min(elapsedTime / duration, 1);
               
@@ -275,7 +306,7 @@ const AboutPage = () => {
 <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm py-2">
   <div className="container mx-auto px-4 overflow-x-auto">
     <div className="flex gap-2 max-w-5xl mx-auto">
-      {Object.keys(sectionRefs).map((section) => (
+      {(Object.keys(sectionRefs) as SectionKey[]).map((section) => (
         <button 
           key={section}
           className={`px-4 py-3 font-medium text-sm ${

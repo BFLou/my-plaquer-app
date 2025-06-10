@@ -2,13 +2,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  ChevronRight, Map, Camera, ListChecks, User, Navigation, 
-  Info, X, CheckCircle, Filter as FilterIcon, Search, MapPin
+  ChevronRight, Map, Navigation, 
+  Info, CheckCircle, Filter as FilterIcon, MapPin
 } from 'lucide-react';
 import { PageContainer } from "@/components";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { MobileInput } from "@/components/ui/mobile-input";
 import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
 import { toast } from "sonner";
 import { 
@@ -88,11 +87,10 @@ const famousPlaques = [
 ];
 
 // Enhanced Map Preview component with mobile optimizations
-const EnhancedMapPreview = ({ navigateToDiscover }) => {
-  const mapContainerRef = useRef(null);
+const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path: string) => void }) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
-  const [selectedPlaque, setSelectedPlaque] = useState(null);
   
   // Initialize map with mobile-specific settings
   useEffect(() => {
@@ -109,7 +107,6 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
         doubleClickZoom: false,
         attributionControl: true,
         touchZoom: true, // Enable touch zoom
-        tap: true, // Enable tap events
         tapTolerance: 15 // Increase tap tolerance for mobile
       });
       
@@ -139,7 +136,10 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
         font-size: 14px;
         line-height: 1.4;
       `;
-      mapContainerRef.current.appendChild(tooltipEl);
+      
+      if (mapContainerRef.current) {
+        mapContainerRef.current.appendChild(tooltipEl);
+      }
 
       // Add markers with mobile-optimized interaction
       famousPlaques.forEach((plaque) => {
@@ -162,9 +162,9 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
         }).addTo(map);
         
         // Mobile-optimized marker interaction
-        let tooltipTimeout;
+        let tooltipTimeout: NodeJS.Timeout;
         
-        const showTooltip = (e) => {
+        const showTooltip = (e: any) => {
           clearTimeout(tooltipTimeout);
           
           tooltipEl.innerHTML = `
@@ -176,8 +176,8 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
           const point = map.latLngToContainerPoint(e.target.getLatLng());
           const tooltipWidth = 240;
           const tooltipHeight = 80;
-          const mapWidth = mapContainerRef.current.clientWidth;
-          const mapHeight = mapContainerRef.current.clientHeight;
+          const mapWidth = mapContainerRef.current?.clientWidth || 300;
+          const mapHeight = mapContainerRef.current?.clientHeight || 300;
           
           let top = point.y - tooltipHeight - 15;
           let left = point.x - (tooltipWidth / 2);
@@ -213,7 +213,7 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
         }
         
         // Navigate on click/tap
-        marker.on('click', (e) => {
+        marker.on('click', (e: any) => {
           e.originalEvent.stopPropagation();
           triggerHapticFeedback('selection');
           navigateToDiscover(`/discover?view=map&search=${encodeURIComponent(plaque.name)}`);
@@ -230,8 +230,8 @@ const EnhancedMapPreview = ({ navigateToDiscover }) => {
           tooltipEl.parentNode.removeChild(tooltipEl);
         }
       };
-    } catch (error) {
-      console.error('Map initialization error:', error);
+    } catch (mapInitError) {
+      console.error('Map initialization error:', mapInitError);
       setMapError(true);
     }
   }, [navigateToDiscover]);
@@ -345,10 +345,11 @@ const Home = () => {
           const { latitude, longitude } = position.coords;
           navigate(`/discover?view=map&lat=${latitude}&lng=${longitude}&zoom=15`);
         },
-        (error) => {
+        (positionError) => {
           toast.dismiss(loadingToast);
           triggerHapticFeedback('error');
           toast.error("Could not determine your location. Please allow location access.");
+          console.error('Geolocation error:', positionError);
         },
         {
           enableHighAccuracy: true,

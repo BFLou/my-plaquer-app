@@ -50,8 +50,6 @@ type PlaqueDetailProps = {
   showDistance?: boolean;
   isFullPage?: boolean;
   generateShareUrl?: (plaqueId: number) => string;
-  // Context for determining navigation behavior
-  context?: 'discover' | 'collection' | 'route' | 'profile';
   // Current page path for back navigation
   currentPath?: string;
 };
@@ -62,8 +60,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   onClose,
   isFavorite = false,
   onFavoriteToggle,
-  onMarkVisited,
-  onAddToRoute,
   nearbyPlaques = [],
   onSelectNearbyPlaque,
   className = '',
@@ -72,9 +68,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   formatDistance = (d) => `${d.toFixed(1)} km`,
   showDistance = false,
   isFullPage = false,
-  generateShareUrl,
-  context = 'discover',
-  currentPath = '/discover'
+  generateShareUrl
 }) => {
   // Hooks
   const navigate = useNavigate();
@@ -86,8 +80,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const { 
     requireAuthForVisit, 
     requireAuthForFavorite, 
-    requireAuthForCollection,
-    isAuthenticated 
+    requireAuthForCollection
   } = useAuthGate();
   
   // State
@@ -147,8 +140,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const formatVisitDate = () => {
     if (!visitInfo?.visited_at) return '';
     try {
-      const date = visitInfo.visited_at.toDate
-        ? visitInfo.visited_at.toDate()
+      const date = visitInfo.visited_at instanceof Date
+        ? visitInfo.visited_at
         : new Date(visitInfo.visited_at);
       return format(date, 'MMM d, yyyy');
     } catch (error) {
@@ -220,12 +213,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     requireAuthForCollection(plaque.id, collectionAction);
   };
 
-  const handleAddToRoute = () => {
-    if (!onAddToRoute) return;
-    onAddToRoute(plaque);
-    toast.success("Added to route");
-  };
-
   const handleGetDirections = () => {
     if (plaque.latitude && plaque.longitude) {
       const url = `https://maps.google.com/?q=${plaque.latitude},${plaque.longitude}`;
@@ -273,7 +260,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       try {
         await navigator.share(shareData);
       } catch (error) {
-        if (error.name !== 'AbortError') {
+        if (typeof error === 'object' && error !== null && 'name' in error && (error as { name?: string }).name !== 'AbortError') {
           handleCopyLink(); // Fallback to copy
         }
       }

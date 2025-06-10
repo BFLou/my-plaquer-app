@@ -8,7 +8,7 @@ interface SettingsHeaderProps {
   onBack: () => void;
 }
 
-const SettingsHeader: React.FC<SettingsHeaderProps> = ({ user, onBack }) => {
+const SettingsHeader: React.FC<SettingsHeaderProps> = ({ onBack }) => {
   return (
     <section className="relative bg-gradient-to-br from-blue-600 to-blue-700 text-white py-8 px-4 overflow-hidden">
       {/* Decorative background circles */}

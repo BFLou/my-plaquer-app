@@ -38,7 +38,13 @@ export const usePlaques = () => {
       // For demo purposes, import and use the sample data
       // You should replace this with the actual Firestore fetch in production
       const { default: plaqueData } = await import('../data/plaque_data.json');
-      const adaptedData = adaptPlaquesData(plaqueData);
+      
+      // Handle both array and object cases for the JSON data
+      const rawData = Array.isArray(plaqueData) 
+        ? plaqueData as any[]
+        : Object.values(plaqueData) as any[];
+      
+      const adaptedData = adaptPlaquesData(rawData);
       
       setPlaques(adaptedData);
       setLoading(false);

@@ -573,7 +573,6 @@
 
 .mobile-modal-container {
   position: fixed;
-  inset-x: 0;
   bottom: 0;
   z-index: 51;
   max-height: 90vh;
@@ -1144,8 +1143,6 @@
     transform: scale(1);
     opacity: 1;
   }
-}
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .mobile-form-textarea {

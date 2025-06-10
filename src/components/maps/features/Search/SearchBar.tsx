@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { useSearch } from './useSearch';
 import { Plaque } from '@/types/plaque';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
-import { useSafeArea } from '@/hooks/useSafeArea';
 
 interface SearchBarProps {
   plaques: Plaque[];
@@ -24,7 +23,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   // Mobile detection and responsive setup
   const mobile = isMobile();
-  const safeArea = useSafeArea();
   
   // State management
   const [showResults, setShowResults] = useState(false);

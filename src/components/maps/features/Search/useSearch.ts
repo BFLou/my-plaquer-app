@@ -31,7 +31,7 @@ export const useSearch = (plaques: Plaque[]) => {
     setIsSearching(true);
     const searchResults: SearchResult[] = [];
     
-    // Search plaques first (existing functionality)
+    // Search plaques first (existing functionality) - FIXED: Proper coordinate conversion
     const plaqueResults = plaques
       .filter(p => {
         const searchStr = query.toLowerCase();
@@ -42,16 +42,24 @@ export const useSearch = (plaques: Plaque[]) => {
         );
       })
       .slice(0, 3) // Limit to 3 plaque results to make room for location results
-      .map(p => ({
-        type: 'plaque' as const,
-        id: p.id,
-        title: p.title || 'Unnamed Plaque',
-        subtitle: p.location || p.address || '',
-        coordinates: [
-          parseFloat(p.latitude as string), 
-          parseFloat(p.longitude as string)
-        ] as [number, number]
-      }));
+      .map(p => {
+        // FIXED: Safe coordinate conversion
+        const lat = typeof p.latitude === 'string' 
+          ? parseFloat(p.latitude) 
+          : p.latitude;
+        const lng = typeof p.longitude === 'string' 
+          ? parseFloat(p.longitude) 
+          : p.longitude;
+        
+        return {
+          type: 'plaque' as const,
+          id: p.id,
+          title: p.title || 'Unnamed Plaque',
+          subtitle: p.location || p.address || '',
+          coordinates: [lat || 0, lng || 0] as [number, number]
+        };
+      })
+      .filter(p => p.coordinates[0] !== 0 && p.coordinates[1] !== 0); // Filter out invalid coordinates
     
     searchResults.push(...plaqueResults);
     

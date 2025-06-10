@@ -34,7 +34,7 @@ export const MapView: React.FC<MapViewProps> = ({
   filterLocationName
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const { map, isReady } = useMap(mapRef, { center, zoom });
+  const { map, isReady } = useMap(mapRef as React.RefObject<HTMLDivElement>, { center, zoom });
   
   // Add markers with enhanced clustering and BOTH handlers
   useMarkers(map, plaques, {

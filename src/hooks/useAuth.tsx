@@ -10,8 +10,7 @@ import {
   signOut as firebaseSignOut,
   checkEmailExists,
   linkGoogleAccount,
-  linkEmailPassword,
-  AccountExistsError
+  linkEmailPassword
 } from '@/lib/firebase';
 
 // Enhanced auth context with account linking

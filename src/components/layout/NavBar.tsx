@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { X, MoreHorizontal, BookOpen } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { useAuth } from '@/hooks/useAuth';
 import UserMenu from '@/components/auth/UserMenu';
 import PlaquerLogo from '@/components/common/PlaquerLogo';
 
@@ -30,7 +29,6 @@ type NavBarProps = {
 
 export const NavBar = ({ activePage }: NavBarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user } = useAuth();
   const location = useLocation();
   
   // Helper function to determine if library pages are active

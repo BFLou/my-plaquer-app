@@ -124,8 +124,13 @@ export const useMarkers = (
           return;
         }
         
-        const lat = parseFloat(plaque.latitude as string);
-        const lng = parseFloat(plaque.longitude as string);
+        // FIXED: Proper type conversion for coordinates
+        const lat = typeof plaque.latitude === 'string' 
+          ? parseFloat(plaque.latitude) 
+          : plaque.latitude as number;
+        const lng = typeof plaque.longitude === 'string' 
+          ? parseFloat(plaque.longitude) 
+          : plaque.longitude as number;
         
         if (isNaN(lat) || isNaN(lng)) {
           console.debug(`🗺️ useMarkers: Skipping plaque ${plaque.id} - invalid coordinates: ${lat}, ${lng}`);
@@ -155,14 +160,15 @@ export const useMarkers = (
           options.onAddToRoute || null // Handler for "Add to Route" (separate)
         );
         
-        const popupOptions = {
+        // FIXED: Proper popup options typing
+        const popupOptions: L.PopupOptions = {
           closeButton: true,
           autoClose: true,
           className: 'plaque-popup-container',
           maxWidth: 300,
           minWidth: 200,
-          offset: [0, -20],
-          autoPanPadding: [50, 50],
+          offset: [0, -20] as L.PointTuple,
+          autoPanPadding: [50, 50] as L.PointTuple,
           keepInView: true
         };
         
@@ -175,12 +181,12 @@ export const useMarkers = (
           marker.openPopup();
         });
         
-        // Add hover effects for better UX
-        marker.on('mouseover', function() {
+        // FIXED: Add hover effects for better UX with proper typing
+        marker.on('mouseover', function(this: L.Marker) {
           this.getElement()?.classList.add('marker-hover');
         });
         
-        marker.on('mouseout', function() {
+        marker.on('mouseout', function(this: L.Marker) {
           this.getElement()?.classList.remove('marker-hover');
         });
         

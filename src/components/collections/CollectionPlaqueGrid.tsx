@@ -33,7 +33,6 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
   onMarkVisited,
   onRemovePlaque,
   onPlaqueClick,
-  onAddPlaquesClick,
   onAddToRoute,
   className = '',
 }) => {
@@ -51,11 +50,9 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
   if (plaques.length === 0 && !searchQuery) {
     return (
       <EmptyState
-        icon={MapPin}
+        icon={<MapPin />}
         title="No Plaques Yet"
         description="Start building your collection by adding plaques"
-        actionLabel="Add Your First Plaque"
-        onAction={onAddPlaquesClick}
       />
     );
   }

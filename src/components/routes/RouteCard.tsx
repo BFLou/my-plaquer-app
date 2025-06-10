@@ -64,7 +64,10 @@ const RouteCard: React.FC<RouteCardProps> = ({
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       if (onToggleSelect) onToggleSelect();
-    } else if (!e.target.closest('button') && !e.target.closest('[role="menuitem"]')) {
+    } else if (
+      !((e.target as Element)?.closest?.('button')) && 
+      !((e.target as Element)?.closest?.('[role="menuitem"]'))
+    ) {
       onView(route);
     }
   };

@@ -1,10 +1,8 @@
-// src/components/plaques/PlaqueListItem.tsx - Mobile optimized with swipe actions
 import React, { useState } from 'react';
 import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Edit, X, Calendar, Navigation, Share2, Copy, ExternalLink } from 'lucide-react';
 import { Card } from "@/components/ui/card";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { MobileInput } from "@/components/ui/mobile-input";
 import { MobileTextarea } from "@/components/ui/mobile-textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plaque } from '@/types/plaque';
@@ -34,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-type PlaqueListItemProps = {
+interface PlaqueListItemProps {
   plaque: Plaque;
   isSelected?: boolean;
   onSelect?: (id: number) => void;
@@ -49,9 +47,10 @@ type PlaqueListItemProps = {
   showDistance?: boolean;
   distance?: number;
   formatDistance?: (distance: number) => string;
-};
+}
 
-export const PlaqueListItem = ({
+
+export const PlaqueListItem: React.FC<PlaqueListItemProps> = ({
   plaque,
   isSelected = false,
   onSelect,
@@ -117,8 +116,7 @@ export const PlaqueListItem = ({
   });
 
   // Event handlers with auth gate integration and haptic feedback
-  const handleClick = (e: React.MouseEvent) => {
-    // Prevent click when interacting with buttons or dropdowns
+const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target instanceof Element && (
       e.target.closest('button') ||
       e.target.closest('[role="menuitem"]') ||
@@ -132,7 +130,7 @@ export const PlaqueListItem = ({
     if (onClick) onClick(plaque);
   };
 
-  const handleFavoriteClick = (e?: React.MouseEvent) => {
+const handleFavoriteClick = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     
     const favoriteAction = () => {
@@ -142,7 +140,7 @@ export const PlaqueListItem = ({
     requireAuthForFavorite(plaque.id, favoriteAction);
   };
 
-  const handleSelectClick = (e: React.MouseEvent) => {
+const handleSelectClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     triggerHapticFeedback('selection');
     if (onSelect) onSelect(plaque.id);
@@ -191,7 +189,11 @@ export const PlaqueListItem = ({
       triggerHapticFeedback('success');
       toast.success('Link copied to clipboard!');
     } catch (error) {
-      console.error('Error copying link:', error);
+      if (error instanceof Error) {
+        console.error('Error copying link:', error.message);
+      } else {
+        console.error('Error copying link:', error);
+      }
       triggerHapticFeedback('error');
       toast.error("Couldn't copy link");
     }
@@ -211,7 +213,11 @@ export const PlaqueListItem = ({
         await navigator.share(shareData);
         triggerHapticFeedback('success');
       } catch (error) {
-        if (error.name !== 'AbortError') {
+        if (error instanceof Error) {
+          if ((error as any).name !== 'AbortError') {
+            handleCopyLink();
+          }
+        } else {
           handleCopyLink();
         }
       }
@@ -243,7 +249,11 @@ export const PlaqueListItem = ({
       setVisitNotes('');
       setVisitDate(new Date());
     } catch (error) {
-      console.error("Error marking as visited:", error);
+      if (error instanceof Error) {
+        console.error("Error marking as visited:", error.message);
+      } else {
+        console.error("Error marking as visited:", error);
+      }
       triggerHapticFeedback('error');
       toast.error("Failed to mark as visited");
     } finally {
@@ -264,7 +274,11 @@ export const PlaqueListItem = ({
       toast.success("Visit deleted");
       setShowDeleteVisitConfirm(false);
     } catch (error) {
-      console.error("Error deleting visit:", error);
+      if (error instanceof Error) {
+        console.error("Error deleting visit:", error.message);
+      } else {
+        console.error("Error deleting visit:", error);
+      }
       triggerHapticFeedback('error');
       toast.error("Failed to delete visit");
     } finally {
@@ -277,15 +291,25 @@ export const PlaqueListItem = ({
   const getPlaqueColor = () => plaque.color || plaque.colour || 'unknown';
   const getImageUrl = () => plaque.image || plaque.main_photo;
 
-  const formatVisitDate = () => {
-    if (!visitInfo?.visited_at) return '';
-    try {
-      const date = visitInfo.visited_at.toDate ? visitInfo.visited_at.toDate() : new Date(visitInfo.visited_at);
-      return format(date, 'MMM d');
-    } catch (error) {
-      return 'Unknown date';
+const formatVisitDate = () => {
+  if (!visitInfo?.visited_at) return '';
+  try {
+    // If it's already a Date, use it; if string/number, convert
+    const date =
+      visitInfo.visited_at instanceof Date
+        ? visitInfo.visited_at
+        : new Date(visitInfo.visited_at);
+    return format(date, 'MMM d');
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Error formatting visit date:", error.message);
+    } else {
+      console.error("Error formatting visit date:", error);
     }
-  };
+    return 'Unknown date';
+  }
+};
+
 
   return (
     <>
@@ -353,10 +377,10 @@ export const PlaqueListItem = ({
                         variant="ghost" 
                         size="sm" 
                         className="w-9 h-9 p-0" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerHapticFeedback('selection');
-                        }}
+                           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation();
+            triggerHapticFeedback('selection');
+          }}
                         touchOptimized={true}
                       >
                         <MoreVertical size={16} />
@@ -451,7 +475,7 @@ export const PlaqueListItem = ({
                         variant="ghost" 
                         size="sm" 
                         className="w-10 h-10 p-0" 
-                        onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
                         touchOptimized={true}
                       >
                         <MoreVertical size={18} />
@@ -591,7 +615,7 @@ export const PlaqueListItem = ({
                 <MobileButton
                   size="sm"
                   variant="outline"
-                  onClick={(e) => {
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
                     handleAddToRoute();
                   }}
@@ -651,7 +675,7 @@ export const PlaqueListItem = ({
                   <MobileButton
                     variant="outline"
                     className="w-full justify-start text-left font-normal h-12"
-                    onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
                     touchOptimized={true}
                   >
                     <Calendar className="mr-3 h-5 w-5" />

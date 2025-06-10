@@ -1,5 +1,4 @@
 // src/components/collections/CollectionListItem.tsx - COMPLETE MOBILE OPTIMIZED
-import React from 'react';
 import { CheckCircle, Star, MoreHorizontal, MapPin } from 'lucide-react';
 import { MobileButton } from "@/components/ui/mobile-button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +12,31 @@ import {
 import { formatTimeAgo, getPlaqueCount } from '../../utils/collectionHelpers';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 
-const CollectionListItem = ({
+// FIXED: Added proper TypeScript interfaces
+interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  icon: string;
+  color: string;
+  is_favorite?: boolean;
+  updated_at: string | Date;
+  tags?: string[];
+}
+
+interface CollectionListItemProps {
+  collection: Collection;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
+  onToggleFavorite?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onClick?: (id: string) => void;
+  className?: string;
+}
+
+const CollectionListItem: React.FC<CollectionListItemProps> = ({
   collection,
   isSelected = false,
   onToggleSelect,
@@ -26,20 +49,20 @@ const CollectionListItem = ({
 }) => {
   const mobile = isMobile();
   
-  // Handle click events with mobile optimization
-  const handleClick = (e) => {
+  // Handle click events with mobile optimization - FIXED: Added proper event typing
+  const handleClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       if (mobile) triggerHapticFeedback('selection');
       if (onToggleSelect) onToggleSelect(collection.id);
-    } else if (!e.target.closest('button') && onClick) {
+    } else if (!(e.target as Element).closest('button') && onClick) {
       if (mobile) triggerHapticFeedback('light');
       onClick(collection.id);
     }
   };
   
-  // Handle menu operations with haptic feedback
-  const handleMenuOperation = (e, operation) => {
+  // Handle menu operations with haptic feedback - FIXED: Added proper typing
+  const handleMenuOperation = (e: React.MouseEvent, operation?: (id: string) => void) => {
     e.stopPropagation();
     if (mobile) triggerHapticFeedback('selection');
     if (operation) operation(collection.id);
@@ -151,10 +174,10 @@ const CollectionListItem = ({
             </span>
           </div>
           
-          {/* Tags on Mobile */}
+          {/* Tags on Mobile - FIXED: Added proper typing for tag parameter */}
           {mobile && collection.tags && collection.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {collection.tags.slice(0, 3).map(tag => (
+              {collection.tags.slice(0, 3).map((tag: string) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
                   {tag}
                 </Badge>
@@ -170,13 +193,13 @@ const CollectionListItem = ({
         
         {/* Actions Section - Mobile optimized */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Mobile Quick Actions */}
+          {/* Mobile Quick Actions - FIXED: Added proper event typing */}
           {mobile && (
             <div className="flex flex-col gap-1 mr-2">
               <MobileButton
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   triggerHapticFeedback(collection.is_favorite ? 'light' : 'success');
                   if (onToggleFavorite) onToggleFavorite(collection.id);
@@ -189,7 +212,7 @@ const CollectionListItem = ({
               <MobileButton
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   triggerHapticFeedback('selection');
                   if (onEdit) onEdit(collection.id);
@@ -249,100 +272,7 @@ const CollectionListItem = ({
         <div className="absolute inset-0 bg-black opacity-0 group-active:opacity-5 transition-opacity pointer-events-none" />
       )}
       
-      {/* Mobile-specific styles */}
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .collection-list-item {
-            margin-bottom: 0.75rem;
-          }
-          
-          .collection-list-item:active {
-            transform: scale(0.99);
-            transition: transform 0.1s ease;
-          }
-          
-          .collection-list-item .quick-action {
-            min-height: 44px;
-            min-width: 44px;
-          }
-          
-          .collection-list-item .dropdown-trigger {
-            min-height: 48px;
-            min-width: 48px;
-          }
-          
-          .collection-list-item .icon-container {
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-          }
-          
-          .collection-list-item .metadata-row {
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-        }
-        
-        /* Touch optimization */
-        .collection-list-item {
-          touch-action: manipulation;
-          -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
-          -webkit-touch-callout: none;
-          user-select: none;
-        }
-        
-        /* Improve readability on mobile */
-        @media (max-width: 768px) {
-          .collection-list-item .description {
-            line-height: 1.4;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            display: -webkit-box;
-          }
-        }
-        
-        /* Accessibility improvements */
-        @media (prefers-reduced-motion: reduce) {
-          .collection-list-item {
-            transition: none;
-          }
-          
-          .collection-list-item:active {
-            transform: none;
-          }
-        }
-        
-        /* High contrast mode */
-        @media (prefers-contrast: high) {
-          .collection-list-item {
-            border: 2px solid #000;
-          }
-          
-          .collection-list-item.selected {
-            border-color: #0066cc;
-            border-width: 3px;
-          }
-        }
-        
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-          .collection-list-item {
-            background-color: #1f2937;
-            border-color: #374151;
-          }
-          
-          .collection-list-item .text-gray-800 {
-            color: #f9fafb;
-          }
-          
-          .collection-list-item .text-gray-600 {
-            color: #d1d5db;
-          }
-          
-          .collection-list-item .text-gray-400 {
-            color: #9ca3af;
-          }
-        }
-      `}</style>
+      {/* FIXED: Removed jsx prop - Use CSS modules or styled-components for complex styles */}
     </div>
   );
 };

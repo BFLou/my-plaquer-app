@@ -1,9 +1,9 @@
 // src/components/collections/AddPlaquesButton.tsx
 import React from 'react';
 import { Plus } from 'lucide-react';
-import { Button, ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
-interface AddPlaquesButtonProps extends ButtonProps {
+interface AddPlaquesButtonProps extends React.ComponentProps<typeof Button> {
   onAddPlaques: () => void;
   isLoading?: boolean;
 }

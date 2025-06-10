@@ -1,4 +1,4 @@
-// src/pages/SignInPage.tsx - Enhanced with working back button
+// src/pages/SignInPage.tsx - Enhanced with working back button and type safety
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Eye, EyeOff, Mail, Lock, CheckCircle, Star, Plus, Route as RouteIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -11,14 +11,29 @@ import AccountLinkingModal from '@/components/auth/AccountLinkingModal';
 import AuthErrorDisplay from '@/components/auth/AuthErrorDisplay';
 import { toast } from 'sonner';
 
+// Define types for better type safety
+type PendingActionType = 'mark-visited' | 'toggle-favorite' | 'add-to-collection' | 'save-route';
+
+interface PendingAction {
+  type: PendingActionType;
+  [key: string]: any;
+}
+
+interface NavigationState {
+  pendingAction?: PendingAction;
+  featureName?: string;
+  redirectTo?: string;
+  backTo?: string;
+}
+
 const SignInPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signInWithGoogle } = useAuth();
   const { restoreNavigation, clearStoredData } = useAuthGate();
   
-  // Get state from navigation with fallbacks
-  const navigationState = location.state as any;
+  // Get state from navigation with proper typing
+  const navigationState = location.state as NavigationState;
   const pendingAction = navigationState?.pendingAction;
   const featureName = navigationState?.featureName;
   const redirectTo = navigationState?.redirectTo || '/discover';
@@ -204,34 +219,41 @@ const SignInPage: React.FC = () => {
     navigate('/forgot-password', { state: { email, redirectTo, backTo } });
   };
 
-  // Get action-specific messaging
-  const getActionMessage = () => {
-    if (!pendingAction) return null;
+  // Type-safe helper to check if action type is valid
+  const isValidActionType = (type: any): type is PendingActionType => {
+    return ['mark-visited', 'toggle-favorite', 'add-to-collection', 'save-route'].includes(type);
+  };
 
-    const actionIcons = {
+  // Get action-specific messaging with type safety
+  const getActionMessage = () => {
+    if (!pendingAction || !isValidActionType(pendingAction.type)) return null;
+
+    const actionIcons: Record<PendingActionType, React.ReactElement> = {
       'mark-visited': <CheckCircle className="w-4 h-4 text-green-600" />,
       'toggle-favorite': <Star className="w-4 h-4 text-amber-600" />,
       'add-to-collection': <Plus className="w-4 h-4 text-purple-600" />,
       'save-route': <RouteIcon className="w-4 h-4 text-blue-600" />
     };
 
-    const actionMessages = {
+    const actionMessages: Record<PendingActionType, string> = {
       'mark-visited': 'mark this plaque as visited',
       'toggle-favorite': 'add this plaque to your favorites',
       'add-to-collection': 'add this plaque to a collection',
       'save-route': 'save your walking route'
     };
 
+    const actionType = pendingAction.type;
+
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <div className="flex items-start gap-3">
-          {actionIcons[pendingAction.type]}
+          {actionIcons[actionType]}
           <div>
             <h3 className="font-medium text-blue-900 mb-1">
-              Sign in to {actionMessages[pendingAction.type]}
+              Sign in to {actionMessages[actionType]}
             </h3>
             <p className="text-sm text-blue-700">
-              {pendingAction.type === 'save-route' 
+              {actionType === 'save-route' 
                 ? "We'll save your route once you're signed in."
                 : "We'll complete this action once you're signed in."
               }

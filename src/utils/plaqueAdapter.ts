@@ -1,5 +1,5 @@
 // src/utils/plaqueAdapter.ts
-type RawPlaqueData = {
+export type RawPlaqueData = {
   id: number;
   title?: string;
   area?: string;
@@ -7,14 +7,14 @@ type RawPlaqueData = {
   postcode?: string;
   latitude?: string | number;
   longitude?: string | number;
-  erected?: string;
+  erected?: string | number; // Allow both string and number
   colour?: string;
   color?: string;
   inscription?: string;
   lead_subject_name?: string;
   lead_subject_primary_role?: string;
-  lead_subject_born_in?: string;
-  lead_subject_died_in?: string;
+  lead_subject_born_in?: string | number; // Fix: Allow both string and number
+  lead_subject_died_in?: string | number; // Fix: Allow both string and number
   lead_subject_wikipedia?: string;
   organisations?: string;
   subjects?: string;
@@ -39,16 +39,16 @@ export function adaptPlaquesData(rawData: RawPlaqueData[], visitedIds: number[] 
       location: plaque.address ? `${plaque.address}, ${plaque.area || ''}`.trim() : plaque.area || '',
       latitude: plaque.latitude || null,
       longitude: plaque.longitude || null,
-      erected: plaque.erected || '',
+      erected: plaque.erected ? String(plaque.erected) : '',
       color: plaque.colour || plaque.color || 'blue', // Normalize color field
       inscription: plaque.inscription || '',
       
-      // Subject information
+      // Subject information - normalize to strings
       lead_subject_name: plaque.lead_subject_name || '',
       profession: plaque.lead_subject_primary_role || '', // Use as profession
       lead_subject_primary_role: plaque.lead_subject_primary_role || '',
-      lead_subject_born_in: plaque.lead_subject_born_in || '',
-      lead_subject_died_in: plaque.lead_subject_died_in || '',
+      lead_subject_born_in: plaque.lead_subject_born_in ? String(plaque.lead_subject_born_in) : '',
+      lead_subject_died_in: plaque.lead_subject_died_in ? String(plaque.lead_subject_died_in) : '',
       lead_subject_wikipedia: plaque.lead_subject_wikipedia || '',
       
       // Additional info

@@ -23,7 +23,9 @@ export const getAuthErrorMessage = (error: any, email?: string): AuthErrorInfo =
 
     case 'auth/user-not-found':
       return {
-        message: `No account found with this email address. Would you like to create a new account?`,
+        message: email 
+          ? `No account found with ${email}. Would you like to create a new account?`
+          : 'No account found with this email address. Would you like to create a new account?',
         action: 'Create a new account or check your email address',
         canRetry: true,
         canSwitchMethod: true
@@ -46,7 +48,9 @@ export const getAuthErrorMessage = (error: any, email?: string): AuthErrorInfo =
 
     case 'auth/user-disabled':
       return {
-        message: 'This account has been temporarily disabled. Please contact support for assistance.',
+        message: email
+          ? `The account for ${email} has been temporarily disabled. Please contact support for assistance.`
+          : 'This account has been temporarily disabled. Please contact support for assistance.',
         action: 'Contact support',
         canRetry: false
       };
@@ -61,7 +65,9 @@ export const getAuthErrorMessage = (error: any, email?: string): AuthErrorInfo =
 
     case 'auth/email-already-in-use':
       return {
-        message: 'An account with this email already exists. Please sign in instead.',
+        message: email
+          ? `An account with ${email} already exists. Please sign in instead.`
+          : 'An account with this email already exists. Please sign in instead.',
         action: 'Sign in to your existing account',
         canRetry: false,
         canSwitchMethod: true
@@ -76,7 +82,9 @@ export const getAuthErrorMessage = (error: any, email?: string): AuthErrorInfo =
 
     case 'auth/account-exists-with-different-credential':
       return {
-        message: 'An account with this email exists but uses a different sign-in method.',
+        message: email
+          ? `An account with ${email} exists but uses a different sign-in method.`
+          : 'An account with this email exists but uses a different sign-in method.',
         action: 'Try signing in with a different method',
         canRetry: false,
         canSwitchMethod: true,
@@ -149,7 +157,9 @@ export const getAuthErrorMessage = (error: any, email?: string): AuthErrorInfo =
     // Custom error for account linking scenarios
     case 'auth/email-exists-with-different-method':
       return {
-        message: 'An account with this email already exists using a different sign-in method.',
+        message: email
+          ? `An account with ${email} already exists using a different sign-in method.`
+          : 'An account with this email already exists using a different sign-in method.',
         action: 'Sign in with your existing method',
         canRetry: false,
         canSwitchMethod: true
@@ -243,4 +253,54 @@ export const getSuggestedActions = (error: any, email?: string) => {
   }
   
   return actions;
+};
+
+// Helper to format error messages with user context
+export const formatErrorWithContext = (error: any, userEmail?: string, userName?: string): string => {
+  const errorInfo = getAuthErrorMessage(error, userEmail);
+  
+  // Add user context to error messages when available
+  if (userName && userEmail) {
+    return errorInfo.message.replace(/this email/g, `${userName}'s email (${userEmail})`);
+  } else if (userEmail) {
+    return errorInfo.message.replace(/this email/g, userEmail);
+  }
+  
+  return errorInfo.message;
+};
+
+// Helper to get user-friendly error title
+export const getErrorTitle = (error: any): string => {
+  const errorCode = error?.code || '';
+  
+  switch (errorCode) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+      return 'Incorrect Login';
+    
+    case 'auth/user-not-found':
+      return 'Account Not Found';
+    
+    case 'auth/email-already-in-use':
+      return 'Account Already Exists';
+    
+    case 'auth/weak-password':
+      return 'Weak Password';
+    
+    case 'auth/too-many-requests':
+      return 'Too Many Attempts';
+    
+    case 'auth/user-disabled':
+      return 'Account Disabled';
+    
+    case 'auth/network-request-failed':
+      return 'Connection Error';
+    
+    case 'auth/popup-blocked':
+    case 'auth/popup-closed-by-user':
+      return 'Sign-in Interrupted';
+    
+    default:
+      return 'Authentication Error';
+  }
 };

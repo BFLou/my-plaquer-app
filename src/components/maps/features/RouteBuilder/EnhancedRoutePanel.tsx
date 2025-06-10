@@ -22,7 +22,6 @@ import {
   formatDuration,
   RouteSegment 
 } from '@/services/WalkingDistanceService';
-import { useAuth } from '@/hooks/useAuth';
 import { useAuthGate } from '@/hooks/useAuthGate';
 import { useRoutes } from '@/hooks/useRoutes';
 import { toast } from 'sonner';
@@ -47,12 +46,12 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   onReorder,
   onClear,
   onClose,
-  className = '',
-  onRouteAction
+  className = ''
+  // FIXED: Removed unused onRouteAction parameter
 }) => {
-  const { user } = useAuth();
   const { requireAuthForRoute } = useAuthGate();
   const { createRoute } = useRoutes ? useRoutes() : { createRoute: null };
+  // FIXED: Removed unused user from useAuth
   
   // Mobile detection and responsive setup
   const mobile = isMobile();
@@ -120,10 +119,19 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
       const end = points[i + 1];
       
       if (start.latitude && start.longitude && end.latitude && end.longitude) {
-        const startLat = parseFloat(start.latitude as string);
-        const startLng = parseFloat(start.longitude as string);
-        const endLat = parseFloat(end.latitude as string);
-        const endLng = parseFloat(end.longitude as string);
+        // FIXED: Proper coordinate type conversion
+        const startLat = typeof start.latitude === 'string' 
+          ? parseFloat(start.latitude) 
+          : start.latitude;
+        const startLng = typeof start.longitude === 'string' 
+          ? parseFloat(start.longitude) 
+          : start.longitude;
+        const endLat = typeof end.latitude === 'string' 
+          ? parseFloat(end.latitude) 
+          : end.latitude;
+        const endLng = typeof end.longitude === 'string' 
+          ? parseFloat(end.longitude) 
+          : end.longitude;
         
         // Haversine distance * walking factor
         const R = 6371000;
@@ -377,7 +385,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                 variant="ghost" 
                 size="sm" 
                 className="h-7 w-7 p-0"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   handleToggleCollapsed();
                 }}

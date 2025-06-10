@@ -107,9 +107,6 @@
 }
 
 /* Location setup section */
-.location-setup {
-  space-y: 12px;
-}
 
 .location-setup-label {
   font-size: 13px;

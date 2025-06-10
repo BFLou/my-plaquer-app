@@ -110,74 +110,76 @@ const SecuritySettings: React.FC = () => {
   };
 
   const renderPasswordSection = () => {
-  if (authProviders.hasPassword) {
-    return (
-      <SettingsCard 
-        title="Change Password"
-        description="Update your password to keep your account secure"
-      >
-        <form onSubmit={handlePasswordChange} className="space-y-4">
-          {passwordError && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{passwordError}</AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
-            <div className="relative">
-              <MobileInput
-                id="currentPassword"
-                type={showPassword ? "text" : "password"}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="pr-12"
+    if (authProviders.hasPassword) {
+      return (
+        <SettingsCard 
+          title="Change Password"
+          description="Update your password to keep your account secure"
+        >
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            {passwordError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{passwordError}</AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
+                  className="pr-12 h-12"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                className="h-12"
                 disabled={isLoading}
               />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              <p className="text-xs text-gray-500">
+                Must be at least 8 characters long
+              </p>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <MobileInput
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={isLoading}
-            />
-            <p className="text-xs text-gray-500">
-              Must be at least 8 characters long
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <MobileInput
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          
-          <Button type="submit" className="w-full h-12" disabled={isLoading}>
-            {isLoading ? 'Updating Password...' : 'Update Password'}
-          </Button>
-        </form>
-      </SettingsCard>
-    );
-    
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                className="h-12"
+                disabled={isLoading}
+              />
+            </div>
+            
+            <Button type="submit" className="w-full h-12" disabled={isLoading}>
+              {isLoading ? 'Updating Password...' : 'Update Password'}
+            </Button>
+          </form>
+        </SettingsCard>
+      );
+      
     } else {
       // Fallback for other authentication methods
       return (

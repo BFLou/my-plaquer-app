@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export const SearchableFilterBar: React.FC<SearchableFilterBarProps> = ({
   onClearSearch,
   className = ''
 }) => {
-  const [focused, setFocused] = useState(false);
+  // FIXED: Removed unused focused state
   
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,8 +54,6 @@ export const SearchableFilterBar: React.FC<SearchableFilterBarProps> = ({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className={`pl-10 pr-${clearable && searchQuery ? '10' : '4'} py-2 w-full`}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
         />
         <Search 
           className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" 

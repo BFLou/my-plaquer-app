@@ -22,6 +22,18 @@ export interface RouteSegment {
 }
 
 /**
+ * Safely convert coordinate to number
+ */
+function parseCoordinate(coord: string | number | undefined): number | null {
+  if (coord === undefined || coord === null) return null;
+  
+  if (typeof coord === 'number') return coord;
+  
+  const parsed = parseFloat(String(coord));
+  return isNaN(parsed) ? null : parsed;
+}
+
+/**
  * Calculate walking distance and route between two points using multiple fallback methods
  * PRIORITIZED: OpenRouteService (since you have the API key)
  */
@@ -89,8 +101,16 @@ async function tryGraphHopperRoute(
     if (data.paths && data.paths.length > 0) {
       const path = data.paths[0];
       
-      // Decode the points from GraphHopper's encoded polyline
-      const geometry = decodePolyline(path.points);
+      // FIXED: Safe polyline decoding with proper type checking
+      let geometry: [number, number][] = [];
+      if (path.points && typeof path.points === 'string') {
+        try {
+          geometry = decodePolyline(path.points);
+        } catch (error) {
+          console.error('Error decoding polyline:', error);
+          geometry = [];
+        }
+      }
       
       return {
         distance: Math.round(path.distance),
@@ -111,6 +131,7 @@ async function tryGraphHopperRoute(
     return null;
   }
 }
+
 
 /**
  * Try OpenRouteService API - FIXED: Use correct API key and improved error handling
@@ -371,12 +392,13 @@ export const calculateMultiWaypointRoute = async (
       continue;
     }
     
-    const fromLat = parseFloat(from.latitude as string);
-    const fromLng = parseFloat(from.longitude as string);
-    const toLat = parseFloat(to.latitude as string);
-    const toLng = parseFloat(to.longitude as string);
+    // FIXED: Safe coordinate conversion
+    const fromLat = parseCoordinate(from.latitude);
+    const fromLng = parseCoordinate(from.longitude);
+    const toLat = parseCoordinate(to.latitude);
+    const toLng = parseCoordinate(to.longitude);
     
-    if (isNaN(fromLat) || isNaN(fromLng) || isNaN(toLat) || isNaN(toLng)) {
+    if (fromLat === null || fromLng === null || toLat === null || toLng === null) {
       console.warn(`❌ Skipping route segment ${i} due to invalid coordinates:`, {
         from: { lat: fromLat, lng: fromLng },
         to: { lat: toLat, lng: toLng }
@@ -467,42 +489,51 @@ function calculateHaversineDistance(
 }
 
 /**
- * Decode polyline (for GraphHopper and other services)
+ * Decode polyline (for GraphHopper and other services) - FIXED SIGNATURE
  */
 function decodePolyline(encoded: string): [number, number][] {
+  // Add input validation
+  if (typeof encoded !== 'string' || encoded.length === 0) {
+    return [];
+  }
+
   const points: [number, number][] = [];
   let index = 0;
   let lat = 0;
   let lng = 0;
   
-  while (index < encoded.length) {
-    let b;
-    let shift = 0;
-    let result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    const deltaLat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
-    lat += deltaLat;
-    
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    const deltaLng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
-    lng += deltaLng;
-    
-    points.push([lat / 1e5, lng / 1e5]);
+  try {
+    while (index < encoded.length) {
+      let b;
+      let shift = 0;
+      let result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const deltaLat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+      lat += deltaLat;
+      
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const deltaLng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+      lng += deltaLng;
+      
+      points.push([lat / 1e5, lng / 1e5]);
+    }
+  } catch (error) {
+    console.error('Error decoding polyline:', error);
+    return [];
   }
   
   return points;
 }
-
 /**
  * Format distance for display
  */
@@ -548,7 +579,9 @@ class RouteCache {
     // Simple LRU: remove oldest entries when cache is full
     if (this.cache.size >= this.maxCacheSize) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (typeof firstKey === 'string') {
+        this.cache.delete(firstKey);
+      }
     }
     
     this.cache.set(key, route);

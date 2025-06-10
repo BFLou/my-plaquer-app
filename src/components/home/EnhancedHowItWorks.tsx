@@ -1,16 +1,37 @@
 // src/components/home/EnhancedHowItWorks.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Map, Camera, ListChecks, ChevronRight, MapPin, BookmarkPlus, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const EnhancedHowItWorks = ({ onStartJourney }) => {
+// FIXED: Added proper TypeScript interfaces
+interface EnhancedHowItWorksProps {
+  onStartJourney: () => void;
+}
+
+type FeatureColor = 'blue' | 'green' | 'purple';
+
+interface StatItem {
+  value: string;
+  label: string;
+}
+
+interface Feature {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  description: string;
+  color: FeatureColor;
+  stats: StatItem[];
+}
+
+const EnhancedHowItWorks: React.FC<EnhancedHowItWorksProps> = ({ onStartJourney }) => {
   // State for animation tracking
   const [isVisible, setIsVisible] = useState(false);
   const [activeFeature, setActiveFeature] = useState(0);
 
   // Features data with extended details and updated stats
-  const features = [
+  const features: Feature[] = [
     {
       icon: <Map className="h-8 w-8" />,
       title: "Discover",
@@ -73,8 +94,8 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
     return () => clearInterval(interval);
   }, [isVisible, features.length]);
 
-  // Function to get border color class based on feature color
-  const getBorderClass = (featureColor, isActive) => {
+  // Function to get border color class based on feature color - FIXED: Added proper typing
+  const getBorderClass = (featureColor: FeatureColor, isActive: boolean): string => {
     if (!isActive) return "border-transparent";
     
     switch (featureColor) {
@@ -89,8 +110,8 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
     }
   };
   
-  // Function to get background color class based on feature color
-  const getBackgroundClass = (featureColor, isActive) => {
+  // Function to get background color class based on feature color - FIXED: Added proper typing
+  const getBackgroundClass = (featureColor: FeatureColor, isActive: boolean): string => {
     if (!isActive) return "bg-white hover:bg-gray-50";
     
     switch (featureColor) {
@@ -173,7 +194,7 @@ const EnhancedHowItWorks = ({ onStartJourney }) => {
                 <div className="w-64 h-[500px] bg-white overflow-hidden shadow-xl rounded-[32px] border-[10px] border-gray-900">
                   {/* Screen content - dynamically shows the active feature */}
                   <div className="h-full overflow-hidden bg-white relative">
-                    {features.map((feature, index) => (
+                    {features.map((_, index) => (
                       <div 
                         key={index} 
                         className={cn(

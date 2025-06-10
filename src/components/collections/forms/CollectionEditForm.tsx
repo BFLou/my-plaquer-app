@@ -88,7 +88,6 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
         icon: collection.icon || '🎭',
         color: collection.color || 'bg-blue-500',
         tags: collection.tags || [],
-        isPublic: collection.isPublic || false
       });
     }
   }, [collection]);
@@ -180,7 +179,6 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
         icon: collection.icon || '🎭',
         color: collection.color || 'bg-blue-500',
         tags: collection.tags || [],
-        isPublic: collection.isPublic || false
       });
     }
     setErrors({});

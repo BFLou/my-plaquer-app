@@ -214,8 +214,8 @@ export const useDistanceCircle = (
         circleRef.current = circle;
         markerRef.current = centerMarker;
         
-        // Add circle interaction events
-        circle.on('mouseover', function() {
+        // FIXED: Add circle interaction events with proper typing
+        circle.on('mouseover', function(this: L.Circle) {
           this.setStyle({ 
             fillOpacity: 0.15,
             opacity: 0.8,
@@ -223,7 +223,7 @@ export const useDistanceCircle = (
           });
         });
         
-        circle.on('mouseout', function() {
+        circle.on('mouseout', function(this: L.Circle) {
           this.setStyle({ 
             fillOpacity: 0.08,
             opacity: 0.6,

@@ -50,13 +50,16 @@ const CollectionPlaqueList: React.FC<CollectionPlaqueListProps> = ({
 
   if (plaques.length === 0 && !searchQuery) {
     return (
-      <EmptyState
-        icon={MapPin}
-        title="No Plaques Yet"
-        description="Start building your collection by adding plaques"
-        actionLabel="Add Your First Plaque"
-        onAction={onAddPlaquesClick}
-      />
+      <>
+        <EmptyState
+          icon={<MapPin />}
+          title="No Plaques Yet"
+          description="Start building your collection by adding plaques"
+        />
+        <div className="flex justify-center mt-4">
+          <Button onClick={onAddPlaquesClick}>Add Plaques</Button>
+        </div>
+      </>
     );
   }
 

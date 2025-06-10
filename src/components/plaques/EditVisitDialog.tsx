@@ -44,9 +44,11 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
       const visitData = visits.find((v) => v.id === visitId);
       if (visitData) {
         if (visitData.visited_at) {
-          const date = visitData.visited_at.toDate
-            ? visitData.visited_at.toDate()
-            : new Date(visitData.visited_at);
+          const raw = visitData.visited_at as any;
+          const date =
+            typeof raw.toDate === 'function'
+              ? raw.toDate()
+              : new Date(raw);
           setVisitDate(date);
         }
         setNotes(visitData.notes || '');
@@ -64,16 +66,16 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
 
   const handleSave = async () => {
     if (!visitId) return;
-    
+
     setIsLoading(true);
     triggerHapticFeedback('light');
-    
+
     try {
       await updateVisit(visitId, {
         visitedAt: visitDate.toISOString(),
         notes,
       });
-      
+
       triggerHapticFeedback('success');
       toast.success('Visit updated successfully');
       onVisitUpdated();
@@ -89,10 +91,10 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
 
   const handleDelete = async () => {
     if (!visitId) return;
-    
+
     setIsLoading(true);
     triggerHapticFeedback('light');
-    
+
     try {
       await removeVisit(visitId);
       triggerHapticFeedback('success');

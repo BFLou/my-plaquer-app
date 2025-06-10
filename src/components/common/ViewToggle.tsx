@@ -1,4 +1,3 @@
-import React from 'react';
 import { Grid, List, Map as MapIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";

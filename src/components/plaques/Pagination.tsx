@@ -1,5 +1,5 @@
 // src/components/plaques/Pagination.tsx - Mobile optimized
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import { MobileButton } from '@/components/ui/mobile-button';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';

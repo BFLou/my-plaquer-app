@@ -1,41 +1,49 @@
-// src/hooks/useDiscoverState.ts - Custom hook to manage Discover page state
+// src/hooks/useDiscoverState.ts - Custom hook to manage Discover page state - FIXED
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 import plaqueData from '../data/plaque_data.json';
-import { useUrlState } from '../components/maps/hooks/useUrlState';
-import { useMapState } from '../components/maps/hooks/useMapState';
+import { useUrlState } from './useUrlState';
+import { useMapState } from './useMapState';
 import { useVisitedPlaques } from './useVisitedPlaques';
 import { useFavorites } from './useFavorites';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
+import { Plaque } from '@/types/plaque';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
+// Interface for filter options
+interface FilterOption {
+  label: string;
+  value: string;
+  count: number;
+}
+
 const useDiscoverState = () => {
-  // Basic state
-  const [allPlaques, setAllPlaques] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedPlaque, setSelectedPlaque] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Basic state with proper typing
+  const [allPlaques, setAllPlaques] = useState<Plaque[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
-  // Route state
-  const [routePoints, setRoutePoints] = useState([]);
-  const [isRoutingMode, setIsRoutingMode] = useState(false);
-  const [useImperial, setUseImperial] = useState(false);
+  // Route state with proper typing
+  const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
+  const [isRoutingMode, setIsRoutingMode] = useState<boolean>(false);
+  const [useImperial, setUseImperial] = useState<boolean>(false);
 
-  // Filter options
-  const [postcodeOptions, setPostcodeOptions] = useState([]);
-  const [colorOptions, setColorOptions] = useState([]);
-  const [professionOptions, setProfessionOptions] = useState([]);
+  // Filter options with proper typing
+  const [postcodeOptions, setPostcodeOptions] = useState<FilterOption[]>([]);
+  const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
+  const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
 
   // External hooks
   const { urlState, setViewMode, setSearch, setFilters, resetFilters: resetUrlFilters } = useUrlState();
   const mapStateManager = useMapState();
   const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
-  const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   // Mobile detection
   useEffect(() => {
@@ -53,15 +61,20 @@ const useDiscoverState = () => {
     try {
       setLoading(true);
       
-      const adaptedData = adaptPlaquesData(plaqueData);
+      // Cast plaqueData to proper type - handle both array and object cases
+      const rawData = Array.isArray(plaqueData) 
+        ? plaqueData as any[]
+        : Object.values(plaqueData) as any[];
+      
+      const adaptedData: Plaque[] = adaptPlaquesData(rawData);
       setAllPlaques(adaptedData);
       
-      // Generate filter options
-      const postcodeCount = {};
-      const colorCount = {};
-      const professionCount = {};
+      // Generate filter options with proper typing
+      const postcodeCount: Record<string, number> = {};
+      const colorCount: Record<string, number> = {};
+      const professionCount: Record<string, number> = {};
       
-      adaptedData.forEach(plaque => {
+      adaptedData.forEach((plaque: Plaque) => {
         // Postcodes
         if (plaque.postcode && plaque.postcode !== "Unknown") {
           postcodeCount[plaque.postcode] = (postcodeCount[plaque.postcode] || 0) + 1;
@@ -79,31 +92,31 @@ const useDiscoverState = () => {
         }
       });
       
-      // Set filter options
+      // Set filter options with proper typing
       setPostcodeOptions(
         Object.entries(postcodeCount)
-          .map(([value, count]) => ({ label: value, value, count }))
-          .sort((a, b) => b.count - a.count)
+          .map(([value, count]): FilterOption => ({ label: value, value, count }))
+          .sort((a, b) => (b.count as number) - (a.count as number))
       );
       
       setColorOptions(
         Object.entries(colorCount)
-          .map(([value, count]) => ({
+          .map(([value, count]): FilterOption => ({
             label: capitalizeWords(value),
             value,
-            count
+            count: count as number
           }))
-          .sort((a, b) => b.count - a.count)
+          .sort((a, b) => (b.count as number) - (a.count as number))
       );
       
       setProfessionOptions(
         Object.entries(professionCount)
-          .map(([value, count]) => ({
+          .map(([value, count]): FilterOption => ({
             label: capitalizeWords(value),
             value,
-            count
+            count: count as number
           }))
-          .sort((a, b) => b.count - a.count)
+          .sort((a, b) => (b.count as number) - (a.count as number))
       );
       
       setLoading(false);
@@ -119,21 +132,21 @@ const useDiscoverState = () => {
   const maxDistance = mapStateManager.state.distanceFilter.radius;
   const hideOutsidePlaques = mapStateManager.state.distanceFilter.visible;
 
-  // Distance filter handlers
-  const handleDistanceFilterChange = useCallback((newDistance, hideOutside) => {
+  // Distance filter handlers with proper typing
+  const handleDistanceFilterChange = useCallback((newDistance: number, hideOutside: boolean) => {
     if (activeLocation) {
       mapStateManager.setDistanceFilter(activeLocation, newDistance, hideOutside);
     }
   }, [activeLocation, mapStateManager]);
 
-  const handleLocationSet = useCallback((location) => {
+  const handleLocationSet = useCallback((location: [number, number]) => {
     mapStateManager.setSearchLocation(location);
     toast.success("Location set! Distance filter is now available.");
   }, [mapStateManager]);
 
   // Filtered plaques
   const filteredPlaques = useMemo(() => {
-    let filtered = allPlaques.filter((plaque) => {
+    let filtered = allPlaques.filter((plaque: Plaque) => {
       // Standard filters
       const matchesSearch = !urlState.search.trim() || 
         (plaque.title?.toLowerCase().includes(urlState.search.toLowerCase())) ||
@@ -164,11 +177,11 @@ const useDiscoverState = () => {
 
     // Apply distance filter if active
     if (activeLocation && hideOutsidePlaques) {
-      filtered = filtered.filter(plaque => {
+      filtered = filtered.filter((plaque: Plaque) => {
         if (!plaque.latitude || !plaque.longitude) return false;
         
-        const lat = parseFloat(plaque.latitude);
-        const lng = parseFloat(plaque.longitude);
+        const lat = parseFloat(String(plaque.latitude));
+        const lng = parseFloat(String(plaque.longitude));
         
         if (isNaN(lat) || isNaN(lng)) return false;
         
@@ -181,7 +194,6 @@ const useDiscoverState = () => {
   }, [
     allPlaques, 
     urlState,
-    favorites, 
     isPlaqueVisited,
     isFavorite,
     activeLocation,
@@ -207,23 +219,23 @@ const useDiscoverState = () => {
     hideOutsidePlaques
   ]);
 
-  // Event handlers
-  const handlePlaqueClick = useCallback((plaque) => {
+  // Event handlers with proper typing
+  const handlePlaqueClick = useCallback((plaque: Plaque) => {
     setSelectedPlaque(plaque);
   }, []);
 
-  const handleFavoriteToggle = useCallback((id) => {
+  const handleFavoriteToggle = useCallback((id: number) => {
     toggleFavorite(id);
   }, [toggleFavorite]);
 
-  const handleMarkVisited = useCallback(async (id) => {
+  const handleMarkVisited = useCallback(async (id: number) => {
     try {
       await markAsVisited(id, {
         visitedAt: new Date().toISOString(),
         notes: '',
       });
       
-      setAllPlaques(prev => prev.map(p => 
+      setAllPlaques((prev: Plaque[]) => prev.map((p: Plaque) => 
         p.id === id ? { ...p, visited: true } : p
       ));
       

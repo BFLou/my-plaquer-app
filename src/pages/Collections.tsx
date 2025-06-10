@@ -39,12 +39,10 @@ const CollectionsPage = () => {
     setSearchQuery,
     sortOption,
     setSortOption,
-    showOnlyFavorites,
     setShowOnlyFavorites,
     selectedCollections,
     setSelectedCollections,
     filteredCollections,
-    activeFilters,
     resetFilters,
     toggleSelect
   } = useCollectionsList();
@@ -66,15 +64,14 @@ const CollectionsPage = () => {
     handleDuplicateCollection,
     handleDeleteCollections,
     prepareForDelete,
-    handleBatchFavorite,
-    navigateToCollection
-  } = useCollectionActions();
+    handleBatchFavorite
+    } = useCollectionActions();
   
   // NEW: ActiveTab state for toggling between All/Favorites/Recent
   const [activeTab, setActiveTab] = useState('all');
   
   // Handle tab change
-  const handleTabChange = (tab) => {
+const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'favorites') {
       setShowOnlyFavorites(true);
@@ -101,7 +98,7 @@ const CollectionsPage = () => {
   };
   
   // Handle open edit form - Improved to ensure data is properly set
-  const handleOpenEditForm = (id) => {
+const handleOpenEditForm = (id: string) => {
     console.log("Opening edit form for collection ID:", id);
     const collection = collections.find(c => c.id === id);
     console.log("Found collection for editing:", collection);
@@ -327,13 +324,9 @@ const CollectionsPage = () => {
         {/* Collections Grid/List */}
         {collections.length === 0 ? (
           <EmptyState
-            icon={FolderOpen}
+            icon={<FolderOpen />}
             title="Start Your Collection Journey"
             description="Create your first collection to organize plaques by theme, location, or any way you like!"
-            actionLabel="Create Your First Collection"
-            onAction={() => setCreateCollectionOpen(true)}
-            secondaryActionLabel="Explore Plaques"
-            onSecondaryAction={() => navigate('/discover')}
           />
         ) : filteredCollections.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg">
@@ -384,15 +377,13 @@ const CollectionsPage = () => {
             {
               label: "Add to Favorites",
               icon: <Star size={16} />,
-              onClick: () => handleBatchFavorite(selectedCollections),
-              disabled: isLoading
+              onClick: () => handleBatchFavorite(selectedCollections)
             },
             {
               label: "Delete",
               variant: "destructive",
               icon: <Trash2 size={16} />,
-              onClick: () => prepareForDelete(selectedCollections),
-              disabled: isLoading
+              onClick: () => prepareForDelete(selectedCollections)
             }
           ]}
           onClearSelection={() => setSelectedCollections([])}
@@ -421,10 +412,8 @@ const CollectionsPage = () => {
             name: editCollectionData.name || '',
             description: editCollectionData.description || '',
             icon: editCollectionData.icon || '🎭',
-            color: editCollectionData.color || 'bg-purple-500',
-            isPublic: editCollectionData.is_public || false,
-            tags: editCollectionData.tags || []
-          }}
+            color: editCollectionData.color || 'bg-purple-500'
+           }}
           submitLabel="Save Changes"
           title="Edit Collection"
         />

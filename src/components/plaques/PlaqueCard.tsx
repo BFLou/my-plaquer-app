@@ -59,7 +59,6 @@ export const PlaqueCard = ({
   onRemovePlaque,
   onClick,
   onAddToRoute,
-  showCollectionActions = false,
   showSelection = false,
   showRouteButton = false,
   variant = 'discover',
@@ -68,7 +67,6 @@ export const PlaqueCard = ({
   showDistance = false,
   distance,
   formatDistance = (d) => `${d.toFixed(1)} km`,
-  context = '',
   onFavoriteToggle
 }: PlaqueCardProps) => {
   // State for various dialogs and actions
@@ -161,11 +159,7 @@ export const PlaqueCard = ({
     requireAuthForFavorite(plaque.id, favoriteAction);
   };
 
-  const handleSelectClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    triggerHapticFeedback('selection');
-    if (onSelect) onSelect(plaque.id);
-  };
+
 
   const handleQuickMarkVisited = () => {
     const visitAction = () => {
@@ -252,7 +246,7 @@ export const PlaqueCard = ({
         triggerHapticFeedback('success');
         setShowDropdown(false);
       } catch (error) {
-        if (error.name !== 'AbortError') {
+        if (error instanceof Error && error.name !== 'AbortError') {
           handleCopyLink();
         }
       }
@@ -314,7 +308,7 @@ export const PlaqueCard = ({
   const formatVisitDate = () => {
     if (!visitInfo?.visited_at) return '';
     try {
-      const date = visitInfo.visited_at.toDate ? visitInfo.visited_at.toDate() : new Date(visitInfo.visited_at);
+      const date = new Date(visitInfo.visited_at);
       return format(date, 'MMM d');
     } catch (error) {
       return 'Unknown date';
@@ -332,6 +326,12 @@ export const PlaqueCard = ({
         return 'hover:shadow-md active:shadow-lg';
     }
   };
+
+const handleCheckboxChange = () => {
+  if (onSelect) {
+    onSelect(plaque.id);
+  }
+};
 
   return (
     <>
@@ -371,7 +371,7 @@ export const PlaqueCard = ({
                   variant="ghost"
                   size="sm"
                   className="rounded-full bg-black/30 hover:bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity p-0 w-10 h-10"
-                  onClick={(e) => {
+                  onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     triggerHapticFeedback('selection');
                     console.log('Dropdown menu clicked');
@@ -391,7 +391,7 @@ export const PlaqueCard = ({
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     e.preventDefault();
-                    handleViewFullDetails(e as any);
+                    handleViewFullDetails(e as unknown as React.MouseEvent);
                   }}
                   className="cursor-pointer py-3"
                 >
@@ -469,7 +469,7 @@ export const PlaqueCard = ({
                 <DropdownMenuItem 
                   onSelect={(e) => {
                     e.preventDefault();
-                    handleFavoriteToggle(e as any);
+                    handleFavoriteToggle(e as unknown as React.MouseEvent);
                   }}
                   className="cursor-pointer py-3"
                 >
@@ -612,7 +612,7 @@ export const PlaqueCard = ({
                 <input
                   type="checkbox"
                   checked={isSelected}
-                  onChange={handleSelectClick}
+                  onChange={handleCheckboxChange}
                   className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-3"
                 />
                 <span className="text-gray-600">Select</span>
@@ -659,7 +659,7 @@ export const PlaqueCard = ({
                   <MobileButton
                     variant="outline"
                     className="w-full justify-start text-left font-normal h-12"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     touchOptimized={true}
                   >
                     <Calendar className="mr-3 h-5 w-5" />
@@ -691,7 +691,7 @@ export const PlaqueCard = ({
                 value={visitNotes}
                 onChange={(e) => setVisitNotes(e.target.value)}
                 rows={4}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
               />
             </div>
           </div>

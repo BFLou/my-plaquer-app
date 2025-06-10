@@ -55,10 +55,19 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
           continue;
         }
         
-        const startLat = parseFloat(start.latitude as string);
-        const startLng = parseFloat(start.longitude as string);
-        const endLat = parseFloat(end.latitude as string);
-        const endLng = parseFloat(end.longitude as string);
+        // FIXED: Proper coordinate type conversion
+        const startLat = typeof start.latitude === 'string' 
+          ? parseFloat(start.latitude) 
+          : start.latitude;
+        const startLng = typeof start.longitude === 'string' 
+          ? parseFloat(start.longitude) 
+          : start.longitude;
+        const endLat = typeof end.latitude === 'string' 
+          ? parseFloat(end.latitude) 
+          : end.latitude;
+        const endLng = typeof end.longitude === 'string' 
+          ? parseFloat(end.longitude) 
+          : end.longitude;
         
         if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) {
           continue;
@@ -93,10 +102,15 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
       if (!routeLayersRef.current) return;
       
       routePoints.forEach((point, index) => {
-        const lat = parseFloat(point.latitude as string);
-        const lng = parseFloat(point.longitude as string);
+        // FIXED: Proper coordinate conversion with safety checks
+        const lat = typeof point.latitude === 'string' 
+          ? parseFloat(point.latitude) 
+          : point.latitude;
+        const lng = typeof point.longitude === 'string' 
+          ? parseFloat(point.longitude) 
+          : point.longitude;
         
-        if (isNaN(lat) || isNaN(lng)) return;
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
         
         // Determine marker color and style
         let color: string;
@@ -201,8 +215,8 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
                 className: 'walking-route-line'
               });
               
-              // Add hover effects
-              routeLine.on('mouseover', function() {
+              // FIXED: Add hover effects with proper typing
+              routeLine.on('mouseover', function(this: L.Polyline) {
                 this.setStyle({
                   weight: 6,
                   opacity: 1,
@@ -210,7 +224,7 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
                 });
               });
               
-              routeLine.on('mouseout', function() {
+              routeLine.on('mouseout', function(this: L.Polyline) {
                 this.setStyle({
                   weight: 4,
                   opacity: 0.8,
@@ -262,19 +276,18 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
     calculateRoute();
     
     // Cleanup function
-// Cleanup function
-   return () => {
-     if (map && routeLayersRef.current) {
-       map.removeLayer(routeLayersRef.current);
-     }
-     routeMarkersRef.current.forEach(marker => {
-       if (map && map.hasLayer(marker)) {
-         map.removeLayer(marker);
-       }
-     });
-   };
-   
- }, [map, routePoints]); // Dependencies: map and routePoints
- 
- // No additional useEffect hooks - everything is in one effect to maintain Rules of Hooks
+    return () => {
+      if (map && routeLayersRef.current) {
+        map.removeLayer(routeLayersRef.current);
+      }
+      routeMarkersRef.current.forEach(marker => {
+        if (map && map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      });
+    };
+    
+  }, [map, routePoints]); // Dependencies: map and routePoints
+  
+  // No additional useEffect hooks - everything is in one effect to maintain Rules of Hooks
 };

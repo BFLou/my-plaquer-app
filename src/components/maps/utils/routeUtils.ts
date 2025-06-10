@@ -15,6 +15,12 @@ export interface SavedRoute {
   points: RoutePoint[];
 }
 
+// FIXED: Helper function for safe coordinate conversion
+function parseCoordinate(coord: string | number | undefined): number {
+  if (coord === undefined || coord === null) return 0;
+  return typeof coord === 'string' ? parseFloat(coord) : coord;
+}
+
 /**
  * Calculate distance between two points using Haversine formula
  */
@@ -57,10 +63,11 @@ export function calculateRouteDistance(points: Plaque[]): number {
     
     if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
     
-    const startLat = parseFloat(start.latitude as string);
-    const startLng = parseFloat(start.longitude as string);
-    const endLat = parseFloat(end.latitude as string);
-    const endLng = parseFloat(end.longitude as string);
+    // FIXED: Use helper function for safe coordinate conversion
+    const startLat = parseCoordinate(start.latitude);
+    const startLng = parseCoordinate(start.longitude);
+    const endLat = parseCoordinate(end.latitude);
+    const endLng = parseCoordinate(end.longitude);
     
     if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) continue;
     
@@ -117,10 +124,11 @@ export function optimizeRoute(routePoints: Plaque[]): Plaque[] {
         continue;
       }
       
-      const startLat = parseFloat(current.latitude as string);
-      const startLng = parseFloat(current.longitude as string);
-      const endLat = parseFloat(middle[i].latitude as string);
-      const endLng = parseFloat(middle[i].longitude as string);
+      // FIXED: Use helper function for safe coordinate conversion
+      const startLat = parseCoordinate(current.latitude);
+      const startLng = parseCoordinate(current.longitude);
+      const endLat = parseCoordinate(middle[i].latitude);
+      const endLng = parseCoordinate(middle[i].longitude);
       
       if (isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng)) {
         continue;
@@ -150,11 +158,12 @@ export function optimizeRoute(routePoints: Plaque[]): Plaque[] {
  * Creates a GeoJSON route from plaque points
  */
 export function createRouteGeoJSON(routePoints: Plaque[]) {
-  const validPoints = routePoints.filter(p => 
-    p.latitude && p.longitude && 
-    !isNaN(parseFloat(p.latitude as string)) && 
-    !isNaN(parseFloat(p.longitude as string))
-  );
+  const validPoints = routePoints.filter(p => {
+    if (!p.latitude || !p.longitude) return false;
+    const lat = parseCoordinate(p.latitude);
+    const lng = parseCoordinate(p.longitude);
+    return !isNaN(lat) && !isNaN(lng);
+  });
   
   if (validPoints.length < 2) {
     return null;
@@ -174,8 +183,8 @@ export function createRouteGeoJSON(routePoints: Plaque[]) {
         geometry: {
           type: "LineString",
           coordinates: validPoints.map(p => [
-            parseFloat(p.longitude as string),
-            parseFloat(p.latitude as string)
+            parseCoordinate(p.longitude),
+            parseCoordinate(p.latitude)
           ])
         }
       },
@@ -190,8 +199,8 @@ export function createRouteGeoJSON(routePoints: Plaque[]) {
         geometry: {
           type: "Point",
           coordinates: [
-            parseFloat(p.longitude as string),
-            parseFloat(p.latitude as string)
+            parseCoordinate(p.longitude),
+            parseCoordinate(p.latitude)
           ]
         }
       }))
@@ -227,7 +236,7 @@ export function saveRoute(
     return null;
   }
   
-  // Create route object
+  // Create route object - FIXED: Use helper function for coordinate conversion
   const route: SavedRoute = {
     id: Date.now(),
     name,
@@ -235,8 +244,8 @@ export function saveRoute(
     points: routePoints.map(p => ({
       id: p.id,
       title: p.title,
-      lat: parseFloat(p.latitude as string),
-      lng: parseFloat(p.longitude as string)
+      lat: parseCoordinate(p.latitude),
+      lng: parseCoordinate(p.longitude)
     }))
   };
   

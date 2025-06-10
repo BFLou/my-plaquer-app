@@ -1,9 +1,10 @@
 // src/hooks/useCollectionsList.ts
 import { useState, useEffect, useCallback } from 'react';
-import { useCollections } from '@/hooks/useCollection';
+import { useCollections, CollectionData } from '@/hooks/useCollection';
 import { getPlaqueCount } from '@/utils/collectionHelpers';
 
 export type ViewMode = 'grid' | 'list' | 'map';
+export type TabType = 'all' | 'favorites' | 'recent';
 
 export const useCollectionsList = () => {
   // UI State
@@ -12,21 +13,21 @@ export const useCollectionsList = () => {
   const [sortOption, setSortOption] = useState('recently_updated');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('all');
-  const [filteredCollections, setFilteredCollections] = useState([]);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [filteredCollections, setFilteredCollections] = useState<CollectionData[]>([]);
   
   // Firebase collections hook
   const { collections, loading, error } = useCollections();
   
   // Handle filtering for the 'recent' tab
-  const getRecentCollections = (collections) => {
+  const getRecentCollections = (collections: CollectionData[]): CollectionData[] => {
     // Get collections from the last 7 days
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     return collections.filter(collection => {
       // Convert updated_at to Date object (handle different formats)
-      let updatedAt;
+      let updatedAt: Date | null = null;
       
       if (collection.updated_at) {
         if (typeof collection.updated_at === 'string') {
@@ -55,7 +56,7 @@ export const useCollectionsList = () => {
   };
 
   // Helper function to parse "X days ago" into a number
-  const parseDaysFromTimeAgo = (timeAgoString) => {
+  const parseDaysFromTimeAgo = (timeAgoString: string): number | null => {
     if (timeAgoString === 'today') return 0;
     if (timeAgoString === 'yesterday') return 1;
     
@@ -73,9 +74,9 @@ export const useCollectionsList = () => {
   };
 
   // Sort collections by updated time
-  const sortCollectionsByUpdated = (collections, descending = true) => {
+  const sortCollectionsByUpdated = (collections: CollectionData[], descending = true): CollectionData[] => {
     return [...collections].sort((a, b) => {
-      let dateA, dateB;
+      let dateA: number, dateB: number;
       
       try {
         if (typeof a.updated_at === 'string') {
@@ -89,8 +90,8 @@ export const useCollectionsList = () => {
           }
         } else if (a.updated_at instanceof Date) {
           dateA = a.updated_at.getTime();
-        } else if (a.updated_at && a.updated_at.toDate) {
-          dateA = a.updated_at.toDate().getTime();
+        } else if (a.updated_at && typeof a.updated_at === 'object' && 'toDate' in a.updated_at) {
+          dateA = (a.updated_at as any).toDate().getTime();
         } else {
           dateA = 0;
         }
@@ -106,8 +107,8 @@ export const useCollectionsList = () => {
           }
         } else if (b.updated_at instanceof Date) {
           dateB = b.updated_at.getTime();
-        } else if (b.updated_at && b.updated_at.toDate) {
-          dateB = b.updated_at.toDate().getTime();
+        } else if (b.updated_at && typeof b.updated_at === 'object' && 'toDate' in b.updated_at) {
+          dateB = (b.updated_at as any).toDate().getTime();
         } else {
           dateB = 0;
         }
@@ -123,7 +124,7 @@ export const useCollectionsList = () => {
   // Filtering and sorting logic
   const filterAndSortCollections = useCallback(() => {
     // Start with all collections
-    let filtered = [...collections];
+    let filtered: CollectionData[] = [...collections];
     
     // Apply favorites filter if active
     if (showOnlyFavorites) {
@@ -176,7 +177,7 @@ export const useCollectionsList = () => {
   }, [filterAndSortCollections]);
   
   // Handle tab change
-  const handleTabChange = (tab) => {
+  const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     if (tab === 'favorites') {
       setShowOnlyFavorites(true);
@@ -191,7 +192,7 @@ export const useCollectionsList = () => {
   };
   
   // Active filters for display
-  const activeFilters = [];
+  const activeFilters: string[] = [];
   if (showOnlyFavorites) activeFilters.push('Favorites');
   if (searchQuery) activeFilters.push('Search');
   

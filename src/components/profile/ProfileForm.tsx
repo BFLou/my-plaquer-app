@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MobileInput } from "@/components/ui/mobile-input"; // Use mobile-optimized input
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, Save, Loader, User, X, Upload, Smartphone } from 'lucide-react';
+import { Camera, Save, Loader, User, X, Upload } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';

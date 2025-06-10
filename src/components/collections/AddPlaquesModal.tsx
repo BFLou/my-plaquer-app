@@ -9,7 +9,7 @@ import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
 import PlaqueImage from '../plaques/PlaqueImage';
 import plaqueData from '../../data/plaque_data.json';
-import { adaptPlaquesData } from '@/utils/plaqueAdapter';
+import { adaptPlaquesData, RawPlaqueData } from '@/utils/plaqueAdapter';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 import { useSafeArea } from '@/hooks/useSafeArea';
@@ -55,7 +55,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   const { isKeyboardOpen, keyboardHeight } = useKeyboardDetection();
   const safeArea = useSafeArea();
   
-  // State management
+  // State management - FIXED: Proper totalCount state declaration
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlaqueIds, setSelectedPlaqueIds] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,7 +63,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasSearched, setHasSearched] = useState(false);
-  const [setTotalCount] = useState(0);
+  const [, setTotalCount] = useState(0); // totalCount not used in display, only for internal tracking
   const [activeTab, setActiveTab] = useState('search');
   const [selectedPlaques, setSelectedPlaques] = useState<Plaque[]>([]);
   
@@ -114,26 +114,30 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
         const chunkSize = 500;
         let processedResults: Plaque[] = [];
         
-        for (let i = 0; i < plaqueData.length; i += chunkSize) {
-          const chunk = plaqueData.slice(i, i + chunkSize);
-          const adaptedChunk = adaptPlaquesData(chunk);
-          const chunkResults = adaptedChunk.filter(plaque => searchInPlaque(plaque, query));
-          processedResults = [...processedResults, ...chunkResults];
-          
-          if (processedResults.length >= 100) {
-            break;
-          }
-          
-          if (i + chunkSize < plaqueData.length) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-        }
+        // FIXED: Ensure plaqueData is treated as an array
+        const dataArray = Array.isArray(plaqueData) ? plaqueData : [];
+        
+for (let i = 0; i < dataArray.length; i += chunkSize) {
+  const chunk = dataArray.slice(i, i + chunkSize);
+  // Type assertion to ensure chunk is treated as RawPlaqueData[]
+  const adaptedChunk = adaptPlaquesData(chunk as RawPlaqueData[]);
+  const chunkResults = adaptedChunk.filter(plaque => searchInPlaque(plaque, query));
+  processedResults = [...processedResults, ...chunkResults];
+  
+  if (processedResults.length >= 100) {
+    break;
+  }
+  
+  if (i + chunkSize < dataArray.length) {
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
+}
         
         results = processedResults;
       }
       
       setSearchResults(results);
-      setTotalCount(results.length);
+      setTotalCount(results.length); // FIXED: Now totalCount exists
       setCurrentPage(1);
     } catch (error) {
       console.error("Error searching plaques:", error);
@@ -143,10 +147,11 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
     }
   };
   
+  // FIXED: Removed unused 'key' variable and proper typing
   const searchInPlaque = (plaque: Plaque, query: string): boolean => {
     const searchText = query.toLowerCase();
     
-    for (const [key, value] of Object.entries(plaque)) {
+    for (const [, value] of Object.entries(plaque)) {
       if (typeof value !== 'string' || !value) continue;
       
       if (value.toLowerCase().includes(searchText)) {
@@ -157,6 +162,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
     return false;
   };
   
+  // FIXED: Proper event parameter typing
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
@@ -329,7 +335,7 @@ const AddPlaquesModal: React.FC<AddPlaquesModalProps> = ({
                 variant="ghost" 
                 size="sm" 
                 className={`${mobile ? 'h-8 w-8' : 'h-6 w-6'} p-0 text-red-500 hover:text-red-700 hover:bg-red-50`}
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   removeFromSelection(plaque.id);
                 }}

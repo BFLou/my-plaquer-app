@@ -1,5 +1,5 @@
 // src/pages/CollectionDetail.tsx - Complete mobile-optimized collection detail page
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Check, Trash2, Star, Pencil, Edit, MapPin, X, Clock, 
   ArrowLeft, Plus, Grid, List, Map as MapIcon, Share2, Download, Route as RouteIcon
@@ -38,13 +38,38 @@ import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
+// --- Types ---
+interface Plaque {
+  id: number;
+  title: string;
+  location?: string;
+  address?: string;
+  postcode?: string;
+  profession?: string;
+  lead_subject_born_in?: string;
+  lead_subject_died_in?: string;
+  erected?: string;
+  latitude?: number;
+  longitude?: number;
+  [key: string]: any;
+}
+
+interface ActionBarButton {
+  label: string;
+  variant?: 'default' | 'destructive' | 'outline';
+  icon?: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+// --- End Types ---
+
 const CollectionDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const collectionId = id || '';
-  const mapRef = useRef(null);
   const { createRoute } = useRoutes();
   const { isKeyboardOpen } = useKeyboardDetection();
   
@@ -55,9 +80,9 @@ const CollectionDetailPage = () => {
   const [mobileViewMode, setMobileViewMode] = useState<'overview' | 'plaques' | 'map'>('overview');
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showRouteBuilder, setShowRouteBuilder] = useState(false);
-  const [routePoints, setRoutePoints] = useState([]);
+  const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
   const [routeName, setRouteName] = useState('');
-  
+
   // Use our collection detail hook
   const {
     collection,
@@ -95,7 +120,6 @@ const CollectionDetailPage = () => {
     setConfirmDeleteOpen,
     handleSaveName,
     editNameMode,
-    editNameValue,
     handleCancelEdit,
     handleEditName,
     editFormOpen,
@@ -103,12 +127,15 @@ const CollectionDetailPage = () => {
     handleUpdateCollection
   } = useCollectionDetail(collectionId);
 
+  // Add missing state for edit name value
+  const [localEditNameValue, setLocalEditNameValue] = useState(collection?.name || '');
+
   // State for filtered plaques
-  const [filteredPlaques, setFilteredPlaques] = useState(collectionPlaques);
+  const [filteredPlaques, setFilteredPlaques] = useState<Plaque[]>(collectionPlaques);
   
   // Swipe gesture for mobile navigation
   const swipeGesture = useSwipeGesture({
-    onSwipe: (direction) => {
+    onSwipe: (direction: string) => {
       if (direction === 'right' && isMobile()) {
         triggerHapticFeedback('light');
         handleMobileBack();
@@ -117,10 +144,15 @@ const CollectionDetailPage = () => {
     threshold: 50
   });
 
+  // Helper function to get collection timestamp
+  const getCollectionTimestamp = (collection: any) => {
+    return collection.updated_at || collection.created_at || collection.date_created || new Date().toISOString();
+  };
+
   // Handle modal plaque from URL
   useEffect(() => {
     if (modalPlaqueId && collectionPlaques.length > 0) {
-      const plaque = collectionPlaques.find(p => p.id === modalPlaqueId);
+      const plaque = collectionPlaques.find((p: Plaque) => p.id === modalPlaqueId);
       if (plaque) {
         console.log('Opening modal for plaque from URL:', plaque.title);
         setSelectedPlaque(plaque);
@@ -132,7 +164,7 @@ const CollectionDetailPage = () => {
     } else if (!modalPlaqueId) {
       setSelectedPlaque(null);
     }
-  }, [modalPlaqueId, collectionPlaques, searchParams, setSearchParams]);
+  }, [modalPlaqueId, collectionPlaques, searchParams, setSearchParams, setSelectedPlaque]);
 
   // Update filtered plaques when collection plaques change
   useEffect(() => {
@@ -140,7 +172,7 @@ const CollectionDetailPage = () => {
   }, [collectionPlaques]);
 
   // ENHANCED: Plaque click handler with proper context
-  const handlePlaqueClick = useCallback((plaque) => {
+  const handlePlaqueClick = useCallback((plaque: Plaque) => {
     console.log('Plaque clicked in collection:', plaque.title);
     triggerHapticFeedback('selection');
     
@@ -150,7 +182,7 @@ const CollectionDetailPage = () => {
     }
     
     // Calculate progress information
-    const plaqueIndex = collectionPlaques.findIndex(p => p.id === plaque.id);
+    const plaqueIndex = collectionPlaques.findIndex((p: Plaque) => p.id === plaque.id);
     const progress = plaqueIndex >= 0 ? `${plaqueIndex + 1} of ${collectionPlaques.length}` : undefined;
     
     // Navigate with proper collection context
@@ -177,10 +209,10 @@ const CollectionDetailPage = () => {
     }
     
     setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams, collection]);
+  }, [searchParams, setSearchParams, collection, setSelectedPlaque]);
 
   // ENHANCED: Nearby plaque selection with context
-  const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
+  const handleSelectNearbyPlaque = useCallback((nearbyPlaque: Plaque) => {
     console.log('Selecting nearby plaque in collection:', nearbyPlaque.title);
     triggerHapticFeedback('selection');
     
@@ -208,6 +240,8 @@ const CollectionDetailPage = () => {
   };
 
   const handleMobileShare = async () => {
+    if (!collection) return;
+    
     triggerHapticFeedback('light');
     const shareUrl = `${window.location.origin}/library/collections/${collection.id}`;
     const shareText = `Check out my "${collection.name}" collection with ${collectionPlaques.length} historic plaques!`;
@@ -219,7 +253,7 @@ const CollectionDetailPage = () => {
           text: shareText,
           url: shareUrl
         });
-      } catch (error) {
+      } catch (error: any) {
         if (error.name !== 'AbortError') {
           await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
           toast.success('Link copied to clipboard');
@@ -238,6 +272,8 @@ const CollectionDetailPage = () => {
   };
 
   const handleExportCollection = () => {
+    if (!collection) return;
+    
     triggerHapticFeedback('light');
     
     if (collectionPlaques.length === 0) {
@@ -248,7 +284,7 @@ const CollectionDetailPage = () => {
     try {
       const csvData = [
         ['Title', 'Location', 'Address', 'Postcode', 'Profession', 'Born', 'Died', 'Erected'],
-        ...collectionPlaques.map(plaque => [
+        ...collectionPlaques.map((plaque: Plaque) => [
           plaque.title || '',
           plaque.location || '',
           plaque.address || '',
@@ -276,6 +312,8 @@ const CollectionDetailPage = () => {
   };
 
   const handleCreateRoute = () => {
+    if (!collection) return;
+    
     if (collectionPlaques.length < 2) {
       toast.error('Need at least 2 plaques to create a route');
       return;
@@ -287,8 +325,8 @@ const CollectionDetailPage = () => {
     setShowRouteBuilder(true);
   };
 
-  const handleAddToRoute = (plaque) => {
-    if (routePoints.some(p => p.id === plaque.id)) {
+  const handleAddToRoute = (plaque: Plaque) => {
+    if (routePoints.some((p: Plaque) => p.id === plaque.id)) {
       toast.info('Plaque already in route');
       return;
     }
@@ -298,9 +336,9 @@ const CollectionDetailPage = () => {
     toast.success(`Added to route (${routePoints.length + 1} stops)`);
   };
 
-  const handleRemoveFromRoute = (plaqueId) => {
+  const handleRemoveFromRoute = (plaqueId: number) => {
     triggerHapticFeedback('light');
-    setRoutePoints(prev => prev.filter(p => p.id !== plaqueId));
+    setRoutePoints(prev => prev.filter((p: Plaque) => p.id !== plaqueId));
   };
 
   const handleSaveRoute = async () => {
@@ -309,18 +347,20 @@ const CollectionDetailPage = () => {
       return;
     }
 
+    if (!routeName.trim()) {
+      toast.error('Please enter a route name');
+      return;
+    }
+
     try {
       triggerHapticFeedback('success');
-      await createRoute({
-        name: routeName,
-        description: `Route created from ${collection.name} collection`,
-        points: routePoints.map((plaque, index) => ({
-          plaque_id: plaque.id,
-          order: index,
-          latitude: parseFloat(plaque.latitude),
-          longitude: parseFloat(plaque.longitude)
-        }))
-      });
+      
+      // Fix: Pass required arguments: name, description, plaques array
+      await createRoute(
+        routeName.trim(),
+        `Route created from collection "${collection ? collection.name : ''}"`,
+        routePoints
+      );
       
       setShowRouteBuilder(false);
       setRoutePoints([]);
@@ -361,7 +401,7 @@ const CollectionDetailPage = () => {
           <div className="container mx-auto px-4">
             <div className="bg-red-50 p-6 rounded-lg text-center">
               <h3 className="text-red-600 font-medium mb-2">Error Loading Collection</h3>
-              <p className="text-red-500 mb-4">{error || 'Collection not found'}</p>
+              <p className="text-red-500 mb-4">{typeof error === 'string' ? error : 'Collection not found'}</p>
               <MobileButton 
                 variant="outline" 
                 onClick={() => navigate('/library/collections')}
@@ -453,8 +493,8 @@ const CollectionDetailPage = () => {
             {editNameMode ? (
               <div className="flex items-center gap-2">
                 <input
-                  value={editNameValue}
-                  onChange={(e) => setEditNameValue(e.target.value)}
+                  value={localEditNameValue}
+                  onChange={(e) => setLocalEditNameValue(e.target.value)}
                   className="text-xl font-bold py-1 px-2 bg-white/20 text-white placeholder-white/70 border border-white/30 rounded"
                   disabled={isLoading}
                   autoFocus
@@ -462,7 +502,10 @@ const CollectionDetailPage = () => {
                 <MobileButton 
                   variant="ghost" 
                   size="sm" 
-                  onClick={handleSaveName} 
+                  onClick={() => {
+                    handleSaveName();
+                    setLocalEditNameValue(collection?.name || '');
+                  }} 
                   className="h-8 w-8 p-0 text-green-400 hover:bg-white/20"
                   disabled={isLoading}
                   touchOptimized
@@ -472,7 +515,10 @@ const CollectionDetailPage = () => {
                 <MobileButton 
                   variant="ghost" 
                   size="sm" 
-                  onClick={handleCancelEdit} 
+                  onClick={() => {
+                    handleCancelEdit();
+                    setLocalEditNameValue(collection?.name || '');
+                  }} 
                   className="h-8 w-8 p-0 text-red-400 hover:bg-white/20"
                   disabled={isLoading}
                   touchOptimized
@@ -547,16 +593,11 @@ const CollectionDetailPage = () => {
         
         <div className="flex flex-wrap items-center gap-3 mt-3">
           <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-            <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(collection.updated_at)}
+            <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(getCollectionTimestamp(collection))}
           </Badge>
           <Badge variant="outline" className="bg-white/20 text-white border-white/30">
             {collectionPlaques.length} plaques
           </Badge>
-          {collection.is_public && (
-            <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-              Public
-            </Badge>
-          )}
           {collection.is_favorite && (
             <Badge variant="outline" className="bg-white/20 text-white border-white/30">
               <Star size={12} className="mr-1 fill-current" /> Favorite
@@ -749,13 +790,11 @@ const CollectionDetailPage = () => {
         showMapView={false}
       >
         {collectionPlaques.length === 0 ? (
-          <EmptyState
-            icon={MapPin}
-            title="No Plaques in this Collection"
-            description="Start building your collection by adding plaques"
-            actionLabel="Add Your First Plaque"
-            onAction={handleMobileAddPlaques}
-          />
+<EmptyState
+  icon={<MapPin />}
+  title="No Plaques in this Collection"
+  description="Start building your collection by adding plaques"
+/>
         ) : filteredPlaques.length === 0 ? (
           <div className="text-center py-8 bg-white rounded-lg shadow-sm mx-4">
             <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
@@ -814,7 +853,6 @@ const CollectionDetailPage = () => {
         plaques={filteredPlaques}
         onPlaqueClick={handlePlaqueClick}
         className="h-full w-full"
-        ref={mapRef}
       />
     </div>
   );
@@ -873,13 +911,11 @@ const CollectionDetailPage = () => {
           showMapView={true}
         >
           {collectionPlaques.length === 0 ? (
-            <EmptyState
-              icon={MapPin}
-              title="No Plaques in this Collection"
-              description="Start building your collection by adding plaques"
-              actionLabel="Add Your First Plaque"
-              onAction={handleMobileAddPlaques}
-            />
+           <EmptyState
+  icon={<MapPin />}
+  title="No Plaques in this Collection"
+  description="Start building your collection by adding plaques"
+/>
           ) : filteredPlaques.length === 0 ? (
             <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
               <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
@@ -899,7 +935,6 @@ const CollectionDetailPage = () => {
                   plaques={filteredPlaques}
                   onPlaqueClick={handlePlaqueClick}
                   className="h-full w-full"
-                  ref={mapRef}
                 />
               </div>
             </div>
@@ -1002,7 +1037,7 @@ const CollectionDetailPage = () => {
               },
               disabled: isLoading
             }
-          ]}
+          ] as ActionBarButton[]}
           onClearSelection={() => setSelectedPlaques([])}
         />
       )}
@@ -1024,12 +1059,9 @@ const CollectionDetailPage = () => {
           }}
           nearbyPlaques={selectedPlaque ? getNearbyPlaques(selectedPlaque) : []}
           onSelectNearbyPlaque={handleSelectNearbyPlaque}
-          generateShareUrl={(plaqueId) => generatePlaqueUrl(plaqueId, {
-            from: 'collection',
-            collectionId: collection.id,
-            collectionName: collection.name
-          })}
-          context="collection"
+          generateShareUrl={(plaqueId) => {
+            return generatePlaqueUrl(plaqueId);
+          }}
           currentPath={location.pathname}
         />
       )}
@@ -1038,10 +1070,7 @@ const CollectionDetailPage = () => {
       <AddPlaquesModal
         isOpen={addPlaquesModalOpen}
         onClose={() => setAddPlaquesModalOpen(false)}
-        onAddPlaques={(plaqueIds) => {
-          triggerHapticFeedback('success');
-          handleAddPlaques(plaqueIds);
-        }}
+        onAddPlaques={handleAddPlaques}
         availablePlaques={availablePlaques}
         isLoading={isLoading}
         existingPlaqueIds={collectionPlaques.map(p => p.id)}
@@ -1087,9 +1116,7 @@ const CollectionDetailPage = () => {
           name: collection.name || '',
           description: collection.description || '',
           icon: collection.icon || '🎭',
-          color: collection.color || 'bg-purple-500',
-          isPublic: collection.is_public || false,
-          tags: collection.tags || []
+          color: collection.color || 'bg-purple-500'
         }}
         submitLabel="Save Changes"
         title="Edit Collection"

@@ -195,12 +195,7 @@ const AuthGate: React.FC<AuthGateProps> = ({
     const restoredUrl = restoreNavigation();
     navigate(restoredUrl || finalRedirectTo);
   };
-
-  // Helper function to handle password reset
-  const handlePasswordReset = (email: string) => {
-    navigate('/forgot-password', { state: { email, redirectTo: finalRedirectTo, backTo: finalBackTo } });
-  };
-
+  
   // Get context-specific features and messaging
   const getContextFeatures = () => {
     switch (context) {

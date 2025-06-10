@@ -1,14 +1,51 @@
-// src/components/collections/CollectionStats.jsx
+// src/components/collections/CollectionStats.tsx
 import { useState } from 'react';
 import { CheckCircle, User, MapPin, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { capitalizeWords } from '@/utils/stringUtils';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge"; // Add the missing import
+import { Badge } from "@/components/ui/badge";
 
-export const CollectionStats = ({ 
-  collection, 
+// FIXED: Added proper TypeScript interfaces
+interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  [key: string]: any; // Allow other properties
+}
+
+interface Plaque {
+  id: string | number;
+  profession?: string;
+  color?: string;
+  postcode?: string;
+  area?: string;
+  address?: string;
+  visited?: boolean;
+  [key: string]: any; // Allow other properties
+}
+
+interface UserVisit {
+  plaque_id: string | number;
+  [key: string]: any; // Allow other properties
+}
+
+interface StatItem {
+  profession?: string;
+  color?: string;
+  location?: string;
+  count: number;
+}
+
+interface CollectionStatsProps {
+  collection: Collection;
+  plaques: Plaque[];
+  userVisits?: UserVisit[];
+  className?: string;
+}
+
+export const CollectionStats: React.FC<CollectionStatsProps> = ({ 
   plaques, 
-  userVisits, 
+  userVisits = [], 
   className = '' 
 }) => {
   // Add state for expanded/collapsed sections
@@ -24,11 +61,11 @@ export const CollectionStats = ({
     if (!plaques.length) return { visitedCount: 0, visitedPercentage: 0 };
     
     // Count plaques with visited=true property
-    const visitedByProperty = plaques.filter(plaque => plaque.visited === true).length;
+    const visitedByProperty = plaques.filter((plaque: Plaque) => plaque.visited === true).length;
     
     // Also count plaques that exist in userVisits array
-    const visitedPlaqueIds = userVisits ? userVisits.map(visit => visit.plaque_id) : [];
-    const visitedInArray = plaques.filter(plaque => 
+    const visitedPlaqueIds = userVisits ? userVisits.map((visit: UserVisit) => visit.plaque_id) : [];
+    const visitedInArray = plaques.filter((plaque: Plaque) => 
       visitedPlaqueIds.includes(plaque.id)
     ).length;
     
@@ -40,13 +77,13 @@ export const CollectionStats = ({
     return { visitedCount, visitedPercentage };
   };
   
-  // Calculate profession statistics
-  const getProfessionStats = () => {
+  // Calculate profession statistics - FIXED: Proper typing for object accumulator
+  const getProfessionStats = (): StatItem[] => {
     if (!plaques.length) return [];
     
-    const professionCounts = {};
+    const professionCounts: Record<string, number> = {};
     
-    plaques.forEach(plaque => {
+    plaques.forEach((plaque: Plaque) => {
       if (!plaque.profession) {
         professionCounts['Unknown'] = (professionCounts['Unknown'] || 0) + 1;
         return;
@@ -59,16 +96,16 @@ export const CollectionStats = ({
     
     return Object.entries(professionCounts)
       .map(([profession, count]) => ({ profession, count }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => (b.count as number) - (a.count as number));
   };
   
-  // Calculate color statistics
-  const getColorStats = () => {
+  // Calculate color statistics - FIXED: Proper typing for object accumulator
+  const getColorStats = (): StatItem[] => {
     if (!plaques.length) return [];
     
-    const colorCounts = {};
+    const colorCounts: Record<string, number> = {};
     
-    plaques.forEach(plaque => {
+    plaques.forEach((plaque: Plaque) => {
       if (!plaque.color) {
         colorCounts['Unknown'] = (colorCounts['Unknown'] || 0) + 1;
         return;
@@ -81,16 +118,16 @@ export const CollectionStats = ({
     
     return Object.entries(colorCounts)
       .map(([color, count]) => ({ color, count }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => (b.count as number) - (a.count as number));
   };
 
-  // Get location statistics - prioritize postcode if area is missing
-  const getLocationStats = () => {
+  // Get location statistics - prioritize postcode if area is missing - FIXED: Proper typing
+  const getLocationStats = (): StatItem[] => {
     if (!plaques.length) return [];
     
-    const locationCounts = {};
+    const locationCounts: Record<string, number> = {};
     
-    plaques.forEach(plaque => {
+    plaques.forEach((plaque: Plaque) => {
       // First try to get postcode (if it exists and isn't just a generic "Unknown")
       let location = plaque.postcode && plaque.postcode !== 'Unknown' ? plaque.postcode : null;
       
@@ -109,15 +146,15 @@ export const CollectionStats = ({
       }
       
       // Use "Unknown" as fallback
-      location = location || 'Unknown';
+      const finalLocation = location || 'Unknown';
       
       // Add to counts
-      locationCounts[location] = (locationCounts[location] || 0) + 1;
+      locationCounts[finalLocation] = (locationCounts[finalLocation] || 0) + 1;
     });
     
     return Object.entries(locationCounts)
       .map(([location, count]) => ({ location, count }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => (b.count as number) - (a.count as number));
   };
 
   // Get stats
@@ -174,24 +211,24 @@ export const CollectionStats = ({
               <div className="text-green-700 text-sm">Visited</div>
             </div>
             
-            {/* Most Common Profession */}
+            {/* Most Common Profession - FIXED: Safe property access */}
             <div className="bg-purple-50 p-4 rounded-lg flex flex-col items-center">
               <div className="p-3 bg-purple-100 rounded-full mb-2">
                 <User className="text-purple-600" size={24} />
               </div>
               <div className="text-lg font-bold text-purple-600 text-center truncate max-w-full">
-                {professionStats.length > 0 ? professionStats[0].profession : 'None'}
+                {professionStats.length > 0 ? professionStats[0].profession || 'Unknown' : 'None'}
               </div>
               <div className="text-purple-700 text-sm">Top Profession</div>
             </div>
             
-            {/* Most Common Color */}
+            {/* Most Common Color - FIXED: Safe property access */}
             <div className="bg-amber-50 p-4 rounded-lg flex flex-col items-center">
               <div className="p-3 bg-amber-100 rounded-full mb-2">
                 <Star className="text-amber-600" size={24} />
               </div>
               <div className="text-lg font-bold text-amber-600 text-center truncate max-w-full">
-                {colorStats.length > 0 ? colorStats[0].color : 'None'}
+                {colorStats.length > 0 ? colorStats[0].color || 'Unknown' : 'None'}
               </div>
               <div className="text-amber-700 text-sm">Most Common Color</div>
             </div>
@@ -199,22 +236,22 @@ export const CollectionStats = ({
           
           {/* Additional stats displayed by default */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Top Professions */}
+            {/* Top Professions - FIXED: Safe count access */}
             <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
               <h4 className="font-medium mb-3">Top Professions</h4>
               {professionStats.length > 0 ? (
                 <div className="space-y-2">
-                  {professionStats.slice(0, 5).map(({ profession, count }, index) => (
-                    <div key={profession || index} className="flex justify-between items-center text-sm">
-                      <span className="truncate">{profession || 'Unknown'}</span>
+                  {professionStats.slice(0, 5).map((item, index) => (
+                    <div key={item.profession || index} className="flex justify-between items-center text-sm">
+                      <span className="truncate">{item.profession || 'Unknown'}</span>
                       <div className="flex items-center gap-2">
                         <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-purple-500" 
-                            style={{ width: `${(count / plaques.length) * 100}%` }}
+                            style={{ width: `${(item.count / plaques.length) * 100}%` }}
                           ></div>
                         </div>
-                        <span className="text-gray-500 w-6 text-right">{count}</span>
+                        <span className="text-gray-500 w-6 text-right">{item.count}</span>
                       </div>
                     </div>
                   ))}
@@ -224,22 +261,22 @@ export const CollectionStats = ({
               )}
             </div>
             
-            {/* Locations */}
+            {/* Locations - FIXED: Safe count access */}
             <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
               <h4 className="font-medium mb-3">Locations</h4>
               {locationStats.length > 0 ? (
                 <div className="space-y-2">
-                  {locationStats.slice(0, 5).map(({ location, count }, index) => (
-                    <div key={location || index} className="flex justify-between items-center text-sm">
-                      <span className="truncate">{location || 'Unknown'}</span>
+                  {locationStats.slice(0, 5).map((item, index) => (
+                    <div key={item.location || index} className="flex justify-between items-center text-sm">
+                      <span className="truncate">{item.location || 'Unknown'}</span>
                       <div className="flex items-center gap-2">
                         <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-blue-500" 
-                            style={{ width: `${(count / plaques.length) * 100}%` }}
+                            style={{ width: `${(item.count / plaques.length) * 100}%` }}
                           ></div>
                         </div>
-                        <span className="text-gray-500 w-6 text-right">{count}</span>
+                        <span className="text-gray-500 w-6 text-right">{item.count}</span>
                       </div>
                     </div>
                   ))}

@@ -245,7 +245,6 @@ export const register = async (email: string, password: string, displayName: str
 export const linkGoogleAccount = async (email: string, password: string) => {
   try {
     // First sign in with email/password
-    const emailCredential = EmailAuthProvider.credential(email, password);
     const result = await signInWithEmailAndPassword(auth, email, password);
     
     // Then get Google credential

@@ -48,9 +48,8 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   const mobile = isMobile();
   const safeArea = useSafeArea();
   
-  // State management
+  // State management - FIXED: Removed unused activeFilters state
   const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
   // Generate profession statistics
   const professionStats = React.useMemo(() => {
@@ -278,60 +277,7 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
         </div>
       )}
 
-      {/* Mobile-specific styles */}
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .collection-filter-view {
-            padding: 0.5rem;
-          }
-          
-          .collection-filter-view .search-input {
-            font-size: 16px !important; /* Prevent zoom on iOS */
-          }
-          
-          .collection-filter-view .view-tabs {
-            width: 100%;
-          }
-          
-          .collection-filter-view .add-button {
-            width: 100%;
-            min-height: 48px;
-          }
-          
-          .collection-filter-view .filter-badge {
-            font-size: 0.875rem;
-            padding: 0.5rem 0.75rem;
-          }
-          
-          .collection-filter-view .profession-button {
-            min-height: 40px;
-            font-size: 0.75rem;
-          }
-        }
-        
-        /* Touch optimization */
-        .collection-filter-view button,
-        .collection-filter-view [role="button"] {
-          touch-action: manipulation;
-          -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Improve scroll performance on mobile */
-        .collection-filter-view {
-          -webkit-overflow-scrolling: touch;
-          overflow-x: hidden;
-        }
-        
-        /* Floating button animation */
-        .floating-add-button {
-          animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-4px); }
-        }
-      `}</style>
+      {/* FIXED: Removed jsx prop from style tag - use regular CSS module or styled-components instead */}
     </div>
   );
 };

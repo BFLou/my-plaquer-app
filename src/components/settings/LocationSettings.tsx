@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { MapPin, Ruler } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { 
   Select, 
   SelectContent, 

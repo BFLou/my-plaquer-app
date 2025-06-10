@@ -1,4 +1,4 @@
-// src/components/maps/RouteMapContainer.tsx - Fixed version without re-render loops
+// src/components/maps/RouteMapContainer.tsx - FIXED: Proper coordinate type handling
 import React, { useEffect, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { RouteData } from '@/hooks/useRoutes';
@@ -10,7 +10,40 @@ interface RouteMapContainerProps {
   className?: string;
   showRoute?: boolean;
   routeColor?: string;
+  onError?: () => void;
 }
+
+// FIXED: Helper function to safely convert coordinates to numbers
+const getValidCoordinate = (coord: number | string | undefined): number => {
+  if (typeof coord === 'number' && !isNaN(coord)) {
+    return coord;
+  }
+  if (typeof coord === 'string') {
+    const parsed = parseFloat(coord);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+// FIXED: Helper to get valid coordinate pair
+const getValidCoordinates = (plaque: Plaque): [number, number] => {
+  const lat = getValidCoordinate(plaque.latitude);
+  const lng = getValidCoordinate(plaque.longitude);
+  return [lat, lng];
+};
+
+// FIXED: Filter out invalid plaques
+const getValidPlaques = (plaques: Plaque[]): Array<Plaque & { validCoords: [number, number] }> => {
+  return plaques
+    .map(plaque => {
+      const validCoords = getValidCoordinates(plaque);
+      return { ...plaque, validCoords };
+    })
+    .filter(plaque => {
+      const [lat, lng] = plaque.validCoords;
+      return lat !== 0 || lng !== 0; // Filter out 0,0 coordinates
+    });
+};
 
 const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   route,
@@ -18,7 +51,8 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   onPlaqueClick,
   className = '',
   showRoute = true,
-  routeColor = '#22c55e'
+  routeColor = '#22c55e',
+  onError
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -29,7 +63,15 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     
     const initializeMap = async () => {
       // Prevent multiple initializations
-      if (initializingRef.current || !mapRef.current || !plaques.length) return;
+      if (initializingRef.current || !mapRef.current) return;
+      
+      // FIXED: Get valid plaques first
+      const validPlaques = getValidPlaques(plaques);
+      if (!validPlaques.length) {
+        console.warn('No valid plaques with coordinates found');
+        if (onError) onError();
+        return;
+      }
       
       initializingRef.current = true;
 
@@ -53,9 +95,10 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
         if (!mounted || !mapRef.current) return;
 
-        // Calculate center
-        const lats = plaques.map(p => parseFloat(p.latitude as string));
-        const lngs = plaques.map(p => parseFloat(p.longitude as string));
+        // FIXED: Calculate center from valid coordinates
+        const coords = validPlaques.map(p => p.validCoords);
+        const lats = coords.map(([lat]) => lat);
+        const lngs = coords.map(([, lng]) => lng);
         const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
         const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
 
@@ -81,13 +124,10 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           };
         };
 
-        // Add markers
+        // FIXED: Add markers with proper coordinate handling
         const markers: any[] = [];
-        plaques.forEach((plaque, index) => {
-          const lat = parseFloat(plaque.latitude as string);
-          const lng = parseFloat(plaque.longitude as string);
-          
-          if (isNaN(lat) || isNaN(lng)) return;
+        validPlaques.forEach((plaque, index) => {
+          const [lat, lng] = plaque.validCoords;
 
           // Create marker icon
           let backgroundColor = '#3b82f6';
@@ -96,7 +136,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           if (index === 0) {
             backgroundColor = '#22c55e';
             label = 'S';
-          } else if (index === plaques.length - 1) {
+          } else if (index === validPlaques.length - 1) {
             backgroundColor = '#ef4444';
             label = 'E';
           }
@@ -136,7 +176,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           const popupContent = `
             <div style="padding: 4px; min-width: 150px;">
               <div style="font-weight: bold; font-size: 13px; margin-bottom: 2px;">
-                ${index === 0 ? 'Start' : index === plaques.length - 1 ? 'End' : `Stop ${index + 1}`}: ${plaque.title}
+                ${index === 0 ? 'Start' : index === validPlaques.length - 1 ? 'End' : `Stop ${index + 1}`}: ${plaque.title}
               </div>
               <div style="font-size: 11px; color: #666; margin-bottom: 4px;">
                 ${plaque.location || plaque.address || ''}
@@ -148,12 +188,9 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           markers.push(marker);
         });
 
-        // Add route line if showRoute is true
-        if (showRoute && plaques.length > 1) {
-          const routeCoords = plaques.map(plaque => [
-            parseFloat(plaque.latitude as string),
-            parseFloat(plaque.longitude as string)
-          ]).filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+        // FIXED: Add route line with proper coordinate types
+        if (showRoute && validPlaques.length > 1) {
+          const routeCoords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
 
           if (routeCoords.length > 1) {
             L.polyline(routeCoords, {
@@ -165,14 +202,16 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           }
         }
 
-        // Fit bounds to show all markers
-        if (markers.length > 0) {
-          const group = new L.featureGroup(markers);
-          map.fitBounds(group.getBounds().pad(0.05));
+        // FIXED: Calculate bounds directly from coordinates instead of using featureGroup
+        if (validPlaques.length > 0) {
+          const coords: [number, number][] = validPlaques.map(p => p.validCoords);
+          const bounds = L.latLngBounds(coords);
+          map.fitBounds(bounds.pad(0.05));
         }
 
       } catch (error) {
         console.error('Error initializing map:', error);
+        if (onError) onError();
       } finally {
         initializingRef.current = false;
       }
@@ -190,18 +229,18 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     };
   }, []); // Empty dependency array - only initialize once
 
-  // Handle plaques changes without reinitializing map
+  // FIXED: Handle plaques changes without reinitializing map
   useEffect(() => {
-    if (!mapInstanceRef.current || !plaques.length) return;
+    if (!mapInstanceRef.current) return;
+
+    const validPlaques = getValidPlaques(plaques);
+    if (!validPlaques.length) return;
 
     // Just re-fit bounds when plaques change
     try {
-      const L = window.L || (global as any).L;
+      const L = (window as any).L;
       if (L && mapInstanceRef.current) {
-        const coords = plaques.map(plaque => [
-          parseFloat(plaque.latitude as string),
-          parseFloat(plaque.longitude as string)
-        ]).filter(coord => !isNaN(coord[0]) && !isNaN(coord[1]));
+        const coords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
 
         if (coords.length > 0) {
           const bounds = L.latLngBounds(coords);
@@ -213,16 +252,37 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     }
   }, [plaques.map(p => p.id).join(',')]); // Only when plaque IDs change
 
+  // FIXED: Get valid plaques for display
+  const validPlaques = getValidPlaques(plaques);
+
+  if (!validPlaques.length) {
+    return (
+      <div className={`relative ${className} flex items-center justify-center bg-gray-100`}>
+        <div className="text-center p-8">
+          <div className="text-gray-500 mb-2">No valid coordinates found</div>
+          <div className="text-sm text-gray-400">
+            {plaques.length} plaques found, but none have valid coordinates
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${className}`}>
       {/* Route info overlay */}
       <div className="absolute top-4 left-4 z-[1000] bg-white rounded-lg shadow-md p-3">
         <div className="text-sm font-medium text-gray-900 mb-1">{route.name}</div>
         <div className="text-xs text-gray-600 space-y-1">
-          <div>📍 {plaques.length} stops</div>
+          <div>📍 {validPlaques.length} stops</div>
           <div>📏 {route.total_distance.toFixed(1)} km</div>
           <div>⏱️ ~{Math.ceil(route.total_distance * 12)} min walk</div>
         </div>
+        {plaques.length !== validPlaques.length && (
+          <div className="text-xs text-amber-600 mt-1">
+            ⚠️ {plaques.length - validPlaques.length} stops missing coordinates
+          </div>
+        )}
       </div>
 
       {/* Map container */}

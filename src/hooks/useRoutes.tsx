@@ -1,4 +1,4 @@
-// src/hooks/useRoutes.tsx - Updated with proper duplicate function and favorite support
+// src/hooks/useRoutes.tsx - Updated with proper duplicate function and favorite support - FIXED
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { 
@@ -99,10 +99,19 @@ export const useRoutes = () => {
             const end = points[i + 1];
             
             if (start.latitude && start.longitude && end.latitude && end.longitude) {
-              const startLat = parseFloat(start.latitude as string);
-              const startLng = parseFloat(start.longitude as string);
-              const endLat = parseFloat(end.latitude as string);
-              const endLng = parseFloat(end.longitude as string);
+              // Fixed: Proper type conversion for coordinates
+              const startLat = typeof start.latitude === 'string' 
+                ? parseFloat(start.latitude) 
+                : start.latitude as number;
+              const startLng = typeof start.longitude === 'string' 
+                ? parseFloat(start.longitude) 
+                : start.longitude as number;
+              const endLat = typeof end.latitude === 'string' 
+                ? parseFloat(end.latitude) 
+                : end.latitude as number;
+              const endLng = typeof end.longitude === 'string' 
+                ? parseFloat(end.longitude) 
+                : end.longitude as number;
               
               // Haversine distance * walking factor
               const R = 6371;
@@ -326,7 +335,7 @@ export const useRoutes = () => {
     }
   };
 
-  // Duplicate route - ENHANCED: Proper implementation with plaque reconstruction
+  // Duplicate route - FIXED: Proper implementation with correct Plaque structure
   const duplicateRoute = async (originalRoute: RouteData, newName?: string): Promise<RouteData | null> => {
     if (!user?.uid) {
       toast.error('You must be logged in to duplicate routes');
@@ -334,12 +343,13 @@ export const useRoutes = () => {
     }
 
     try {
-      // Convert route points back to Plaque format
+      // Convert route points back to Plaque format with proper typing
       const plaques: Plaque[] = originalRoute.points.map(point => ({
         id: point.plaque_id,
         title: point.title,
-        latitude: point.lat.toString(),
-        longitude: point.lng.toString(),
+        // Fixed: Proper coordinate handling based on Plaque interface
+        latitude: point.lat, // Keep as number if Plaque.latitude is number
+        longitude: point.lng, // Keep as number if Plaque.longitude is number
         // Add other required Plaque properties with defaults
         address: '',
         location: '',

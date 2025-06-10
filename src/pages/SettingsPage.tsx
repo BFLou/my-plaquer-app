@@ -1,5 +1,5 @@
 // src/pages/SettingsPage.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer } from '@/components';
 import { useAuth } from '@/hooks/useAuth';

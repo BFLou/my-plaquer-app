@@ -1,8 +1,7 @@
 // src/hooks/useCollectionDetail.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '@/hooks/useCollection';
-import { usePlaques } from '@/hooks/usePlaques';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { toast } from 'sonner';
 import { Plaque } from '@/types/plaque';
@@ -10,13 +9,24 @@ import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
+interface CollectionData {
+  id: string;
+  name: string;
+  description?: string;
+  icon: string;
+  color: string;
+  is_favorite: boolean;
+  plaques: number[];
+  tags?: string[];
+}
+
 export const useCollectionDetail = (collectionId: string) => {
   const navigate = useNavigate();
   const { getCollection, updateCollection, deleteCollection, toggleFavorite, duplicateCollection, addPlaquesToCollection, removePlaquesFromCollection } = useCollections();
   const { visits, isPlaqueVisited, markAsVisited } = useVisitedPlaques();
   
   // State
-  const [collection, setCollection] = useState<any>(null);
+  const [collection, setCollection] = useState<CollectionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collectionPlaques, setCollectionPlaques] = useState<Plaque[]>([]);
@@ -50,7 +60,7 @@ export const useCollectionDetail = (collectionId: string) => {
       
       // Import the plaque data
       const { default: plaqueData } = await import('@/data/plaque_data.json');
-      const adaptedData = adaptPlaquesData(plaqueData);
+      const adaptedData = adaptPlaquesData(plaqueData as any);
       
       // Filter out plaques already in the collection
       const collectionPlaqueIds = collection.plaques || [];
@@ -95,7 +105,7 @@ export const useCollectionDetail = (collectionId: string) => {
           try {
             // Import plaque data
             const { default: plaqueData } = await import('@/data/plaque_data.json');
-            const adaptedData = adaptPlaquesData(plaqueData);
+            const adaptedData = adaptPlaquesData(plaqueData as any);
             
             // Filter only the plaques that are in this collection
             const collectionPlaques = adaptedData.filter(plaque => 
@@ -262,10 +272,10 @@ export const useCollectionDetail = (collectionId: string) => {
       await updateCollection(collection.id, {
         name: editNameValue
       });
-      setCollection(prev => ({
+      setCollection((prev: CollectionData | null) => prev ? ({
         ...prev,
         name: editNameValue
-      }));
+      }) : null);
       setEditNameMode(false);
       toast.success('Collection name updated');
     } catch (err) {
@@ -289,10 +299,10 @@ export const useCollectionDetail = (collectionId: string) => {
     try {
       setIsLoading(true);
       await toggleFavorite(collection.id);
-      setCollection(prev => ({
+      setCollection((prev: CollectionData | null) => prev ? ({
         ...prev,
         is_favorite: !prev.is_favorite
-      }));
+      }) : null);
       toast.success(collection.is_favorite ? 'Removed from favorites' : 'Added to favorites');
     } catch (err) {
       console.error('Error toggling favorite:', err);
@@ -397,14 +407,14 @@ export const useCollectionDetail = (collectionId: string) => {
       });
       
       // Update collection in state
-      setCollection(prev => ({
+      setCollection((prev: CollectionData | null) => prev ? ({
         ...prev,
         name: data.name,
         description: data.description || '',
         icon: data.icon,
         color: data.color,
         tags: data.tags || []
-      }));
+      }) : null);
       
       setEditFormOpen(false);
       toast.success('Collection updated successfully');

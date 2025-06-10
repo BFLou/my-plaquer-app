@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Bell, Info, Smartphone, Globe } from 'lucide-react';
+import { Mail, Info, Smartphone, Globe } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

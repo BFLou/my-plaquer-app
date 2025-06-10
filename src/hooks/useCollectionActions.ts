@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '@/hooks/useCollection';
 import { toast } from 'sonner';
-import { Collection } from '../components/CollectionCard';
+import { Collection } from '../components/collections/CollectionCard';
 
 export const useCollectionActions = () => {
   const navigate = useNavigate();
@@ -75,13 +75,13 @@ export const useCollectionActions = () => {
   };
   
   // Open edit form
-  const openEditDialog = (id: string) => {
-    const collection = editCollectionData;
-    if (collection) {
-      setEditCollectionData(collection);
-      setEditCollectionOpen(true);
-    }
-  };
+const openEditDialog = () => {
+  const collection = editCollectionData;
+  if (collection) {
+    setEditCollectionData(collection);
+    setEditCollectionOpen(true);
+  }
+};
   
   // Toggle favorite status
   const handleToggleFavorite = async (id: string) => {
@@ -95,18 +95,18 @@ export const useCollectionActions = () => {
   };
   
   // Duplicate a collection
-  const handleDuplicateCollection = async (id: string) => {
-    try {
-      setIsLoading(true);
-      const duplicated = await duplicateCollection(id);
-      toast.success('Collection duplicated successfully');
-    } catch (error) {
-      console.error("Error duplicating collection:", error);
-      toast.error("Failed to duplicate collection");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const handleDuplicateCollection = async (id: string) => {
+  try {
+    setIsLoading(true);
+    await duplicateCollection(id);
+    toast.success('Collection duplicated successfully');
+  } catch (error) {
+    console.error("Error duplicating collection:", error);
+    toast.error("Failed to duplicate collection");
+  } finally {
+    setIsLoading(false);
+  }
+};
   
   // Delete collections
   const handleDeleteCollections = async () => {

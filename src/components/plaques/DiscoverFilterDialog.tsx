@@ -1,4 +1,4 @@
-// src/components/plaques/DiscoverFilterDialog.tsx - Mobile optimized with swipe navigation
+// src/components/plaques/DiscoverFilterDialog.tsx - FIXED: Type safety issues
 import React, { useState, useMemo } from 'react';
 import { 
   Search, MapPin, Circle,
@@ -82,6 +82,27 @@ type DiscoverFilterDialogProps = {
   isFavorite?: (id: number) => boolean;
 };
 
+// FIXED: Helper functions for safe type conversions
+const getValidCoordinate = (coord: number | string | undefined): number => {
+  if (typeof coord === 'number' && !isNaN(coord)) {
+    return coord;
+  }
+  if (typeof coord === 'string') {
+    const parsed = parseFloat(coord);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
+
+// FIXED: Helper to safely convert field values to strings for comparison
+const getFieldValueAsString = (value: string | number | boolean | undefined): string => {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return String(value);
+  return '';
+};
+
 export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   isOpen,
   onClose,
@@ -142,7 +163,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     threshold: 100
   });
   
-  // Filter plaques based on distance filter
+  // FIXED: Filter plaques based on distance filter with safe coordinate conversion
   const distanceFilteredPlaques = useMemo(() => {
     if (!distanceFilter?.enabled || !distanceFilter.center || !allPlaques.length) {
       return allPlaques;
@@ -151,10 +172,11 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     return allPlaques.filter(plaque => {
       if (!plaque.latitude || !plaque.longitude) return false;
       
-      const lat = parseFloat(plaque.latitude as string);
-      const lng = parseFloat(plaque.longitude as string);
+      // FIXED: Safe coordinate conversion
+      const lat = getValidCoordinate(plaque.latitude);
+      const lng = getValidCoordinate(plaque.longitude);
       
-      if (isNaN(lat) || isNaN(lng)) return false;
+      if (lat === 0 && lng === 0) return false;
       
       const distance = calculateDistance(
         distanceFilter.center![0],
@@ -167,7 +189,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     });
   }, [distanceFilter, allPlaques]);
   
-  // Enhanced filter options with distance-filtered counts
+  // FIXED: Enhanced filter options with distance-filtered counts and safe field access
   const enhancedFilterOptions = useMemo(() => {
     const calculateFilteredCounts = (
       originalOptions: FilterOption[],
@@ -180,10 +202,15 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       return originalOptions.map(option => {
         const filteredCount = distanceFilteredPlaques.filter(plaque => {
           const fieldValue = plaque[fieldName];
+          
+          // FIXED: Safe field value comparison
           if (fieldName === 'color') {
-            return fieldValue?.toLowerCase() === option.value.toLowerCase();
+            const fieldStr = getFieldValueAsString(fieldValue);
+            return fieldStr.toLowerCase() === option.value.toLowerCase();
           }
-          return fieldValue === option.value;
+          
+          const fieldStr = getFieldValueAsString(fieldValue);
+          return fieldStr === option.value;
         }).length;
         
         return {
@@ -246,7 +273,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   
   // Check if option should be disabled
   const isOptionDisabled = (option: FilterOption): boolean => {
-    return distanceFilter?.enabled && option.filteredCount === 0;
+    return !!distanceFilter?.enabled && option.filteredCount === 0;
   };
   
   // Define filter categories with enhanced options
@@ -306,18 +333,21 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   
   const currentCategory = filterCategories.find(cat => cat.id === currentView);
   
-  // Calculate filtered toggle counts
+  // FIXED: Calculate filtered toggle counts with safe property access
   const filteredToggleCounts = useMemo(() => {
     if (!distanceFilter?.enabled || !allPlaques.length) {
       return { visited: 0, favorites: 0 };
     }
     
-    const visited = distanceFilteredPlaques.filter(plaque => 
-      plaque.visited || (isPlaqueVisited && isPlaqueVisited(plaque.id))
-    ).length;
+    const visited = distanceFilteredPlaques.filter(plaque => {
+      // FIXED: Safe boolean check
+      const plaqueVisited = plaque.visited === true;
+      const userVisited = isPlaqueVisited ? isPlaqueVisited(plaque.id) === true : false;
+      return plaqueVisited || userVisited;
+    }).length;
     
     const favorites = distanceFilteredPlaques.filter(plaque =>
-      isFavorite && isFavorite(plaque.id)
+      isFavorite ? isFavorite(plaque.id) === true : false
     ).length;
     
     return { visited, favorites };
@@ -337,7 +367,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   // Navigation with haptic feedback
   const navigateToCategory = (categoryId: string) => {
     const category = filterCategories.find(c => c.id === categoryId);
-    if (category && !isOptionDisabled(category.options[0])) {
+    if (category && category.options.length > 0 && !isOptionDisabled(category.options[0])) {
       triggerHapticFeedback('selection');
       setCurrentView(categoryId);
       setSearchQuery('');

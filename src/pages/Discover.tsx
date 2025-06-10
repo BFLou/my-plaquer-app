@@ -21,16 +21,22 @@ import PendingActionHandler from '@/components/auth/PendingActionHandler';
 import AddToCollectionDialog from '@/components/plaques/AddToCollectionDialog';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
-import { useAuthGate } from '@/hooks/useAuthGate';
 import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
 import { calculateDistance } from '../components/maps/utils/routeUtils';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
-import { Filter, MapPin, Grid, List, Navigation } from 'lucide-react';
+import { Filter, MapPin, Grid, List, Navigation, X } from 'lucide-react';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
+import type { Plaque } from '@/types/plaque';
 
 export type ViewMode = 'grid' | 'list' | 'map';
+
+interface FilterOption {
+  label: string;
+  value: string;
+  count: number;
+}
 
 // Distance filter state interface
 interface DistanceFilter {
@@ -44,6 +50,9 @@ const Discover = () => {
   // URL state management
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  
+  // Hook for keyboard detection
+  const isKeyboardOpen = useKeyboardDetection();
     
   // URL state parsing with modal support
   const urlState = useMemo(() => {
@@ -69,7 +78,7 @@ const Discover = () => {
     const newState = { ...urlState, ...updates };
     
     // Map internal state to URL parameters
-    const urlMapping = {
+    const urlMapping: Record<string, string> = {
       view: 'view',
       search: 'search', 
       colors: 'colors',
@@ -102,16 +111,16 @@ const Discover = () => {
     setSearchParams(newParams, { replace: true });
   }, [searchParams, urlState, setSearchParams]);
 
-  // Basic state
-  const [allPlaques, setAllPlaques] = useState([]);
+  // Basic state with proper typing
+  const [allPlaques, setAllPlaques] = useState<Plaque[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPlaque, setSelectedPlaque] = useState(null);
+  const [selectedPlaque, setSelectedPlaque] = useState<Plaque | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Collection and route action state for pending actions
-  const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState(null);
+  const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState<Plaque | null>(null);
 
   // Distance filter state - shared across all views
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>({
@@ -121,14 +130,14 @@ const Discover = () => {
     locationName: null
   });
 
-  // Filter options
-  const [postcodeOptions, setPostcodeOptions] = useState([]);
-  const [colorOptions, setColorOptions] = useState([]);
-  const [professionOptions, setProfessionOptions] = useState([]);
+  // Filter options with proper typing
+  const [postcodeOptions, setPostcodeOptions] = useState<FilterOption[]>([]);
+  const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
+  const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
 
   // External hooks
-  const { isPlaqueVisited, markAsVisited } = useVisitedPlaques();
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const { isPlaqueVisited } = useVisitedPlaques();
+  const { isFavorite } = useFavorites();
 
   // Handle pending route action
   const handlePendingRouteAction = useCallback((routeData: any) => {
@@ -162,13 +171,13 @@ const Discover = () => {
     try {
       setLoading(true);
       
-      const adaptedData = adaptPlaquesData(plaqueData);
+      const adaptedData = adaptPlaquesData(plaqueData as any);
       setAllPlaques(adaptedData);
       
       // Generate filter options
-      const postcodeCount = {};
-      const colorCount = {};
-      const professionCount = {};
+      const postcodeCount: Record<string, number> = {};
+      const colorCount: Record<string, number> = {};
+      const professionCount: Record<string, number> = {};
       
       adaptedData.forEach(plaque => {
         if (plaque.postcode && plaque.postcode !== "Unknown") {
@@ -274,8 +283,8 @@ const Discover = () => {
       filtered = filtered.filter(plaque => {
         if (!plaque.latitude || !plaque.longitude) return false;
         
-        const lat = parseFloat(plaque.latitude);
-        const lng = parseFloat(plaque.longitude);
+  const lat = plaque.latitude;
+  const lng = plaque.longitude;
         
         if (isNaN(lat) || isNaN(lng)) return false;
         
@@ -321,7 +330,7 @@ const Discover = () => {
   ]);
 
   // Enhanced event handlers with modal URL state
-  const handlePlaqueClick = useCallback((plaque) => {
+  const handlePlaqueClick = useCallback((plaque: Plaque) => {
     console.log('Plaque clicked in Discover:', plaque.title);
     triggerHapticFeedback('selection');
     updateUrlState({ modalPlaque: plaque.id });
@@ -407,20 +416,20 @@ const Discover = () => {
   }, [updateUrlState]);
 
   // Distance helper functions
-  const getDistanceFromActiveLocation = useCallback((plaque) => {
+  const getDistanceFromActiveLocation = useCallback((plaque: Plaque) => {
     if (!distanceFilter.enabled || !distanceFilter.center || !plaque.latitude || !plaque.longitude) {
       return Infinity;
     }
     
-    const lat = parseFloat(plaque.latitude);
-    const lng = parseFloat(plaque.longitude);
+    const lat = plaque.latitude;
+    const lng = plaque.longitude;
     
     if (isNaN(lat) || isNaN(lng)) return Infinity;
     
     return calculateDistance(distanceFilter.center[0], distanceFilter.center[1], lat, lng);
   }, [distanceFilter]);
 
-  const formatDistance = useCallback((distanceKm) => {
+  const formatDistance = useCallback((distanceKm: number) => {
     return `${distanceKm.toFixed(1)} km`;
   }, []);
 
@@ -433,7 +442,7 @@ const Discover = () => {
   }, [filteredPlaques, currentPage, itemsPerPage]);
 
   // Get nearby plaques for detail view
-  const getNearbyPlaques = useCallback((currentPlaque) => {
+  const getNearbyPlaques = useCallback((currentPlaque: Plaque) => {
     return allPlaques.filter(p => 
       p.id !== currentPlaque.id && 
       (p.postcode === currentPlaque.postcode || p.profession === currentPlaque.profession)
@@ -441,7 +450,7 @@ const Discover = () => {
   }, [allPlaques]);
 
   // Handle nearby plaque selection in modal
-  const handleSelectNearbyPlaque = useCallback((nearbyPlaque) => {
+  const handleSelectNearbyPlaque = useCallback((nearbyPlaque: Plaque) => {
     console.log('Selecting nearby plaque:', nearbyPlaque.title);
     triggerHapticFeedback('selection');
     updateUrlState({ modalPlaque: nearbyPlaque.id });
@@ -474,7 +483,7 @@ const Discover = () => {
           
           toast.success('Showing plaques near you');
         },
-        (error) => {
+        () => {
           toast.dismiss(loadingToast);
           triggerHapticFeedback('error');
           toast.error("Could not determine your location. Please allow location access.");
@@ -732,7 +741,7 @@ const Discover = () => {
       {isMobile() && urlState.view === 'map' && (
         <BottomActionBar background="white">
           <MobileButton
-            variant={urlState.view === 'list' ? 'default' : 'outline'}
+            variant={'default'}
             onClick={() => handleViewModeChange('list')}
             className="flex-1"
             touchOptimized
@@ -741,7 +750,7 @@ const Discover = () => {
             List
           </MobileButton>
           <MobileButton
-            variant={urlState.view === 'grid' ? 'default' : 'outline'}
+            variant={'default'}
             onClick={() => handleViewModeChange('grid')}
             className="flex-1"
             touchOptimized
@@ -898,7 +907,6 @@ const Discover = () => {
           formatDistance={formatDistance}
           showDistance={distanceFilter.enabled}
           generateShareUrl={generatePlaqueUrl}
-          context="discover"
           currentPath={location.pathname}
         />
       )}

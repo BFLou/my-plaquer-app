@@ -11,7 +11,7 @@ export { Footer } from './layout/Footer';
 export { PageContainer } from './layout/PageContainer';
 export { MobileNavBar } from './layout/MobileNavBar';
 export { MobileHeader } from './layout/MobileHeader';
-export { MobileBreadcrumb } from './layout/MobileBreadcrumb';
+export { MobileBreadcrumb } from './layout/MobileBreadCrumb';
 export { FloatingActionButton } from './layout/FloatingActionButton';
 export { BottomActionBar } from './layout/BottomActionBar';
 export { SwipeableModal } from './layout/SwipeableModal';

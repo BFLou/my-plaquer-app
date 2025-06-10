@@ -33,18 +33,31 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   
-  // Load plaque data from JSON
+  // Load plaque data from JSON - FIXED: Proper type handling for imported JSON
   useEffect(() => {
     const fetchPlaqueData = async () => {
       try {
         setLoading(true);
         // Import plaque data
         const { default: rawData } = await import('@/data/plaque_data.json');
-        const adaptedData = adaptPlaquesData(rawData);
+        
+        // Ensure the 'erected' property is converted to a string before passing to adaptPlaquesData
+        // Ensure proper type handling for 'erected' property and other fields
+        const dataArray = Array.isArray(rawData) 
+          ? rawData.map(item => ({ 
+              ...item, 
+              erected: item.erected ? String(item.erected) : '',
+              postcode: item.postcode || '',
+              lead_subject_born_in: item.lead_subject_born_in ? String(item.lead_subject_born_in) : '',
+              lead_subject_died_in: item.lead_subject_died_in ? String(item.lead_subject_died_in) : ''
+            })) 
+          : [];
+        const adaptedData = adaptPlaquesData(dataArray);
         setPlaqueData(adaptedData);
         setLoading(false);
       } catch (error) {
         console.error('Error loading plaque data:', error);
+        setPlaqueData([]); // Set empty array on error
         setLoading(false);
       }
     };
@@ -92,7 +105,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         if (!addedItems.has(key) && newSuggestions.length < 8) {
           addedItems.add(key);
           newSuggestions.push({
-            id: plaque.id,
+            id: plaque.id as number,
             type: 'person',
             text: plaque.lead_subject_name || '',
             profession: plaque.profession || 'Historical Figure',
@@ -127,7 +140,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
           if (!addedItems.has(key) && newSuggestions.length < 8) {
             addedItems.add(key);
             newSuggestions.push({
-              id: plaque.id,
+              id: plaque.id as number,
               type: 'location',
               text: matchText,
               count: 1
@@ -145,7 +158,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         if (!addedItems.has(key) && newSuggestions.length < 8) {
           addedItems.add(key);
           newSuggestions.push({
-            id: plaque.id,
+            id: plaque.id as number,
             type: 'profession',
             text: plaque.profession || '',
             count: 1

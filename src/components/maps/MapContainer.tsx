@@ -10,6 +10,12 @@ import { toast } from 'sonner';
 import { isMobile, getViewportHeight } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
 
+// FIXED: Helper function for safe coordinate conversion
+function parseCoordinate(coord: string | number | undefined): number {
+  if (coord === undefined || coord === null) return 0;
+  return typeof coord === 'string' ? parseFloat(coord) : coord;
+}
+
 interface MapState {
   center: [number, number];
   zoom: number;
@@ -272,8 +278,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         const distance = calculateDistance(
           state.filterCenter![0], 
           state.filterCenter![1],
-          parseFloat(p.latitude as string), 
-          parseFloat(p.longitude as string)
+          parseCoordinate(p.latitude),
+          parseCoordinate(p.longitude)
         );
         return distance <= state.filterRadius;
       });
@@ -388,8 +394,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         const distance = calculateDistance(
           result.coordinates[0], 
           result.coordinates[1],
-          parseFloat(p.latitude as string), 
-          parseFloat(p.longitude as string)
+          parseCoordinate(p.latitude),
+          parseCoordinate(p.longitude)
         );
         return distance <= defaultRadius;
       }).length;
@@ -447,8 +453,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       if (!p.latitude || !p.longitude) return false;
       const distance = calculateDistance(
         coords[0], coords[1],
-        parseFloat(p.latitude as string), 
-        parseFloat(p.longitude as string)
+        parseCoordinate(p.latitude),
+        parseCoordinate(p.longitude)
       );
       return distance <= state.filterRadius;
     }).length;
@@ -478,8 +484,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         const distance = calculateDistance(
           state.filterCenter![0], 
           state.filterCenter![1],
-          parseFloat(p.latitude as string), 
-          parseFloat(p.longitude as string)
+          parseCoordinate(p.latitude),
+          parseCoordinate(p.longitude)
         );
         return distance <= radius;
       }).length;
@@ -692,7 +698,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       </div>
 
-      {/* The Map - Responsive height */}
+      {/* The Map - Responsive height - FIXED: Handle null filterLocationName */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}
@@ -704,7 +710,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         filterCenter={state.filterCenter}
         filterRadius={state.filterRadius}
         filterEnabled={state.filterEnabled}
-        filterLocationName={state.filterLocation}
+        filterLocationName={state.filterLocation || undefined}
       />
     </div>
   );

@@ -99,8 +99,8 @@ const CollectionCreateForm: React.FC<CollectionCreateFormProps> = ({
     }
   }, [isOpen, initialValues]);
   
-  // Update form state
-  const handleChange = (field, value) => {
+  // Update form state - Fixed parameter types
+  const handleChange = (field: keyof CollectionFormData, value: string) => {
     setFormState(prev => ({
       ...prev,
       [field]: value
@@ -114,19 +114,20 @@ const CollectionCreateForm: React.FC<CollectionCreateFormProps> = ({
     
     // Clear error when value changes
     if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
   };
   
-  // Handle form submission
-  const handleSubmit = (e) => {
+  // Handle form submission - Fixed parameter type
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Validate form
-    const newErrors = {};
+    // Validate form - Fixed error object typing
+    const newErrors: Record<string, string> = {};
     
     if (!formState.name.trim()) {
       newErrors.name = 'Collection name is required';
@@ -140,11 +141,11 @@ const CollectionCreateForm: React.FC<CollectionCreateFormProps> = ({
     
     setErrors(newErrors);
     
-    // Mark all fields as touched
-    const allTouched = Object.keys(formState).reduce((acc, key) => {
+    // Mark all fields as touched - Fixed typing
+    const allTouched: Record<string, boolean> = Object.keys(formState).reduce((acc, key) => {
       acc[key] = true;
       return acc;
-    }, {});
+    }, {} as Record<string, boolean>);
     
     setTouched(allTouched);
     

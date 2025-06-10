@@ -1,11 +1,10 @@
-// src/pages/RoutesManagementPage.tsx - Enhanced with working actions
+// src/pages/RoutesManagementPage.tsx - Fixed TypeScript errors
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Route as RouteIcon, 
   Plus, 
   Search, 
-  Filter,
   Grid,
   List,
   ArrowLeft,
@@ -32,7 +31,6 @@ import RouteListItem from '@/components/routes/RouteListItem';
 import EditRouteForm from '@/components/routes/EditRouteForm';
 import { PageContainer } from "@/components";
 import { ActionBar } from "@/components/common/ActionBar";
-import { EmptyState } from '@/components/common/EmptyState';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +41,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+// Import the RouteData interface from the service instead of defining locally
+import { RouteData } from '@/services/RouteService';
 
 type ViewMode = 'grid' | 'list';
 type SortOption = 'recent' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc' | 'most_waypoints' | 'least_waypoints';
@@ -61,9 +61,9 @@ const RoutesManagementPage: React.FC = () => {
   
   // Edit/Delete state
   const [editFormOpen, setEditFormOpen] = useState(false);
-  const [routeToEdit, setRouteToEdit] = useState(null);
+  const [routeToEdit, setRouteToEdit] = useState<RouteData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [routeToDelete, setRouteToDelete] = useState(null);
+  const [routeToDelete, setRouteToDelete] = useState<RouteData | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -75,8 +75,8 @@ const RoutesManagementPage: React.FC = () => {
         route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (route.description && route.description.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      // Favorites filter
-      const matchesFavorites = !showOnlyFavorites || route.is_favorite;
+      // Favorites filter - handle optional is_favorite property
+      const matchesFavorites = !showOnlyFavorites || (route.is_favorite === true);
       
       return matchesSearch && matchesFavorites;
     })
@@ -122,11 +122,13 @@ const RoutesManagementPage: React.FC = () => {
   };
 
   // Handle actions
-  const handleViewRoute = (route: any) => {
-    navigate(`/library/routes/${route.id}`);
+  const handleViewRoute = (route: RouteData) => {
+    if (route.id) {
+      navigate(`/library/routes/${route.id}`);
+    }
   };
 
-  const handleEditRoute = (route: any) => {
+  const handleEditRoute = (route: RouteData) => {
     setRouteToEdit(route);
     setEditFormOpen(true);
   };
@@ -135,7 +137,7 @@ const RoutesManagementPage: React.FC = () => {
     name: string;
     description: string;
   }) => {
-    if (!routeToEdit) return;
+    if (!routeToEdit || !routeToEdit.id) return;
 
     try {
       setIsLoading(true);
@@ -156,7 +158,7 @@ const RoutesManagementPage: React.FC = () => {
     }
   };
 
-  const handleDuplicateRoute = async (route: any) => {
+  const handleDuplicateRoute = async (route: RouteData) => {
     try {
       setIsLoading(true);
       
@@ -174,13 +176,13 @@ const RoutesManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteRoute = (route: any) => {
+  const handleDeleteRoute = (route: RouteData) => {
     setRouteToDelete(route);
     setDeleteDialogOpen(true);
   };
 
   const confirmDeleteRoute = async () => {
-    if (!routeToDelete) return;
+    if (!routeToDelete || !routeToDelete.id) return;
 
     try {
       setIsLoading(true);
@@ -199,7 +201,9 @@ const RoutesManagementPage: React.FC = () => {
   };
 
   // Handle toggle favorite for single route
-  const handleToggleFavorite = async (route: any) => {
+  const handleToggleFavorite = async (route: RouteData) => {
+    if (!route.id) return;
+
     try {
       setIsLoading(true);
       
@@ -223,8 +227,8 @@ const RoutesManagementPage: React.FC = () => {
       
       const promises = selectedRoutes.map(routeId => {
         const route = routes.find(r => r.id === routeId);
-        if (route) {
-          return updateRoute(routeId, {
+        if (route && route.id) {
+          return updateRoute(route.id, {
             is_favorite: true
           });
         }
@@ -251,7 +255,13 @@ const RoutesManagementPage: React.FC = () => {
     try {
       setIsLoading(true);
       
-      const promises = selectedRoutes.map(routeId => deleteRoute(routeId));
+      const promises = selectedRoutes
+        .map(routeId => {
+          const route = routes.find(r => r.id === routeId);
+          return route?.id ? deleteRoute(route.id) : Promise.resolve();
+        })
+        .filter(promise => promise !== Promise.resolve());
+      
       await Promise.all(promises);
       
       setBatchDeleteDialogOpen(false);
@@ -359,7 +369,7 @@ const RoutesManagementPage: React.FC = () => {
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center">
               <div className="text-2xl font-bold text-amber-600">
-                {routes.filter(r => r.is_favorite).length}
+                {routes.filter(r => r.is_favorite === true).length}
               </div>
               <div className="text-sm text-gray-500">Favorite Routes</div>
             </div>
@@ -390,7 +400,7 @@ const RoutesManagementPage: React.FC = () => {
                 )}
               </div>
               
-              <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
+              <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -436,7 +446,7 @@ const RoutesManagementPage: React.FC = () => {
 
             {/* View Controls */}
             <div className="flex items-center gap-2">
-              <Tabs value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
+              <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
                 <TabsList>
                   <TabsTrigger value="grid"><Grid size={16} /></TabsTrigger>
                   <TabsTrigger value="list"><List size={16} /></TabsTrigger>
@@ -499,8 +509,8 @@ const RoutesManagementPage: React.FC = () => {
                 <RouteListItem
                   key={route.id}
                   route={route}
-                  isSelected={selectedRoutes.includes(route.id)}
-                  onToggleSelect={() => handleToggleSelect(route.id)}
+                  isSelected={selectedRoutes.includes(route.id || '')}
+                  onToggleSelect={() => handleToggleSelect(route.id || '')}
                   onView={handleViewRoute}
                   onEdit={handleEditRoute}
                   onDuplicate={handleDuplicateRoute}
@@ -523,15 +533,13 @@ const RoutesManagementPage: React.FC = () => {
             {
               label: "Add to Favorites",
               icon: <Star size={16} />,
-              onClick: handleBatchFavorite,
-              disabled: isLoading
+              onClick: handleBatchFavorite
             },
             {
               label: "Delete",
-              variant: "destructive",
+              variant: "destructive" as const,
               icon: <Trash2 size={16} />,
-              onClick: handleBatchDelete,
-              disabled: isLoading
+              onClick: handleBatchDelete
             }
           ]}
           onClearSelection={handleClearSelections}
@@ -556,7 +564,7 @@ const RoutesManagementPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Route</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{routeToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{routeToDelete?.name || 'this route'}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

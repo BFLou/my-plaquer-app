@@ -26,8 +26,8 @@ export const useKeyboardDetection = () => {
     };
 
     // Listen for visual viewport changes (better for keyboard detection)
-    if ('visualViewport' in window) {
-      const visualViewport = window.visualViewport!;
+    if (window.visualViewport) {
+      const visualViewport = window.visualViewport;
       
       const handleViewportChange = () => {
         const heightDifference = window.innerHeight - visualViewport.height;

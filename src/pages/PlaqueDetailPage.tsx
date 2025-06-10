@@ -11,19 +11,13 @@ import {
   Calendar, 
   User, 
   Building, 
-  Clock, 
   MapPin, 
   Share2,
   ChevronDown,
   ChevronUp,
   FolderOpen,
-  Route as RouteIcon,
-  Search,
-  Eye,
   Copy,
-  Home,
-  MoreVertical,
-  X
+  MoreVertical
 } from 'lucide-react';
 import { PageContainer } from '@/components';
 import { MobileButton } from "@/components/ui/mobile-button";
@@ -31,7 +25,6 @@ import { MobileDialog } from "@/components/ui/mobile-dialog";
 import { MobileHeader } from "@/components/layout/MobileHeader";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
-import { Badge } from "@/components/ui/badge";
 import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -45,13 +38,6 @@ import PlaqueImage from '@/components/plaques/PlaqueImage';
 import AddToCollectionDialog from '@/components/plaques/AddToCollectionDialog';
 import PendingActionHandler from '@/components/auth/PendingActionHandler';
 import { format } from 'date-fns';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { MobileTextarea } from "@/components/ui/mobile-textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -98,8 +84,8 @@ const PlaqueDetailPage: React.FC = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   
-  // NEW: Collection action state for pending actions
-  const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState(null);
+  // NEW: Collection action state for pending actions - Fixed type
+  const [pendingCollectionPlaque, setPendingCollectionPlaque] = useState<Plaque | null>(null);
   
   // Hooks
   const { isPlaqueVisited, markAsVisited, getVisitInfo } = useVisitedPlaques();
@@ -167,7 +153,7 @@ const PlaqueDetailPage: React.FC = () => {
       return {
         type: 'collection',
         data: {
-          collectionId,
+          collectionId: collectionId || undefined, // Fixed: Handle null values
           collectionName: collection?.name || 'Collection',
           progress: searchParams.get('progress') || undefined
         }
@@ -189,7 +175,7 @@ const PlaqueDetailPage: React.FC = () => {
       return {
         type: 'route',
         data: {
-          routeId,
+          routeId: routeId || undefined, // Fixed: Handle null values
           routeName: searchParams.get('routeName') || 'Route',
           progress: searchParams.get('progress') || undefined,
           nextItem: searchParams.get('next') || undefined
@@ -237,7 +223,19 @@ const PlaqueDetailPage: React.FC = () => {
         setLoading(true);
         
         const { default: plaqueData } = await import('@/data/plaque_data.json');
-        const adaptedData = adaptPlaquesData(plaqueData);
+        
+        // Fixed: Add proper type checking
+        if (!plaqueData || !Array.isArray(plaqueData)) {
+          throw new Error('Invalid plaque data format');
+        }
+
+        // Convert 'erected' to string if it's a number
+        const normalizedPlaqueData = plaqueData.map((p: any) => ({
+          ...p,
+          erected: typeof p.erected === 'number' ? String(p.erected) : p.erected,
+        }));
+
+        const adaptedData = adaptPlaquesData(normalizedPlaqueData);
         setAllPlaques(adaptedData);
         
         const plaqueId = parseInt(id);
@@ -413,7 +411,7 @@ const PlaqueDetailPage: React.FC = () => {
       setPlaque(prev => prev ? { ...prev, visited: true } : null);
       toast.success("Plaque marked as visited");
       setShowVisitDialog(false);
-    } catch (error) {
+    } catch (error: unknown) { // Fixed: Type the error parameter
       console.error("Error marking as visited:", error);
       triggerHapticFeedback('error');
       toast.error("Failed to mark as visited");
@@ -453,7 +451,7 @@ const PlaqueDetailPage: React.FC = () => {
       try {
         await navigator.share(shareData);
       } catch (error) {
-        if (error.name !== 'AbortError') {
+        if (typeof error === 'object' && error !== null && 'name' in error && (error as any).name !== 'AbortError') {
           await navigator.clipboard.writeText(shareUrl);
           toast.success('Link copied to clipboard!');
         }
@@ -665,6 +663,20 @@ const PlaqueDetailPage: React.FC = () => {
     }
   };
 
+  // Fixed: Date handling for visit info
+  const formatVisitDate = () => {
+    const visitInfo = getVisitInfo(plaque?.id || 0);
+    if (!visitInfo?.visited_at) return '';
+    try {
+      const date = visitInfo.visited_at instanceof Date 
+        ? visitInfo.visited_at 
+        : new Date(visitInfo.visited_at);
+      return format(date, 'MMM d, yyyy');
+    } catch (error) {
+      return 'Unknown date';
+    }
+  };
+
   // Loading and error states
   if (loading) {
     return (
@@ -710,18 +722,6 @@ const PlaqueDetailPage: React.FC = () => {
   const locationDisplay = safeString(plaque.location || plaque.address);
   const imageUrl = plaque.image || plaque.main_photo;
   const lifeYears = getLifeYears();
-
-  const formatVisitDate = () => {
-    if (!visitInfo?.visited_at) return '';
-    try {
-      const date = visitInfo.visited_at.toDate
-        ? visitInfo.visited_at.toDate()
-        : new Date(visitInfo.visited_at);
-      return format(date, 'MMM d, yyyy');
-    } catch (error) {
-      return 'Unknown date';
-    }
-  };
 
   return (
     <PageContainer 

@@ -1,6 +1,31 @@
 // src/utils/smartCollections.ts
 import { Plaque } from '@/types/plaque';
-import { EnhancedCollection } from '@/types/collection';
+
+// Define EnhancedCollection interface locally if not available
+interface EnhancedCollection {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  plaques: number;
+  updated: string;
+  isFavorite: boolean;
+  isPublic: boolean;
+  isShared: boolean;
+  owner: {
+    id: number;
+    name: string;
+  };
+  collaborators: any[];
+  tags: Array<{ id: number; name: string; color: string }>;
+  views: number;
+  dateCreated: string;
+  dateUpdated: string;
+  isPinned: boolean;
+  smartCollection: boolean;
+  filterCriteria: FilterCriteria;
+}
 
 type FilterCriteria = {
   color?: string[];
@@ -128,34 +153,34 @@ export const suggestSmartCollections = (
 ): EnhancedCollection[] => {
   const suggestions: EnhancedCollection[] = [];
   
-  // Get unique colors
+  // Get unique colors - with null check
   const colors = [...new Set(plaques
     .filter(p => p.color)
-    .map(p => p.color?.toLowerCase())
+    .map(p => p.color!.toLowerCase()) // Use non-null assertion since we filtered
   )];
   
   // Get unique professions
   const professions = [...new Set(plaques
     .filter(p => p.profession)
-    .map(p => p.profession)
+    .map(p => p.profession!)
   )];
   
   // Get unique areas
   const areas = [...new Set(plaques
     .filter(p => p.area)
-    .map(p => p.area)
+    .map(p => p.area!)
   )];
   
   // Create a collection for each color with enough plaques
   colors.forEach(color => {
     const colorPlaques = plaques.filter(p => p.color?.toLowerCase() === color);
     if (colorPlaques.length >= 3) { // Only suggest if there are enough plaques
-      const colorName = color?.charAt(0).toUpperCase() + color?.slice(1);
+      const colorName = color.charAt(0).toUpperCase() + color.slice(1);
       suggestions.push(createSmartCollection(
         `${colorName} Plaques`,
         `Collection of ${colorPlaques.length} ${colorName.toLowerCase()} plaques`,
         plaques,
-        { color: [color as string] },
+        { color: [color] },
         userId,
         color === 'blue' ? '🔵' : color === 'green' ? '🟢' : '🟤'
       ));
@@ -164,8 +189,6 @@ export const suggestSmartCollections = (
   
   // Create a collection for each profession with enough plaques
   professions.forEach(profession => {
-    if (!profession) return;
-    
     const professionPlaques = plaques.filter(p => p.profession === profession);
     if (professionPlaques.length >= 2) { // Only suggest if there are enough plaques
       suggestions.push(createSmartCollection(
@@ -184,8 +207,6 @@ export const suggestSmartCollections = (
   
   // Create a collection for each area with enough plaques
   areas.forEach(area => {
-    if (!area) return;
-    
     const areaPlaques = plaques.filter(p => p.area === area);
     if (areaPlaques.length >= 3) { // Only suggest if there are enough plaques
       suggestions.push(createSmartCollection(

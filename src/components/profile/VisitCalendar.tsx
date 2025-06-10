@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { format, isValid, getDaysInMonth, getMonth, getYear, 
+import { format, isValid, getMonth, getYear, 
   addMonths, subMonths, isSameDay, startOfMonth, parseISO, isToday, 
   isSameMonth, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { Plaque } from '@/types/plaque';
@@ -87,15 +87,6 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({
     }
   };
 
-  // Format date safely with fallback
-  const formatVisitDate = (dateValue: any): string => {
-    const normalizedDate = normalizeDate(dateValue);
-    if (!normalizedDate || !isValid(normalizedDate)) {
-      return 'Unknown date';
-    }
-    return format(normalizedDate, 'MMM d, yyyy');
-  };
-
   // Format time safely
   const formatVisitTime = (dateValue: any): string => {
     const normalizedDate = normalizeDate(dateValue);
@@ -148,12 +139,6 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({
     setTimeout(() => setIsLoading(false), 150);
   };
 
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentMonth(today);
-    setSelectedDate(today);
-  };
-
   // Handle date selection with haptic feedback
   const handleDateClick = (date: Date, hasVisits: boolean) => {
     if (!hasVisits) return;
@@ -187,7 +172,6 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({
     const year = getYear(currentMonth);
     const month = getMonth(currentMonth);
     const firstDayOfMonth = startOfMonth(new Date(year, month));
-    const lastDayOfMonth = new Date(year, month + 1, 0);
     
     // Get the start and end of the calendar grid (6 weeks)
     const startOfCalendar = startOfWeek(firstDayOfMonth, { weekStartsOn: 0 });
@@ -211,7 +195,7 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({
         day: isCurrentMonthDay ? dayNumber : null,
         date,
         hasVisits,
-        isSelected: isSelectedDay,
+        isSelected: isSelectedDay || undefined,
         isToday: isTodayDate,
         visitCount: hasVisits ? visitMap.get(dateKey)?.length || 0 : 0,
         isCurrentMonth: isCurrentMonthDay
