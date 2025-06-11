@@ -1,4 +1,5 @@
-// src/components/home/EnhancedSearchBar.tsx
+// src/components/home/EnhancedSearchBar.tsx - Mobile-optimized search bar
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, MapPin, Users, Tag } from 'lucide-react';
@@ -33,16 +34,13 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   
-  // Load plaque data from JSON - FIXED: Proper type handling for imported JSON
+  // Load plaque data from JSON
   useEffect(() => {
     const fetchPlaqueData = async () => {
       try {
         setLoading(true);
-        // Import plaque data
         const { default: rawData } = await import('@/data/plaque_data.json');
         
-        // Ensure the 'erected' property is converted to a string before passing to adaptPlaquesData
-        // Ensure proper type handling for 'erected' property and other fields
         const dataArray = Array.isArray(rawData) 
           ? rawData.map(item => ({ 
               ...item, 
@@ -57,7 +55,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         setLoading(false);
       } catch (error) {
         console.error('Error loading plaque data:', error);
-        setPlaqueData([]); // Set empty array on error
+        setPlaqueData([]);
         setLoading(false);
       }
     };
@@ -125,7 +123,6 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       ].join(' ');
       
       if (location && location.includes(query)) {
-        // Extract the best location part that matches
         let matchText = '';
         if (plaque.area && plaque.area.toLowerCase().includes(query)) {
           matchText = plaque.area;
@@ -242,7 +239,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
     ];
     
     return popularNames.map((item, index) => ({
-      id: -1 * (index + 1), // Negative IDs for popular suggestions
+      id: -1 * (index + 1),
       text: item.text,
       type: item.type as 'person' | 'location' | 'profession',
       profession: (item as any).profession,
@@ -271,8 +268,14 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   
   return (
     <div className={cn("relative", className)}>
-      {/* Search Input */}
+      {/* Mobile-optimized Search Input */}
       <div className="relative">
+        {/* Search icon */}
+        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
+          <Search size={20} />
+        </div>
+        
+        {/* Search input - Mobile responsive padding */}
         <input
           type="text"
           placeholder="Search by name, location, or profession..."
@@ -281,26 +284,41 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsSearchFocused(true)}
           ref={searchInputRef}
-          className="w-full px-12 py-3 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          className={cn(
+            "w-full py-3 rounded-lg border border-gray-300 shadow-sm",
+            "focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition",
+            "text-base", // Prevents zoom on iOS
+            // Mobile: more padding-right for button, desktop: less
+            "pl-12 pr-20 sm:pr-24"
+          )}
           disabled={loading}
         />
-        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-          <Search size={20} />
+        
+        {/* Search button - Mobile responsive */}
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+          <Button 
+            size="sm"
+            className={cn(
+              "h-8 px-3 text-sm font-medium",
+              // Hide text on very small screens, show icon only
+              "sm:px-4"
+            )}
+            onClick={handleSearch}
+            disabled={loading}
+          >
+            <span className="hidden sm:inline">Search</span>
+            <span className="sm:hidden">
+              <Search size={16} />
+            </span>
+          </Button>
         </div>
-        <Button 
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10"
-          onClick={handleSearch}
-          disabled={loading}
-        >
-          Search
-        </Button>
       </div>
       
-      {/* Search suggestions dropdown */}
+      {/* Search suggestions dropdown - Mobile optimized */}
       {isSearchFocused && (
         <div 
           ref={suggestionsRef}
-          className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-100 divide-y overflow-hidden"
+          className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-100 divide-y overflow-hidden max-h-80 overflow-y-auto"
         >
           {loading ? (
             <div className="p-4 text-center">
@@ -311,17 +329,17 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
             displaySuggestions.map((suggestion, index) => (
               <div 
                 key={`${suggestion.type}-${suggestion.text}-${index}`}
-                className="p-3 flex items-center hover:bg-gray-50 cursor-pointer"
+                className="p-3 flex items-center hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors"
                 onClick={() => handleSuggestionClick(suggestion)}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${getIconBackgroundColor(suggestion.type)}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${getIconBackgroundColor(suggestion.type)}`}>
                   {suggestion.type === 'person' ? <Users size={16} /> : 
                    suggestion.type === 'location' ? <MapPin size={16} /> : 
                    <Tag size={16} />}
                 </div>
-                <div className="flex-1">
-                  <div className="font-medium">{suggestion.text}</div>
-                  <div className="text-xs text-gray-500">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{suggestion.text}</div>
+                  <div className="text-xs text-gray-500 truncate">
                     {suggestion.type === 'person' ? (
                       <span>{suggestion.profession}</span>
                     ) : suggestion.type === 'location' ? (
@@ -334,7 +352,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
                     )}
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-gray-400" />
+                <ChevronRight size={18} className="text-gray-400 flex-shrink-0 ml-2" />
               </div>
             ))
           ) : searchQuery.length >= 2 ? (
