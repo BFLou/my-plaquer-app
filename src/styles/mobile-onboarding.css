@@ -1,0 +1,251 @@
+/* src/styles/mobile-onboarding.css - Mobile auth onboarding styles */
+
+/* Base mobile onboarding toast styles */
+.mobile-onboarding-toast {
+  position: fixed !important;
+  z-index: 9999 !important;
+  max-width: calc(100vw - 32px) !important;
+  min-width: 280px !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(10px) !important;
+  animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Welcome toast - appears at top */
+.welcome-toast {
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Navigation hint toast - appears at bottom above nav */
+.nav-hint-toast {
+  bottom: 100px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Feature hint toast - appears at top */
+.feature-hint-toast {
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Discovery hint toast - appears at top */
+.discovery-hint-toast {
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Success toast - appears at top */
+.success-toast {
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Toast animations */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* Action button styling within toasts */
+.mobile-onboarding-toast button[data-action] {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  transition: all 0.2s ease !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.mobile-onboarding-toast button[data-action]:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.mobile-onboarding-toast button[data-action]:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Close button styling */
+.mobile-onboarding-toast button[data-close-button] {
+  color: rgba(255, 255, 255, 0.8) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.mobile-onboarding-toast button[data-close-button]:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Icon styling within toasts */
+.mobile-onboarding-toast [data-icon] {
+  margin-right: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 375px) {
+  .mobile-onboarding-toast {
+    max-width: calc(100vw - 24px) !important;
+    font-size: 13px !important;
+  }
+  
+  .mobile-onboarding-toast button[data-action] {
+    font-size: 12px !important;
+    padding: 5px 10px !important;
+  }
+}
+
+@media (max-width: 320px) {
+  .mobile-onboarding-toast {
+    max-width: calc(100vw - 16px) !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .mobile-onboarding-toast {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .mobile-onboarding-toast {
+    border: 2px solid white !important;
+  }
+  
+  .mobile-onboarding-toast button[data-action] {
+    border: 2px solid white !important;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .mobile-onboarding-toast {
+    animation: none !important;
+  }
+  
+  .mobile-onboarding-toast button[data-action] {
+    transition: none !important;
+  }
+  
+  .mobile-onboarding-toast button[data-action]:hover,
+  .mobile-onboarding-toast button[data-action]:active {
+    transform: none !important;
+  }
+}
+
+/* Toast container adjustments for mobile nav */
+.mobile-nav-active [data-sonner-toaster] {
+  bottom: 80px !important; /* Ensure toasts appear above mobile nav */
+}
+
+/* Stacking context for multiple toasts */
+.mobile-onboarding-toast:nth-child(1) { z-index: 9999 !important; }
+.mobile-onboarding-toast:nth-child(2) { z-index: 9998 !important; }
+.mobile-onboarding-toast:nth-child(3) { z-index: 9997 !important; }
+
+/* Special positioning for different toast types */
+.nav-hint-toast.mobile-onboarding-toast {
+  bottom: 90px !important; /* Above mobile nav bar */
+}
+
+.welcome-toast.mobile-onboarding-toast,
+.feature-hint-toast.mobile-onboarding-toast,
+.discovery-hint-toast.mobile-onboarding-toast,
+.success-toast.mobile-onboarding-toast {
+  top: max(20px, env(safe-area-inset-top)) !important; /* Respect safe area */
+}
+
+/* Pulsing effect for attention */
+.mobile-onboarding-toast.attention {
+  animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1), pulse-attention 2s ease-in-out 0.5s infinite !important;
+}
+
+@keyframes pulse-attention {
+  0%, 100% {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 8px rgba(59, 130, 246, 0.1);
+  }
+}
+
+/* Gradient animations for visual appeal */
+.welcome-toast.mobile-onboarding-toast {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af) !important;
+  background-size: 200% 200% !important;
+  animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1), gradient-shift 3s ease-in-out infinite !important;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Loading state for action buttons */
+.mobile-onboarding-toast button[data-action].loading {
+  position: relative !important;
+  color: transparent !important;
+}
+
+.mobile-onboarding-toast button[data-action].loading::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  margin: -6px 0 0 -6px !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-top: 2px solid white !important;
+  border-radius: 50% !important;
+  animation: spin 0.8s linear infinite !important;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

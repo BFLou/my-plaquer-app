@@ -161,3 +161,394 @@
     padding-bottom: 0.5rem;
   }
 }
+
+/* Complete Mobile Scrolling CSS - Add to src/styles/global.css */
+
+/* ==================== CRITICAL MOBILE SCROLLING FIXES ==================== */
+
+/* Base mobile scrolling improvements */
+@media (max-width: 768px) {
+  /* Ensure proper mobile scrolling */
+  html {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    height: 100%;
+  }
+  
+  body {
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Main app container */
+  #root {
+    height: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  /* Page container improvements */
+  .mobile-container {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  /* Discover page specific fixes */
+  .discover-page {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Mobile content area */
+  .mobile-content-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    position: relative;
+  }
+  
+  /* Content wrapper with hardware acceleration */
+  .mobile-content-wrapper {
+    min-height: 100%;
+    position: relative;
+    -webkit-transform: translate3d(0,0,0);
+    transform: translate3d(0,0,0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+  
+  /* Mobile scroll container (for main content) */
+  .mobile-scroll-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    position: relative;
+    will-change: scroll-position;
+  }
+  
+  /* Grid and list containers */
+  .mobile-grid-container,
+  .mobile-list-container {
+    padding-bottom: 20px;
+    min-height: calc(100% - 20px);
+  }
+  
+  /* Ensure proper spacing for mobile nav */
+  .content-with-mobile-nav {
+    padding-bottom: 80px !important;
+  }
+  
+  /* Fix for grid layout on mobile */
+  .grid.grid-cols-1,
+  .grid.grid-cols-2,
+  .grid.grid-cols-3 {
+    padding-bottom: 20px;
+    min-height: auto;
+  }
+  
+  /* Fix for list layout on mobile */
+  .space-y-3,
+  .space-y-4 {
+    padding-bottom: 20px;
+  }
+  
+  /* Container improvements */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Prevent content from being hidden behind fixed elements */
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+    margin-bottom: 0;
+  }
+  
+  /* Touch scrolling momentum */
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Hardware acceleration for performance */
+  .hardware-accelerated {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+  }
+  
+  /* Performance optimizations */
+  .will-change-scroll {
+    will-change: scroll-position;
+  }
+  
+  /* Keyboard detection fixes */
+  .keyboard-open {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+  }
+  
+  .keyboard-open .mobile-nav-bar {
+    display: none !important;
+  }
+  
+  .keyboard-open .fab {
+    display: none !important;
+  }
+  
+  .keyboard-open .bottom-action-bar {
+    display: none !important;
+  }
+  
+  /* Fix for sticky headers interfering with scroll */
+  .sticky-header {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: white;
+  }
+  
+  /* Modal scrolling improvements */
+  .mobile-modal-scroll {
+    max-height: 80vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Pagination visibility */
+  .mobile-pagination {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Fix for overlapping content */
+  .mobile-nav-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background-color: white;
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Floating action button positioning */
+  .fab {
+    position: fixed;
+    bottom: 80px; /* Above mobile nav */
+    right: 16px;
+    z-index: 40;
+  }
+  
+  /* Bottom action bar positioning */
+  .bottom-action-bar {
+    position: fixed;
+    bottom: 64px; /* Above mobile nav */
+    left: 0;
+    right: 0;
+    z-index: 30;
+  }
+}
+
+/* ==================== iOS SPECIFIC FIXES ==================== */
+@supports (-webkit-touch-callout: none) {
+  .ios-scroll-fix {
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0);
+  }
+  
+  /* Fix for iOS Safari 100vh issues */
+  .mobile-container {
+    height: 100vh;
+    height: -webkit-fill-available;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  /* iOS Safari address bar fix */
+  .discover-page {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  /* Fix for iOS bounce scroll */
+  .mobile-content-area,
+  .mobile-scroll-container {
+    overscroll-behavior: none;
+    -webkit-overscroll-behavior: none;
+  }
+}
+
+/* ==================== ANDROID SPECIFIC FIXES ==================== */
+@media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: .001dpcm) {
+  .android-scroll-fix {
+    -webkit-overflow-scrolling: auto;
+    overscroll-behavior: contain;
+  }
+  
+  /* Android Chrome viewport fix */
+  .mobile-container {
+    height: 100vh;
+    min-height: 100vh;
+  }
+}
+
+/* ==================== LANDSCAPE ORIENTATION ==================== */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-landscape-content {
+    min-height: calc(100vh - 100px);
+    padding-bottom: 60px;
+  }
+  
+  .mobile-nav-bar {
+    height: 50px;
+  }
+  
+  .content-with-mobile-nav {
+    padding-bottom: 60px !important;
+  }
+  
+  .fab {
+    bottom: 60px;
+  }
+  
+  .bottom-action-bar {
+    bottom: 50px;
+  }
+}
+
+/* ==================== HIGH DPI DISPLAYS ==================== */
+@media only screen and (-webkit-min-device-pixel-ratio: 2), 
+       only screen and (min-device-pixel-ratio: 2) {
+  .mobile-content-area {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+/* Reduce motion for better performance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==================== DEBUG STYLES (Remove in production) ==================== */
+/* Uncomment these for debugging scroll issues */
+/*
+.debug-scroll {
+  border: 2px solid red !important;
+  overflow: visible !important;
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.debug-container {
+  border: 2px solid blue !important;
+  background: rgba(0, 0, 255, 0.1) !important;
+}
+
+.debug-mobile-nav {
+  border: 2px solid green !important;
+  background: rgba(0, 255, 0, 0.1) !important;
+}
+*/
+
+/* ==================== ADDITIONAL MOBILE IMPROVEMENTS ==================== */
+@media (max-width: 768px) {
+  /* Improve tap targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent zoom on form inputs */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Remove tap highlights */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve touch scrolling */
+  .overflow-scroll, 
+  .overflow-y-scroll, 
+  .overflow-x-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Custom scrollbars for mobile */
+  .mobile-scroll::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  
+  .mobile-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .mobile-scroll::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+  
+  .mobile-scroll::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.mobile-no-scroll {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+}
+
+.mobile-enable-scroll {
+  overflow: auto !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Safe area utilities */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0px);
+}

@@ -1162,3 +1162,328 @@
   outline: none;
   border-color: #3b82f6;
 }
+
+/* Add this to your global CSS or create a new file: src/styles/mobile-map.css */
+
+/* ==================== Z-INDEX HIERARCHY ==================== */
+/* Ensure proper layering of map elements */
+
+/* Base map layer */
+.leaflet-container {
+  z-index: 1;
+}
+
+/* Map controls - lower z-index */
+.leaflet-control-container {
+  z-index: 800;
+}
+
+/* Marker clusters */
+.leaflet-marker-icon {
+  z-index: 600;
+}
+
+/* Route lines */
+.leaflet-interactive {
+  z-index: 500;
+}
+
+/* Mobile control panels - medium z-index */
+.unified-control-panel {
+  z-index: 999;
+}
+
+/* Search bar */
+.search-bar-container {
+  z-index: 1001;
+}
+
+/* CRITICAL: Plaque popups - highest z-index */
+.leaflet-popup {
+  z-index: 10001 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 10001 !important;
+}
+
+.plaque-popup-container {
+  z-index: 10001 !important;
+}
+
+.high-z-popup {
+  z-index: 10001 !important;
+}
+
+/* Ensure popup content stays on top */
+.leaflet-popup-content-wrapper {
+  z-index: 10002 !important;
+}
+
+.leaflet-popup-tip {
+  z-index: 10002 !important;
+}
+
+/* ==================== MOBILE MAP OPTIMIZATIONS ==================== */
+
+/* Mobile-friendly marker hover effects */
+.marker-hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+  .leaflet-marker-icon {
+    cursor: pointer;
+    /* Ensure minimum touch target size */
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  .leaflet-popup-content {
+    margin: 8px 12px;
+    line-height: 1.4;
+  }
+  
+  /* Make popup buttons more touch-friendly */
+  .plaque-popup button {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 14px;
+    touch-action: manipulation;
+  }
+}
+
+/* ==================== FLOATING CONTROL ANIMATIONS ==================== */
+
+/* Smooth animations for mobile controls */
+.mobile-control-panel {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-control-panel.collapsed {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.mobile-control-panel.expanded {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Floating action button pulse effect */
+.floating-toggle-button {
+  animation: subtle-pulse 2s infinite;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* ==================== IMPROVED POPUP STYLING ==================== */
+
+.plaque-popup-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.plaque-popup-container .font-semibold {
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.plaque-popup-container .text-gray-600 {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.plaque-popup-container button {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.plaque-popup-container button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.plaque-popup-container button:active {
+  transform: translateY(0);
+}
+
+/* Specific button styles */
+.plaque-popup-container .view-details {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.plaque-popup-container .view-details:hover {
+  background-color: #2563eb;
+}
+
+.plaque-popup-container .add-to-route {
+  background-color: #10b981;
+  color: white;
+}
+
+.plaque-popup-container .add-to-route:hover {
+  background-color: #059669;
+}
+
+/* ==================== MOBILE RESPONSIVE ADJUSTMENTS ==================== */
+
+@media (max-width: 480px) {
+  /* Make popups more mobile-friendly */
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  }
+  
+  .plaque-popup-container {
+    min-width: 250px;
+    max-width: calc(100vw - 40px);
+  }
+  
+  /* Larger touch targets */
+  .plaque-popup-container button {
+    min-height: 48px;
+    font-size: 16px;
+    padding: 12px 16px;
+  }
+  
+  /* Better spacing */
+  .plaque-popup-container .space-y-3 > * + * {
+    margin-top: 12px;
+  }
+}
+
+/* ==================== ROUTE MODE STYLING ==================== */
+
+.route-mode .leaflet-marker-icon {
+  cursor: crosshair;
+}
+
+.route-mode .add-to-route {
+  animation: button-highlight 2s ease-in-out infinite;
+}
+
+@keyframes button-highlight {
+  0%, 100% {
+    background-color: #10b981;
+  }
+  50% {
+    background-color: #059669;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+  }
+}
+
+/* ==================== ENHANCED CLUSTERING ==================== */
+
+.minimalist-cluster-icon {
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.minimalist-cluster-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* ==================== ACCESSIBILITY IMPROVEMENTS ==================== */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .leaflet-popup-content-wrapper {
+    border: 2px solid #000;
+  }
+  
+  .plaque-popup-container button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .marker-hover,
+  .mobile-control-panel,
+  .floating-toggle-button,
+  .minimalist-cluster-icon,
+  .plaque-popup-container button {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Focus indicators for keyboard navigation */
+.leaflet-marker-icon:focus,
+.plaque-popup-container button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ==================== DARK MODE SUPPORT ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .plaque-popup-container {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+  
+  .plaque-popup-container .text-gray-600 {
+    color: #9ca3af;
+  }
+  
+  .leaflet-popup-content-wrapper {
+    background: #1f2937;
+    color: #f9fafb;
+  }
+  
+  .leaflet-popup-tip {
+    background: #1f2937;
+  }
+}
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+
+/* Use GPU acceleration for animations */
+.mobile-control-panel,
+.floating-toggle-button,
+.marker-hover {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Optimize marker rendering */
+.leaflet-marker-icon {
+  image-rendering: optimizeQuality;
+  backface-visibility: hidden;
+}
+
+/* ==================== CUSTOM SCROLLBAR FOR MOBILE ==================== */
+
+/* Custom scrollbar for better mobile experience */
+.mobile-control-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mobile-control-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mobile-control-panel::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.mobile-control-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}

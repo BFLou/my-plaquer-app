@@ -1,4 +1,4 @@
-// MapContainer.tsx - MOBILE OPTIMIZED with responsive design
+// src/components/maps/MapContainer.tsx - UPDATED: Mobile-optimized layout
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { isMobile, getViewportHeight } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
 
-// FIXED: Helper function for safe coordinate conversion
+// Helper function for safe coordinate conversion
 function parseCoordinate(coord: string | number | undefined): number {
   if (coord === undefined || coord === null) return 0;
   return typeof coord === 'string' ? parseFloat(coord) : coord;
@@ -570,9 +570,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
   // Calculate responsive map height
   const getMapHeight = () => {
     if (mobile) {
-      // On mobile, use viewport height minus safe areas and approximate header height
-      const headerHeight = 120; // Approximate header + search bar height
-      const availableHeight = viewportHeight - safeArea.top - safeArea.bottom - headerHeight;
+      // On mobile, use full viewport height minus safe areas
+      const availableHeight = viewportHeight - safeArea.top - safeArea.bottom;
       return Math.max(availableHeight, 300); // Minimum 300px height
     }
     return 600; // Desktop default
@@ -590,69 +589,67 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         paddingRight: mobile ? safeArea.right : undefined
       }}
     >
-      {/* Enhanced Search Bar - Mobile optimized positioning */}
-<div className={`
-  absolute z-[1001] 
-  ${mobile ? 'top-2 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} 
-  ${mobile ? 'w-auto' : 'w-full max-w-sm px-4'}
-`}>
-  <SearchBar 
-    plaques={plaques}
-    value={state.searchQuery}
-    onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
-    onSelect={handleSearchSelect}
-    onLocationSelect={handleLocationSelect}
-  />
-</div>
-
-
-      {/* Unified Control Panel - Mobile optimized positioning */}
-      <div className={`absolute ${mobile ? 'top-16 left-2' : 'top-16 left-4'} z-[1000]`}>
-        <UnifiedControlPanel
-          distanceFilter={{
-            enabled: state.filterEnabled,
-            center: state.filterCenter,
-            radius: state.filterRadius,
-            locationName: state.filterLocation
-          }}
-          onSetLocation={handleLocationFilterSet}
-          onRadiusChange={handleRadiusChange}
-          onClearDistanceFilter={handleClearFilter}
-          
+      {/* Search Bar - Mobile optimized positioning with higher z-index */}
+      <div className={`
+        absolute z-[1001] search-bar-container
+        ${mobile ? 'top-1 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} 
+        ${mobile ? 'w-auto' : 'w-full max-w-sm px-4'}
+      `}>
+        <SearchBar 
           plaques={plaques}
-          visiblePlaques={visiblePlaques}
-          selectedColors={state.selectedColors}
-          selectedPostcodes={state.selectedPostcodes}
-          selectedProfessions={state.selectedProfessions}
-          onlyVisited={state.onlyVisited}
-          onlyFavorites={state.onlyFavorites}
-          onColorsChange={(colors) => dispatch({ type: 'SET_COLORS', colors })}
-          onPostcodesChange={(postcodes) => dispatch({ type: 'SET_POSTCODES', postcodes })}
-          onProfessionsChange={(professions) => dispatch({ type: 'SET_PROFESSIONS', professions })}
-          onVisitedChange={(onlyVisited) => dispatch({ type: 'SET_ONLY_VISITED', onlyVisited })}
-          onFavoritesChange={(onlyFavorites) => dispatch({ type: 'SET_ONLY_FAVORITES', onlyFavorites })}
-          onResetStandardFilters={() => dispatch({ type: 'RESET_STANDARD_FILTERS' })}
-          
-          routeMode={state.routeMode}
-          onToggleRoute={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
-          routePointsCount={state.routePoints.length}
-          
-          onResetView={() => dispatch({ type: 'SET_VIEW', center: [51.505, -0.09], zoom: 13 })}
-          
-          isPlaqueVisited={isPlaqueVisited}
-          isFavorite={isFavorite}
+          value={state.searchQuery}
+          onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
+          onSelect={handleSearchSelect}
+          onLocationSelect={handleLocationSelect}
         />
       </div>
+
+      {/* NEW: Mobile-Optimized Unified Control Panel */}
+      <UnifiedControlPanel
+        distanceFilter={{
+          enabled: state.filterEnabled,
+          center: state.filterCenter,
+          radius: state.filterRadius,
+          locationName: state.filterLocation
+        }}
+        onSetLocation={handleLocationFilterSet}
+        onRadiusChange={handleRadiusChange}
+        onClearDistanceFilter={handleClearFilter}
+        
+        plaques={plaques}
+        visiblePlaques={visiblePlaques}
+        selectedColors={state.selectedColors}
+        selectedPostcodes={state.selectedPostcodes}
+        selectedProfessions={state.selectedProfessions}
+        onlyVisited={state.onlyVisited}
+        onlyFavorites={state.onlyFavorites}
+        onColorsChange={(colors) => dispatch({ type: 'SET_COLORS', colors })}
+        onPostcodesChange={(postcodes) => dispatch({ type: 'SET_POSTCODES', postcodes })}
+        onProfessionsChange={(professions) => dispatch({ type: 'SET_PROFESSIONS', professions })}
+        onVisitedChange={(onlyVisited) => dispatch({ type: 'SET_ONLY_VISITED', onlyVisited })}
+        onFavoritesChange={(onlyFavorites) => dispatch({ type: 'SET_ONLY_FAVORITES', onlyFavorites })}
+        onResetStandardFilters={() => dispatch({ type: 'RESET_STANDARD_FILTERS' })}
+        
+        routeMode={state.routeMode}
+        onToggleRoute={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
+        routePointsCount={state.routePoints.length}
+        
+        onResetView={() => dispatch({ type: 'SET_VIEW', center: [51.505, -0.09], zoom: 13 })}
+        
+        isPlaqueVisited={isPlaqueVisited}
+        isFavorite={isFavorite}
+        className="unified-control-panel"
+      />
 
       {/* Enhanced Route Panel - Mobile responsive positioning */}
       {state.routeMode && (
         <div className={`absolute ${
           mobile 
-            ? 'bottom-4 left-2 right-2' 
+            ? 'bottom-0 left-0 right-0' 
             : 'left-56 top-16'
         } z-[1000] ${
           mobile 
-            ? 'w-auto' 
+            ? 'w-full' 
             : 'w-80 max-w-[calc(100vw-14rem)]'
         }`}>
           <EnhancedRoutePanel
@@ -662,43 +659,45 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
             onClear={handleClearRoute}
             onClose={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
             onRouteAction={onRouteAction}
-            className={mobile ? 'w-full' : ''}
+            className={mobile ? 'w-full mobile-route-panel' : ''}
           />
         </div>
       )}
 
-      {/* Enhanced Status Bar - Mobile responsive positioning */}
-      <div className={`absolute ${
-        mobile 
-          ? 'bottom-2 left-2 right-2' 
-          : 'bottom-4 left-4'
-      } z-[1000] bg-white rounded-lg shadow-lg px-3 py-2 text-sm ${
-        mobile ? 'w-auto' : ''
-      }`}>
-        <div className={`flex items-center ${mobile ? 'justify-center' : 'gap-2'} ${mobile ? 'flex-wrap' : ''}`}>
-          <span className="font-medium">{visiblePlaques.length}</span> of{' '}
-          <span className="font-medium">{plaques.length}</span> plaques
-          {state.filterEnabled && state.filterLocation && (
-            <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs`}>
-              Within {state.filterRadius < 1 
-                ? `${Math.round(state.filterRadius * 1000)}m` 
-                : `${state.filterRadius}km`} of {state.filterLocation}
-            </div>
-          )}
-          {state.searchQuery && !state.filterEnabled && (
-            <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs`}>
-              Matching "{state.searchQuery}"
-            </div>
-          )}
-          {state.routeMode && (
-            <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-green-50 text-green-700 rounded text-xs`}>
-              Route Mode: {state.routePoints.length} stops
-            </div>
-          )}
+      {/* Enhanced Status Bar - Mobile responsive positioning, only show if not mobile or no route panel */}
+      {(!mobile || !state.routeMode) && (
+        <div className={`absolute ${
+          mobile 
+            ? 'bottom-2 left-2 right-2' 
+            : 'bottom-4 left-4'
+        } z-[900] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 text-sm ${
+          mobile ? 'w-auto' : ''
+        }`}>
+          <div className={`flex items-center ${mobile ? 'justify-center' : 'gap-2'} ${mobile ? 'flex-wrap' : ''}`}>
+            <span className="font-medium">{visiblePlaques.length}</span> of{' '}
+            <span className="font-medium">{plaques.length}</span> plaques
+            {state.filterEnabled && state.filterLocation && (
+              <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs`}>
+                Within {state.filterRadius < 1 
+                  ? `${Math.round(state.filterRadius * 1000)}m` 
+                  : `${state.filterRadius}km`} of {state.filterLocation}
+              </div>
+            )}
+            {state.searchQuery && !state.filterEnabled && (
+              <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs`}>
+                Matching "{state.searchQuery}"
+              </div>
+            )}
+            {state.routeMode && (
+              <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-green-50 text-green-700 rounded text-xs`}>
+                Route Mode: {state.routePoints.length} stops
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* The Map - Responsive height - FIXED: Handle null filterLocationName */}
+      {/* The Map - Full responsive height */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}

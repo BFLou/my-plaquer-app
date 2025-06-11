@@ -29,21 +29,35 @@ export const PageContainer = ({
   mobileNavStyle = 'default',
   paddingBottom = 'mobile-nav'
 }: PageContainerProps) => {
-  // Determine bottom padding based on mobile nav and footer
-  const getBottomPadding = () => {
-    if (paddingBottom === 'none') return '';
-    if (paddingBottom === 'custom') return '';
+  // Determine container classes for proper mobile scrolling
+  const getContainerClasses = () => {
+    let classes = 'min-h-screen flex flex-col bg-gray-50';
     
-    // Default mobile nav padding
-    if (!hideMobileNav && mobileNavStyle !== 'hidden') {
-      return 'pb-16 md:pb-0'; // 64px for mobile nav
+    // Add mobile-specific classes
+    classes += ' touch-scroll hardware-accelerated mobile-container';
+    
+    return `${classes} ${className}`;
+  };
+
+  // Determine main content classes
+  const getMainClasses = () => {
+    let classes = containerClass || 'flex-grow';
+    
+    // Add mobile scroll optimization
+    classes += ' mobile-content-area ios-scroll-fix android-scroll-fix relative';
+    
+    // Handle specific padding requirements
+    if (paddingBottom === 'none') {
+      classes += ' pb-0';
+    } else if (paddingBottom === 'mobile-nav' && !hideMobileNav && mobileNavStyle !== 'hidden') {
+      classes += ' pb-16 md:pb-0'; // 64px mobile nav space
     }
     
-    return '';
+    return classes;
   };
 
   return (
-    <div className={`min-h-screen flex flex-col bg-gray-50 ${className}`}>
+    <div className={getContainerClasses()}>
       {/* Desktop Navigation */}
       {!hideNavBar && (
         <div className="hidden md:block">
@@ -51,9 +65,11 @@ export const PageContainer = ({
         </div>
       )}
       
-      {/* Main Content */}
-      <main className={`${containerClass || 'flex-grow'} ${getBottomPadding()}`}>
-        {children}
+      {/* Main Content with proper mobile scrolling */}
+      <main className={getMainClasses()}>
+        <div className="mobile-content-wrapper will-change-scroll h-full">
+          {children}
+        </div>
       </main>
       
       {/* Footer */}

@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - Mobile-optimized with touch-friendly components
+// src/pages/Discover.tsx - Complete with mobile scrolling fixes
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -52,12 +52,12 @@ const Discover = () => {
   const location = useLocation();
   
   // Hook for keyboard detection
-  const isKeyboardOpen = useKeyboardDetection();
+  const { isKeyboardOpen } = useKeyboardDetection();
     
   // URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {
-      view: (searchParams.get('view') as ViewMode) || (isMobile() ? 'list' : 'grid'), // Default to list on mobile
+      view: (searchParams.get('view') as ViewMode) || (isMobile() ? 'list' : 'grid'),
       search: searchParams.get('search') || '',
       colors: searchParams.get('colors')?.split(',').filter(Boolean) || [],
       postcodes: searchParams.get('postcodes')?.split(',').filter(Boolean) || [],
@@ -283,8 +283,8 @@ const Discover = () => {
       filtered = filtered.filter(plaque => {
         if (!plaque.latitude || !plaque.longitude) return false;
         
-  const lat = plaque.latitude;
-  const lng = plaque.longitude;
+        const lat = plaque.latitude;
+        const lng = plaque.longitude;
         
         if (isNaN(lat) || isNaN(lng)) return false;
         
@@ -509,7 +509,7 @@ const Discover = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="h-48 md:h-64 bg-gray-100 rounded-lg animate-pulse"></div>
           ))}
@@ -538,31 +538,33 @@ const Discover = () => {
 
     if (filteredPlaques.length === 0) {
       return (
-        <EmptyState
-          title="No plaques found"
-          description={
-            activeFiltersCount > 0 
-              ? "Try adjusting your filters to see more results."
-              : urlState.search.trim()
-              ? "Try different search terms or browse all plaques."
-              : "No plaques are available at the moment."
-          }
-          actionButton={
-            activeFiltersCount > 0 ? (
-              <MobileButton onClick={resetFilters} variant="outline" touchOptimized>
-                Clear Filters
-              </MobileButton>
-            ) : urlState.search.trim() ? (
-              <MobileButton 
-                onClick={() => updateUrlState({ search: '' })} 
-                variant="outline"
-                touchOptimized
-              >
-                Clear Search
-              </MobileButton>
-            ) : null
-          }
-        />
+        <div className="pb-20">
+          <EmptyState
+            title="No plaques found"
+            description={
+              activeFiltersCount > 0 
+                ? "Try adjusting your filters to see more results."
+                : urlState.search.trim()
+                ? "Try different search terms or browse all plaques."
+                : "No plaques are available at the moment."
+            }
+            actionButton={
+              activeFiltersCount > 0 ? (
+                <MobileButton onClick={resetFilters} variant="outline" touchOptimized>
+                  Clear Filters
+                </MobileButton>
+              ) : urlState.search.trim() ? (
+                <MobileButton 
+                  onClick={() => updateUrlState({ search: '' })} 
+                  variant="outline"
+                  touchOptimized
+                >
+                  Clear Search
+                </MobileButton>
+              ) : null
+            }
+          />
+        </div>
       );
     }
 
@@ -574,8 +576,8 @@ const Discover = () => {
 
     if (urlState.view === 'grid') {
       return (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="pb-20 md:pb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             {paginatedPlaques.map((plaque) => (
               <PlaqueCard
                 key={plaque.id}
@@ -588,7 +590,7 @@ const Discover = () => {
           </div>
           
           {totalPages > 1 && (
-            <div className="mt-6 md:mt-8">
+            <div className="pb-4">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -604,14 +606,14 @@ const Discover = () => {
               />
             </div>
           )}
-        </>
+        </div>
       );
     }
 
     if (urlState.view === 'list') {
       return (
-        <>
-          <div className="space-y-3 md:space-y-4">
+        <div className="pb-20 md:pb-8">
+          <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
             {paginatedPlaques.map((plaque) => (
               <PlaqueListItem
                 key={plaque.id}
@@ -624,7 +626,7 @@ const Discover = () => {
           </div>
           
           {totalPages > 1 && (
-            <div className="mt-6 md:mt-8">
+            <div className="pb-4">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -640,7 +642,7 @@ const Discover = () => {
               />
             </div>
           )}
-        </>
+        </div>
       );
     }
   };
@@ -650,8 +652,8 @@ const Discover = () => {
       activePage="discover"
       hasFooter={urlState.view !== 'map'}
       simplifiedFooter={true}
-      paddingBottom={isKeyboardOpen ? 'none' : 'mobile-nav'}
-      className={isKeyboardOpen ? 'keyboard-open' : ''}
+      paddingBottom="none"
+      className={`discover-page ${isKeyboardOpen ? 'keyboard-open' : ''}`}
     >
       {/* Pending Action Handler */}
       <PendingActionHandler 
@@ -694,38 +696,40 @@ const Discover = () => {
         onClearDistanceFilter={handleClearDistanceFilter}
       />
       
-      {/* Status bar */}
-      <div className="container mx-auto px-4 py-3 md:py-4">
-        <div className="flex justify-between items-center mb-3 md:mb-4">
-          <h2 className="text-sm md:text-base font-medium text-gray-600">
-            {loading ? "Loading plaques..." : (
-              <>
-                {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-                {distanceFilter.enabled && distanceFilter.locationName && (
-                  <span className="ml-2 text-green-600 text-xs md:text-sm">
-                    within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
-                  </span>
-                )}
-              </>
+      {/* FIXED: Main content container with proper mobile scrolling */}
+      <div className="flex-1 min-h-0 overflow-y-auto mobile-scroll-container" style={{ height: 'calc(100vh - 140px)', paddingBottom: '80px' }}>
+        <div className="container mx-auto px-4 py-3 md:py-4">
+          <div className="flex justify-between items-center mb-3 md:mb-4">
+            <h2 className="text-sm md:text-base font-medium text-gray-600">
+              {loading ? "Loading plaques..." : (
+                <>
+                  {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
+                  {distanceFilter.enabled && distanceFilter.locationName && (
+                    <span className="ml-2 text-green-600 text-xs md:text-sm">
+                      within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
+                    </span>
+                  )}
+                </>
+              )}
+            </h2>
+            
+            {/* Mobile quick actions button */}
+            {isMobile() && (
+              <MobileButton
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQuickActions(true)}
+                className="text-xs"
+                touchOptimized
+              >
+                Quick Actions
+              </MobileButton>
             )}
-          </h2>
+          </div>
           
-          {/* Mobile quick actions button */}
-          {isMobile() && (
-            <MobileButton
-              variant="outline"
-              size="sm"
-              onClick={() => setShowQuickActions(true)}
-              className="text-xs"
-              touchOptimized
-            >
-              Quick Actions
-            </MobileButton>
-          )}
+          {/* Main Content */}
+          {renderContent()}
         </div>
-        
-        {/* Main Content */}
-        {renderContent()}
       </div>
       
       {/* Floating Action Button for location access */}

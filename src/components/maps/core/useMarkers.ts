@@ -1,4 +1,4 @@
-// src/components/maps/core/useMarkers.ts - COMPLETE FIXED VERSION
+// src/components/maps/core/useMarkers.ts - UPDATED: Higher z-index for popups
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -9,11 +9,10 @@ import { createPlaqueIcon, createPlaquePopup } from '../utils/markerUtils';
 
 interface MarkerOptions {
   onMarkerClick: (plaque: Plaque) => void;
-  onAddToRoute?: (plaque: Plaque) => void; // NEW: Separate handler for route actions
+  onAddToRoute?: (plaque: Plaque) => void;
   routeMode: boolean;
 }
 
-// FIXED: Proper export of the hook
 export const useMarkers = (
   map: L.Map | null,
   plaques: Plaque[],
@@ -53,7 +52,7 @@ export const useMarkers = (
       clusterGroupRef.current = null;
     }
     
-    // Create cluster group with Minimalist Outline styling
+    // Create cluster group with enhanced styling
     const clusterGroup = L.markerClusterGroup({
       maxClusterRadius: 80,
       spiderfyOnMaxZoom: true,
@@ -124,7 +123,7 @@ export const useMarkers = (
           return;
         }
         
-        // FIXED: Proper type conversion for coordinates
+        // Proper type conversion for coordinates
         const lat = typeof plaque.latitude === 'string' 
           ? parseFloat(plaque.latitude) 
           : plaque.latitude as number;
@@ -152,19 +151,19 @@ export const useMarkers = (
           zIndexOffset: 0
         });
         
-        // FIXED: Create popup with BOTH handlers
+        // Create popup with BOTH handlers and HIGH Z-INDEX
         const popupContent = createPlaquePopup(
           plaque,
-          options.onMarkerClick, // Handler for "View Details"
+          options.onMarkerClick,
           options.routeMode,
-          options.onAddToRoute || null // Handler for "Add to Route" (separate)
+          options.onAddToRoute || null
         );
         
-        // FIXED: Proper popup options typing
+        // CRITICAL: Set high z-index for popups to appear above controls
         const popupOptions: L.PopupOptions = {
           closeButton: true,
           autoClose: true,
-          className: 'plaque-popup-container',
+          className: 'plaque-popup-container high-z-popup',
           maxWidth: 300,
           minWidth: 200,
           offset: [0, -20] as L.PointTuple,
@@ -174,14 +173,28 @@ export const useMarkers = (
         
         marker.bindPopup(popupContent, popupOptions);
         
-        // FIXED: Only open popup on click, don't auto-trigger any actions
+        // Only open popup on click, don't auto-trigger any actions
         marker.on('click', function(e: any) {
           console.log('🗺️ useMarkers: Marker clicked, opening popup for:', plaque.title);
           e.originalEvent?.stopPropagation();
+          
+          // CRITICAL: Ensure popup gets the highest z-index when opened
+          setTimeout(() => {
+            const popupElement = marker.getPopup()?.getElement();
+            if (popupElement) {
+              popupElement.style.zIndex = '10001';
+              // Also set z-index on parent container
+              const container = popupElement.closest('.leaflet-popup');
+              if (container) {
+                (container as HTMLElement).style.zIndex = '10001';
+              }
+            }
+          }, 50);
+          
           marker.openPopup();
         });
         
-        // FIXED: Add hover effects for better UX with proper typing
+        // Add hover effects for better UX
         marker.on('mouseover', function(this: L.Marker) {
           this.getElement()?.classList.add('marker-hover');
         });
@@ -243,7 +256,6 @@ export const useMarkers = (
     
   }, [map, plaques, options.onMarkerClick, options.onAddToRoute, options.routeMode]);
   
-  // Return marker management functions if needed
   return {
     getMarker: (plaqueId: number) => markersRef.current.get(plaqueId),
     getAllMarkers: () => Array.from(markersRef.current.values()),
