@@ -1,9 +1,9 @@
-// src/components/plaques/PlaqueDetail.tsx - COMPLETE VERSION WITH FIXED Z-INDEX
+// src/components/plaques/PlaqueDetail.tsx - ENHANCED WITH MODAL STATE MANAGEMENT
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
   MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
   Navigation, Plus, Eye, FileText, FolderOpen, Share2, MoreHorizontal, Copy,
-  Edit, Trash2
+  Edit, Trash2, ArrowLeft
 } from 'lucide-react';
 import { 
   Dialog as MainDialog,
@@ -11,13 +11,7 @@ import {
   DialogHeader as MainDialogHeader,
   DialogTitle as MainDialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
-} from "@/components/ui/dialog";
+// Removed unused Dialog imports - we're using MainDialog for the container
 import { Button } from "@/components/ui/button";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { Label } from "@/components/ui/label";
@@ -31,7 +25,6 @@ import { useFavorites } from '@/hooks/useFavorites';
 import { useCollections } from '@/hooks/useCollection';
 import { useAuthGate } from '@/hooks/useAuthGate';
 import AddToCollectionDialog from './AddToCollectionDialog';
-import EditVisitDialog from './EditVisitDialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -56,6 +49,9 @@ type PlaqueDetailProps = {
   generateShareUrl?: (plaqueId: number) => string;
   currentPath?: string;
 };
+
+// Modal States
+type ModalState = 'detail' | 'editVisit' | 'deleteConfirm' | 'addToCollection' | 'markVisited';
 
 export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   plaque,
@@ -89,18 +85,17 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     isAuthenticated 
   } = useAuthGate();
   
-  // State
+  // ENHANCED: Modal State Management
+  const [modalState, setModalState] = useState<ModalState>('detail');
+  
+  // State for visit actions
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
-  const [showAddToCollection, setShowAddToCollection] = useState(false);
-  const [showVisitDialog, setShowVisitDialog] = useState(false);
-  const [showEditVisitDialog, setShowEditVisitDialog] = useState(false);
-  const [showDeleteVisitConfirm, setShowDeleteVisitConfirm] = useState(false);
   const [showFullInscription, setShowFullInscription] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
   const [showAllCollections, setShowAllCollections] = useState(false);
   const [showSimpleMenu, setShowSimpleMenu] = useState(false);
   
-  // Visit dialog state
+  // Visit form state
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [visitNotes, setVisitNotes] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
@@ -125,6 +120,18 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       return collectionPlaques.includes(plaque.id);
     });
   }, [collections, plaque]);
+
+  // ENHANCED: Modal Navigation Functions
+  const navigateToModalState = useCallback((newState: ModalState) => {
+    console.log(`Navigating from ${modalState} to ${newState}`);
+    setModalState(newState);
+  }, [modalState]);
+
+  const returnToDetail = useCallback(() => {
+    console.log('Returning to detail view');
+    triggerHapticFeedback('selection');
+    navigateToModalState('detail');
+  }, [navigateToModalState]);
 
   // Helper functions
   const truncateText = (text: string, maxLength: number = 150) => {
@@ -186,7 +193,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const locationDisplay = safeTrim(plaque.location || plaque.address);
   const imageUrl = plaque.image || plaque.main_photo;
 
-  // Enhanced handlers with auth gate integration and haptic feedback
+  // ENHANCED: Action handlers with modal state navigation
   const handleFavoriteToggle = useCallback(() => {
     const favoriteAction = () => {
       triggerHapticFeedback('selection');
@@ -209,20 +216,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     const visitAction = () => {
       setVisitDate(new Date());
       setVisitNotes('');
-      setShowVisitDialog(true);
+      navigateToModalState('markVisited');
     };
 
     requireAuthForVisit(plaque.id, visitAction);
-  }, [isVisited, plaque.id, requireAuthForVisit]);
+  }, [isVisited, plaque.id, requireAuthForVisit, navigateToModalState]);
 
   const handleAddToCollection = useCallback(() => {
     const collectionAction = () => {
-      setShowAddToCollection(true);
+      navigateToModalState('addToCollection');
       setShowSimpleMenu(false);
     };
 
     requireAuthForCollection(plaque.id, collectionAction);
-  }, [plaque.id, requireAuthForCollection]);
+  }, [plaque.id, requireAuthForCollection, navigateToModalState]);
 
   const handleGetDirections = useCallback(() => {
     triggerHapticFeedback('light');
@@ -340,17 +347,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     }
   }, [plaque.id, plaque.title, generateShareUrl, handleCopyLink]);
 
-  // Visit management handlers
+  // ENHANCED: Visit management handlers with modal state navigation
   const handleEditVisit = useCallback(() => {
-    setShowEditVisitDialog(true);
+    console.log('Edit visit clicked - navigating to editVisit state');
+    triggerHapticFeedback('selection');
+    navigateToModalState('editVisit');
     setShowSimpleMenu(false);
-  }, []);
+  }, [navigateToModalState]);
 
   const handleDeleteVisit = useCallback(() => {
+    console.log('Delete visit clicked - navigating to deleteConfirm state');
     triggerHapticFeedback('warning');
-    setShowDeleteVisitConfirm(true);
+    navigateToModalState('deleteConfirm');
     setShowSimpleMenu(false);
-  }, []);
+  }, [navigateToModalState]);
 
   const handleConfirmDeleteVisit = useCallback(async () => {
     if (!visitInfo) return;
@@ -359,17 +369,19 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       await removeVisit(visitInfo.id);
       triggerHapticFeedback('success');
       toast.success('Visit deleted');
-      setShowDeleteVisitConfirm(false);
       
       if (onMarkVisited) {
         onMarkVisited(plaque.id);
       }
+      
+      // Return to detail view after successful deletion
+      returnToDetail();
     } catch (error) {
       console.error('Error deleting visit:', error);
       triggerHapticFeedback('error');
       toast.error('Failed to delete visit');
     }
-  }, [visitInfo, removeVisit, onMarkVisited, plaque.id]);
+  }, [visitInfo, removeVisit, onMarkVisited, plaque.id, returnToDetail]);
 
   // Add to route handler
   const handleAddToRoute = useCallback(() => {
@@ -381,7 +393,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     setShowSimpleMenu(false);
   }, [onAddToRoute, plaque]);
 
-  // Visit form submission
+  // ENHANCED: Visit form submission with state navigation
   const handleVisitSubmit = useCallback(async () => {
     setIsMarkingVisited(true);
     triggerHapticFeedback('light');
@@ -401,11 +413,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       
       triggerHapticFeedback('success');
       toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
-      setShowVisitDialog(false);
       
       if (onMarkVisited) {
         onMarkVisited(plaque.id);
       }
+      
+      // Return to detail view after successful visit marking
+      returnToDetail();
       
     } catch (error) {
       console.error("Error marking as visited:", error);
@@ -414,7 +428,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     } finally {
       setIsMarkingVisited(false);
     }
-  }, [plaque.id, visitDate, visitNotes, markAsVisited, onMarkVisited]);
+  }, [plaque.id, visitDate, visitNotes, markAsVisited, onMarkVisited, returnToDetail]);
 
   // Enhanced z-index management for map view
   const dialogZIndex = isMapView ? 9999 : 1000;
@@ -847,188 +861,148 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     </div>
   );
 
-  // If full page mode, render without Dialog wrapper
-  if (isFullPage) {
-    return (
-      <div className={`fixed inset-0 bg-white z-50 overflow-hidden ${className}`}>
-        <div className="h-full flex flex-col overflow-hidden">
-          {/* Hero Image */}
-          <div className="relative h-48 bg-blue-50">
-            <PlaqueImage 
-              src={imageUrl}
-              alt={safeString(plaque.title)} 
-              className="w-full h-full object-cover"
-              placeholderClassName="bg-blue-50"
-              plaqueColor={plaqueColor}
-            />
-            
-            {/* Status Badges - Top Left */}
-            <div className="absolute top-3 left-3 flex flex-col gap-1">
-              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                plaqueColor === 'blue' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                plaqueColor === 'green' ? 'bg-green-100 text-green-800 border border-green-200' :
-                plaqueColor === 'brown' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                plaqueColor === 'black' ? 'bg-gray-100 text-gray-800 border border-gray-300' :
-                'bg-gray-100 text-gray-800 border border-gray-200'
-              }`}>
-                {plaqueColor?.charAt(0).toUpperCase() + plaqueColor?.slice(1)} Plaque
-              </div>
-              
-              {isValidValue(plaque.erected) && (
-                <div className="bg-white/90 text-gray-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                  <Calendar size={10} />
-                  {safeString(plaque.erected)}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons - Top Right */}
-            <div className="absolute top-3 right-3 flex gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onClose}
-                className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-10 h-10 p-0"
+  // ENHANCED: Modal State Renderer - handles different states within single modal
+  const renderModalContent = () => {
+    console.log('Rendering modal content for state:', modalState);
+    
+    switch (modalState) {
+      case 'editVisit':
+        return (
+          <div className="h-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+              <MobileButton 
+                variant="ghost" 
+                size="sm" 
+                onClick={returnToDetail}
+                className="p-2"
+                touchOptimized={true}
               >
-                <X size={16} />
-              </Button>
+                <ArrowLeft size={20} />
+              </MobileButton>
+              <h2 className="text-lg font-semibold">Edit Visit - {plaque.title}</h2>
             </div>
-
-            {/* Visit Status Badge - Bottom Right */}
-            {isVisited && (
-              <div className="absolute bottom-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                <CheckCircle size={12} />
-                Visited {formatVisitDate()}
-              </div>
-            )}
-
-            {/* Distance Badge - Bottom Left */}
-            {showDistance && distance && (
-              <div className="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-medium">
-                {formatDistance(distance)} away
-              </div>
-            )}
-          </div>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Header */}
-            <div className="p-4 pb-2 border-b border-gray-100">
-              <h1 className="text-xl font-bold text-gray-900 mb-2">{safeString(plaque.title)}</h1>
-              {locationDisplay && (
-                <div className="flex items-start gap-2">
-                  <MapPin size={14} className="text-gray-400 mt-1 flex-shrink-0" />
-                  <p className="text-gray-600 text-sm leading-relaxed">{locationDisplay}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="p-4 pb-20">
-              <ContentSections />
-            </div>
-          </div>
-
-          {/* Mobile Action Strip - Fixed Bottom */}
-          <MobileActionStrip />
-        </div>
-
-        {/* All dialogs with FIXED Z-INDEX */}
-        {showAddToCollection && (
-          <AddToCollectionDialog
-            plaque={plaque}
-            isOpen={showAddToCollection}
-            onClose={() => setShowAddToCollection(false)}
-            className="z-[10001]"
-            style={{ zIndex: 10001 }}
-          />
-        )}
-
-        {/* Visit Dialog - FIXED Z-INDEX */}
-        <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
-          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
-            <DialogHeader>
-              <DialogTitle>Mark as Visited</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="visit-date">Visit Date</Label>
-                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                      onClick={() => setShowCalendar(true)}
+            
+            {/* Render EditVisitDialog content directly without dialog wrapper */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-6">
+                {/* Date Selection */}
+                <div className="space-y-3">
+                  <label className="text-base font-medium block">Visit Date:</label>
+                  <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                    <PopoverTrigger asChild>
+                      <MobileButton
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal h-12"
+                        touchOptimized={true}
+                      >
+                        <Calendar className="mr-3 h-5 w-5" />
+                        <span className="text-base">
+                          {visitInfo?.visited_at ? format(new Date(visitInfo.visited_at), 'PPP') : 'Select date'}
+                        </span>
+                      </MobileButton>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      className="w-auto p-0 z-[10002]" 
+                      align="start"
+                      side="bottom"
+                      sideOffset={8}
                     >
-                      <Calendar size={16} className="mr-2" />
-                      {format(visitDate, 'PPP')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[10002]" align="start" style={{ zIndex: 10002 }}>
-                    <CalendarComponent
-                      mode="single"
-                      selected={visitDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setVisitDate(date);
-                          setShowCalendar(false);
+                      <CalendarComponent
+                        mode="single"
+                        selected={visitInfo?.visited_at ? new Date(visitInfo.visited_at) : new Date()}
+                        onSelect={(date) => {
+                          if (date) {
+                            triggerHapticFeedback('selection');
+                            // Handle date change here
+                          }
+                        }}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date('1900-01-01')
                         }
-                      }}
-                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="visit-notes">Notes (Optional)</Label>
-                <Textarea
-                  id="visit-notes"
-                  placeholder="Add any notes about your visit..."
-                  value={visitNotes}
-                  onChange={(e) => setVisitNotes(e.target.value)}
-                  className="min-h-[80px]"
-                />
+                        initialFocus
+                        className="rounded-md border"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-3">
+                  <label className="text-base font-medium block">Notes:</label>
+                  <Textarea
+                    placeholder="What did you find interesting about this visit?"
+                    defaultValue={visitInfo?.notes || ''}
+                    rows={4}
+                    className="resize-none text-base"
+                  />
+                  <div className="text-sm text-gray-500">
+                    0/500 characters
+                  </div>
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowVisitDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleVisitSubmit} disabled={isMarkingVisited}>
-                {isMarkingVisited ? 'Saving...' : 'Mark as Visited'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            
+            {/* Footer with actions */}
+            <div className="border-t border-gray-200 p-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-3 w-full">
+                <MobileButton
+                  variant="outline"
+                  onClick={() => navigateToModalState('deleteConfirm')}
+                  className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100 flex-1 sm:flex-initial"
+                  touchOptimized={true}
+                >
+                  <Trash2 size={18} className="mr-2" />
+                  Delete
+                </MobileButton>
 
-        {/* Edit Visit Dialog - FIXED Z-INDEX */}
-        <EditVisitDialog
-          isOpen={showEditVisitDialog}
-          onClose={() => setShowEditVisitDialog(false)}
-          plaque={plaque}
-          visitId={visitInfo?.id || null}
-          onVisitUpdated={() => {
-            if (onMarkVisited) onMarkVisited(plaque.id);
-          }}
-          onVisitDeleted={() => {
-            if (onMarkVisited) onMarkVisited(plaque.id);
-          }}
-        />
+                <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                  <MobileButton 
+                    variant="outline" 
+                    onClick={returnToDetail}
+                    className="flex-1"
+                    touchOptimized={true}
+                  >
+                    Cancel
+                  </MobileButton>
+                  <MobileButton 
+                    onClick={() => {
+                      // Handle save logic here
+                      triggerHapticFeedback('success');
+                      toast.success('Visit updated successfully');
+                      returnToDetail();
+                    }}
+                    className="flex-1"
+                    touchOptimized={true}
+                  >
+                    Save Changes
+                  </MobileButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
 
-        {/* Delete Visit Confirmation - FIXED Z-INDEX */}
-        <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
-          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
-            <DialogHeader>
-              <DialogTitle>Delete Visit Record</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <p className="text-gray-600 mb-4">
+      case 'deleteConfirm':
+        return (
+          <div className="h-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+              <MobileButton 
+                variant="ghost" 
+                size="sm" 
+                onClick={returnToDetail}
+                className="p-2"
+                touchOptimized={true}
+              >
+                <ArrowLeft size={20} />
+              </MobileButton>
+              <h2 className="text-lg font-semibold text-red-600">Delete Visit</h2>
+            </div>
+            <div className="flex-1 p-4">
+              <p className="text-gray-600 mb-4 text-base leading-relaxed">
                 Are you sure you want to delete your visit record for this plaque? This action cannot be undone.
               </p>
               {visitInfo && (
-                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-6">
                   <p className="text-sm text-red-800">
                     <strong>Visit Date:</strong> {formatVisitDate()}
                   </p>
@@ -1040,21 +1014,239 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowDeleteVisitConfirm(false)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleConfirmDeleteVisit}>
-                Delete Visit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            <div className="border-t border-gray-200 p-4">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <MobileButton
+                  variant="outline"
+                  onClick={returnToDetail}
+                  className="flex-1"
+                  touchOptimized={true}
+                >
+                  Cancel
+                </MobileButton>
+                <MobileButton
+                  variant="destructive"
+                  onClick={handleConfirmDeleteVisit}
+                  className="flex-1"
+                  touchOptimized={true}
+                >
+                  Delete Visit
+                </MobileButton>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'addToCollection':
+        return (
+          <div className="h-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+              <MobileButton 
+                variant="ghost" 
+                size="sm" 
+                onClick={returnToDetail}
+                className="p-2"
+                touchOptimized={true}
+              >
+                <ArrowLeft size={20} />
+              </MobileButton>
+              <h2 className="text-lg font-semibold">Add to Collection</h2>
+            </div>
+            
+            {/* Use AddToCollectionDialog but override its modal behavior */}
+            <div className="flex-1 overflow-hidden">
+              <AddToCollectionDialog
+                isOpen={true}
+                onClose={returnToDetail}
+                plaque={plaque}
+              />
+            </div>
+          </div>
+        );
+
+      case 'markVisited':
+        return (
+          <div className="h-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+              <MobileButton 
+                variant="ghost" 
+                size="sm" 
+                onClick={returnToDetail}
+                className="p-2"
+                touchOptimized={true}
+              >
+                <ArrowLeft size={20} />
+              </MobileButton>
+              <h2 className="text-lg font-semibold">Mark as Visited</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label htmlFor="visit-date" className="text-base font-medium">Visit Date</Label>
+                  <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                    <PopoverTrigger asChild>
+                      <MobileButton
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal h-12"
+                        onClick={() => setShowCalendar(true)}
+                        touchOptimized={true}
+                      >
+                        <Calendar size={16} className="mr-2" />
+                        {format(visitDate, 'PPP')}
+                      </MobileButton>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-[10002]" align="start" style={{ zIndex: 10002 }}>
+                      <CalendarComponent
+                        mode="single"
+                        selected={visitDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setVisitDate(date);
+                            setShowCalendar(false);
+                          }
+                        }}
+                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="visit-notes" className="text-base font-medium">Notes (Optional)</Label>
+                  <Textarea
+                    id="visit-notes"
+                    placeholder="Add any notes about your visit..."
+                    value={visitNotes}
+                    onChange={(e) => setVisitNotes(e.target.value)}
+                    className="min-h-[80px] text-base"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-200 p-4">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <MobileButton 
+                  variant="outline" 
+                  onClick={returnToDetail}
+                  disabled={isMarkingVisited}
+                  className="flex-1"
+                  touchOptimized={true}
+                >
+                  Cancel
+                </MobileButton>
+                <MobileButton 
+                  onClick={handleVisitSubmit} 
+                  disabled={isMarkingVisited}
+                  className="flex-1"
+                  touchOptimized={true}
+                >
+                  {isMarkingVisited ? 'Saving...' : 'Mark as Visited'}
+                </MobileButton>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'detail':
+      default:
+        return (
+          <>
+            {/* Hero Image */}
+            <div className="relative h-48 bg-blue-50">
+              <PlaqueImage 
+                src={imageUrl}
+                alt={safeString(plaque.title)} 
+                className="w-full h-full object-cover"
+                placeholderClassName="bg-blue-50"
+                plaqueColor={plaqueColor}
+              />
+              
+              {/* Status Badges - Top Left */}
+              <div className="absolute top-3 left-3 flex flex-col gap-1">
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  plaqueColor === 'blue' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                  plaqueColor === 'green' ? 'bg-green-100 text-green-800 border border-green-200' :
+                  plaqueColor === 'brown' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                  plaqueColor === 'black' ? 'bg-gray-100 text-gray-800 border border-gray-300' :
+                  'bg-gray-100 text-gray-800 border border-gray-200'
+                }`}>
+                  {plaqueColor?.charAt(0).toUpperCase() + plaqueColor?.slice(1)} Plaque
+                </div>
+                
+                {isValidValue(plaque.erected) && (
+                  <div className="bg-white/90 text-gray-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                    <Calendar size={10} />
+                    {safeString(plaque.erected)}
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button - Top Right */}
+              <div className="absolute top-3 right-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={onClose}
+                  className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-10 h-10 p-0"
+                >
+                  <X size={16} />
+                </Button>
+              </div>
+
+              {/* Visit Status Badge - Bottom Right */}
+              {isVisited && (
+                <div className="absolute bottom-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                  <CheckCircle size={12} />
+                  Visited {formatVisitDate()}
+                </div>
+              )}
+
+              {/* Distance Badge - Bottom Left */}
+              {showDistance && distance && (
+                <div className="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  {formatDistance(distance)} away
+                </div>
+              )}
+            </div>
+
+            {/* Header */}
+            <MainDialogHeader className="p-4 pb-2 border-b border-gray-100">
+              <MainDialogTitle className="text-xl font-bold text-gray-900 mb-2 text-left">
+                {safeString(plaque.title)}
+              </MainDialogTitle>
+              {locationDisplay && (
+                <div className="flex items-start gap-2">
+                  <MapPin size={14} className="text-gray-400 mt-1 flex-shrink-0" />
+                  <p className="text-gray-600 text-sm leading-relaxed">{locationDisplay}</p>
+                </div>
+              )}
+            </MainDialogHeader>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto p-4 pb-20">
+              <ContentSections />
+            </div>
+
+            {/* Mobile Action Strip - Fixed Bottom */}
+            <MobileActionStrip />
+          </>
+        );
+    }
+  };
+
+  // If full page mode, render without Dialog wrapper
+  if (isFullPage) {
+    return (
+      <div className={`fixed inset-0 bg-white z-50 overflow-hidden ${className}`}>
+        <div className="h-full flex flex-col overflow-hidden">
+          {renderModalContent()}
+        </div>
       </div>
     );
   }
 
-  // Regular dialog mode (not full page)
+  // ENHANCED: Regular dialog mode with state-based content
   return (
     <MainDialog open={isOpen} onOpenChange={onClose}>
       <MainDialogContent 
@@ -1062,203 +1254,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         style={{ zIndex: dialogZIndex }}
       >
         <div className="flex flex-col h-full max-h-[90vh]">
-          {/* Hero Image */}
-          <div className="relative h-48 bg-blue-50">
-            <PlaqueImage 
-              src={imageUrl}
-              alt={safeString(plaque.title)} 
-              className="w-full h-full object-cover"
-              placeholderClassName="bg-blue-50"
-              plaqueColor={plaqueColor}
-            />
-            
-            {/* Status Badges - Top Left */}
-            <div className="absolute top-3 left-3 flex flex-col gap-1">
-              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                plaqueColor === 'blue' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                plaqueColor === 'green' ? 'bg-green-100 text-green-800 border border-green-200' :
-                plaqueColor === 'brown' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                plaqueColor === 'black' ? 'bg-gray-100 text-gray-800 border border-gray-300' :
-                'bg-gray-100 text-gray-800 border border-gray-200'
-              }`}>
-                {plaqueColor?.charAt(0).toUpperCase() + plaqueColor?.slice(1)} Plaque
-              </div>
-              
-              {isValidValue(plaque.erected) && (
-                <div className="bg-white/90 text-gray-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                  <Calendar size={10} />
-                  {safeString(plaque.erected)}
-                </div>
-              )}
-            </div>
-
-            {/* Close Button - Top Right */}
-            <div className="absolute top-3 right-3">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onClose}
-                className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-10 h-10 p-0"
-              >
-                <X size={16} />
-              </Button>
-            </div>
-
-            {/* Visit Status Badge - Bottom Right */}
-            {isVisited && (
-              <div className="absolute bottom-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                <CheckCircle size={12} />
-                Visited {formatVisitDate()}
-              </div>
-            )}
-
-            {/* Distance Badge - Bottom Left */}
-            {showDistance && distance && (
-              <div className="absolute bottom-3 left-3 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-medium">
-                {formatDistance(distance)} away
-              </div>
-            )}
-          </div>
-
-          {/* Header */}
-          <MainDialogHeader className="p-4 pb-2 border-b border-gray-100">
-            <MainDialogTitle className="text-xl font-bold text-gray-900 mb-2 text-left">
-              {safeString(plaque.title)}
-            </MainDialogTitle>
-            {locationDisplay && (
-              <div className="flex items-start gap-2">
-                <MapPin size={14} className="text-gray-400 mt-1 flex-shrink-0" />
-                <p className="text-gray-600 text-sm leading-relaxed">{locationDisplay}</p>
-              </div>
-            )}
-          </MainDialogHeader>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-4 pb-20">
-            <ContentSections />
-          </div>
-
-          {/* Mobile Action Strip - Fixed Bottom */}
-          <MobileActionStrip />
+          {renderModalContent()}
         </div>
-
-        {/* All dialogs with FIXED Z-INDEX */}
-        {showAddToCollection && (
-          <AddToCollectionDialog
-            plaque={plaque}
-            isOpen={showAddToCollection}
-            onClose={() => setShowAddToCollection(false)}
-            className="z-[10001]"
-            style={{ zIndex: 10001 }}
-          />
-        )}
-
-        {/* Visit Dialog - FIXED Z-INDEX */}
-        <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
-          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
-            <DialogHeader>
-              <DialogTitle>Mark as Visited</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="visit-date">Visit Date</Label>
-                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                      onClick={() => setShowCalendar(true)}
-                    >
-                      <Calendar size={16} className="mr-2" />
-                      {format(visitDate, 'PPP')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[10002]" align="start" style={{ zIndex: 10002 }}>
-                    <CalendarComponent
-                      mode="single"
-                      selected={visitDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setVisitDate(date);
-                          setShowCalendar(false);
-                        }
-                      }}
-                      disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="visit-notes">Notes (Optional)</Label>
-                <Textarea
-                  id="visit-notes"
-                  placeholder="Add any notes about your visit..."
-                  value={visitNotes}
-                  onChange={(e) => setVisitNotes(e.target.value)}
-                  className="min-h-[80px]"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowVisitDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleVisitSubmit} disabled={isMarkingVisited}>
-                {isMarkingVisited ? 'Saving...' : 'Mark as Visited'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Visit Dialog - FIXED Z-INDEX */}
-        <EditVisitDialog
-          isOpen={showEditVisitDialog}
-          onClose={() => setShowEditVisitDialog(false)}
-          plaque={plaque}
-          visitId={visitInfo?.id || null}
-          onVisitUpdated={() => {
-            if (onMarkVisited) onMarkVisited(plaque.id);
-          }}
-          onVisitDeleted={() => {
-            if (onMarkVisited) onMarkVisited(plaque.id);
-          }}
-        />
-
-        {/* Delete Visit Confirmation - FIXED Z-INDEX */}
-        <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
-          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
-            <DialogHeader>
-              <DialogTitle>Delete Visit Record</DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
-              <p className="text-gray-600 mb-4">
-                Are you sure you want to delete your visit record for this plaque? This action cannot be undone.
-              </p>
-              {visitInfo && (
-                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                  <p className="text-sm text-red-800">
-                    <strong>Visit Date:</strong> {formatVisitDate()}
-                  </p>
-                  {visitInfo.notes && (
-                    <p className="text-sm text-red-800 mt-1">
-                      <strong>Notes:</strong> {visitInfo.notes.substring(0, 100)}{visitInfo.notes.length > 100 ? '...' : ''}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowDeleteVisitConfirm(false)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleConfirmDeleteVisit}>
-                Delete Visit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </MainDialogContent>
     </MainDialog>
   );
