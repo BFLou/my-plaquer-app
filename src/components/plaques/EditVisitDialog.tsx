@@ -1,4 +1,4 @@
-// src/components/plaques/EditVisitDialog.tsx - Mobile optimized
+// src/components/plaques/EditVisitDialog.tsx - Mobile optimized with Z-INDEX FIX (no style prop)
 import React, { useState, useEffect } from 'react';
 import { MobileDialog } from '@/components/ui/mobile-dialog';
 import { MobileButton } from '@/components/ui/mobile-button';
@@ -20,6 +20,8 @@ interface EditVisitDialogProps {
   visitId: string | null;
   onVisitUpdated: () => void;
   onVisitDeleted?: () => void;
+  // ADD ONLY CLASSNAME - no style prop since MobileDialog doesn't support it
+  className?: string;
 }
 
 const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
@@ -29,6 +31,7 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
   visitId,
   onVisitUpdated,
   onVisitDeleted,
+  className = '',
 }) => {
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
@@ -125,7 +128,8 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
         onClose={onClose}
         title={`Edit Visit - ${plaque.title}`}
         size="md"
-        className={isKeyboardOpen ? `mb-[${keyboardHeight}px]` : ''}
+        // CRITICAL: Use z-[10001] to appear above PlaqueDetail modal (z-[9999])
+        className={`z-[10001] [&>div]:z-[10001] ${isKeyboardOpen ? `mb-[${keyboardHeight}px]` : ''} ${className}`}
         footer={
           <div className="flex flex-col sm:flex-row justify-between gap-3 w-full">
             <MobileButton
@@ -173,8 +177,9 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
                   <span className="text-base">{format(visitDate, 'PPP')}</span>
                 </MobileButton>
               </PopoverTrigger>
+              {/* CRITICAL: Calendar needs highest z-index to appear above everything */}
               <PopoverContent 
-                className="w-auto p-0" 
+                className="w-auto p-0 z-[10002]" 
                 align="start"
                 side="bottom"
                 sideOffset={8}
@@ -211,12 +216,14 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
         </div>
       </MobileDialog>
 
-      {/* Delete Confirmation Dialog - Mobile optimized */}
+      {/* Delete Confirmation Dialog - HIGHEST Z-INDEX */}
       <MobileDialog
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
         title="Confirm Deletion"
         size="sm"
+        // HIGHEST Z-INDEX: z-[10003] to appear above EditVisitDialog
+        className="z-[10003] [&>div]:z-[10003]"
         footer={
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <MobileButton

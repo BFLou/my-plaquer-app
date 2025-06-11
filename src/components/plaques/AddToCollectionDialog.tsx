@@ -1,4 +1,4 @@
-// src/components/plaques/AddToCollectionDialog.tsx - Mobile optimized
+// src/components/plaques/AddToCollectionDialog.tsx - Mobile optimized with FIXED Z-INDEX
 import { useState, useEffect } from 'react';
 import { useCollections } from '../../hooks/useCollection';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,7 +24,7 @@ const AddToCollectionDialog = ({
   isOpen, 
   onClose, 
   plaque, 
-  className = ''
+  className = '',
 }: AddToCollectionDialogProps) => {
   const { user } = useAuth();
   const { collections, loading, addPlaqueToCollection } = useCollections();
@@ -132,7 +132,7 @@ const AddToCollectionDialog = ({
       onClose={onClose}
       title="Add to Collection"
       size="md"
-      className={className}
+      className={`z-[10001] ${className}`}
       footer={
         <div className="flex flex-col sm:flex-row gap-3 w-full">
           <MobileButton 

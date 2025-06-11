@@ -552,3 +552,11 @@
 .safe-area-right {
   padding-right: env(safe-area-inset-right, 0px);
 }
+
+.edit-visit-dialog {
+  z-index: 10000 !important;
+}
+
+.edit-visit-dialog > div {
+  z-index: 10000 !important;
+}

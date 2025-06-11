@@ -1,8 +1,9 @@
-// src/components/plaques/PlaqueDetail.tsx - COMPLETE MOBILE-OPTIMIZED VERSION
-import React, { useState, useMemo } from 'react';
+// src/components/plaques/PlaqueDetail.tsx - COMPLETE VERSION WITH FIXED Z-INDEX
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
-  Navigation, Plus, Eye, FileText, FolderOpen, Share2, MoreHorizontal
+  Navigation, Plus, Eye, FileText, FolderOpen, Share2, MoreHorizontal, Copy,
+  Edit, Trash2
 } from 'lucide-react';
 import { 
   Dialog as MainDialog,
@@ -10,16 +11,6 @@ import {
   DialogHeader as MainDialogHeader,
   DialogTitle as MainDialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { MobileButton } from "@/components/ui/mobile-button";
-import { Plaque } from '@/types/plaque';
-import PlaqueImage from './PlaqueImage';
-import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
-import { useFavorites } from '@/hooks/useFavorites';
-import { useCollections } from '@/hooks/useCollection';
-import { useAuthGate } from '@/hooks/useAuthGate';
-import AddToCollectionDialog from './AddToCollectionDialog';
-import { toast } from 'sonner';
 import { 
   Dialog, 
   DialogContent, 
@@ -27,19 +18,24 @@ import {
   DialogTitle, 
   DialogFooter 
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { MobileButton } from "@/components/ui/mobile-button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Plaque } from '@/types/plaque';
+import PlaqueImage from './PlaqueImage';
+import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useCollections } from '@/hooks/useCollection';
+import { useAuthGate } from '@/hooks/useAuthGate';
+import AddToCollectionDialog from './AddToCollectionDialog';
+import EditVisitDialog from './EditVisitDialog';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { triggerHapticFeedback } from '@/utils/mobileUtils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 type PlaqueDetailProps = {
   plaque: Plaque | null;
@@ -67,6 +63,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   onClose,
   isFavorite = false,
   onFavoriteToggle,
+  onMarkVisited,
+  onAddToRoute,
   nearbyPlaques = [],
   onSelectNearbyPlaque,
   className = '',
@@ -79,7 +77,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
 }) => {
   // Hooks
   const navigate = useNavigate();
-  const { isPlaqueVisited, getVisitInfo, markAsVisited } = useVisitedPlaques();
+  const { isPlaqueVisited, getVisitInfo, markAsVisited, removeVisit } = useVisitedPlaques();
   const { isFavorite: isInFavorites, toggleFavorite } = useFavorites();
   const { collections } = useCollections();
   
@@ -87,16 +85,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const { 
     requireAuthForVisit, 
     requireAuthForFavorite, 
-    requireAuthForCollection
+    requireAuthForCollection,
+    isAuthenticated 
   } = useAuthGate();
   
   // State
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   const [showAddToCollection, setShowAddToCollection] = useState(false);
   const [showVisitDialog, setShowVisitDialog] = useState(false);
+  const [showEditVisitDialog, setShowEditVisitDialog] = useState(false);
+  const [showDeleteVisitConfirm, setShowDeleteVisitConfirm] = useState(false);
   const [showFullInscription, setShowFullInscription] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
   const [showAllCollections, setShowAllCollections] = useState(false);
+  const [showSimpleMenu, setShowSimpleMenu] = useState(false);
   
   // Visit dialog state
   const [visitDate, setVisitDate] = useState<Date>(new Date());
@@ -185,7 +187,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const imageUrl = plaque.image || plaque.main_photo;
 
   // Enhanced handlers with auth gate integration and haptic feedback
-  const handleFavoriteToggle = () => {
+  const handleFavoriteToggle = useCallback(() => {
     const favoriteAction = () => {
       triggerHapticFeedback('selection');
       if (onFavoriteToggle) {
@@ -193,12 +195,15 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       } else {
         toggleFavorite(plaque.id);
       }
+      
+      const newState = !isPlaqueFavorite;
+      toast.success(newState ? 'Added to favorites' : 'Removed from favorites');
     };
 
     requireAuthForFavorite(plaque.id, favoriteAction);
-  };
+  }, [plaque.id, onFavoriteToggle, toggleFavorite, isPlaqueFavorite, requireAuthForFavorite]);
 
-  const handleMarkVisitedClick = () => {
+  const handleMarkVisitedClick = useCallback(() => {
     if (isVisited) return;
     
     const visitAction = () => {
@@ -208,36 +213,73 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     };
 
     requireAuthForVisit(plaque.id, visitAction);
-  };
+  }, [isVisited, plaque.id, requireAuthForVisit]);
 
-  const handleAddToCollection = () => {
+  const handleAddToCollection = useCallback(() => {
     const collectionAction = () => {
       setShowAddToCollection(true);
+      setShowSimpleMenu(false);
     };
 
     requireAuthForCollection(plaque.id, collectionAction);
-  };
+  }, [plaque.id, requireAuthForCollection]);
 
-  const handleGetDirections = () => {
+  const handleGetDirections = useCallback(() => {
     triggerHapticFeedback('light');
-    if (plaque.latitude && plaque.longitude) {
-      const url = `https://maps.google.com/?q=${plaque.latitude},${plaque.longitude}`;
-      window.open(url, '_blank');
-    } else if (plaque.address || plaque.location) {
-      const location = safeTrim(plaque.address || plaque.location);
-      const url = `https://maps.google.com/?q=${encodeURIComponent(location)}`;
-      window.open(url, '_blank');
+    setShowSimpleMenu(false);
+    
+    try {
+      if (plaque.latitude && plaque.longitude) {
+        const lat = typeof plaque.latitude === 'string' 
+          ? parseFloat(plaque.latitude) 
+          : plaque.latitude;
+        const lng = typeof plaque.longitude === 'string' 
+          ? parseFloat(plaque.longitude) 
+          : plaque.longitude;
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const url = `https://maps.google.com/maps?daddr=${lat},${lng}&dirflg=w`;
+          window.open(url, '_blank');
+          toast.success('Opening walking directions');
+          return;
+        }
+      }
+      
+      if (plaque.address || plaque.location) {
+        const location = safeTrim(plaque.address || plaque.location);
+        const encodedLocation = encodeURIComponent(`${location}, London, UK`);
+        const url = `https://maps.google.com/maps?daddr=${encodedLocation}&dirflg=w`;
+        window.open(url, '_blank');
+        toast.success('Opening directions');
+        return;
+      }
+      
+      if (plaque.title) {
+        const encodedTitle = encodeURIComponent(`${plaque.title} plaque London`);
+        const url = `https://maps.google.com/maps?q=${encodedTitle}`;
+        window.open(url, '_blank');
+        toast.info('Searching for plaque location');
+        return;
+      }
+      
+      toast.error('Location information not available');
+    } catch (error) {
+      console.error('Error opening directions:', error);
+      toast.error('Could not open directions');
     }
-  };
+  }, [plaque]);
 
   // Navigate to full page
-  const handleViewFullDetails = () => {
+  const handleViewFullDetails = useCallback(() => {
     triggerHapticFeedback('selection');
+    setShowSimpleMenu(false);
     navigate(`/plaque/${plaque.id}`);
-  };
+  }, [navigate, plaque.id]);
 
   // Enhanced copy link functionality
-  const handleCopyLink = async () => {
+  const handleCopyLink = useCallback(async () => {
+    setShowSimpleMenu(false);
+    
     try {
       const plaqueUrl = generateShareUrl 
         ? generateShareUrl(plaque.id)
@@ -249,12 +291,29 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     } catch (error) {
       console.error('Error copying link:', error);
       triggerHapticFeedback('error');
-      toast.error("Couldn't copy link");
+      
+      // Fallback for older browsers
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = generateShareUrl 
+          ? generateShareUrl(plaque.id)
+          : `${window.location.origin}/plaque/${plaque.id}`;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        toast.success('Link copied to clipboard!');
+      } catch (fallbackError) {
+        toast.error("Couldn't copy link - please copy manually");
+      }
     }
-  };
+  }, [plaque.id, generateShareUrl]);
 
   // Share functionality
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
+    setShowSimpleMenu(false);
+    
     const shareUrl = generateShareUrl 
       ? generateShareUrl(plaque.id)
       : `${window.location.origin}/plaque/${plaque.id}`;
@@ -271,17 +330,59 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         await navigator.share(shareData);
         triggerHapticFeedback('success');
       } catch (error) {
-        if (typeof error === 'object' && error !== null && 'name' in error && (error as { name?: string }).name !== 'AbortError') {
-          handleCopyLink(); // Fallback to copy
+        if (typeof error === 'object' && error !== null && 'name' in error && 
+            (error as { name?: string }).name !== 'AbortError') {
+          handleCopyLink();
         }
       }
     } else {
-      handleCopyLink(); // Fallback to copy
+      handleCopyLink();
     }
-  };
+  }, [plaque.id, plaque.title, generateShareUrl, handleCopyLink]);
+
+  // Visit management handlers
+  const handleEditVisit = useCallback(() => {
+    setShowEditVisitDialog(true);
+    setShowSimpleMenu(false);
+  }, []);
+
+  const handleDeleteVisit = useCallback(() => {
+    triggerHapticFeedback('warning');
+    setShowDeleteVisitConfirm(true);
+    setShowSimpleMenu(false);
+  }, []);
+
+  const handleConfirmDeleteVisit = useCallback(async () => {
+    if (!visitInfo) return;
+    
+    try {
+      await removeVisit(visitInfo.id);
+      triggerHapticFeedback('success');
+      toast.success('Visit deleted');
+      setShowDeleteVisitConfirm(false);
+      
+      if (onMarkVisited) {
+        onMarkVisited(plaque.id);
+      }
+    } catch (error) {
+      console.error('Error deleting visit:', error);
+      triggerHapticFeedback('error');
+      toast.error('Failed to delete visit');
+    }
+  }, [visitInfo, removeVisit, onMarkVisited, plaque.id]);
+
+  // Add to route handler
+  const handleAddToRoute = useCallback(() => {
+    if (onAddToRoute) {
+      onAddToRoute(plaque);
+      triggerHapticFeedback('light');
+      toast.success('Added to route');
+    }
+    setShowSimpleMenu(false);
+  }, [onAddToRoute, plaque]);
 
   // Visit form submission
-  const handleVisitSubmit = async () => {
+  const handleVisitSubmit = useCallback(async () => {
     setIsMarkingVisited(true);
     triggerHapticFeedback('light');
     
@@ -302,6 +403,10 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
       setShowVisitDialog(false);
       
+      if (onMarkVisited) {
+        onMarkVisited(plaque.id);
+      }
+      
     } catch (error) {
       console.error("Error marking as visited:", error);
       triggerHapticFeedback('error');
@@ -309,7 +414,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     } finally {
       setIsMarkingVisited(false);
     }
-  };
+  }, [plaque.id, visitDate, visitNotes, markAsVisited, onMarkVisited]);
 
   // Enhanced z-index management for map view
   const dialogZIndex = isMapView ? 9999 : 1000;
@@ -317,7 +422,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
     ? `${className} z-[9999] [&>div]:z-[9999]` 
     : className;
 
-  // Mobile Action Strip Component
+  // SIMPLE MOBILE ACTION STRIP WITH WORKING THREE-DOT MENU
   const MobileActionStrip = () => (
     <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -325,7 +430,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         <div className="flex items-center gap-2 flex-1">
           <MobileButton 
             onClick={handleMarkVisitedClick}
-            disabled={isVisited}
+            disabled={isVisited || isMarkingVisited}
             size="sm"
             className={`h-9 text-xs flex-1 max-w-[120px] ${
               isVisited 
@@ -335,7 +440,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
             touchOptimized={true}
           >
             <CheckCircle size={14} className="mr-1.5" />
-            {isVisited ? 'Visited' : 'Mark Visited'}
+            {isVisited ? 'Visited' : isMarkingVisited ? 'Saving...' : 'Mark Visited'}
           </MobileButton>
           
           <MobileButton 
@@ -376,32 +481,123 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           </MobileButton>
         </div>
         
-        {/* More Actions - Right Side */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <MobileButton 
-              variant="outline" 
-              size="sm" 
-              className="h-9 w-9 p-0"
-              touchOptimized={true}
+        {/* More Actions - WORKING SIMPLE VERSION */}
+        <div className="relative">
+          <MobileButton 
+            variant="outline" 
+            size="sm" 
+            className="h-9 w-9 p-0"
+            touchOptimized={true}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Three dots clicked - simple menu, current state:', showSimpleMenu);
+              triggerHapticFeedback('selection');
+              setShowSimpleMenu(!showSimpleMenu);
+            }}
+          >
+            <MoreHorizontal size={14} />
+          </MobileButton>
+          
+          {/* Simple dropdown menu - WORKING VERSION WITH FIXED Z-INDEX */}
+          {showSimpleMenu && (
+            <div 
+              className="absolute right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 w-48 z-[10000]"
+              onClick={(e) => e.stopPropagation()}
+              style={{ zIndex: 10000 }}
             >
-              <MoreHorizontal size={14} />
-            </MobileButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onSelect={handleAddToCollection}>
-              <Plus size={16} className="mr-2" />
-              Add to Collection
-            </DropdownMenuItem>
-            {!isFullPage && (
-              <DropdownMenuItem onSelect={handleViewFullDetails}>
-                <FileText size={16} className="mr-2" />
-                Full Details
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <button
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
+                onClick={() => {
+                  console.log('Add to Collection clicked - simple');
+                  handleAddToCollection();
+                }}
+              >
+                <Plus size={16} className="mr-3" />
+                Add to Collection
+              </button>
+              
+              {onAddToRoute && (
+                <button
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
+                  onClick={() => {
+                    console.log('Add to Route clicked - simple');
+                    handleAddToRoute();
+                  }}
+                >
+                  <Plus size={16} className="mr-3 text-green-600" />
+                  Add to Route
+                </button>
+              )}
+              
+              {!isFullPage && (
+                <button
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
+                  onClick={() => {
+                    console.log('Full Details clicked - simple');
+                    handleViewFullDetails();
+                  }}
+                >
+                  <FileText size={16} className="mr-3" />
+                  Full Details
+                </button>
+              )}
+              
+              <div className="border-t border-gray-200 my-1"></div>
+              
+              <button
+                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
+                onClick={() => {
+                  console.log('Copy Link clicked - simple');
+                  handleCopyLink();
+                }}
+              >
+                <Copy size={16} className="mr-3" />
+                Copy Link
+              </button>
+              
+              {/* Visit management options for authenticated users */}
+              {isAuthenticated && isVisited && visitInfo && (
+                <>
+                  <div className="border-t border-gray-200 my-1"></div>
+                  <button
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
+                    onClick={() => {
+                      console.log('Edit Visit clicked - simple');
+                      handleEditVisit();
+                    }}
+                  >
+                    <Edit size={16} className="mr-3 text-blue-600" />
+                    Edit Visit
+                  </button>
+                  <button
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
+                    onClick={() => {
+                      console.log('Delete Visit clicked - simple');
+                      handleDeleteVisit();
+                    }}
+                  >
+                    <Trash2 size={16} className="mr-3 text-red-600" />
+                    Delete Visit
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+      
+      {/* Backdrop to close menu - FIXED Z-INDEX */}
+      {showSimpleMenu && (
+        <div 
+          className="fixed inset-0 z-[9999]" 
+          onClick={() => {
+            console.log('Backdrop clicked - closing menu');
+            setShowSimpleMenu(false);
+          }}
+          style={{ zIndex: 9999 }}
+        />
+      )}
     </div>
   );
 
@@ -498,8 +694,6 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   {safeString(plaque.lead_subject_primary_role)}
                 </p>
               )}
-              
-
               
               {isValidValue(plaque.lead_subject_wikipedia) && (
                 <a 
@@ -739,18 +933,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <MobileActionStrip />
         </div>
 
-        {/* Dialogs */}
-{showAddToCollection && (
-  <AddToCollectionDialog
-    plaque={plaque}
-    isOpen={showAddToCollection}
-    onClose={() => setShowAddToCollection(false)}
-  />
-)}
+        {/* All dialogs with FIXED Z-INDEX */}
+        {showAddToCollection && (
+          <AddToCollectionDialog
+            plaque={plaque}
+            isOpen={showAddToCollection}
+            onClose={() => setShowAddToCollection(false)}
+            className="z-[10001]"
+            style={{ zIndex: 10001 }}
+          />
+        )}
 
-        {/* Visit Dialog */}
+        {/* Visit Dialog - FIXED Z-INDEX */}
         <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
             <DialogHeader>
               <DialogTitle>Mark as Visited</DialogTitle>
             </DialogHeader>
@@ -768,7 +964,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                       {format(visitDate, 'PPP')}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 z-[10002]" align="start" style={{ zIndex: 10002 }}>
                     <CalendarComponent
                       mode="single"
                       selected={visitDate}
@@ -802,6 +998,54 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               </Button>
               <Button onClick={handleVisitSubmit} disabled={isMarkingVisited}>
                 {isMarkingVisited ? 'Saving...' : 'Mark as Visited'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Visit Dialog - FIXED Z-INDEX */}
+        <EditVisitDialog
+          isOpen={showEditVisitDialog}
+          onClose={() => setShowEditVisitDialog(false)}
+          plaque={plaque}
+          visitId={visitInfo?.id || null}
+          onVisitUpdated={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+          onVisitDeleted={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+        />
+
+        {/* Delete Visit Confirmation - FIXED Z-INDEX */}
+        <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
+          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
+            <DialogHeader>
+              <DialogTitle>Delete Visit Record</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to delete your visit record for this plaque? This action cannot be undone.
+              </p>
+              {visitInfo && (
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-sm text-red-800">
+                    <strong>Visit Date:</strong> {formatVisitDate()}
+                  </p>
+                  {visitInfo.notes && (
+                    <p className="text-sm text-red-800 mt-1">
+                      <strong>Notes:</strong> {visitInfo.notes.substring(0, 100)}{visitInfo.notes.length > 100 ? '...' : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteVisitConfirm(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDeleteVisit}>
+                Delete Visit
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -898,18 +1142,20 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <MobileActionStrip />
         </div>
 
-        {/* Dialogs */}
-{showAddToCollection && (
-  <AddToCollectionDialog
-    plaque={plaque}
-    isOpen={showAddToCollection}
-    onClose={() => setShowAddToCollection(false)}
-  />
-)}
+        {/* All dialogs with FIXED Z-INDEX */}
+        {showAddToCollection && (
+          <AddToCollectionDialog
+            plaque={plaque}
+            isOpen={showAddToCollection}
+            onClose={() => setShowAddToCollection(false)}
+            className="z-[10001]"
+            style={{ zIndex: 10001 }}
+          />
+        )}
 
-        {/* Visit Dialog */}
+        {/* Visit Dialog - FIXED Z-INDEX */}
         <Dialog open={showVisitDialog} onOpenChange={setShowVisitDialog}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
             <DialogHeader>
               <DialogTitle>Mark as Visited</DialogTitle>
             </DialogHeader>
@@ -927,7 +1173,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                       {format(visitDate, 'PPP')}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 z-[10002]" align="start" style={{ zIndex: 10002 }}>
                     <CalendarComponent
                       mode="single"
                       selected={visitDate}
@@ -961,6 +1207,54 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               </Button>
               <Button onClick={handleVisitSubmit} disabled={isMarkingVisited}>
                 {isMarkingVisited ? 'Saving...' : 'Mark as Visited'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Visit Dialog - FIXED Z-INDEX */}
+        <EditVisitDialog
+          isOpen={showEditVisitDialog}
+          onClose={() => setShowEditVisitDialog(false)}
+          plaque={plaque}
+          visitId={visitInfo?.id || null}
+          onVisitUpdated={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+          onVisitDeleted={() => {
+            if (onMarkVisited) onMarkVisited(plaque.id);
+          }}
+        />
+
+        {/* Delete Visit Confirmation - FIXED Z-INDEX */}
+        <Dialog open={showDeleteVisitConfirm} onOpenChange={setShowDeleteVisitConfirm}>
+          <DialogContent className="sm:max-w-md z-[10001]" style={{ zIndex: 10001 }}>
+            <DialogHeader>
+              <DialogTitle>Delete Visit Record</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to delete your visit record for this plaque? This action cannot be undone.
+              </p>
+              {visitInfo && (
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-sm text-red-800">
+                    <strong>Visit Date:</strong> {formatVisitDate()}
+                  </p>
+                  {visitInfo.notes && (
+                    <p className="text-sm text-red-800 mt-1">
+                      <strong>Notes:</strong> {visitInfo.notes.substring(0, 100)}{visitInfo.notes.length > 100 ? '...' : ''}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteVisitConfirm(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDeleteVisit}>
+                Delete Visit
               </Button>
             </DialogFooter>
           </DialogContent>
