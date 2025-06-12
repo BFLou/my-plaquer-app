@@ -1,9 +1,8 @@
-// src/pages/Discover.tsx - Complete with mobile scrolling fixes
+// src/pages/Discover.tsx - FIXED: Proper scrolling and layout for all views
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
 import plaqueData from '../data/plaque_data.json';
-import { PageContainer } from "@/components";
 import { PlaqueCard } from "@/components/plaques/PlaqueCard";
 import { PlaqueListItem } from "@/components/plaques/PlaqueListItem";
 import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
@@ -28,7 +27,6 @@ import { Filter, MapPin, Grid, List, Navigation, X } from 'lucide-react';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import type { Plaque } from '@/types/plaque';
 import '../components/maps/features/UnifiedControlPanel.css';
-
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
@@ -499,72 +497,70 @@ const Discover = () => {
     }
   };
 
+  // FIXED: Render content with proper layout hierarchy
   const renderContent = () => {
-if (loading) {
-    return urlState.view === 'map' ? (
-      <div className="h-[500px] md:h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin h-8 w-8 md:h-10 md:w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-          <p className="mt-4 text-gray-600 text-sm md:text-base">Loading map...</p>
+    if (loading) {
+      return urlState.view === 'map' ? (
+        <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin h-8 w-8 md:h-10 md:w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+            <p className="mt-4 text-gray-600 text-sm md:text-base">Loading map...</p>
+          </div>
         </div>
-      </div>
-    ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
-        {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className="h-48 md:h-64 bg-gray-100 rounded-lg animate-pulse"></div>
-        ))}
-      </div>
-    );
-  }
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="h-48 md:h-64 bg-gray-100 rounded-lg animate-pulse"></div>
+          ))}
+        </div>
+      );
+    }
 
     if (urlState.view === 'map') {
+      // FIXED: Map view with proper height and no competing scroll containers
       return (
-        <div className="relative">
-          <div className="h-[500px] md:h-[650px]">
-            <MapContainer
-              plaques={filteredPlaques}
-              onPlaqueClick={handlePlaqueClick}
-              className="h-full w-full"
-              onDistanceFilterChange={handleDistanceFilterChange}
-              distanceFilter={distanceFilter}
-              isPlaqueVisited={isPlaqueVisited}
-              isFavorite={isFavorite}
-              onRouteAction={handlePendingRouteAction}
-            />
-          </div>
+        <div className="w-full h-full">
+          <MapContainer
+            plaques={filteredPlaques}
+            onPlaqueClick={handlePlaqueClick}
+            className="w-full h-full"
+            onDistanceFilterChange={handleDistanceFilterChange}
+            distanceFilter={distanceFilter}
+            isPlaqueVisited={isPlaqueVisited}
+            isFavorite={isFavorite}
+            onRouteAction={handlePendingRouteAction}
+          />
         </div>
       );
     }
 
     if (filteredPlaques.length === 0) {
       return (
-        <div className="pb-20">
-          <EmptyState
-            title="No plaques found"
-            description={
-              activeFiltersCount > 0 
-                ? "Try adjusting your filters to see more results."
-                : urlState.search.trim()
-                ? "Try different search terms or browse all plaques."
-                : "No plaques are available at the moment."
-            }
-            actionButton={
-              activeFiltersCount > 0 ? (
-                <MobileButton onClick={resetFilters} variant="outline" touchOptimized>
-                  Clear Filters
-                </MobileButton>
-              ) : urlState.search.trim() ? (
-                <MobileButton 
-                  onClick={() => updateUrlState({ search: '' })} 
-                  variant="outline"
-                  touchOptimized
-                >
-                  Clear Search
-                </MobileButton>
-              ) : null
-            }
-          />
-        </div>
+        <EmptyState
+          title="No plaques found"
+          description={
+            activeFiltersCount > 0 
+              ? "Try adjusting your filters to see more results."
+              : urlState.search.trim()
+              ? "Try different search terms or browse all plaques."
+              : "No plaques are available at the moment."
+          }
+          actionButton={
+            activeFiltersCount > 0 ? (
+              <MobileButton onClick={resetFilters} variant="outline" touchOptimized>
+                Clear Filters
+              </MobileButton>
+            ) : urlState.search.trim() ? (
+              <MobileButton 
+                onClick={() => updateUrlState({ search: '' })} 
+                variant="outline"
+                touchOptimized
+              >
+                Clear Search
+              </MobileButton>
+            ) : null
+          }
+        />
       );
     }
 
@@ -576,7 +572,7 @@ if (loading) {
 
     if (urlState.view === 'grid') {
       return (
-        <div className="pb-20 md:pb-8">
+        <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             {paginatedPlaques.map((plaque) => (
               <PlaqueCard
@@ -590,7 +586,7 @@ if (loading) {
           </div>
           
           {totalPages > 1 && (
-            <div className="pb-4">
+            <div className="mb-4">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -606,13 +602,13 @@ if (loading) {
               />
             </div>
           )}
-        </div>
+        </>
       );
     }
 
     if (urlState.view === 'list') {
       return (
-        <div className="pb-20 md:pb-8">
+        <>
           <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
             {paginatedPlaques.map((plaque) => (
               <PlaqueListItem
@@ -626,7 +622,7 @@ if (loading) {
           </div>
           
           {totalPages > 1 && (
-            <div className="pb-4">
+            <div className="mb-4">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -642,97 +638,116 @@ if (loading) {
               />
             </div>
           )}
-        </div>
+        </>
       );
     }
   };
 
+  // FIXED: Calculate proper layout heights based on view mode
+  const getLayoutClasses = () => {
+    if (urlState.view === 'map') {
+      // Map view: Full height, no scroll on main container
+      return {
+        container: "flex flex-col h-screen overflow-hidden",
+        content: "flex-1 min-h-0",
+        scrollable: false
+      };
+    } else {
+      // List/Grid views: Normal scrolling layout
+      return {
+        container: "min-h-screen",
+        content: "flex-1",
+        scrollable: true
+      };
+    }
+  };
+
+  const layoutClasses = getLayoutClasses();
+
   return (
-    <PageContainer 
-      activePage="discover"
-      hasFooter={urlState.view !== 'map'}
-      simplifiedFooter={true}
-      paddingBottom="none"
-      className={`discover-page ${isKeyboardOpen ? 'keyboard-open' : ''}`}
-    >
+    <div className={`discover-page ${layoutClasses.container} ${isKeyboardOpen ? 'keyboard-open' : ''}`}>
       {/* Pending Action Handler */}
       <PendingActionHandler 
         onCollectionAction={handlePendingCollectionAction}
         onRouteAction={handlePendingRouteAction}
       />
       
-      {/* Mobile-optimized Header with view tabs and search */}
-      <DiscoverHeader
-        viewMode={urlState.view}
-        onViewModeChange={handleViewModeChange}
-        searchValue={urlState.search}
-        onSearchChange={handleSearchChange}
-        activeFiltersCount={activeFiltersCount}
-        onOpenFilters={() => {
-          triggerHapticFeedback('light');
-          setFiltersOpen(true);
-        }}
-      />
-      
-      {/* Active filters display with distance filter */}
-      <DiscoverFilters
-        urlState={urlState}
-        activeFiltersCount={activeFiltersCount}
-        activeLocation={distanceFilter.center}
-        maxDistance={distanceFilter.radius}
-        hideOutsidePlaques={distanceFilter.enabled}
-        formatDistance={formatDistance}
-        onRemoveFilter={(filters) => updateUrlState(filters)}
-        onResetFilters={resetFilters}
-        filtersOpen={filtersOpen}
-        onCloseFilters={() => setFiltersOpen(false)}
-        filterOptions={{
-          postcodeOptions,
-          colorOptions,
-          professionOptions
-        }}
-        onApplyFilters={(filters) => updateUrlState(filters)}
-        distanceFilter={distanceFilter}
-        onClearDistanceFilter={handleClearDistanceFilter}
-      />
-      
-      {/* FIXED: Main content container with proper mobile scrolling */}
-      <div className="flex-1 min-h-0 overflow-y-auto mobile-scroll-container" style={{ height: 'calc(100vh - 140px)', paddingBottom: '80px' }}>
-        <div className="container mx-auto px-4 py-3 md:py-4">
-          <div className="flex justify-between items-center mb-3 md:mb-4">
-            <h2 className="text-sm md:text-base font-medium text-gray-600">
-              {loading ? "Loading plaques..." : (
-                <>
-                  {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-                  {distanceFilter.enabled && distanceFilter.locationName && (
-                    <span className="ml-2 text-green-600 text-xs md:text-sm">
-                      within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
-                    </span>
-                  )}
-                </>
-              )}
-            </h2>
-            
-            {/* Mobile quick actions button */}
-            {isMobile() && (
-              <MobileButton
-                variant="outline"
-                size="sm"
-                onClick={() => setShowQuickActions(true)}
-                className="text-xs"
-                touchOptimized
-              >
-                Quick Actions
-              </MobileButton>
-            )}
-          </div>
-          
-          {/* Main Content */}
-          {renderContent()}
-        </div>
+      {/* FIXED: Header - always fixed position */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 sticky top-0 z-30">
+        <DiscoverHeader
+          viewMode={urlState.view}
+          onViewModeChange={handleViewModeChange}
+          searchValue={urlState.search}
+          onSearchChange={handleSearchChange}
+          activeFiltersCount={activeFiltersCount}
+          onOpenFilters={() => {
+            triggerHapticFeedback('light');
+            setFiltersOpen(true);
+          }}
+        />
+        
+        {/* Active filters display - part of header */}
+        <DiscoverFilters
+          urlState={urlState}
+          activeFiltersCount={activeFiltersCount}
+          activeLocation={distanceFilter.center}
+          maxDistance={distanceFilter.radius}
+          hideOutsidePlaques={distanceFilter.enabled}
+          formatDistance={formatDistance}
+          onRemoveFilter={(filters) => updateUrlState(filters)}
+          onResetFilters={resetFilters}
+          filtersOpen={filtersOpen}
+          onCloseFilters={() => setFiltersOpen(false)}
+          filterOptions={{
+            postcodeOptions,
+            colorOptions,
+            professionOptions
+          }}
+          onApplyFilters={(filters) => updateUrlState(filters)}
+          distanceFilter={distanceFilter}
+          onClearDistanceFilter={handleClearDistanceFilter}
+        />
       </div>
       
-    
+      {/* FIXED: Main content area with proper scroll handling */}
+      <div className={`${layoutClasses.content} relative`}>
+        {urlState.view === 'map' ? (
+          // FIXED: Map view - no inner containers, direct height control
+          <div className="w-full h-full relative">
+            {renderContent()}
+          </div>
+        ) : (
+          // FIXED: List/Grid views - proper scrollable container
+          <div className="h-full overflow-y-auto">
+            <div className="container mx-auto px-4 py-3 md:py-4">
+              {/* Results header - FIXED: Hide on mobile to prevent overlap */}
+              <div className={`flex justify-between items-center mb-3 md:mb-4 ${isMobile() ? 'pr-20' : ''}`}>
+                <h2 className="text-sm md:text-base font-medium text-gray-600 flex-1 min-w-0">
+                  {loading ? "Loading plaques..." : (
+                    <>
+                      <span className="block md:inline">
+                        {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
+                      </span>
+                      {distanceFilter.enabled && distanceFilter.locationName && (
+                        <span className="block md:inline ml-0 md:ml-2 text-green-600 text-xs md:text-sm mt-1 md:mt-0">
+                          within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </h2>
+                
+              
+              </div>
+              
+              {/* Content with proper padding for mobile navigation */}
+              <div className="pb-20 md:pb-8">
+                {renderContent()}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       
       {/* Enhanced Filter Dialog with mobile optimization */}
       <DiscoverFilterDialog
@@ -883,7 +898,7 @@ if (loading) {
           plaque={pendingCollectionPlaque}
         />
       )}
-    </PageContainer>
+    </div>
   );
 };
 

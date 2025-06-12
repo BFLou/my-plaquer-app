@@ -1,4 +1,4 @@
-// src/components/maps/features/mobile/MobileBottomSheet.tsx
+// src/components/maps/features/mobile/MobileBottomSheet.tsx - FIXED: Added distance filter functionality
 import React, { useState } from 'react';
 import { 
   Filter, 
@@ -7,10 +7,15 @@ import {
   X,
   Target,
   Settings,
-  Layers
+  Layers,
+  MapPin,
+  Minus,
+  Plus,
+  Loader
 } from 'lucide-react';
 import { MobileButton } from "@/components/ui/mobile-button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Plaque } from '@/types/plaque';
 import DiscoverFilterDialog from '../../../plaques/DiscoverFilterDialog';
 import { capitalizeWords } from '@/utils/stringUtils';
@@ -29,6 +34,7 @@ interface MobileBottomSheetProps {
   // Distance filter props
   distanceFilter: DistanceFilter;
   onSetLocation: (coords: [number, number]) => void;
+  onRadiusChange: (radius: number) => void;
   onClearDistanceFilter: () => void;
   
   // Standard filter props
@@ -66,6 +72,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
   const {
     distanceFilter,
     onSetLocation,
+    onRadiusChange,
     onClearDistanceFilter,
     selectedColors,
     selectedPostcodes,
@@ -92,6 +99,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
   const safeArea = useSafeArea();
   const [showStandardFilters, setShowStandardFilters] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [searchAddress, setSearchAddress] = useState('');
 
   const activeStandardFilters = selectedColors.length + selectedPostcodes.length + 
     selectedProfessions.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
@@ -167,6 +175,28 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
     );
   };
 
+  const handleAddressSearch = async () => {
+    if (!searchAddress.trim()) return;
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress + ', London')}&limit=1&countrycodes=gb`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        onSetLocation(coords);
+        setSearchAddress('');
+        toast.success('Location found');
+      } else {
+        toast.error('Location not found');
+      }
+    } catch {
+      toast.error('Search failed');
+    }
+  };
+
   return (
     <>
       {/* Floating Tab - More compact */}
@@ -190,11 +220,11 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
         </MobileButton>
       </div>
 
-      {/* Bottom Sheet - More compact */}
+      {/* Bottom Sheet - Enhanced with distance filter */}
       <div className={`fixed inset-x-0 bottom-0 z-[1000] transform transition-transform duration-300 ${
         isOpen ? 'translate-y-0' : 'translate-y-full'
       }`} style={{ paddingBottom: safeArea.bottom }}>
-        <div className="bg-white rounded-t-xl shadow-2xl border-t border-gray-200 max-h-[65vh] flex flex-col">
+        <div className="bg-white rounded-t-xl shadow-2xl border-t border-gray-200 max-h-[75vh] flex flex-col">
           
           {/* Handle */}
           <div className="flex justify-center py-2">
@@ -225,28 +255,137 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
             </div>
           </div>
 
-          {/* Content */}
+          {/* Content - Scrollable */}
           <div className="flex-1 overflow-y-auto p-4">
             
+            {/* Distance Filter Section */}
+            <div className="mb-6">
+              <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <MapPin size={16} className="text-green-500" />
+                Distance Filter
+              </h4>
+              
+              {!distanceFilter.enabled ? (
+                <div className="space-y-3">
+                  {/* My Location Button */}
+                  <MobileButton
+                    variant="outline"
+                    className="w-full h-12 justify-start"
+                    onClick={handleMyLocation}
+                    disabled={isLocating}
+                    touchOptimized
+                  >
+                    {isLocating ? (
+                      <Loader className="mr-2 animate-spin" size={16} />
+                    ) : (
+                      <Target className="mr-2" size={16} />
+                    )}
+                    {isLocating ? 'Finding location...' : 'Use my current location'}
+                  </MobileButton>
+                  
+                  {/* Address Search */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter postcode..."
+                      value={searchAddress}
+                      onChange={(e) => setSearchAddress(e.target.value)}
+                      className="flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddressSearch()}
+                    />
+                    <MobileButton 
+                      onClick={handleAddressSearch}
+                      disabled={!searchAddress.trim()}
+                      size="sm"
+                      touchOptimized
+                    >
+                      Go
+                    </MobileButton>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                    💡 Try: "NW1 2DB", "Camden", "Westminster Bridge"
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Active Filter Display */}
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-green-800">
+                          📍 {distanceFilter.locationName}
+                        </div>
+                        <div className="text-xs text-green-600">
+                          Within {distanceFilter.radius < 1 
+                            ? `${Math.round(distanceFilter.radius * 1000)}m` 
+                            : `${distanceFilter.radius}km`} radius
+                        </div>
+                      </div>
+                      <MobileButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={onClearDistanceFilter}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                        touchOptimized
+                      >
+                        <X size={14} />
+                      </MobileButton>
+                    </div>
+                  </div>
+                  
+                  {/* Radius Controls */}
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-2">Search Radius</div>
+                    
+                    {/* Quick Distance Buttons */}
+                    <div className="grid grid-cols-4 gap-2 mb-3">
+                      {[0.5, 1, 2, 5].map((distance) => (
+                        <MobileButton
+                          key={distance}
+                          variant={Math.abs(distanceFilter.radius - distance) < 0.01 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => onRadiusChange(distance)}
+                          className="h-8 text-xs font-medium"
+                          touchOptimized
+                        >
+                          {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
+                        </MobileButton>
+                      ))}
+                    </div>
+                    
+                    {/* Fine Control */}
+                    <div className="flex items-center justify-between">
+                      <MobileButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onRadiusChange(Math.max(0.1, distanceFilter.radius - 0.1))}
+                        className="h-8 w-8 p-0"
+                        touchOptimized
+                      >
+                        <Minus size={12} />
+                      </MobileButton>
+                      <span className="text-sm font-medium px-3">
+                        {distanceFilter.radius < 1 
+                          ? `${Math.round(distanceFilter.radius * 1000)}m` 
+                          : `${distanceFilter.radius}km`}
+                      </span>
+                      <MobileButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onRadiusChange(Math.min(10, distanceFilter.radius + 0.1))}
+                        className="h-8 w-8 p-0"
+                        touchOptimized
+                      >
+                        <Plus size={12} />
+                      </MobileButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Primary Actions - 2x2 grid */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <MobileButton
-                variant={distanceFilter.enabled ? "default" : "outline"}
-                className="h-14 flex-col gap-1 text-center"
-                onClick={() => handleMyLocation()}
-                disabled={isLocating}
-                touchOptimized
-              >
-                {isLocating ? (
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent" />
-                ) : (
-                  <Target size={18} />
-                )}
-                <div className="text-xs">
-                  {isLocating ? 'Finding...' : 'Near Me'}
-                </div>
-              </MobileButton>
-
               <MobileButton
                 variant={activeStandardFilters > 0 ? "default" : "outline"}
                 className="h-14 flex-col gap-1 text-center"
@@ -275,6 +414,16 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
               <MobileButton
                 variant="outline"
+                className="h-14 flex-col gap-1 text-center"
+                onClick={onResetView}
+                touchOptimized
+              >
+                <Target size={18} />
+                <div className="text-xs">Reset View</div>
+              </MobileButton>
+
+              <MobileButton
+                variant="outline"
                 className="h-14 flex-col gap-1 text-center text-red-600 hover:bg-red-50"
                 onClick={() => {
                   onClearDistanceFilter();
@@ -290,7 +439,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
             {/* Active Filters Summary */}
             {totalActiveFilters > 0 && (
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                 <div className="text-sm font-medium text-blue-800 mb-1">Active Filters</div>
                 <div className="space-y-1 text-xs text-blue-700">
                   {distanceFilter.enabled && (

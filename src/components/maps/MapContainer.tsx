@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - UPDATED: Integrated with new control system
+// src/components/maps/MapContainer.tsx - FIXED: Proper height management for full-screen map
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -7,8 +7,7 @@ import { UnifiedControlPanel } from './features/UnifiedControlPanel';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from './utils/routeUtils';
 import { toast } from 'sonner';
-import { isMobile, getViewportHeight } from '@/utils/mobileUtils';
-import { useSafeArea } from '@/hooks/useSafeArea';
+import { isMobile } from '@/utils/mobileUtils';
 
 // Helper function for safe coordinate conversion
 function parseCoordinate(coord: string | number | undefined): number {
@@ -207,8 +206,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
 
   // Mobile detection and responsive setup
   const mobile = isMobile();
-  const safeArea = useSafeArea();
-  const viewportHeight = getViewportHeight();
 
   const [state, dispatch] = useReducer(mapReducer, {
     ...initialState,
@@ -567,32 +564,12 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     };
   }, []);
 
-  // Calculate responsive map height
-  const getMapHeight = () => {
-    if (mobile) {
-      // On mobile, use full viewport height minus safe areas
-      const availableHeight = viewportHeight - safeArea.top - safeArea.bottom;
-      return Math.max(availableHeight, 300); // Minimum 300px height
-    }
-    return 600; // Desktop default
-  };
-
-  const mapHeight = getMapHeight();
-
   return (
-    <div 
-      className={`relative w-full ${className}`}
-      style={{ 
-        height: `${mapHeight}px`,
-        paddingTop: mobile ? safeArea.top : undefined,
-        paddingLeft: mobile ? safeArea.left : undefined,
-        paddingRight: mobile ? safeArea.right : undefined
-      }}
-    >
-      {/* Search Bar - Mobile optimized positioning with higher z-index */}
+    <div className={`relative w-full h-full ${className}`}>
+      {/* Search Bar - FIXED: Positioned absolutely with high z-index */}
       <div className={`
         absolute z-[1001] search-bar-container
-        ${mobile ? 'top-1 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} 
+        ${mobile ? 'top-2 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} 
         ${mobile ? 'w-auto' : 'w-full max-w-sm px-4'}
       `}>
         <SearchBar 
@@ -604,7 +581,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         />
       </div>
 
-      {/* NEW: Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
+      {/* Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
       <UnifiedControlPanel
         distanceFilter={{
           enabled: state.filterEnabled,
@@ -641,7 +618,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         className="unified-control-panel"
       />
 
-      {/* Enhanced Route Panel - Mobile responsive positioning */}
+      {/* Enhanced Route Panel - FIXED: Positioned for both mobile and desktop */}
       {state.routeMode && (
         <div className={`absolute ${
           mobile 
@@ -664,7 +641,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* Enhanced Status Bar - Mobile responsive positioning, only show if not mobile or no route panel */}
+      {/* Status Bar - FIXED: Positioned properly for both mobile and desktop */}
       {(!mobile || !state.routeMode) && (
         <div className={`absolute ${
           mobile 
@@ -697,7 +674,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* The Map - Full responsive height */}
+      {/* The Map - FIXED: Full height and width without competing containers */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}
