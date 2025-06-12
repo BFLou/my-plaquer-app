@@ -780,27 +780,31 @@ const filteredPlaques = useMemo(() => {
           />
           
           {/* Active filters display */}
-          <DiscoverFilters
-            urlState={urlState}
-            activeFiltersCount={activeFiltersCount}
-            activeLocation={distanceFilter.center}
-            maxDistance={distanceFilter.radius}
-            hideOutsidePlaques={distanceFilter.enabled}
-            formatDistance={formatDistance}
-            onRemoveFilter={(filters) => updateUrlState(filters)}
-            onResetFilters={resetFilters}
-            filtersOpen={filtersOpen}
-            onCloseFilters={() => setFiltersOpen(false)}
-            filterOptions={{
-              postcodeOptions,
-              colorOptions,
-              professionOptions,
-              organisationOptions
-            }}
-            onApplyFilters={(filters) => updateUrlState(filters)}
-            distanceFilter={distanceFilter}
-            onClearDistanceFilter={handleClearDistanceFilter}
-          />
+<DiscoverFilters
+  urlState={urlState}
+  activeFiltersCount={activeFiltersCount}
+  activeLocation={distanceFilter.center}
+  maxDistance={distanceFilter.radius}
+  hideOutsidePlaques={distanceFilter.enabled}
+  formatDistance={formatDistance}
+  onRemoveFilter={(filters) => updateUrlState(filters)}
+  onResetFilters={resetFilters}
+  filtersOpen={filtersOpen}
+  onCloseFilters={() => setFiltersOpen(false)}
+  filterOptions={{
+    postcodeOptions,
+    colorOptions,
+    professionOptions,
+    organisationOptions
+  }}
+  onApplyFilters={(filters) => updateUrlState(filters)}
+  distanceFilter={distanceFilter}
+  onClearDistanceFilter={handleClearDistanceFilter}
+  allPlaques={allPlaques}
+  totalPlaqueCount={allPlaques.length}
+  filteredPlaqueCount={filteredPlaques.length}
+  showSuggestions={false}
+/>
         </div>
         
         {/* Main content area with proper scroll handling */}

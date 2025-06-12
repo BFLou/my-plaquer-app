@@ -1,12 +1,13 @@
-// src/components/discover/DiscoverFilters.tsx - FIXED with organisations and subjectTypes
+// src/components/discover/DiscoverFilters.tsx - Enhanced with new components
 
 import React, { useState } from 'react';
-import { X, MapPin, Filter, ChevronDown } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { capitalizeWords } from '@/utils/stringUtils';
 import DiscoverFilterDialog from '../plaques/DiscoverFilterDialog';
+import { FilterStatusBar } from './FilterStatusBar';
+import { FilterSuggestions } from './FilterSuggestions';
 
 interface DistanceFilter {
   enabled: boolean;
@@ -43,6 +44,11 @@ interface DiscoverFiltersProps {
   onApplyFilters: (filters: any) => void;
   distanceFilter: DistanceFilter;
   onClearDistanceFilter: () => void;
+  // NEW: Additional props for enhanced functionality
+  allPlaques?: any[];
+  totalPlaqueCount?: number;
+  filteredPlaqueCount?: number;
+  showSuggestions?: boolean;
 }
 
 const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
@@ -55,39 +61,29 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   filterOptions,
   onApplyFilters,
   distanceFilter,
-  onClearDistanceFilter
+  onClearDistanceFilter,
+  // NEW: Enhanced props
+  allPlaques = [],
+  totalPlaqueCount = 0,
+  filteredPlaqueCount = 0,
+  showSuggestions = true
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [showFilterSuggestions, setShowFilterSuggestions] = useState(false);
 
-  if (activeFiltersCount === 0) {
-    return null;
-  }
-
-  // Group filters for mobile display
-  const allActiveFilters = [
-    ...urlState.colors.map(color => ({ type: 'color', value: color, label: capitalizeWords(color) })),
-    ...urlState.postcodes.map(postcode => ({ type: 'postcode', value: postcode, label: postcode })),
-    ...urlState.professions.map(profession => ({ type: 'profession', value: profession, label: capitalizeWords(profession) })),
-    ...urlState.organisations.map(organisation => ({ type: 'organisation', value: organisation, label: organisation })),
-    ...(urlState.onlyVisited ? [{ type: 'visited', value: 'visited', label: 'Visited Only' }] : []),
-    ...(urlState.onlyFavorites ? [{ type: 'favorites', value: 'favorites', label: 'Favorites Only' }] : []),
-    ...(distanceFilter.enabled && distanceFilter.center && distanceFilter.locationName ? 
-      [{ type: 'distance', value: 'distance', label: `${distanceFilter.locationName} (${distanceFilter.radius < 1 ? `${Math.round(distanceFilter.radius * 1000)}m` : `${distanceFilter.radius}km`})` }] : [])
-  ];
-
-  const removeFilter = (filter: any) => {
-    switch (filter.type) {
+  // Enhanced filter removal with type safety
+  const removeFilterEnhanced = (filterType: string, value?: string) => {
+    switch (filterType) {
       case 'color':
-        onRemoveFilter({ colors: urlState.colors.filter(c => c !== filter.value) });
+        onRemoveFilter({ colors: urlState.colors.filter(c => c !== value) });
         break;
       case 'postcode':
-        onRemoveFilter({ postcodes: urlState.postcodes.filter(p => p !== filter.value) });
+        onRemoveFilter({ postcodes: urlState.postcodes.filter(p => p !== value) });
         break;
       case 'profession':
-        onRemoveFilter({ professions: urlState.professions.filter(p => p !== filter.value) });
+        onRemoveFilter({ professions: urlState.professions.filter(p => p !== value) });
         break;
       case 'organisation':
-        onRemoveFilter({ organisations: urlState.organisations.filter(o => o !== filter.value) });
+        onRemoveFilter({ organisations: urlState.organisations.filter(o => o !== value) });
         break;
       case 'visited':
         onRemoveFilter({ onlyVisited: false });
@@ -98,123 +94,115 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
       case 'distance':
         onClearDistanceFilter();
         break;
+      case 'search':
+        onRemoveFilter({ search: '' });
+        break;
+      default:
+        console.warn('Unknown filter type:', filterType);
     }
   };
 
+  // Handle filter suggestions
+  const handleFilterSuggestion = (suggestion: any) => {
+    switch (suggestion.type) {
+      case 'add-profession':
+        onApplyFilters({ professions: [...urlState.professions, suggestion.value] });
+        break;
+      case 'add-color':
+        onApplyFilters({ colors: [...urlState.colors, suggestion.value] });
+        break;
+      case 'add-postcode-area':
+        // Find all postcodes that start with the area code
+        const areaPostcodes = filterOptions.postcodeOptions
+          .filter(p => p.value.startsWith(suggestion.value))
+          .map(p => p.value);
+        onApplyFilters({ postcodes: [...urlState.postcodes, ...areaPostcodes] });
+        break;
+      case 'add-organisation':
+        onApplyFilters({ organisations: [...urlState.organisations, suggestion.value] });
+        break;
+      default:
+        console.warn('Unknown suggestion type:', suggestion.type);
+    }
+  };
+
+  // If no active filters, show suggestions instead of empty state
+  if (activeFiltersCount === 0) {
+    return showSuggestions && allPlaques.length > 0 && filteredPlaqueCount > 50 ? (
+      <div className="container mx-auto px-4 mt-3">
+        <FilterSuggestions
+          plaques={allPlaques}
+          currentFilters={urlState}
+          onApplySuggestion={handleFilterSuggestion}
+          className="mb-4"
+        />
+      </div>
+    ) : null;
+  }
+
   return (
     <>
-      {/* Mobile-First Active Filters Display */}
+      {/* Enhanced Filter Status Bar - Replaces the original summary */}
       <div className="container mx-auto px-4 mt-3">
-        <Collapsible open={!isCollapsed} onOpenChange={setIsCollapsed}>
-          {/* Filter Summary Bar */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Filter className="text-gray-500 flex-shrink-0" size={16} />
-              <span className="text-sm font-medium text-gray-700">
-                {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active
-              </span>
-              
-              {/* Show first 2 filters on mobile */}
-              <div className="hidden sm:flex items-center gap-1 overflow-hidden">
-                {allActiveFilters.slice(0, 2).map((filter) => (
-                  <Badge key={`${filter.type}-${filter.value}`} variant="secondary" className="gap-1 text-xs">
-                    <span className="truncate max-w-[100px]">{filter.label}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFilter(filter);
-                      }}
-                      className="ml-1 hover:bg-gray-300 rounded-full w-3 h-3 flex items-center justify-center min-w-[12px] min-h-[12px]"
-                    >
-                      <X size={8} />
-                    </button>
-                  </Badge>
-                ))}
-                {allActiveFilters.length > 2 && (
-                  <span className="text-xs text-gray-500">+{allActiveFilters.length - 2} more</span>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
+        <FilterStatusBar
+          activeFilters={{
+            search: urlState.search,
+            colors: urlState.colors,
+            postcodes: urlState.postcodes,
+            professions: urlState.professions,
+            organisations: urlState.organisations,
+            onlyVisited: urlState.onlyVisited,
+            onlyFavorites: urlState.onlyFavorites,
+            distanceFilter: distanceFilter.enabled ? {
+              enabled: true,
+              locationName: distanceFilter.locationName || 'Unknown Location',
+              radius: distanceFilter.radius
+            } : undefined
+          }}
+          resultCount={filteredPlaqueCount}
+          totalCount={totalPlaqueCount}
+          onRemoveFilter={removeFilterEnhanced}
+          onClearAll={onResetFilters}
+          onOpenFilters={onCloseFilters}
+        />
+
+        {/* Filter Suggestions - Show when filters are not too restrictive */}
+        {showSuggestions && activeFiltersCount < 4 && filteredPlaqueCount > 20 && (
+          <Collapsible open={showFilterSuggestions} onOpenChange={setShowFilterSuggestions}>
+            <div className="mt-3">
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 px-2 min-w-[44px] min-h-[32px]">
-                  <span className="text-xs mr-1 sm:hidden">View</span>
-                  <span className="text-xs mr-1 hidden sm:inline">
-                    {isCollapsed ? 'Show' : 'Hide'}
-                  </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-between p-2 text-left h-auto"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium">Discover More</span>
+                    <Badge variant="outline" className="text-xs">
+                      Suggestions
+                    </Badge>
+                  </div>
                   <ChevronDown 
                     size={14} 
-                    className={`transition-transform ${!isCollapsed ? 'rotate-180' : ''}`} 
+                    className={`transition-transform ${showFilterSuggestions ? 'rotate-180' : ''}`} 
                   />
                 </Button>
               </CollapsibleTrigger>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onResetFilters}
-                className="text-gray-600 hover:text-gray-800 h-8 px-2 min-w-[44px] min-h-[32px]"
-              >
-                <span className="text-xs">Clear all</span>
-              </Button>
+              <CollapsibleContent className="mt-2">
+                <FilterSuggestions
+                  plaques={allPlaques}
+                  currentFilters={urlState}
+                  onApplySuggestion={handleFilterSuggestion}
+                />
+              </CollapsibleContent>
             </div>
-          </div>
-
-          {/* Expanded Filters List */}
-          <CollapsibleContent className="mt-2">
-            <div className="p-3 bg-white border rounded-lg space-y-3">
-              {/* All Active Filters - UPDATED with better styling for new filter types */}
-              <div className="flex flex-wrap gap-2">
-                {allActiveFilters.map((filter, index) => (
-                  <Badge 
-                    key={`${filter.type}-${filter.value}-${index}`} 
-                    variant="secondary" 
-                    className={`gap-1 ${
-                      filter.type === 'distance' ? 'bg-green-100 text-green-800 border-green-200' : 
-                      filter.type === 'organisation' ? 'bg-purple-100 text-purple-800 border-purple-200' : ''
-                    }`}
-                  >
-                    {filter.type === 'distance' && <MapPin size={12} />}
-                    <span className="break-words">{filter.label}</span>
-                    <button
-                      onClick={() => removeFilter(filter)}
-                      className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center min-w-[16px] min-h-[16px]"
-                      title={`Remove ${filter.label} filter`}
-                    >
-                      <X size={10} />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-
-              {/* Quick Actions */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onApplyFilters({})} // Opens filter dialog
-                  className="text-xs h-8 min-w-[44px] min-h-[32px]"
-                >
-                  <Filter size={12} className="mr-1" />
-                  Edit Filters
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onResetFilters}
-                  className="text-xs h-8 text-red-600 hover:text-red-700 min-w-[44px] min-h-[32px]"
-                >
-                  Clear All Filters
-                </Button>
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </Collapsible>
+        )}
       </div>
 
-      {/* Filter Dialog - UPDATED with new filter options */}
+      {/* Keep your existing filter dialog unchanged */}
       <DiscoverFilterDialog
         isOpen={filtersOpen}
         onClose={onCloseFilters}

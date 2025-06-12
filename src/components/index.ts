@@ -14,7 +14,6 @@ export { MobileHeader } from './layout/MobileHeader';
 export { MobileBreadcrumb } from './layout/MobileBreadCrumb';
 export { FloatingActionButton } from './layout/FloatingActionButton';
 export { BottomActionBar } from './layout/BottomActionBar';
-export { SwipeableModal } from './layout/SwipeableModal';
 
 // Plaque components
 export { PlaqueCard } from './plaques/PlaqueCard';
@@ -53,8 +52,6 @@ export { ScrollToTop } from './ScrollToTop';
 export { EmptyState } from './common/EmptyState';
 export { ActionBar, type ActionBarButton } from './common/ActionBar';
 export { ViewToggle, type ViewMode } from './common/ViewToggle';
-export { FilterBar } from './common/FilterBar';
-export { SearchableFilterBar } from './common/SearchableFilterBar';
 
 // UI components
 export * from './ui/alert-dialog';
@@ -101,5 +98,4 @@ export { usePlaques } from '../hooks/usePlaques';
 export { useRoutes } from '../hooks/useRoutes';
 export { useTheme } from '../hooks/useTheme';
 export { useVisitedPlaques } from '../hooks/useVisitedPlaques';
-export { useAnimation } from '../hooks/useAnimation';
 export { useGlobalErrorHandlers } from '../hooks/useGlobalErrorHandlers';

@@ -1,4 +1,4 @@
-// src/components/plaques/DiscoverFilterDialog.tsx - COMPLETE FIXED VERSION
+// src/components/plaques/DiscoverFilterDialog.tsx - FIXED VERSION
 import React, { useState, useMemo } from 'react';
 import { 
   Search, MapPin, Circle, Building, 
@@ -62,8 +62,6 @@ type DiscoverFilterDialogProps = {
   organisations: FilterOption[];
   selectedOrganisations: string[];
   onOrganisationsChange: (values: string[]) => void;
-  
-  // Removed eras prop
   
   onlyVisited: boolean;
   onVisitedChange: (value: boolean) => void;
@@ -130,8 +128,6 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   organisations,
   selectedOrganisations,
   onOrganisationsChange,
-  
-  // Removed eras prop and its change handler
   
   onlyVisited,
   onVisitedChange,
@@ -250,7 +246,6 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       colors: calculateFilteredCounts(colors, 'color'),
       professions: calculateFilteredCounts(professions, 'profession'),
       organisations: calculateFilteredCounts(organisations, 'organisations', true),
-      // Removed eras from enhancedFilterOptions
     };
   }, [postcodes, colors, professions, organisations, distanceFilter, distanceFilteredPlaques, allPlaques]);
   
@@ -340,8 +335,6 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       searchable: true
     }
   ];
-  
-  // Removed optional categories (eras)
   
   const currentCategory = filterCategories.find(cat => cat.id === currentView);
   
@@ -780,16 +773,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       className="z-[9999] [&>div]:z-[9999]"
       footer={
         <div className="flex flex-col sm:flex-row gap-3 w-full">
-          {currentView !== 'main' ? (
-            // Back button for category views
-            <MobileButton 
-              variant="outline"
-              onClick={navigateBack}
-              className="w-full sm:w-auto"
-            >
-              ← Back to Categories
-            </MobileButton>
-          ) : activeFiltersCount > 0 ? (
+          {activeFiltersCount > 0 ? (
             // Main view with active filters
             <>
               <MobileButton 
