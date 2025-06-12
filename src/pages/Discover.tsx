@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - FIXED: Proper scrolling and layout for all views
+// src/pages/Discover.tsx - COMPLETE FIXED VERSION with proper navigation and compact spacing
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -9,6 +9,7 @@ import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileDialog } from "@/components/ui/mobile-dialog";
+import { PageContainer } from '@/components';
 import Pagination from '@/components/plaques/Pagination';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';
@@ -497,7 +498,7 @@ const Discover = () => {
     }
   };
 
-  // FIXED: Render content with proper layout hierarchy
+  // Render content with proper layout hierarchy
   const renderContent = () => {
     if (loading) {
       return urlState.view === 'map' ? (
@@ -517,7 +518,6 @@ const Discover = () => {
     }
 
     if (urlState.view === 'map') {
-      // FIXED: Map view with proper height and no competing scroll containers
       return (
         <div className="w-full h-full">
           <MapContainer
@@ -594,7 +594,6 @@ const Discover = () => {
                   triggerHapticFeedback('light');
                   setCurrentPage(page);
                   
-                  // Scroll to top on mobile
                   if (isMobile()) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
@@ -630,7 +629,6 @@ const Discover = () => {
                   triggerHapticFeedback('light');
                   setCurrentPage(page);
                   
-                  // Scroll to top on mobile
                   if (isMobile()) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }
@@ -643,17 +641,15 @@ const Discover = () => {
     }
   };
 
-  // FIXED: Calculate proper layout heights based on view mode
+  // Calculate proper layout heights based on view mode
   const getLayoutClasses = () => {
     if (urlState.view === 'map') {
-      // Map view: Full height, no scroll on main container
       return {
         container: "flex flex-col h-screen overflow-hidden",
         content: "flex-1 min-h-0",
         scrollable: false
       };
     } else {
-      // List/Grid views: Normal scrolling layout
       return {
         container: "min-h-screen",
         content: "flex-1",
@@ -665,240 +661,244 @@ const Discover = () => {
   const layoutClasses = getLayoutClasses();
 
   return (
-    <div className={`discover-page ${layoutClasses.container} ${isKeyboardOpen ? 'keyboard-open' : ''}`}>
-      {/* Pending Action Handler */}
-      <PendingActionHandler 
-        onCollectionAction={handlePendingCollectionAction}
-        onRouteAction={handlePendingRouteAction}
-      />
-      
-      {/* FIXED: Header - always fixed position */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 sticky top-0 z-30">
-        <DiscoverHeader
-          viewMode={urlState.view}
-          onViewModeChange={handleViewModeChange}
-          searchValue={urlState.search}
-          onSearchChange={handleSearchChange}
-          activeFiltersCount={activeFiltersCount}
-          onOpenFilters={() => {
-            triggerHapticFeedback('light');
-            setFiltersOpen(true);
-          }}
+    <PageContainer 
+      activePage="discover"
+      simplifiedFooter={true}
+      hideNavBar={false}
+      hideMobileNav={false}
+      paddingBottom="mobile-nav"
+      className="discover-page-container"
+    >
+      <div className={`discover-content ${layoutClasses.container} ${isKeyboardOpen ? 'keyboard-open' : ''}`}>
+        {/* Pending Action Handler */}
+        <PendingActionHandler 
+          onCollectionAction={handlePendingCollectionAction}
+          onRouteAction={handlePendingRouteAction}
         />
         
-        {/* Active filters display - part of header */}
-        <DiscoverFilters
-          urlState={urlState}
-          activeFiltersCount={activeFiltersCount}
-          activeLocation={distanceFilter.center}
-          maxDistance={distanceFilter.radius}
-          hideOutsidePlaques={distanceFilter.enabled}
-          formatDistance={formatDistance}
-          onRemoveFilter={(filters) => updateUrlState(filters)}
-          onResetFilters={resetFilters}
-          filtersOpen={filtersOpen}
-          onCloseFilters={() => setFiltersOpen(false)}
-          filterOptions={{
-            postcodeOptions,
-            colorOptions,
-            professionOptions
-          }}
-          onApplyFilters={(filters) => updateUrlState(filters)}
-          distanceFilter={distanceFilter}
-          onClearDistanceFilter={handleClearDistanceFilter}
-        />
-      </div>
-      
-      {/* FIXED: Main content area with proper scroll handling */}
-      <div className={`${layoutClasses.content} relative`}>
-        {urlState.view === 'map' ? (
-          // FIXED: Map view - no inner containers, direct height control
-          <div className="w-full h-full relative">
-            {renderContent()}
-          </div>
-        ) : (
-          // FIXED: List/Grid views - proper scrollable container
-          <div className="h-full overflow-y-auto">
-            <div className="container mx-auto px-4 py-3 md:py-4">
-              {/* Results header - FIXED: Hide on mobile to prevent overlap */}
-              <div className={`flex justify-between items-center mb-3 md:mb-4 ${isMobile() ? 'pr-20' : ''}`}>
-                <h2 className="text-sm md:text-base font-medium text-gray-600 flex-1 min-w-0">
-                  {loading ? "Loading plaques..." : (
-                    <>
-                      <span className="block md:inline">
-                        {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
-                      </span>
-                      {distanceFilter.enabled && distanceFilter.locationName && (
-                        <span className="block md:inline ml-0 md:ml-2 text-green-600 text-xs md:text-sm mt-1 md:mt-0">
-                          within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </h2>
-                
-              
-              </div>
-              
-              {/* Content with proper padding for mobile navigation */}
-              <div className="pb-20 md:pb-8">
-                {renderContent()}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Enhanced Filter Dialog with mobile optimization */}
-      <DiscoverFilterDialog
-        isOpen={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        
-        postcodes={postcodeOptions}
-        selectedPostcodes={urlState.postcodes}
-        onPostcodesChange={(values) => updateUrlState({ postcodes: values })}
-        
-        colors={colorOptions}
-        selectedColors={urlState.colors}
-        onColorsChange={(values) => updateUrlState({ colors: values })}
-        
-        professions={professionOptions}
-        selectedProfessions={urlState.professions}
-        onProfessionsChange={(values) => updateUrlState({ professions: values })}
-        
-        onlyVisited={urlState.onlyVisited}
-        onVisitedChange={handleVisitedChange}
-        
-        onlyFavorites={urlState.onlyFavorites}
-        onFavoritesChange={handleFavoritesChange}
-        
-        onApply={() => {
-          triggerHapticFeedback('light');
-          setFiltersOpen(false);
-        }}
-        onReset={resetFilters}
-        
-        allPlaques={allPlaques}
-        isPlaqueVisited={isPlaqueVisited}
-        isFavorite={isFavorite}
-        distanceFilter={distanceFilter}
-      />
-      
-      {/* Mobile Quick Actions Dialog */}
-      <MobileDialog
-        isOpen={showQuickActions}
-        onClose={() => setShowQuickActions(false)}
-        title="Quick Actions"
-        size="sm"
-      >
-        <div className="p-4 space-y-3">
-          <MobileButton
-            onClick={() => {
-              setShowQuickActions(false);
-              handleQuickLocationAccess();
-            }}
-            className="w-full justify-start"
-            variant="outline"
-            touchOptimized
-          >
-            <Navigation size={16} className="mr-3" />
-            Find Plaques Near Me
-          </MobileButton>
-          
-          <MobileButton
-            onClick={() => {
-              setShowQuickActions(false);
+        {/* Header with compact spacing */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 sticky top-0 md:top-[61px] z-30">
+          <DiscoverHeader
+            viewMode={urlState.view}
+            onViewModeChange={handleViewModeChange}
+            searchValue={urlState.search}
+            onSearchChange={handleSearchChange}
+            activeFiltersCount={activeFiltersCount}
+            onOpenFilters={() => {
+              triggerHapticFeedback('light');
               setFiltersOpen(true);
             }}
-            className="w-full justify-start"
-            variant="outline"
-            touchOptimized
-          >
-            <Filter size={16} className="mr-3" />
-            Open Filters
-          </MobileButton>
+          />
           
-          <MobileButton
-            onClick={() => {
-              setShowQuickActions(false);
-              resetFilters();
+          {/* Active filters display */}
+          <DiscoverFilters
+            urlState={urlState}
+            activeFiltersCount={activeFiltersCount}
+            activeLocation={distanceFilter.center}
+            maxDistance={distanceFilter.radius}
+            hideOutsidePlaques={distanceFilter.enabled}
+            formatDistance={formatDistance}
+            onRemoveFilter={(filters) => updateUrlState(filters)}
+            onResetFilters={resetFilters}
+            filtersOpen={filtersOpen}
+            onCloseFilters={() => setFiltersOpen(false)}
+            filterOptions={{
+              postcodeOptions,
+              colorOptions,
+              professionOptions
             }}
-            className="w-full justify-start"
-            variant="outline"
-            touchOptimized
-          >
-            <X size={16} className="mr-3" />
-            Clear All Filters
-          </MobileButton>
+            onApplyFilters={(filters) => updateUrlState(filters)}
+            distanceFilter={distanceFilter}
+            onClearDistanceFilter={handleClearDistanceFilter}
+          />
+        </div>
+        
+        {/* Main content area with proper scroll handling */}
+        <div className={`${layoutClasses.content} relative`}>
+          {urlState.view === 'map' ? (
+            <div className="w-full h-full relative">
+              {renderContent()}
+            </div>
+          ) : (
+            <div className="h-full overflow-y-auto">
+              <div className="container mx-auto px-4 py-3 md:py-4">
+                {/* Results header */}
+                <div className={`flex justify-between items-center mb-3 md:mb-4 ${isMobile() ? 'pr-20' : ''}`}>
+                  <h2 className="text-sm md:text-base font-medium text-gray-600 flex-1 min-w-0">
+                    {loading ? "Loading plaques..." : (
+                      <>
+                        <span className="block md:inline">
+                          {filteredPlaques.length} {filteredPlaques.length === 1 ? 'Plaque' : 'Plaques'} found
+                        </span>
+                        {distanceFilter.enabled && distanceFilter.locationName && (
+                          <span className="block md:inline ml-0 md:ml-2 text-green-600 text-xs md:text-sm mt-1 md:mt-0">
+                            within {formatDistance(distanceFilter.radius)} of {distanceFilter.locationName}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </h2>
+                </div>
+                
+                <div className="pb-20 md:pb-8">
+                  {renderContent()}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Filter Dialog */}
+        <DiscoverFilterDialog
+          isOpen={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
           
-          <div className="border-t pt-3">
-            <p className="text-xs text-gray-500 mb-2">Switch View</p>
-            <div className="grid grid-cols-3 gap-2">
-              <MobileButton
-                variant={urlState.view === 'list' ? 'default' : 'outline'}
-                onClick={() => {
-                  setShowQuickActions(false);
-                  handleViewModeChange('list');
-                }}
-                size="sm"
-                touchOptimized
-              >
-                <List size={14} />
-              </MobileButton>
-              <MobileButton
-                variant={urlState.view === 'grid' ? 'default' : 'outline'}
-                onClick={() => {
-                  setShowQuickActions(false);
-                  handleViewModeChange('grid');
-                }}
-                size="sm"
-                touchOptimized
-              >
-                <Grid size={14} />
-              </MobileButton>
-              <MobileButton
-                variant={urlState.view === 'map' ? 'default' : 'outline'}
-                onClick={() => {
-                  setShowQuickActions(false);
-                  handleViewModeChange('map');
-                }}
-                size="sm"
-                touchOptimized
-              >
-                <MapPin size={14} />
-              </MobileButton>
+          postcodes={postcodeOptions}
+          selectedPostcodes={urlState.postcodes}
+          onPostcodesChange={(values) => updateUrlState({ postcodes: values })}
+          
+          colors={colorOptions}
+          selectedColors={urlState.colors}
+          onColorsChange={(values) => updateUrlState({ colors: values })}
+          
+          professions={professionOptions}
+          selectedProfessions={urlState.professions}
+          onProfessionsChange={(values) => updateUrlState({ professions: values })}
+          
+          onlyVisited={urlState.onlyVisited}
+          onVisitedChange={handleVisitedChange}
+          
+          onlyFavorites={urlState.onlyFavorites}
+          onFavoritesChange={handleFavoritesChange}
+          
+          onApply={() => {
+            triggerHapticFeedback('light');
+            setFiltersOpen(false);
+          }}
+          onReset={resetFilters}
+          
+          allPlaques={allPlaques}
+          isPlaqueVisited={isPlaqueVisited}
+          isFavorite={isFavorite}
+          distanceFilter={distanceFilter}
+        />
+        
+        {/* Mobile Quick Actions Dialog */}
+        <MobileDialog
+          isOpen={showQuickActions}
+          onClose={() => setShowQuickActions(false)}
+          title="Quick Actions"
+          size="sm"
+        >
+          <div className="p-4 space-y-3">
+            <MobileButton
+              onClick={() => {
+                setShowQuickActions(false);
+                handleQuickLocationAccess();
+              }}
+              className="w-full justify-start"
+              variant="outline"
+              touchOptimized
+            >
+              <Navigation size={16} className="mr-3" />
+              Find Plaques Near Me
+            </MobileButton>
+            
+            <MobileButton
+              onClick={() => {
+                setShowQuickActions(false);
+                setFiltersOpen(true);
+              }}
+              className="w-full justify-start"
+              variant="outline"
+              touchOptimized
+            >
+              <Filter size={16} className="mr-3" />
+              Open Filters
+            </MobileButton>
+            
+            <MobileButton
+              onClick={() => {
+                setShowQuickActions(false);
+                resetFilters();
+              }}
+              className="w-full justify-start"
+              variant="outline"
+              touchOptimized
+            >
+              <X size={16} className="mr-3" />
+              Clear All Filters
+            </MobileButton>
+            
+            <div className="border-t pt-3">
+              <p className="text-xs text-gray-500 mb-2">Switch View</p>
+              <div className="grid grid-cols-3 gap-2">
+                <MobileButton
+                  variant={urlState.view === 'list' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setShowQuickActions(false);
+                    handleViewModeChange('list');
+                  }}
+                  size="sm"
+                  touchOptimized
+                >
+                  <List size={14} />
+                </MobileButton>
+                <MobileButton
+                  variant={urlState.view === 'grid' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setShowQuickActions(false);
+                    handleViewModeChange('grid');
+                  }}
+                  size="sm"
+                  touchOptimized
+                >
+                  <Grid size={14} />
+                </MobileButton>
+                <MobileButton
+                  variant={urlState.view === 'map' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setShowQuickActions(false);
+                    handleViewModeChange('map');
+                  }}
+                  size="sm"
+                  touchOptimized
+                >
+                  <MapPin size={14} />
+                </MobileButton>
+              </div>
             </div>
           </div>
-        </div>
-      </MobileDialog>
-      
-      {/* Enhanced Plaque Detail Modal with URL state */}
-      {selectedPlaque && (
-        <PlaqueDetail
-          plaque={selectedPlaque}
-          isOpen={!!selectedPlaque}
-          onClose={handleCloseModal}
-          isFavorite={isFavorite(selectedPlaque.id)}
-          nearbyPlaques={getNearbyPlaques(selectedPlaque)}
-          onSelectNearbyPlaque={handleSelectNearbyPlaque}
-          isMapView={urlState.view === 'map'}
-          distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
-          formatDistance={formatDistance}
-          showDistance={distanceFilter.enabled}
-          generateShareUrl={generatePlaqueUrl}
-          currentPath={location.pathname}
-        />
-      )}
+        </MobileDialog>
+        
+        {/* Plaque Detail Modal with URL state */}
+        {selectedPlaque && (
+          <PlaqueDetail
+            plaque={selectedPlaque}
+            isOpen={!!selectedPlaque}
+            onClose={handleCloseModal}
+            isFavorite={isFavorite(selectedPlaque.id)}
+            nearbyPlaques={getNearbyPlaques(selectedPlaque)}
+            onSelectNearbyPlaque={handleSelectNearbyPlaque}
+            isMapView={urlState.view === 'map'}
+            distance={distanceFilter.enabled ? getDistanceFromActiveLocation(selectedPlaque) : undefined}
+            formatDistance={formatDistance}
+            showDistance={distanceFilter.enabled}
+            generateShareUrl={generatePlaqueUrl}
+            currentPath={location.pathname}
+          />
+        )}
 
-      {/* Collection action dialog for pending actions */}
-      {pendingCollectionPlaque && (
-        <AddToCollectionDialog
-          isOpen={!!pendingCollectionPlaque}
-          onClose={() => setPendingCollectionPlaque(null)}
-          plaque={pendingCollectionPlaque}
-        />
-      )}
-    </div>
+        {/* Collection action dialog for pending actions */}
+        {pendingCollectionPlaque && (
+          <AddToCollectionDialog
+            isOpen={!!pendingCollectionPlaque}
+            onClose={() => setPendingCollectionPlaque(null)}
+            plaque={pendingCollectionPlaque}
+          />
+        )}
+      </div>
+    </PageContainer>
   );
 };
 
