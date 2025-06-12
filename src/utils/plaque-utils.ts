@@ -282,12 +282,6 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
     );
   }).length;
 
-  // Removed 19th century plaques calculation
-  const nineteenthCentury = 0; // Set to 0 or remove if not needed at all
-
-  // Removed plaques in Westminster area calculation
-  const westminster = 0; // Set to 0 or remove if not needed at all
-
   // Count blue plaques by color field
   const bluePlaques = plaqueData.filter((p) => {
     const color = (p.color || p.colour || '').toString().toLowerCase();
@@ -374,8 +368,6 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
     architects,
     medicalProfessionals,
     women,
-    nineteenthCentury,
-    westminster,
     bluePlaques,
     greenPlaques,
     englishHeritage,
