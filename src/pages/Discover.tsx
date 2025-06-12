@@ -180,36 +180,70 @@ const Discover = () => {
       setAllPlaques(adaptedData);
       
       // Generate filter options - UPDATED with new filter types
-      const postcodeCount: Record<string, number> = {};
-      const colorCount: Record<string, number> = {};
-      const professionCount: Record<string, number> = {};
-      const organisationCount: Record<string, number> = {};
-      const subjectTypeCount: Record<string, number> = {};
+    const postcodeCount: Record<string, number> = {};
+    const colorCount: Record<string, number> = {};
+    const professionCount: Record<string, number> = {};
+    const organisationCount: Record<string, number> = {};
+    const subjectTypeCount: Record<string, number> = {};
       
-      adaptedData.forEach(plaque => {
-        if (plaque.postcode && plaque.postcode !== "Unknown") {
-          postcodeCount[plaque.postcode] = (postcodeCount[plaque.postcode] || 0) + 1;
-        }
-        
-        const color = plaque.color?.toLowerCase();
-        if (color && color !== "unknown") {
-          colorCount[color] = (colorCount[color] || 0) + 1;
-        }
-        
-        if (plaque.profession && plaque.profession !== "Unknown") {
-          professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
-        }
+adaptedData.forEach(plaque => {
+  // Postcode counting
+  if (plaque.postcode && plaque.postcode !== "Unknown") {
+    postcodeCount[plaque.postcode] = (postcodeCount[plaque.postcode] || 0) + 1;
+  }
+  
+  // Color counting
+  const color = plaque.color?.toLowerCase();
+  if (color && color !== "unknown") {
+    colorCount[color] = (colorCount[color] || 0) + 1;
+  }
+  
+  // Profession counting
+  if (plaque.profession && plaque.profession !== "Unknown") {
+    professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
+  }
 
-        // NEW: Organisation counting (adjust property name based on your data structure)
-        if ((plaque as any).organisation && (plaque as any).organisation !== "Unknown") {
-          organisationCount[(plaque as any).organisation] = (organisationCount[(plaque as any).organisation] || 0) + 1;
+ // FIXED: Organisation counting - handle both array and string formats
+      if ((plaque as any).organisations && 
+          (plaque as any).organisations !== "Unknown" && 
+          (plaque as any).organisations !== "[]" &&
+          (plaque as any).organisations !== "") {
+        
+        const orgField = (plaque as any).organisations;
+        
+        try {
+          // Try to parse as JSON array first
+          const orgs = JSON.parse(orgField);
+          if (Array.isArray(orgs) && orgs.length > 0) {
+            orgs.forEach(org => {
+              if (org && typeof org === 'string' && org.trim()) {
+                const cleanOrg = org.trim();
+                organisationCount[cleanOrg] = (organisationCount[cleanOrg] || 0) + 1;
+              }
+            });
+          }
+        } catch (e) {
+          // If it's not valid JSON, treat as single organisation string
+          if (typeof orgField === 'string' && orgField.trim() && orgField !== "[]") {
+            const cleanOrg = orgField.trim();
+            organisationCount[cleanOrg] = (organisationCount[cleanOrg] || 0) + 1;
+          }
         }
+      }
 
-        // NEW: Subject type counting (adjust property name based on your data structure)
-        if ((plaque as any).subjectType && (plaque as any).subjectType !== "Unknown") {
-          subjectTypeCount[(plaque as any).subjectType] = (subjectTypeCount[(plaque as any).subjectType] || 0) + 1;
+  // FIXED: Subject type counting - use correct field name
+  if ((plaque as any).lead_subject_type && 
+          (plaque as any).lead_subject_type !== "Unknown" &&
+          (plaque as any).lead_subject_type !== "") {
+        
+        const subjectType = (plaque as any).lead_subject_type;
+        if (typeof subjectType === 'string' && subjectType.trim()) {
+          const cleanSubjectType = subjectType.trim();
+          subjectTypeCount[cleanSubjectType] = (subjectTypeCount[cleanSubjectType] || 0) + 1;
         }
-      });
+  }
+  
+});
       
       setPostcodeOptions(
         Object.entries(postcodeCount)
@@ -237,27 +271,36 @@ const Discover = () => {
           .sort((a, b) => b.count - a.count)
       );
 
-      // NEW: Set organisation options
-      setOrganisationOptions(
-        Object.entries(organisationCount)
-          .map(([value, count]) => ({
-            label: capitalizeWords(value),
-            value,
-            count
-          }))
-          .sort((a, b) => b.count - a.count)
-      );
-
-      // NEW: Set subject type options
-      setSubjectTypeOptions(
-        Object.entries(subjectTypeCount)
-          .map(([value, count]) => ({
-            label: capitalizeWords(value),
-            value,
-            count
-          }))
-          .sort((a, b) => b.count - a.count)
-      );
+       setOrganisationOptions(
+      Object.entries(organisationCount)
+        .map(([value, count]) => ({
+          label: value, // Don't capitalize organisations as they may be proper names
+          value,
+          count
+        }))
+        .sort((a, b) => b.count - a.count)
+    );
+        // NEW: Set subject type options with friendly labels
+    setSubjectTypeOptions(
+      Object.entries(subjectTypeCount)
+        .map(([value, count]) => ({
+          label: value === 'man' ? 'Men' : 
+                 value === 'woman' ? 'Women' : 
+                 value === 'place' ? 'Places & Buildings' : 
+                 value === 'thing' ? 'Objects & Things' : 
+                 capitalizeWords(value),
+          value,
+          count
+        }))
+        .sort((a, b) => b.count - a.count)
+    );
+    
+      console.log('Filter options generated:');
+    console.log('Organisations:', Object.keys(organisationCount).length);
+    console.log('Subject Types:', Object.keys(subjectTypeCount).length);
+    console.log('Sample organisations:', Object.keys(organisationCount).slice(0, 5));
+    console.log('Sample subject types:', Object.keys(subjectTypeCount));
+    
       
       setLoading(false);
     } catch (error) {
@@ -268,100 +311,133 @@ const Discover = () => {
   }, []);
 
   // Enhanced filtered plaques with proper boolean filtering - UPDATED with new filters
-  const filteredPlaques = useMemo(() => {
-    console.log('=== FILTERING DEBUG ===');
-    console.log('URL State:', {
-      onlyVisited: urlState.onlyVisited,
-      onlyFavorites: urlState.onlyFavorites,
-      search: urlState.search,
-      colors: urlState.colors,
-      postcodes: urlState.postcodes,
-      professions: urlState.professions,
-      organisations: urlState.organisations,
-      subjectTypes: urlState.subjectTypes
-    });
-    console.log('Total plaques before filtering:', allPlaques.length);
+const filteredPlaques = useMemo(() => {
+  console.log('=== FILTERING DEBUG ===');
+  console.log('URL State:', {
+    onlyVisited: urlState.onlyVisited,
+    onlyFavorites: urlState.onlyFavorites,
+    search: urlState.search,
+    colors: urlState.colors,
+    postcodes: urlState.postcodes,
+    professions: urlState.professions,
+    organisations: urlState.organisations,
+    subjectTypes: urlState.subjectTypes
+  });
+  console.log('Total plaques before filtering:', allPlaques.length);
 
-    let filtered = allPlaques.filter((plaque) => {
-      // Standard filters
-      const searchLower = urlState.search.toLowerCase();
-      const matchesSearch = !urlState.search.trim() || 
-        plaque.title?.toLowerCase().includes(searchLower) ||
-        plaque.inscription?.toLowerCase().includes(searchLower) ||
-        plaque.address?.toLowerCase().includes(searchLower) ||
-        plaque.location?.toLowerCase().includes(searchLower) ||
-        plaque.description?.toLowerCase().includes(searchLower);
+  let filtered = allPlaques.filter((plaque) => {
+    // Standard filters
+    const searchLower = urlState.search.toLowerCase();
+    const matchesSearch = !urlState.search.trim() || 
+      plaque.title?.toLowerCase().includes(searchLower) ||
+      plaque.inscription?.toLowerCase().includes(searchLower) ||
+      plaque.address?.toLowerCase().includes(searchLower) ||
+      plaque.location?.toLowerCase().includes(searchLower) ||
+      plaque.description?.toLowerCase().includes(searchLower);
+    
+    const matchesPostcode = urlState.postcodes.length === 0 || 
+      (plaque.postcode && urlState.postcodes.includes(plaque.postcode));
+    
+    const matchesColor = urlState.colors.length === 0 || 
+      (plaque.color && urlState.colors.includes(plaque.color.toLowerCase()));
+    
+    const matchesProfession = urlState.professions.length === 0 || 
+      (plaque.profession && urlState.professions.includes(plaque.profession));
+    
+    // FIXED: Organisation filter - use correct field name and handle array format
+    const matchesOrganisation = urlState.organisations.length === 0 || (() => {
+      const orgField = (plaque as any).organisations;
+      if (!orgField || orgField === "[]" || orgField === "Unknown" || orgField === "") return false;
       
-      const matchesPostcode = urlState.postcodes.length === 0 || 
-        (plaque.postcode && urlState.postcodes.includes(plaque.postcode));
-      
-      const matchesColor = urlState.colors.length === 0 || 
-        (plaque.color && urlState.colors.includes(plaque.color.toLowerCase()));
-      
-      const matchesProfession = urlState.professions.length === 0 || 
-        (plaque.profession && urlState.professions.includes(plaque.profession));
-      
-      // NEW: Organisation filter
-      const matchesOrganisation = urlState.organisations.length === 0 || 
-        ((plaque as any).organisation && urlState.organisations.includes((plaque as any).organisation));
+      try {
+        // Try to parse as JSON array
+        const orgs = JSON.parse(orgField);
+        if (Array.isArray(orgs)) {
+          return orgs.some(org => 
+            typeof org === 'string' && 
+            urlState.organisations.includes(org.trim())
+          );
+        }
+      } catch (e) {
+        // If not valid JSON, treat as single organisation
+        if (typeof orgField === 'string') {
+          return urlState.organisations.includes(orgField.trim());
+        }
+      }
+      return false;
+    })();
 
-      // NEW: Subject type filter
-      const matchesSubjectType = urlState.subjectTypes.length === 0 || 
-        ((plaque as any).subjectType && urlState.subjectTypes.includes((plaque as any).subjectType));
-      
-      // Enhanced boolean filtering for visited and favorites
-      const plaqueIsVisited = plaque.visited || isPlaqueVisited(plaque.id);
-      const plaqueIsFavorite = isFavorite(plaque.id);
-      
-      const matchesVisited = !urlState.onlyVisited || plaqueIsVisited;
-      const matchesFavorite = !urlState.onlyFavorites || plaqueIsFavorite;
+    // FIXED: Subject type filter - use correct field name
+    const matchesSubjectType = urlState.subjectTypes.length === 0 || 
+      ((plaque as any).lead_subject_type && 
+       urlState.subjectTypes.includes((plaque as any).lead_subject_type));
+    
+    // Enhanced boolean filtering for visited and favorites
+    const plaqueIsVisited = plaque.visited || isPlaqueVisited(plaque.id);
+    const plaqueIsFavorite = isFavorite(plaque.id);
+    
+    const matchesVisited = !urlState.onlyVisited || plaqueIsVisited;
+    const matchesFavorite = !urlState.onlyFavorites || plaqueIsFavorite;
 
-      return matchesSearch && 
-             matchesPostcode && 
-             matchesColor && 
-             matchesProfession && 
-             matchesOrganisation &&
-             matchesSubjectType &&
-             matchesVisited && 
-             matchesFavorite;
-    });
+    const result = matchesSearch && 
+           matchesPostcode && 
+           matchesColor && 
+           matchesProfession && 
+           matchesOrganisation &&
+           matchesSubjectType &&
+           matchesVisited && 
+           matchesFavorite;
 
-    console.log('After standard filters:', filtered.length);
-
-    // Apply distance filter for ALL views
-    if (distanceFilter.enabled && distanceFilter.center) {
-      const beforeDistance = filtered.length;
-      filtered = filtered.filter(plaque => {
-        if (!plaque.latitude || !plaque.longitude) return false;
-        
-        const lat = plaque.latitude;
-        const lng = plaque.longitude;
-        
-        if (isNaN(lat) || isNaN(lng)) return false;
-        
-        const distance = calculateDistance(
-          distanceFilter.center![0], 
-          distanceFilter.center![1], 
-          lat, 
-          lng
-        );
-        return distance <= distanceFilter.radius;
+    // Debug individual plaque filtering
+    if (urlState.organisations.length > 0 || urlState.subjectTypes.length > 0) {
+      console.log(`Plaque ${plaque.id} (${plaque.title}):`, {
+        matchesOrganisation,
+        matchesSubjectType,
+        orgField: (plaque as any).organisations,
+        subjectTypeField: (plaque as any).lead_subject_type,
+        result
       });
-      console.log(`After distance filter: ${filtered.length} (was ${beforeDistance})`);
     }
 
-    console.log(`Final filtered count: ${filtered.length}`);
-    console.log('=== END FILTERING DEBUG ===');
-    return filtered;
-  }, [
-    allPlaques, 
-    urlState,
-    isPlaqueVisited,
-    isFavorite,
-    distanceFilter.enabled,
-    distanceFilter.center,
-    distanceFilter.radius
-  ]);
+    return result;
+  });
+
+  console.log('After standard filters:', filtered.length);
+
+  // Apply distance filter for ALL views
+  if (distanceFilter.enabled && distanceFilter.center) {
+    const beforeDistance = filtered.length;
+    filtered = filtered.filter(plaque => {
+      if (!plaque.latitude || !plaque.longitude) return false;
+      
+      const lat = plaque.latitude;
+      const lng = plaque.longitude;
+      
+      if (isNaN(lat) || isNaN(lng)) return false;
+      
+      const distance = calculateDistance(
+        distanceFilter.center![0], 
+        distanceFilter.center![1], 
+        lat, 
+        lng
+      );
+      return distance <= distanceFilter.radius;
+    });
+    console.log(`After distance filter: ${filtered.length} (was ${beforeDistance})`);
+  }
+
+  console.log(`Final filtered count: ${filtered.length}`);
+  console.log('=== END FILTERING DEBUG ===');
+  return filtered;
+}, [
+  allPlaques, 
+  urlState,
+  isPlaqueVisited,
+  isFavorite,
+  distanceFilter.enabled,
+  distanceFilter.center,
+  distanceFilter.radius
+]);
 
   // Active filters count including distance filter - UPDATED with new filters
   const activeFiltersCount = useMemo(() => {

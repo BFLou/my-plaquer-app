@@ -111,7 +111,7 @@ const getFieldValueAsString = (value: string | number | boolean | undefined): st
 const safeParseJSON = (jsonString: string): string[] => {
   try {
     const parsed = JSON.parse(jsonString);
-    return Array.isArray(parsed) ? parsed : [jsonString];
+    return Array.isArray(parsed) ? parsed.filter(item => item && typeof item === 'string' && item.trim()) : [jsonString];
   } catch {
     return [jsonString];
   }
@@ -226,14 +226,9 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       
       return originalOptions.map(option => {
         const filteredCount = distanceFilteredPlaques.filter(plaque => {
-          // Handle organisation comparison
+          // FIXED: Handle organisation comparison with correct field name
           if (isOrganisation) {
-            // Try multiple possible field names for organisations
-            const orgField = (plaque as any).organisation || 
-                            (plaque as any).organizations || 
-                            (plaque as any).org || 
-                            (plaque as any).institution ||
-                            '';
+            const orgField = (plaque as any).organisations; // Use plural form
             const orgsStr = getFieldValueAsString(orgField);
             
             console.log(`Checking org for ${plaque.title}:`, {
@@ -242,10 +237,10 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               optionValue: option.value
             });
             
-            if (orgsStr === '' || orgsStr === '[]') return false;
+            if (orgsStr === '' || orgsStr === '[]' || orgsStr === 'Unknown') return false;
             
             // Handle both string and array formats
-            if (orgsStr.startsWith('[')) {
+            if (orgsStr.startsWith('[') && orgsStr.endsWith(']')) {
               const orgs = safeParseJSON(orgsStr);
               return orgs.some(org => 
                 org.toLowerCase().trim() === option.value.toLowerCase().trim()
@@ -255,15 +250,9 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
             }
           }
 
-          // Handle subject type comparison
+          // FIXED: Handle subject type comparison with correct field name
           if (isSubjectType) {
-            // Try multiple possible field names for subject types
-            const subjectField = (plaque as any).subjectType || 
-                              (plaque as any).subject_type || 
-                              (plaque as any).lead_subject_type || 
-                              (plaque as any).type ||
-                              (plaque as any).category ||
-                              '';
+            const subjectField = (plaque as any).lead_subject_type; // Use correct field name
             const fieldStr = getFieldValueAsString(subjectField);
             
             console.log(`Checking subject for ${plaque.title}:`, {
@@ -300,8 +289,8 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       postcodes: calculateFilteredCounts(postcodes, 'postcode'),
       colors: calculateFilteredCounts(colors, 'color'),
       professions: calculateFilteredCounts(professions, 'profession'),
-      organisations: calculateFilteredCounts(organisations, 'organisation', true, false),
-      subjectTypes: calculateFilteredCounts(subjectTypes, 'subjectType', false, true),
+      organisations: calculateFilteredCounts(organisations, 'organisations', true, false), // FIXED: Use correct field
+      subjectTypes: calculateFilteredCounts(subjectTypes, 'lead_subject_type', false, true), // FIXED: Use correct field
       eras: eras ? calculateFilteredCounts(eras, 'erected') : undefined
     };
   }, [postcodes, colors, professions, organisations, subjectTypes, eras, distanceFilter, distanceFilteredPlaques, allPlaques]);
@@ -349,7 +338,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     return option.count ? `(${option.count})` : '';
   };
   
-  // FIXED: Less restrictive option disabled check
+  // Option disabled check
   const isOptionDisabled = (option: FilterOption): boolean => {
     // Only disable if distance filter is active AND the option has 0 results in the area
     return !!distanceFilter?.enabled && option.filteredCount === 0;
@@ -449,7 +438,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     onFavoritesChange(checked);
   };
   
-  // FIXED: Navigation with improved debugging and less restrictive checks
+  // Navigation with improved debugging
   const navigateToCategory = (categoryId: string) => {
     const category = filterCategories.find(c => c.id === categoryId);
     console.log('=== FILTER NAVIGATION DEBUG ===');
@@ -459,7 +448,6 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     console.log('All options:', category?.options.map(o => ({ label: o.label, count: o.count, filteredCount: o.filteredCount })));
     
     if (category && category.options.length > 0) {
-      // Remove the overly restrictive disabled check that was preventing navigation
       triggerHapticFeedback('selection');
       setCurrentView(categoryId);
       setSearchQuery('');
@@ -467,7 +455,6 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       console.log('Successfully navigated to category:', categoryId);
     } else {
       console.log('Navigation blocked - no category or no options');
-      // Show a toast or alert to help debug
       if (category && category.options.length === 0) {
         console.warn(`Category ${categoryId} has no options available`);
       }
@@ -479,7 +466,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     setCurrentView('main');
   };
   
-  // FIXED: Render Main Menu View with better debugging and less restrictive disabling
+  // Render Main Menu View
   const renderMainMenu = () => (
     <div 
       className="h-full"
@@ -511,7 +498,6 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
         {filterCategories.map((category) => {
           const availableOptionsCount = category.options.filter(opt => !isOptionDisabled(opt)).length;
           const totalOptions = category.options.length;
-          // Only disable if there are literally no options at all
           const isDisabled = totalOptions === 0;
           
           console.log(`Category ${category.id}: ${totalOptions} total, ${availableOptionsCount} available, disabled: ${isDisabled}`);
@@ -884,9 +870,9 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
             <div>
               <strong>Sample Values:</strong>
               <br />
-              Organisation: {JSON.stringify((samplePlaque as any).organisation || 'undefined')}
+              Organisation: {JSON.stringify((samplePlaque as any).organisations || 'undefined')}
               <br />
-              Subject Type: {JSON.stringify((samplePlaque as any).subjectType || 'undefined')}
+              Subject Type: {JSON.stringify((samplePlaque as any).lead_subject_type || 'undefined')}
             </div>
             <div>
               <strong>Filter Counts:</strong>
@@ -998,4 +984,3 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
 };
 
 export default DiscoverFilterDialog;
-              

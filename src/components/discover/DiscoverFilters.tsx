@@ -1,8 +1,5 @@
-// ============================================================================
-// 1. MOBILE-OPTIMIZED DISCOVERFILTERS.TSX - UPDATED with organisations and subjectTypes
-// ============================================================================
+// src/components/discover/DiscoverFilters.tsx - FIXED with organisations and subjectTypes
 
-// src/components/discover/DiscoverFilters.tsx
 import React, { useState } from 'react';
 import { X, MapPin, Filter, ChevronDown } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +68,7 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   // Helper function to get friendly label for subject types
   const getSubjectTypeLabel = (value: string) => {
     switch (value) {
+      case 'man': return 'Men';
       case 'woman': return 'Women';
       case 'place': return 'Places & Buildings';
       case 'thing': return 'Objects & Things';
