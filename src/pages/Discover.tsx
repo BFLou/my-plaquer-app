@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - COMPLETE FIXED VERSION with proper navigation and compact spacing
+// src/pages/Discover.tsx - COMPLETE FIXED VERSION with organisations and subjectTypes
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from "@/utils/plaqueAdapter";
@@ -53,7 +53,7 @@ const Discover = () => {
   // Hook for keyboard detection
   const { isKeyboardOpen } = useKeyboardDetection();
     
-  // URL state parsing with modal support
+  // URL state parsing with modal support - UPDATED with new filters
   const urlState = useMemo(() => {
     const state = {
       view: (searchParams.get('view') as ViewMode) || (isMobile() ? 'list' : 'grid'),
@@ -61,6 +61,8 @@ const Discover = () => {
       colors: searchParams.get('colors')?.split(',').filter(Boolean) || [],
       postcodes: searchParams.get('postcodes')?.split(',').filter(Boolean) || [],
       professions: searchParams.get('professions')?.split(',').filter(Boolean) || [],
+      organisations: searchParams.get('organisations')?.split(',').filter(Boolean) || [],
+      subjectTypes: searchParams.get('subjectTypes')?.split(',').filter(Boolean) || [],
       onlyVisited: searchParams.get('visited') === 'true',
       onlyFavorites: searchParams.get('favorites') === 'true',
       modalPlaque: searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null,
@@ -70,19 +72,21 @@ const Discover = () => {
     return state;
   }, [searchParams]);
 
-  // URL state update function with mobile optimization
+  // URL state update function with mobile optimization - UPDATED with new filters
   const updateUrlState = useCallback((updates: Partial<typeof urlState>) => {
     const newParams = new URLSearchParams(searchParams);
     
     const newState = { ...urlState, ...updates };
     
-    // Map internal state to URL parameters
+    // Map internal state to URL parameters - UPDATED
     const urlMapping: Record<string, string> = {
       view: 'view',
       search: 'search', 
       colors: 'colors',
       postcodes: 'postcodes',
       professions: 'professions',
+      organisations: 'organisations',
+      subjectTypes: 'subjectTypes',
       onlyVisited: 'visited',
       onlyFavorites: 'favorites',
       modalPlaque: 'plaque'
@@ -129,10 +133,12 @@ const Discover = () => {
     locationName: null
   });
 
-  // Filter options with proper typing
+  // Filter options with proper typing - UPDATED with new filter types
   const [postcodeOptions, setPostcodeOptions] = useState<FilterOption[]>([]);
   const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
   const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
+  const [organisationOptions, setOrganisationOptions] = useState<FilterOption[]>([]);
+  const [subjectTypeOptions, setSubjectTypeOptions] = useState<FilterOption[]>([]);
 
   // External hooks
   const { isPlaqueVisited } = useVisitedPlaques();
@@ -165,7 +171,7 @@ const Discover = () => {
     }
   }, [urlState.modalPlaque, allPlaques]);
 
-  // Load plaque data
+  // Load plaque data - UPDATED with new filter generation
   useEffect(() => {
     try {
       setLoading(true);
@@ -173,10 +179,12 @@ const Discover = () => {
       const adaptedData = adaptPlaquesData(plaqueData as any);
       setAllPlaques(adaptedData);
       
-      // Generate filter options
+      // Generate filter options - UPDATED with new filter types
       const postcodeCount: Record<string, number> = {};
       const colorCount: Record<string, number> = {};
       const professionCount: Record<string, number> = {};
+      const organisationCount: Record<string, number> = {};
+      const subjectTypeCount: Record<string, number> = {};
       
       adaptedData.forEach(plaque => {
         if (plaque.postcode && plaque.postcode !== "Unknown") {
@@ -190,6 +198,16 @@ const Discover = () => {
         
         if (plaque.profession && plaque.profession !== "Unknown") {
           professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
+        }
+
+        // NEW: Organisation counting (adjust property name based on your data structure)
+        if ((plaque as any).organisation && (plaque as any).organisation !== "Unknown") {
+          organisationCount[(plaque as any).organisation] = (organisationCount[(plaque as any).organisation] || 0) + 1;
+        }
+
+        // NEW: Subject type counting (adjust property name based on your data structure)
+        if ((plaque as any).subjectType && (plaque as any).subjectType !== "Unknown") {
+          subjectTypeCount[(plaque as any).subjectType] = (subjectTypeCount[(plaque as any).subjectType] || 0) + 1;
         }
       });
       
@@ -218,6 +236,28 @@ const Discover = () => {
           }))
           .sort((a, b) => b.count - a.count)
       );
+
+      // NEW: Set organisation options
+      setOrganisationOptions(
+        Object.entries(organisationCount)
+          .map(([value, count]) => ({
+            label: capitalizeWords(value),
+            value,
+            count
+          }))
+          .sort((a, b) => b.count - a.count)
+      );
+
+      // NEW: Set subject type options
+      setSubjectTypeOptions(
+        Object.entries(subjectTypeCount)
+          .map(([value, count]) => ({
+            label: capitalizeWords(value),
+            value,
+            count
+          }))
+          .sort((a, b) => b.count - a.count)
+      );
       
       setLoading(false);
     } catch (error) {
@@ -227,7 +267,7 @@ const Discover = () => {
     }
   }, []);
 
-  // Enhanced filtered plaques with proper boolean filtering
+  // Enhanced filtered plaques with proper boolean filtering - UPDATED with new filters
   const filteredPlaques = useMemo(() => {
     console.log('=== FILTERING DEBUG ===');
     console.log('URL State:', {
@@ -236,7 +276,9 @@ const Discover = () => {
       search: urlState.search,
       colors: urlState.colors,
       postcodes: urlState.postcodes,
-      professions: urlState.professions
+      professions: urlState.professions,
+      organisations: urlState.organisations,
+      subjectTypes: urlState.subjectTypes
     });
     console.log('Total plaques before filtering:', allPlaques.length);
 
@@ -259,6 +301,14 @@ const Discover = () => {
       const matchesProfession = urlState.professions.length === 0 || 
         (plaque.profession && urlState.professions.includes(plaque.profession));
       
+      // NEW: Organisation filter
+      const matchesOrganisation = urlState.organisations.length === 0 || 
+        ((plaque as any).organisation && urlState.organisations.includes((plaque as any).organisation));
+
+      // NEW: Subject type filter
+      const matchesSubjectType = urlState.subjectTypes.length === 0 || 
+        ((plaque as any).subjectType && urlState.subjectTypes.includes((plaque as any).subjectType));
+      
       // Enhanced boolean filtering for visited and favorites
       const plaqueIsVisited = plaque.visited || isPlaqueVisited(plaque.id);
       const plaqueIsFavorite = isFavorite(plaque.id);
@@ -270,6 +320,8 @@ const Discover = () => {
              matchesPostcode && 
              matchesColor && 
              matchesProfession && 
+             matchesOrganisation &&
+             matchesSubjectType &&
              matchesVisited && 
              matchesFavorite;
     });
@@ -311,11 +363,13 @@ const Discover = () => {
     distanceFilter.radius
   ]);
 
-  // Active filters count including distance filter
+  // Active filters count including distance filter - UPDATED with new filters
   const activeFiltersCount = useMemo(() => {
     return urlState.postcodes.length + 
            urlState.colors.length + 
            urlState.professions.length + 
+           urlState.organisations.length +
+           urlState.subjectTypes.length +
            (urlState.onlyVisited ? 1 : 0) + 
            (urlState.onlyFavorites ? 1 : 0) +
            (distanceFilter.enabled ? 1 : 0);
@@ -323,6 +377,8 @@ const Discover = () => {
     urlState.postcodes.length,
     urlState.colors.length,
     urlState.professions.length,
+    urlState.organisations.length,
+    urlState.subjectTypes.length,
     urlState.onlyVisited,
     urlState.onlyFavorites,
     distanceFilter.enabled
@@ -359,7 +415,7 @@ const Discover = () => {
     setCurrentPage(1);
   }, [updateUrlState]);
 
-  // Reset filters including distance filter
+  // Reset filters including distance filter - UPDATED with new filters
   const resetFilters = useCallback(() => {
     console.log('Resetting all filters');
     triggerHapticFeedback('medium');
@@ -368,6 +424,8 @@ const Discover = () => {
       colors: [],
       postcodes: [],
       professions: [],
+      organisations: [],
+      subjectTypes: [],
       onlyVisited: false,
       onlyFavorites: false,
       modalPlaque: null
@@ -690,7 +748,7 @@ const Discover = () => {
             }}
           />
           
-          {/* Active filters display */}
+          {/* Active filters display - UPDATED with complete filter options */}
           <DiscoverFilters
             urlState={urlState}
             activeFiltersCount={activeFiltersCount}
@@ -705,7 +763,9 @@ const Discover = () => {
             filterOptions={{
               postcodeOptions,
               colorOptions,
-              professionOptions
+              professionOptions,
+              organisationOptions,
+              subjectTypeOptions
             }}
             onApplyFilters={(filters) => updateUrlState(filters)}
             distanceFilter={distanceFilter}
@@ -748,7 +808,7 @@ const Discover = () => {
           )}
         </div>
         
-        {/* Filter Dialog */}
+        {/* Filter Dialog - UPDATED with complete filter props */}
         <DiscoverFilterDialog
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
@@ -764,6 +824,14 @@ const Discover = () => {
           professions={professionOptions}
           selectedProfessions={urlState.professions}
           onProfessionsChange={(values) => updateUrlState({ professions: values })}
+
+          organisations={organisationOptions}
+          selectedOrganisations={urlState.organisations}
+          onOrganisationsChange={(values) => updateUrlState({ organisations: values })}
+
+          subjectTypes={subjectTypeOptions}
+          selectedSubjectTypes={urlState.subjectTypes}
+          onSubjectTypesChange={(values) => updateUrlState({ subjectTypes: values })}
           
           onlyVisited={urlState.onlyVisited}
           onVisitedChange={handleVisitedChange}

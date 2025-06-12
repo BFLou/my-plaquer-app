@@ -21,6 +21,7 @@ export type Plaque = {
   lead_subject_born_in?: string;
   lead_subject_died_in?: string;
   lead_subject_primary_role?: string;
+  lead_subject_type?: string;
   lead_subject_wikipedia?: string;
   latitude?: number;
   longitude?: number;

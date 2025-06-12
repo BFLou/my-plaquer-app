@@ -1,7 +1,7 @@
-// src/components/plaques/DiscoverFilterDialog.tsx - FIXED: Type safety issues
+// src/components/plaques/DiscoverFilterDialog.tsx - COMPLETE FIXED VERSION
 import React, { useState, useMemo } from 'react';
 import { 
-  Search, MapPin, Circle,
+  Search, MapPin, Circle, Building, Users,
   User, Star, CheckCircle, ArrowLeft, ArrowRight, Calendar,
   Crosshair, AlertCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
@@ -59,13 +59,17 @@ type DiscoverFilterDialogProps = {
   selectedProfessions: string[];
   onProfessionsChange: (values: string[]) => void;
   
+  organisations: FilterOption[];
+  selectedOrganisations: string[];
+  onOrganisationsChange: (values: string[]) => void;
+
+  subjectTypes: FilterOption[];
+  selectedSubjectTypes: string[];
+  onSubjectTypesChange: (values: string[]) => void;
+  
   eras?: FilterOption[];
   selectedEras?: string[];
   onErasChange?: (values: string[]) => void;
-  
-  organisations?: FilterOption[];
-  selectedOrganisations?: string[];
-  onOrganisationsChange?: (values: string[]) => void;
   
   onlyVisited: boolean;
   onVisitedChange: (value: boolean) => void;
@@ -82,7 +86,7 @@ type DiscoverFilterDialogProps = {
   isFavorite?: (id: number) => boolean;
 };
 
-// FIXED: Helper functions for safe type conversions
+// Helper functions for safe type conversions
 const getValidCoordinate = (coord: number | string | undefined): number => {
   if (typeof coord === 'number' && !isNaN(coord)) {
     return coord;
@@ -94,13 +98,23 @@ const getValidCoordinate = (coord: number | string | undefined): number => {
   return 0;
 };
 
-// FIXED: Helper to safely convert field values to strings for comparison
+// Helper to safely convert field values to strings for comparison
 const getFieldValueAsString = (value: string | number | boolean | undefined): string => {
   if (value === undefined || value === null) return '';
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return String(value);
   return '';
+};
+
+// Helper to safely parse JSON for organisations
+const safeParseJSON = (jsonString: string): string[] => {
+  try {
+    const parsed = JSON.parse(jsonString);
+    return Array.isArray(parsed) ? parsed : [jsonString];
+  } catch {
+    return [jsonString];
+  }
 };
 
 export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
@@ -118,14 +132,18 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   professions,
   selectedProfessions,
   onProfessionsChange,
+
+  organisations,
+  selectedOrganisations,
+  onOrganisationsChange,
+
+  subjectTypes,
+  selectedSubjectTypes,
+  onSubjectTypesChange,
   
   eras,
   selectedEras,
   onErasChange,
-  
-  organisations,
-  selectedOrganisations,
-  onOrganisationsChange,
   
   onlyVisited,
   onVisitedChange,
@@ -163,7 +181,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     threshold: 100
   });
   
-  // FIXED: Filter plaques based on distance filter with safe coordinate conversion
+  // Filter plaques based on distance filter with safe coordinate conversion
   const distanceFilteredPlaques = useMemo(() => {
     if (!distanceFilter?.enabled || !distanceFilter.center || !allPlaques.length) {
       return allPlaques;
@@ -172,7 +190,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     return allPlaques.filter(plaque => {
       if (!plaque.latitude || !plaque.longitude) return false;
       
-      // FIXED: Safe coordinate conversion
+      // Safe coordinate conversion
       const lat = getValidCoordinate(plaque.latitude);
       const lng = getValidCoordinate(plaque.longitude);
       
@@ -189,29 +207,87 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     });
   }, [distanceFilter, allPlaques]);
   
-  // FIXED: Enhanced filter options with distance-filtered counts and safe field access
+  // FIXED: Enhanced filter options with corrected field access
   const enhancedFilterOptions = useMemo(() => {
     const calculateFilteredCounts = (
       originalOptions: FilterOption[],
-      fieldName: keyof Plaque
+      fieldName: keyof Plaque | string,
+      isOrganisation: boolean = false,
+      isSubjectType: boolean = false
     ): FilterOption[] => {
       if (!distanceFilter?.enabled || !allPlaques.length) {
         return originalOptions;
       }
       
+      console.log(`=== CALCULATING FILTERED COUNTS FOR ${fieldName} ===`);
+      console.log('Original options:', originalOptions.length);
+      console.log('Is organisation:', isOrganisation);
+      console.log('Is subject type:', isSubjectType);
+      
       return originalOptions.map(option => {
         const filteredCount = distanceFilteredPlaques.filter(plaque => {
-          const fieldValue = plaque[fieldName];
-          
-          // FIXED: Safe field value comparison
-          if (fieldName === 'color') {
-            const fieldStr = getFieldValueAsString(fieldValue);
-            return fieldStr.toLowerCase() === option.value.toLowerCase();
+          // Handle organisation comparison
+          if (isOrganisation) {
+            // Try multiple possible field names for organisations
+            const orgField = (plaque as any).organisation || 
+                            (plaque as any).organizations || 
+                            (plaque as any).org || 
+                            (plaque as any).institution ||
+                            '';
+            const orgsStr = getFieldValueAsString(orgField);
+            
+            console.log(`Checking org for ${plaque.title}:`, {
+              orgField,
+              orgsStr,
+              optionValue: option.value
+            });
+            
+            if (orgsStr === '' || orgsStr === '[]') return false;
+            
+            // Handle both string and array formats
+            if (orgsStr.startsWith('[')) {
+              const orgs = safeParseJSON(orgsStr);
+              return orgs.some(org => 
+                org.toLowerCase().trim() === option.value.toLowerCase().trim()
+              );
+            } else {
+              return orgsStr.toLowerCase().trim() === option.value.toLowerCase().trim();
+            }
+          }
+
+          // Handle subject type comparison
+          if (isSubjectType) {
+            // Try multiple possible field names for subject types
+            const subjectField = (plaque as any).subjectType || 
+                              (plaque as any).subject_type || 
+                              (plaque as any).lead_subject_type || 
+                              (plaque as any).type ||
+                              (plaque as any).category ||
+                              '';
+            const fieldStr = getFieldValueAsString(subjectField);
+            
+            console.log(`Checking subject for ${plaque.title}:`, {
+              subjectField,
+              fieldStr,
+              optionValue: option.value
+            });
+            
+            return fieldStr.toLowerCase().trim() === option.value.toLowerCase().trim();
           }
           
+          // Handle color comparison
+          if (fieldName === 'color') {
+            const fieldStr = getFieldValueAsString(plaque[fieldName as keyof Plaque]);
+            return fieldStr.toLowerCase().trim() === option.value.toLowerCase().trim();
+          }
+          
+          // Standard string comparison for other fields
+          const fieldValue = plaque[fieldName as keyof Plaque];
           const fieldStr = getFieldValueAsString(fieldValue);
-          return fieldStr === option.value;
+          return fieldStr.toLowerCase().trim() === option.value.toLowerCase().trim();
         }).length;
+        
+        console.log(`Option ${option.value}: ${filteredCount} matches`);
         
         return {
           ...option,
@@ -224,22 +300,24 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       postcodes: calculateFilteredCounts(postcodes, 'postcode'),
       colors: calculateFilteredCounts(colors, 'color'),
       professions: calculateFilteredCounts(professions, 'profession'),
-      eras: eras ? calculateFilteredCounts(eras, 'erected') : undefined,
-      organisations: organisations ? calculateFilteredCounts(organisations, 'organisations') : undefined
+      organisations: calculateFilteredCounts(organisations, 'organisation', true, false),
+      subjectTypes: calculateFilteredCounts(subjectTypes, 'subjectType', false, true),
+      eras: eras ? calculateFilteredCounts(eras, 'erected') : undefined
     };
-  }, [postcodes, colors, professions, eras, organisations, distanceFilter, distanceFilteredPlaques, allPlaques]);
+  }, [postcodes, colors, professions, organisations, subjectTypes, eras, distanceFilter, distanceFilteredPlaques, allPlaques]);
   
   // Calculate total active filters
   const colorCount = selectedColors.length;
   const postcodeCount = selectedPostcodes.length;
   const professionCount = selectedProfessions.length;
+  const organisationCount = selectedOrganisations.length;
+  const subjectTypeCount = selectedSubjectTypes.length;
   const eraCount = selectedEras?.length || 0;
-  const organisationCount = selectedOrganisations?.length || 0;
   const togglesCount = (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
   
   const activeFiltersCount = 
     colorCount + postcodeCount + professionCount + 
-    eraCount + organisationCount + togglesCount;
+    organisationCount + subjectTypeCount + eraCount + togglesCount;
   
   // Toggle selection in an array with haptic feedback
   const toggleSelection = (array: string[], setter: (values: string[]) => void, value: string) => {
@@ -271,8 +349,9 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     return option.count ? `(${option.count})` : '';
   };
   
-  // Check if option should be disabled
+  // FIXED: Less restrictive option disabled check
   const isOptionDisabled = (option: FilterOption): boolean => {
+    // Only disable if distance filter is active AND the option has 0 results in the area
     return !!distanceFilter?.enabled && option.filteredCount === 0;
   };
   
@@ -304,6 +383,24 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       selectedValues: selectedProfessions,
       onChange: onProfessionsChange,
       searchable: true
+    },
+    {
+      id: 'organisations',
+      name: 'Organisations',
+      icon: <Building size={24} className="text-purple-500" />,
+      options: enhancedFilterOptions.organisations,
+      selectedValues: selectedOrganisations,
+      onChange: onOrganisationsChange,
+      searchable: true
+    },
+    {
+      id: 'subjectTypes',
+      name: 'Subject Types',
+      icon: <Users size={24} className="text-orange-500" />,
+      options: enhancedFilterOptions.subjectTypes,
+      selectedValues: selectedSubjectTypes,
+      onChange: onSubjectTypesChange,
+      searchable: false
     }
   ];
   
@@ -319,28 +416,16 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     });
   }
   
-  if (enhancedFilterOptions.organisations && onOrganisationsChange) {
-    filterCategories.push({
-      id: 'organisations',
-      name: 'Organisations',
-      icon: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>,
-      options: enhancedFilterOptions.organisations,
-      selectedValues: selectedOrganisations || [],
-      onChange: onOrganisationsChange,
-      searchable: true
-    });
-  }
-  
   const currentCategory = filterCategories.find(cat => cat.id === currentView);
   
-  // FIXED: Calculate filtered toggle counts with safe property access
+  // Calculate filtered toggle counts with safe property access
   const filteredToggleCounts = useMemo(() => {
     if (!distanceFilter?.enabled || !allPlaques.length) {
       return { visited: 0, favorites: 0 };
     }
     
     const visited = distanceFilteredPlaques.filter(plaque => {
-      // FIXED: Safe boolean check
+      // Safe boolean check
       const plaqueVisited = plaque.visited === true;
       const userVisited = isPlaqueVisited ? isPlaqueVisited(plaque.id) === true : false;
       return plaqueVisited || userVisited;
@@ -364,14 +449,28 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     onFavoritesChange(checked);
   };
   
-  // Navigation with haptic feedback
+  // FIXED: Navigation with improved debugging and less restrictive checks
   const navigateToCategory = (categoryId: string) => {
     const category = filterCategories.find(c => c.id === categoryId);
-    if (category && category.options.length > 0 && !isOptionDisabled(category.options[0])) {
+    console.log('=== FILTER NAVIGATION DEBUG ===');
+    console.log('Category ID:', categoryId);
+    console.log('Category found:', category);
+    console.log('Options available:', category?.options.length);
+    console.log('All options:', category?.options.map(o => ({ label: o.label, count: o.count, filteredCount: o.filteredCount })));
+    
+    if (category && category.options.length > 0) {
+      // Remove the overly restrictive disabled check that was preventing navigation
       triggerHapticFeedback('selection');
       setCurrentView(categoryId);
       setSearchQuery('');
       setShowAll(false);
+      console.log('Successfully navigated to category:', categoryId);
+    } else {
+      console.log('Navigation blocked - no category or no options');
+      // Show a toast or alert to help debug
+      if (category && category.options.length === 0) {
+        console.warn(`Category ${categoryId} has no options available`);
+      }
     }
   };
   
@@ -380,7 +479,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
     setCurrentView('main');
   };
   
-  // Render Main Menu View - Mobile optimized
+  // FIXED: Render Main Menu View with better debugging and less restrictive disabling
   const renderMainMenu = () => (
     <div 
       className="h-full"
@@ -407,11 +506,15 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
         </div>
       )}
       
-      {/* Categories List - Mobile optimized */}
+      {/* Categories List - Mobile optimized with better debugging */}
       <div className="space-y-3 mb-6">
         {filterCategories.map((category) => {
           const availableOptionsCount = category.options.filter(opt => !isOptionDisabled(opt)).length;
-          const isDisabled = distanceFilter?.enabled && availableOptionsCount === 0;
+          const totalOptions = category.options.length;
+          // Only disable if there are literally no options at all
+          const isDisabled = totalOptions === 0;
+          
+          console.log(`Category ${category.id}: ${totalOptions} total, ${availableOptionsCount} available, disabled: ${isDisabled}`);
           
           return (
             <MobileButton
@@ -422,6 +525,7 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                 isDisabled && "opacity-50 cursor-not-allowed"
               )}
               onClick={() => {
+                console.log(`Clicked category: ${category.id}, disabled: ${isDisabled}`);
                 if (!isDisabled) {
                   navigateToCategory(category.id);
                 }
@@ -433,11 +537,12 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                 {category.icon}
                 <div className="ml-4">
                   <span className="font-medium text-base">{category.name}</span>
-                  {distanceFilter?.enabled && (
-                    <div className="text-sm text-gray-500">
-                      {availableOptionsCount} available
-                    </div>
-                  )}
+                  <div className="text-sm text-gray-500">
+                    {totalOptions} total
+                    {distanceFilter?.enabled && (
+                      <span>, {availableOptionsCount} in area</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -657,34 +762,45 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                   </div>
                 </label>
               ) : (
-                // Standard option - Mobile optimized
-                <label 
+                // Non-color option
+                <label
                   key={option.value}
                   className={cn(
-                    "flex items-center justify-between p-4 cursor-pointer transition-colors border rounded-lg touch-manipulation",
+                    "flex items-center p-4 rounded-lg border cursor-pointer transition-colors touch-manipulation",
                     disabled ? "opacity-50 cursor-not-allowed bg-gray-50" :
-                    isSelected ? "bg-blue-50 border-blue-200" : "hover:bg-gray-50 active:bg-gray-100 border-gray-200"
+                    isSelected ? "border-blue-300 bg-blue-50" : 
+                    "border-gray-200 hover:bg-gray-50 active:bg-gray-100"
                   )}
                 >
-                  <div className="flex items-center flex-1 min-w-0">
-                    <input 
-                      type="checkbox"
-                      className="rounded text-blue-500 mr-3 w-5 h-5 flex-shrink-0"
-                      checked={isSelected}
-                      onChange={() => !disabled && toggleSelection(selectedValues, onChange, option.value)}
-                      disabled={disabled}
-                    />
+                  <input
+                    type="checkbox"
+                    className="rounded text-blue-500 mr-3 w-5 h-5"
+                    checked={isSelected}
+                    onChange={() => !disabled && toggleSelection(selectedValues, onChange, option.value)}
+                    disabled={disabled}
+                  />
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="truncate font-medium">{option.label}</span>
+                    <span className="text-sm text-gray-500">
+                      {formatCount(option)}
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-500 ml-3 flex-shrink-0">
-                    {formatCount(option)}
-                  </span>
                 </label>
-              )
+              );
             })
           ) : (
             <div className="p-8 text-center text-gray-500">
-              No {category.name.toLowerCase()} match your search
+              <div className="mb-2">No {category.name.toLowerCase()} match your search</div>
+              {searchQuery && (
+                <MobileButton 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="text-blue-600"
+                >
+                  Clear search
+                </MobileButton>
+              )}
             </div>
           )}
         </div>
@@ -702,6 +818,93 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
             {showAll ? "Show Less" : `Show All (${filteredOptions.length})`}
           </MobileButton>
         )}
+        
+        {/* Debug information when no results */}
+        {process.env.NODE_ENV === 'development' && filteredOptions.length === 0 && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="text-xs text-yellow-800">
+              <strong>Debug Info:</strong> No options available for {category.name}
+              <br />
+              Original options: {options.length}
+              {searchable && searchQuery && (
+                <>
+                  <br />
+                  Search query: "{searchQuery}"
+                </>
+              )}
+              {distanceFilter?.enabled && (
+                <>
+                  <br />
+                  Distance filter: {distanceFilter.radius}km from {distanceFilter.locationName}
+                  <br />
+                  Filtered plaques: {distanceFilteredPlaques.length}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Debug component for development - shows data structure
+  const renderDebugInfo = () => {
+    if (process.env.NODE_ENV !== 'development' || !allPlaques.length) return null;
+    
+    const samplePlaque = allPlaques[0];
+    const availableFields = Object.keys(samplePlaque);
+    
+    return (
+      <div className="mt-4 p-3 bg-gray-50 border rounded-lg">
+        <details className="text-xs">
+          <summary className="cursor-pointer font-medium mb-2">Debug: Data Structure</summary>
+          <div className="space-y-2">
+            <div>
+              <strong>Available Fields:</strong>
+              <br />
+              {availableFields.join(', ')}
+            </div>
+            <div>
+              <strong>Organisation Fields:</strong>
+              <br />
+              {availableFields.filter(f => 
+                f.toLowerCase().includes('org') || 
+                f.toLowerCase().includes('institution')
+              ).join(', ') || 'None found'}
+            </div>
+            <div>
+              <strong>Subject Type Fields:</strong>
+              <br />
+              {availableFields.filter(f => 
+                f.toLowerCase().includes('subject') || 
+                f.toLowerCase().includes('type') ||
+                f.toLowerCase().includes('category')
+              ).join(', ') || 'None found'}
+            </div>
+            <div>
+              <strong>Sample Values:</strong>
+              <br />
+              Organisation: {JSON.stringify((samplePlaque as any).organisation || 'undefined')}
+              <br />
+              Subject Type: {JSON.stringify((samplePlaque as any).subjectType || 'undefined')}
+            </div>
+            <div>
+              <strong>Filter Counts:</strong>
+              <br />
+              Organisations: {organisations.length} options
+              <br />
+              Subject Types: {subjectTypes.length} options
+              <br />
+              Total Plaques: {allPlaques.length}
+              {distanceFilter?.enabled && (
+                <>
+                  <br />
+                  Filtered Plaques: {distanceFilteredPlaques.length}
+                </>
+              )}
+            </div>
+          </div>
+        </details>
       </div>
     );
   };
@@ -709,7 +912,13 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
   return (
     <MobileDialog
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        // Reset state when closing
+        setCurrentView('main');
+        setSearchQuery('');
+        setShowAll(false);
+        onClose();
+      }}
       title={currentView === 'main' ? 'Filter Plaques' : undefined}
       description={currentView === 'main' && distanceFilter?.enabled 
         ? `Filtering ${distanceFilteredPlaques.length} plaques in ${distanceFilter.locationName}`
@@ -719,7 +928,17 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
       className="z-[9999] [&>div]:z-[9999]"
       footer={
         <div className="flex flex-col sm:flex-row gap-3 w-full">
-          {activeFiltersCount > 0 ? (
+          {currentView !== 'main' ? (
+            // Back button for category views
+            <MobileButton 
+              variant="outline"
+              onClick={navigateBack}
+              className="w-full sm:w-auto"
+            >
+              ← Back to Categories
+            </MobileButton>
+          ) : activeFiltersCount > 0 ? (
+            // Main view with active filters
             <>
               <MobileButton 
                 variant="outline"
@@ -727,6 +946,8 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                   triggerHapticFeedback('light');
                   onReset();
                   setCurrentView('main');
+                  setSearchQuery('');
+                  setShowAll(false);
                 }}
                 className="flex-1"
               >
@@ -736,6 +957,9 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
                 onClick={() => {
                   triggerHapticFeedback('success');
                   onApply();
+                  setCurrentView('main');
+                  setSearchQuery('');
+                  setShowAll(false);
                   onClose();
                 }}
                 className="flex-1"
@@ -744,8 +968,14 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
               </MobileButton>
             </>
           ) : (
+            // Main view with no active filters
             <MobileButton 
-              onClick={onClose}
+              onClick={() => {
+                setCurrentView('main');
+                setSearchQuery('');
+                setShowAll(false);
+                onClose();
+              }}
               className="w-full"
             >
               Close
@@ -754,12 +984,18 @@ export const DiscoverFilterDialog: React.FC<DiscoverFilterDialogProps> = ({
         </div>
       }
     >
-      {currentView === 'main' 
-        ? renderMainMenu()
-        : currentCategory && renderCategoryView(currentCategory)
-      }
+      <div className="relative">
+        {currentView === 'main' 
+          ? renderMainMenu()
+          : currentCategory && renderCategoryView(currentCategory)
+        }
+        
+        {/* Debug info at bottom in development */}
+        {currentView === 'main' && renderDebugInfo()}
+      </div>
     </MobileDialog>
   );
 };
 
 export default DiscoverFilterDialog;
+              

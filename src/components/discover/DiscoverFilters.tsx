@@ -1,5 +1,5 @@
 // ============================================================================
-// 1. MOBILE-OPTIMIZED DISCOVERFILTERS.TSX
+// 1. MOBILE-OPTIMIZED DISCOVERFILTERS.TSX - UPDATED with organisations and subjectTypes
 // ============================================================================
 
 // src/components/discover/DiscoverFilters.tsx
@@ -24,6 +24,8 @@ interface DiscoverFiltersProps {
     colors: string[];
     postcodes: string[];
     professions: string[];
+    organisations: string[];
+    subjectTypes: string[];
     onlyVisited: boolean;
     onlyFavorites: boolean;
   };
@@ -40,6 +42,8 @@ interface DiscoverFiltersProps {
     postcodeOptions: any[];
     colorOptions: any[];
     professionOptions: any[];
+    organisationOptions: any[];
+    subjectTypeOptions: any[];
   };
   onApplyFilters: (filters: any) => void;
   distanceFilter: DistanceFilter;
@@ -49,7 +53,6 @@ interface DiscoverFiltersProps {
 const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   urlState,
   activeFiltersCount,
-
   onRemoveFilter,
   onResetFilters,
   filtersOpen,
@@ -65,11 +68,23 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
     return null;
   }
 
-  // Group filters for mobile display
+  // Helper function to get friendly label for subject types
+  const getSubjectTypeLabel = (value: string) => {
+    switch (value) {
+      case 'woman': return 'Women';
+      case 'place': return 'Places & Buildings';
+      case 'thing': return 'Objects & Things';
+      default: return capitalizeWords(value);
+    }
+  };
+
+  // Group filters for mobile display - UPDATED with new filters
   const allActiveFilters = [
     ...urlState.colors.map(color => ({ type: 'color', value: color, label: capitalizeWords(color) })),
     ...urlState.postcodes.map(postcode => ({ type: 'postcode', value: postcode, label: postcode })),
     ...urlState.professions.map(profession => ({ type: 'profession', value: profession, label: capitalizeWords(profession) })),
+    ...urlState.organisations.map(organisation => ({ type: 'organisation', value: organisation, label: organisation })),
+    ...urlState.subjectTypes.map(subjectType => ({ type: 'subjectType', value: subjectType, label: getSubjectTypeLabel(subjectType) })),
     ...(urlState.onlyVisited ? [{ type: 'visited', value: 'visited', label: 'Visited Only' }] : []),
     ...(urlState.onlyFavorites ? [{ type: 'favorites', value: 'favorites', label: 'Favorites Only' }] : []),
     ...(distanceFilter.enabled && distanceFilter.center && distanceFilter.locationName ? 
@@ -86,6 +101,12 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
         break;
       case 'profession':
         onRemoveFilter({ professions: urlState.professions.filter(p => p !== filter.value) });
+        break;
+      case 'organisation':
+        onRemoveFilter({ organisations: urlState.organisations.filter(o => o !== filter.value) });
+        break;
+      case 'subjectType':
+        onRemoveFilter({ subjectTypes: urlState.subjectTypes.filter(s => s !== filter.value) });
         break;
       case 'visited':
         onRemoveFilter({ onlyVisited: false });
@@ -162,14 +183,16 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
           {/* Expanded Filters List */}
           <CollapsibleContent className="mt-2">
             <div className="p-3 bg-white border rounded-lg space-y-3">
-              {/* All Active Filters */}
+              {/* All Active Filters - UPDATED with better styling for new filter types */}
               <div className="flex flex-wrap gap-2">
                 {allActiveFilters.map((filter, index) => (
                   <Badge 
                     key={`${filter.type}-${filter.value}-${index}`} 
                     variant="secondary" 
                     className={`gap-1 ${
-                      filter.type === 'distance' ? 'bg-green-100 text-green-800 border-green-200' : ''
+                      filter.type === 'distance' ? 'bg-green-100 text-green-800 border-green-200' : 
+                      filter.type === 'organisation' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                      filter.type === 'subjectType' ? 'bg-orange-100 text-orange-800 border-orange-200' : ''
                     }`}
                   >
                     {filter.type === 'distance' && <MapPin size={12} />}
@@ -211,7 +234,7 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
         </Collapsible>
       </div>
 
-      {/* Filter Dialog */}
+      {/* Filter Dialog - UPDATED with new filter options */}
       <DiscoverFilterDialog
         isOpen={filtersOpen}
         onClose={onCloseFilters}
@@ -227,6 +250,14 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
         professions={filterOptions.professionOptions}
         selectedProfessions={urlState.professions}
         onProfessionsChange={(values) => onApplyFilters({ professions: values })}
+
+        organisations={filterOptions.organisationOptions}
+        selectedOrganisations={urlState.organisations}
+        onOrganisationsChange={(values) => onApplyFilters({ organisations: values })}
+
+        subjectTypes={filterOptions.subjectTypeOptions}
+        selectedSubjectTypes={urlState.subjectTypes}
+        onSubjectTypesChange={(values) => onApplyFilters({ subjectTypes: values })}
         
         onlyVisited={urlState.onlyVisited}
         onVisitedChange={(value) => onApplyFilters({ onlyVisited: value })}

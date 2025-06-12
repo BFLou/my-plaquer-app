@@ -451,7 +451,7 @@ const Home = () => {
             <div className="space-y-3">
               <div className="flex items-center">
                 <FilterIcon size={14} className="text-gray-500 mr-2" />
-                <h3 className="text-sm font-medium text-gray-700">Explore by Category</h3>
+                <h3 className="text-sm font-medium text-gray-700">Explore by Topic</h3>
               </div>
               
               {loading ? (
