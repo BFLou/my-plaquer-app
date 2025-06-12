@@ -214,9 +214,9 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
         
         // Navigate on click/tap
         marker.on('click', (e: any) => {
-  e.originalEvent.stopPropagation();
-  triggerHapticFeedback('selection');
-  showTooltip(e);
+          e.originalEvent.stopPropagation();
+          triggerHapticFeedback('selection');
+          showTooltip(e);
         });
       });
 

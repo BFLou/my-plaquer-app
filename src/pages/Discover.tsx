@@ -53,7 +53,7 @@ const Discover = () => {
   // Hook for keyboard detection
   const { isKeyboardOpen } = useKeyboardDetection();
     
-  // URL state parsing with modal support - UPDATED with new filters
+  // URL state parsing with modal support
   const urlState = useMemo(() => {
     const state = {
       view: (searchParams.get('view') as ViewMode) || (isMobile() ? 'list' : 'grid'),
@@ -62,7 +62,6 @@ const Discover = () => {
       postcodes: searchParams.get('postcodes')?.split(',').filter(Boolean) || [],
       professions: searchParams.get('professions')?.split(',').filter(Boolean) || [],
       organisations: searchParams.get('organisations')?.split(',').filter(Boolean) || [],
-      subjectTypes: searchParams.get('subjectTypes')?.split(',').filter(Boolean) || [],
       onlyVisited: searchParams.get('visited') === 'true',
       onlyFavorites: searchParams.get('favorites') === 'true',
       modalPlaque: searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null,
@@ -72,13 +71,13 @@ const Discover = () => {
     return state;
   }, [searchParams]);
 
-  // URL state update function with mobile optimization - UPDATED with new filters
+  // URL state update function with mobile optimization
   const updateUrlState = useCallback((updates: Partial<typeof urlState>) => {
     const newParams = new URLSearchParams(searchParams);
     
     const newState = { ...urlState, ...updates };
     
-    // Map internal state to URL parameters - UPDATED
+    // Map internal state to URL parameters
     const urlMapping: Record<string, string> = {
       view: 'view',
       search: 'search', 
@@ -86,7 +85,6 @@ const Discover = () => {
       postcodes: 'postcodes',
       professions: 'professions',
       organisations: 'organisations',
-      subjectTypes: 'subjectTypes',
       onlyVisited: 'visited',
       onlyFavorites: 'favorites',
       modalPlaque: 'plaque'
@@ -133,12 +131,11 @@ const Discover = () => {
     locationName: null
   });
 
-  // Filter options with proper typing - UPDATED with new filter types
+  // Filter options with proper typing
   const [postcodeOptions, setPostcodeOptions] = useState<FilterOption[]>([]);
   const [colorOptions, setColorOptions] = useState<FilterOption[]>([]);
   const [professionOptions, setProfessionOptions] = useState<FilterOption[]>([]);
   const [organisationOptions, setOrganisationOptions] = useState<FilterOption[]>([]);
-  const [subjectTypeOptions, setSubjectTypeOptions] = useState<FilterOption[]>([]);
 
   // External hooks
   const { isPlaqueVisited } = useVisitedPlaques();
@@ -171,7 +168,7 @@ const Discover = () => {
     }
   }, [urlState.modalPlaque, allPlaques]);
 
-  // Load plaque data - UPDATED with new filter generation
+  // Load plaque data
   useEffect(() => {
     try {
       setLoading(true);
@@ -179,12 +176,11 @@ const Discover = () => {
       const adaptedData = adaptPlaquesData(plaqueData as any);
       setAllPlaques(adaptedData);
       
-      // Generate filter options - UPDATED with new filter types
+      // Generate filter options
     const postcodeCount: Record<string, number> = {};
     const colorCount: Record<string, number> = {};
     const professionCount: Record<string, number> = {};
     const organisationCount: Record<string, number> = {};
-    const subjectTypeCount: Record<string, number> = {};
       
 adaptedData.forEach(plaque => {
   // Postcode counting
@@ -203,7 +199,7 @@ adaptedData.forEach(plaque => {
     professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
   }
 
- // FIXED: Organisation counting - handle both array and string formats
+ // Organisation counting - handle both array and string formats
       if ((plaque as any).organisations && 
           (plaque as any).organisations !== "Unknown" && 
           (plaque as any).organisations !== "[]" &&
@@ -230,19 +226,6 @@ adaptedData.forEach(plaque => {
           }
         }
       }
-
-  // FIXED: Subject type counting - use correct field name
-  if ((plaque as any).lead_subject_type && 
-          (plaque as any).lead_subject_type !== "Unknown" &&
-          (plaque as any).lead_subject_type !== "") {
-        
-        const subjectType = (plaque as any).lead_subject_type;
-        if (typeof subjectType === 'string' && subjectType.trim()) {
-          const cleanSubjectType = subjectType.trim();
-          subjectTypeCount[cleanSubjectType] = (subjectTypeCount[cleanSubjectType] || 0) + 1;
-        }
-  }
-  
 });
       
       setPostcodeOptions(
@@ -280,26 +263,10 @@ adaptedData.forEach(plaque => {
         }))
         .sort((a, b) => b.count - a.count)
     );
-        // NEW: Set subject type options with friendly labels
-    setSubjectTypeOptions(
-      Object.entries(subjectTypeCount)
-        .map(([value, count]) => ({
-          label: value === 'man' ? 'Men' : 
-                 value === 'woman' ? 'Women' : 
-                 value === 'place' ? 'Places & Buildings' : 
-                 value === 'thing' ? 'Objects & Things' : 
-                 capitalizeWords(value),
-          value,
-          count
-        }))
-        .sort((a, b) => b.count - a.count)
-    );
     
       console.log('Filter options generated:');
     console.log('Organisations:', Object.keys(organisationCount).length);
-    console.log('Subject Types:', Object.keys(subjectTypeCount).length);
     console.log('Sample organisations:', Object.keys(organisationCount).slice(0, 5));
-    console.log('Sample subject types:', Object.keys(subjectTypeCount));
     
       
       setLoading(false);
@@ -310,7 +277,7 @@ adaptedData.forEach(plaque => {
     }
   }, []);
 
-  // Enhanced filtered plaques with proper boolean filtering - UPDATED with new filters
+  // Enhanced filtered plaques with proper boolean filtering
 const filteredPlaques = useMemo(() => {
   console.log('=== FILTERING DEBUG ===');
   console.log('URL State:', {
@@ -320,8 +287,7 @@ const filteredPlaques = useMemo(() => {
     colors: urlState.colors,
     postcodes: urlState.postcodes,
     professions: urlState.professions,
-    organisations: urlState.organisations,
-    subjectTypes: urlState.subjectTypes
+    organisations: urlState.organisations
   });
   console.log('Total plaques before filtering:', allPlaques.length);
 
@@ -344,7 +310,7 @@ const filteredPlaques = useMemo(() => {
     const matchesProfession = urlState.professions.length === 0 || 
       (plaque.profession && urlState.professions.includes(plaque.profession));
     
-    // FIXED: Organisation filter - use correct field name and handle array format
+    // Organisation filter - use correct field name and handle array format
     const matchesOrganisation = urlState.organisations.length === 0 || (() => {
       const orgField = (plaque as any).organisations;
       if (!orgField || orgField === "[]" || orgField === "Unknown" || orgField === "") return false;
@@ -366,11 +332,6 @@ const filteredPlaques = useMemo(() => {
       }
       return false;
     })();
-
-    // FIXED: Subject type filter - use correct field name
-    const matchesSubjectType = urlState.subjectTypes.length === 0 || 
-      ((plaque as any).lead_subject_type && 
-       urlState.subjectTypes.includes((plaque as any).lead_subject_type));
     
     // Enhanced boolean filtering for visited and favorites
     const plaqueIsVisited = plaque.visited || isPlaqueVisited(plaque.id);
@@ -384,17 +345,14 @@ const filteredPlaques = useMemo(() => {
            matchesColor && 
            matchesProfession && 
            matchesOrganisation &&
-           matchesSubjectType &&
            matchesVisited && 
            matchesFavorite;
 
     // Debug individual plaque filtering
-    if (urlState.organisations.length > 0 || urlState.subjectTypes.length > 0) {
+    if (urlState.organisations.length > 0) {
       console.log(`Plaque ${plaque.id} (${plaque.title}):`, {
         matchesOrganisation,
-        matchesSubjectType,
         orgField: (plaque as any).organisations,
-        subjectTypeField: (plaque as any).lead_subject_type,
         result
       });
     }
@@ -439,13 +397,12 @@ const filteredPlaques = useMemo(() => {
   distanceFilter.radius
 ]);
 
-  // Active filters count including distance filter - UPDATED with new filters
+  // Active filters count including distance filter
   const activeFiltersCount = useMemo(() => {
     return urlState.postcodes.length + 
            urlState.colors.length + 
            urlState.professions.length + 
            urlState.organisations.length +
-           urlState.subjectTypes.length +
            (urlState.onlyVisited ? 1 : 0) + 
            (urlState.onlyFavorites ? 1 : 0) +
            (distanceFilter.enabled ? 1 : 0);
@@ -454,7 +411,6 @@ const filteredPlaques = useMemo(() => {
     urlState.colors.length,
     urlState.professions.length,
     urlState.organisations.length,
-    urlState.subjectTypes.length,
     urlState.onlyVisited,
     urlState.onlyFavorites,
     distanceFilter.enabled
@@ -491,7 +447,7 @@ const filteredPlaques = useMemo(() => {
     setCurrentPage(1);
   }, [updateUrlState]);
 
-  // Reset filters including distance filter - UPDATED with new filters
+  // Reset filters including distance filter
   const resetFilters = useCallback(() => {
     console.log('Resetting all filters');
     triggerHapticFeedback('medium');
@@ -501,7 +457,6 @@ const filteredPlaques = useMemo(() => {
       postcodes: [],
       professions: [],
       organisations: [],
-      subjectTypes: [],
       onlyVisited: false,
       onlyFavorites: false,
       modalPlaque: null
@@ -824,7 +779,7 @@ const filteredPlaques = useMemo(() => {
             }}
           />
           
-          {/* Active filters display - UPDATED with complete filter options */}
+          {/* Active filters display */}
           <DiscoverFilters
             urlState={urlState}
             activeFiltersCount={activeFiltersCount}
@@ -840,8 +795,7 @@ const filteredPlaques = useMemo(() => {
               postcodeOptions,
               colorOptions,
               professionOptions,
-              organisationOptions,
-              subjectTypeOptions
+              organisationOptions
             }}
             onApplyFilters={(filters) => updateUrlState(filters)}
             distanceFilter={distanceFilter}
@@ -884,7 +838,7 @@ const filteredPlaques = useMemo(() => {
           )}
         </div>
         
-        {/* Filter Dialog - UPDATED with complete filter props */}
+        {/* Filter Dialog */}
         <DiscoverFilterDialog
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
@@ -904,10 +858,6 @@ const filteredPlaques = useMemo(() => {
           organisations={organisationOptions}
           selectedOrganisations={urlState.organisations}
           onOrganisationsChange={(values) => updateUrlState({ organisations: values })}
-
-          subjectTypes={subjectTypeOptions}
-          selectedSubjectTypes={urlState.subjectTypes}
-          onSubjectTypesChange={(values) => updateUrlState({ subjectTypes: values })}
           
           onlyVisited={urlState.onlyVisited}
           onVisitedChange={handleVisitedChange}

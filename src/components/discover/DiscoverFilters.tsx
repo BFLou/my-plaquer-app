@@ -22,7 +22,6 @@ interface DiscoverFiltersProps {
     postcodes: string[];
     professions: string[];
     organisations: string[];
-    subjectTypes: string[];
     onlyVisited: boolean;
     onlyFavorites: boolean;
   };
@@ -40,7 +39,6 @@ interface DiscoverFiltersProps {
     colorOptions: any[];
     professionOptions: any[];
     organisationOptions: any[];
-    subjectTypeOptions: any[];
   };
   onApplyFilters: (filters: any) => void;
   distanceFilter: DistanceFilter;
@@ -65,24 +63,12 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
     return null;
   }
 
-  // Helper function to get friendly label for subject types
-  const getSubjectTypeLabel = (value: string) => {
-    switch (value) {
-      case 'man': return 'Men';
-      case 'woman': return 'Women';
-      case 'place': return 'Places & Buildings';
-      case 'thing': return 'Objects & Things';
-      default: return capitalizeWords(value);
-    }
-  };
-
-  // Group filters for mobile display - UPDATED with new filters
+  // Group filters for mobile display
   const allActiveFilters = [
     ...urlState.colors.map(color => ({ type: 'color', value: color, label: capitalizeWords(color) })),
     ...urlState.postcodes.map(postcode => ({ type: 'postcode', value: postcode, label: postcode })),
     ...urlState.professions.map(profession => ({ type: 'profession', value: profession, label: capitalizeWords(profession) })),
     ...urlState.organisations.map(organisation => ({ type: 'organisation', value: organisation, label: organisation })),
-    ...urlState.subjectTypes.map(subjectType => ({ type: 'subjectType', value: subjectType, label: getSubjectTypeLabel(subjectType) })),
     ...(urlState.onlyVisited ? [{ type: 'visited', value: 'visited', label: 'Visited Only' }] : []),
     ...(urlState.onlyFavorites ? [{ type: 'favorites', value: 'favorites', label: 'Favorites Only' }] : []),
     ...(distanceFilter.enabled && distanceFilter.center && distanceFilter.locationName ? 
@@ -102,9 +88,6 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
         break;
       case 'organisation':
         onRemoveFilter({ organisations: urlState.organisations.filter(o => o !== filter.value) });
-        break;
-      case 'subjectType':
-        onRemoveFilter({ subjectTypes: urlState.subjectTypes.filter(s => s !== filter.value) });
         break;
       case 'visited':
         onRemoveFilter({ onlyVisited: false });
@@ -189,8 +172,7 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
                     variant="secondary" 
                     className={`gap-1 ${
                       filter.type === 'distance' ? 'bg-green-100 text-green-800 border-green-200' : 
-                      filter.type === 'organisation' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                      filter.type === 'subjectType' ? 'bg-orange-100 text-orange-800 border-orange-200' : ''
+                      filter.type === 'organisation' ? 'bg-purple-100 text-purple-800 border-purple-200' : ''
                     }`}
                   >
                     {filter.type === 'distance' && <MapPin size={12} />}
@@ -252,10 +234,6 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
         organisations={filterOptions.organisationOptions}
         selectedOrganisations={urlState.organisations}
         onOrganisationsChange={(values) => onApplyFilters({ organisations: values })}
-
-        subjectTypes={filterOptions.subjectTypeOptions}
-        selectedSubjectTypes={urlState.subjectTypes}
-        onSubjectTypesChange={(values) => onApplyFilters({ subjectTypes: values })}
         
         onlyVisited={urlState.onlyVisited}
         onVisitedChange={(value) => onApplyFilters({ onlyVisited: value })}

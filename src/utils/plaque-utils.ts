@@ -13,8 +13,8 @@ export type PlaqueCounts = {
   medicalProfessionals: number;
   // Keep some existing categories for backward compatibility
   women: number;
-  nineteenthCentury: number;
-  westminster: number;
+  // Removed nineteenthCentury
+  // Removed westminster
   bluePlaques: number;
   greenPlaques: number;
   // New categories based on your data
@@ -22,10 +22,7 @@ export type PlaqueCounts = {
   londonCountyCouncil: number;
   greaterLondonCouncil: number;
   corporationOfLondon: number;
-  // Subject types with better naming
-  womenSubjects: number;
-  placeSubjects: number;
-  thingSubjects: number;
+  // Removed Subject types counts
   popularLocations: { name: string; count: number }[];
   popularFigures: { name: string; profession: string }[];
 };
@@ -95,17 +92,15 @@ export const usePlaqueCounts = (): { counts: PlaqueCounts; loading: boolean } =>
     architects: 0,
     medicalProfessionals: 0,
     women: 0,
-    nineteenthCentury: 0,
-    westminster: 0,
+    // Removed nineteenthCentury
+    // Removed westminster
     bluePlaques: 0,
     greenPlaques: 0,
     englishHeritage: 0,
     londonCountyCouncil: 0,
     greaterLondonCouncil: 0,
     corporationOfLondon: 0,
-    womenSubjects: 0,
-    placeSubjects: 0,
-    thingSubjects: 0,
+    // Removed Subject types counts
     popularLocations: [],
     popularFigures: [],
   });
@@ -146,17 +141,15 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
       architects: 0,
       medicalProfessionals: 0,
       women: 0,
-      nineteenthCentury: 0,
-      westminster: 0,
+      // Removed nineteenthCentury
+      // Removed westminster
       bluePlaques: 0,
       greenPlaques: 0,
       englishHeritage: 0,
       londonCountyCouncil: 0,
       greaterLondonCouncil: 0,
       corporationOfLondon: 0,
-      womenSubjects: 0,
-      placeSubjects: 0,
-      thingSubjects: 0,
+      // Removed Subject types counts
       popularLocations: [],
       popularFigures: [],
     };
@@ -226,28 +219,6 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
     return mapping ? mapping.keywords.some(keyword => orgsLower.includes(keyword)) : false;
   };
 
-  // Helper function to check if subject type matches category using categoryMappings
-  const matchesSubjectTypeCategory = (subjectType: string, category: string): boolean => {
-    const typeLower = subjectType.toLowerCase();
-    const subjectTypeMappings = [
-      { 
-        category: 'Women Subjects', 
-        keywords: ['woman'] 
-      },
-      { 
-        category: 'Places & Buildings', 
-        keywords: ['place'] 
-      },
-      { 
-        category: 'Objects & Things', 
-        keywords: ['thing'] 
-      }
-    ];
-    
-    const mapping = subjectTypeMappings.find(m => m.category === category);
-    return mapping ? mapping.keywords.some(keyword => typeLower.includes(keyword)) : false;
-  };
-
   // Count Famous Authors using categoryMappings
   const famousAuthors = plaqueData.filter((p) => {
     const profession = (p.lead_subject_primary_role || p.profession || '').toString();
@@ -311,32 +282,11 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
     );
   }).length;
 
-  // Count 19th century plaques by birth/death year or era tag
-  const nineteenthCentury = plaqueData.filter((p) => {
-    const born = (p.lead_subject_born_in || p.erected || '').toString();
-    const died = (p.lead_subject_died_in || '').toString();
+  // Removed 19th century plaques calculation
+  const nineteenthCentury = 0; // Set to 0 or remove if not needed at all
 
-    const bornYear = parseInt(born);
-    const diedYear = parseInt(died);
-
-    return (
-      (!isNaN(bornYear) && bornYear >= 1800 && bornYear <= 1899) ||
-      (!isNaN(diedYear) && diedYear >= 1800 && diedYear <= 1899)
-    );
-  }).length;
-
-  // Count plaques in Westminster area or postcode
-  const westminster = plaqueData.filter((p) => {
-    const area = (p.area || '').toString().toLowerCase();
-    const address = (p.address || p.location || '').toString().toLowerCase();
-    const postcode = (p.postcode || '').toString().toLowerCase();
-
-    return (
-      area.includes('westminster') ||
-      address.includes('westminster') ||
-      postcode.startsWith('sw1')
-    );
-  }).length;
+  // Removed plaques in Westminster area calculation
+  const westminster = 0; // Set to 0 or remove if not needed at all
 
   // Count blue plaques by color field
   const bluePlaques = plaqueData.filter((p) => {
@@ -371,22 +321,8 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
     return matchesOrganisationCategory(orgs, 'Corporation of London');
   }).length;
 
-  // Count by subject type using categoryMappings
-  const womenSubjects = plaqueData.filter((p) => {
-    const subjectType = (p.lead_subject_type || '').toString();
-    return matchesSubjectTypeCategory(subjectType, 'Women Subjects');
-  }).length;
-
-  const placeSubjects = plaqueData.filter((p) => {
-    const subjectType = (p.lead_subject_type || '').toString();
-    return matchesSubjectTypeCategory(subjectType, 'Places & Buildings');
-  }).length;
-
-  const thingSubjects = plaqueData.filter((p) => {
-    const subjectType = (p.lead_subject_type || '').toString();
-    return matchesSubjectTypeCategory(subjectType, 'Objects & Things');
-  }).length;
-
+  // Removed Subject Type counts
+  
   // Calculate popular locations with counts
   const locationCounts: Record<string, number> = {};
   plaqueData.forEach((p) => {
@@ -446,9 +382,6 @@ export const calculatePlaqueCounts = (inputData: unknown): PlaqueCounts => {
     londonCountyCouncil,
     greaterLondonCouncil,
     corporationOfLondon,
-    womenSubjects,
-    placeSubjects,
-    thingSubjects,
     popularLocations,
     popularFigures,
   };
@@ -522,27 +455,9 @@ export const getPlaqueCategories = (
       onClick: () =>
         navigate('/discover?colors=green&view=grid'),
     },
-    {
-      label: 'Westminster',
-      icon: '🏛️',
-      count: counts.westminster,
-      onClick: () =>
-        navigate('/discover?postcodes=SW1&view=grid'),
-    },
-    {
-      label: 'Women Figures',
-      icon: '👩',
-      count: counts.womenSubjects, // Use womenSubjects instead of women
-      onClick: () =>
-        navigate('/discover?subjectTypes=woman&view=grid'), // Use subjectTypes filter
-    },
-    {
-      label: '19th Century',
-      icon: '🏛️',
-      count: counts.nineteenthCentury,
-      onClick: () =>
-        navigate('/discover?eras=1800-1899&view=grid'),
-    },
+    // Removed Westminster category
+    // Removed Women Figures category
+    // Removed 19th Century category
   ];
 };
 
@@ -583,10 +498,7 @@ export const getCategoryFilterSuggestions = (category: string): string[] => {
     'English Heritage': ['english heritage'],
     'London County Council': ['london county council'],
     'Greater London Council': ['greater london council'],
-    'Corporation of London': ['corporation of london'],
-    'Women Subjects': ['woman'],
-    'Places & Buildings': ['place'],
-    'Objects & Things': ['thing']
+    'Corporation of London': ['corporation of london']
   };
   
   return categoryFilters[category] || [];
@@ -661,34 +573,6 @@ export const getCategoryFromOrganisation = (organisations: string): string | nul
   
   for (const mapping of organisationMappings) {
     if (mapping.keywords.some(keyword => orgsLower.includes(keyword))) {
-      return mapping.category;
-    }
-  }
-  
-  return null;
-};
-
-// Helper function to determine category from subject type
-export const getCategoryFromSubjectType = (subjectType: string): string | null => {
-  const typeLower = subjectType.toLowerCase();
-  
-  const subjectTypeMappings = [
-    { 
-      category: 'Women Subjects', 
-      keywords: ['woman'] 
-    },
-    { 
-      category: 'Places & Buildings', 
-      keywords: ['place'] 
-    },
-    { 
-      category: 'Objects & Things', 
-      keywords: ['thing'] 
-    }
-  ];
-  
-  for (const mapping of subjectTypeMappings) {
-    if (mapping.keywords.some(keyword => typeLower.includes(keyword))) {
       return mapping.category;
     }
   }
