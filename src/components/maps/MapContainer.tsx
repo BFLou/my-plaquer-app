@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - UPDATED: Mobile-optimized layout
+// src/components/maps/MapContainer.tsx - UPDATED: Integrated with new control system
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -604,7 +604,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         />
       </div>
 
-      {/* NEW: Mobile-Optimized Unified Control Panel */}
+      {/* NEW: Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
       <UnifiedControlPanel
         distanceFilter={{
           enabled: state.filterEnabled,
@@ -646,7 +646,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         <div className={`absolute ${
           mobile 
             ? 'bottom-0 left-0 right-0' 
-            : 'left-56 top-16'
+            : 'right-4 top-20 bottom-20'
         } z-[1000] ${
           mobile 
             ? 'w-full' 
@@ -669,7 +669,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         <div className={`absolute ${
           mobile 
             ? 'bottom-2 left-2 right-2' 
-            : 'bottom-4 left-4'
+            : 'bottom-4 right-4'
         } z-[900] bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 text-sm ${
           mobile ? 'w-auto' : ''
         }`}>

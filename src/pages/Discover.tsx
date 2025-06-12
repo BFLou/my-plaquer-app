@@ -10,7 +10,6 @@ import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
 import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import Pagination from '@/components/plaques/Pagination';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
@@ -29,6 +28,8 @@ import { generatePlaqueUrl } from '@/utils/urlUtils';
 import { Filter, MapPin, Grid, List, Navigation, X } from 'lucide-react';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import type { Plaque } from '@/types/plaque';
+import '../components/maps/features/UnifiedControlPanel.css';
+
 
 export type ViewMode = 'grid' | 'list' | 'map';
 
@@ -500,22 +501,22 @@ const Discover = () => {
   };
 
   const renderContent = () => {
-    if (loading) {
-      return urlState.view === 'map' ? (
-        <div className="h-[500px] md:h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <div className="animate-spin h-8 w-8 md:h-10 md:w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-            <p className="mt-4 text-gray-600 text-sm md:text-base">Loading map...</p>
-          </div>
+if (loading) {
+    return urlState.view === 'map' ? (
+      <div className="h-[500px] md:h-[650px] bg-gray-100 rounded-xl flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin h-8 w-8 md:h-10 md:w-10 border-4 border-blue-500 rounded-full border-t-transparent"></div>
+          <p className="mt-4 text-gray-600 text-sm md:text-base">Loading map...</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="h-48 md:h-64 bg-gray-100 rounded-lg animate-pulse"></div>
-          ))}
-        </div>
-      );
-    }
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} className="h-48 md:h-64 bg-gray-100 rounded-lg animate-pulse"></div>
+        ))}
+      </div>
+    );
+  }
 
     if (urlState.view === 'map') {
       return (
@@ -732,47 +733,7 @@ const Discover = () => {
         </div>
       </div>
       
-      {/* Floating Action Button for location access */}
-      {isMobile() && urlState.view !== 'map' && (
-        <FloatingActionButton
-          onClick={handleQuickLocationAccess}
-          icon={<Navigation size={20} />}
-          variant="default"
-        />
-      )}
-      
-      {/* Bottom Action Bar for mobile view switching */}
-      {isMobile() && urlState.view === 'map' && (
-        <BottomActionBar background="white">
-          <MobileButton
-            variant={'default'}
-            onClick={() => handleViewModeChange('list')}
-            className="flex-1"
-            touchOptimized
-          >
-            <List size={16} className="mr-2" />
-            List
-          </MobileButton>
-          <MobileButton
-            variant={'default'}
-            onClick={() => handleViewModeChange('grid')}
-            className="flex-1"
-            touchOptimized
-          >
-            <Grid size={16} className="mr-2" />
-            Grid
-          </MobileButton>
-          <MobileButton
-            onClick={handleQuickLocationAccess}
-            variant="outline"
-            className="flex-1"
-            touchOptimized
-          >
-            <Navigation size={16} className="mr-2" />
-            Near Me
-          </MobileButton>
-        </BottomActionBar>
-      )}
+    
       
       {/* Enhanced Filter Dialog with mobile optimization */}
       <DiscoverFilterDialog

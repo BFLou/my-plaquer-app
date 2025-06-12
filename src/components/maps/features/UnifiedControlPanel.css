@@ -1,0 +1,399 @@
+/* src/components/maps/features/UnifiedControlPanel.css - New styles for improved controls */
+
+/* ==================== DESKTOP SIDEBAR CONTROLS ==================== */
+
+/* Sidebar container */
+.desktop-sidebar {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed floating buttons */
+.floating-controls {
+  transition: all 0.2s ease;
+}
+
+.floating-controls .control-button {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.floating-controls .control-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Desktop sidebar animations */
+.sidebar-enter {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.sidebar-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: all 0.3s ease-out;
+}
+
+.sidebar-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sidebar-exit-active {
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.3s ease-in;
+}
+
+/* ==================== MOBILE BOTTOM SHEET CONTROLS ==================== */
+
+/* Bottom sheet base styles */
+.mobile-bottom-sheet {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  will-change: transform;
+  touch-action: pan-y;
+}
+
+/* Bottom sheet animations */
+.bottom-sheet-enter {
+  transform: translateY(100%);
+}
+
+.bottom-sheet-enter-active {
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bottom-sheet-exit {
+  transform: translateY(0);
+}
+
+.bottom-sheet-exit-active {
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile floating tab */
+.floating-tab {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.floating-tab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.floating-tab:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+/* ==================== SHARED COMPONENT STYLES ==================== */
+
+/* Enhanced buttons */
+.control-panel-button {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-panel-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.control-panel-button:hover::before {
+  left: 100%;
+}
+
+.control-panel-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.control-panel-button:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+/* Badge animations */
+.control-badge {
+  animation: pulse-scale 2s infinite;
+}
+
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+/* Active filter indicators */
+.active-filter-indicator {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  animation: glow-pulse 2s infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
+  }
+}
+
+/* Distance filter display */
+.distance-filter-active {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  animation: success-glow 0.5s ease-out;
+}
+
+@keyframes success-glow {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .desktop-sidebar {
+    display: none;
+  }
+  
+  .mobile-bottom-sheet {
+    display: flex;
+  }
+  
+  .floating-tab {
+    min-height: 44px; /* iOS touch target minimum */
+  }
+  
+  .control-panel-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Desktop optimization */
+@media (min-width: 769px) {
+  .desktop-sidebar {
+    display: flex;
+  }
+  
+  .mobile-bottom-sheet,
+  .floating-tab {
+    display: none;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .floating-controls .control-button,
+  .floating-tab {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* ==================== ACCESSIBILITY IMPROVEMENTS ==================== */
+
+/* Focus indicators */
+.control-panel-button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .desktop-sidebar,
+  .mobile-bottom-sheet {
+    border: 2px solid;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+  
+  .floating-controls .control-button,
+  .floating-tab {
+    border: 2px solid;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .desktop-sidebar,
+  .mobile-bottom-sheet,
+  .floating-controls,
+  .floating-tab,
+  .control-panel-button {
+    animation: none;
+    transition: none;
+  }
+  
+  .control-panel-button::before {
+    display: none;
+  }
+}
+
+/* ==================== DARK MODE SUPPORT ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .desktop-sidebar {
+    background-color: rgba(31, 41, 55, 0.95);
+    border-color: rgba(75, 85, 99, 0.8);
+  }
+  
+  .mobile-bottom-sheet {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+  
+  .floating-controls .control-button,
+  .floating-tab {
+    background-color: rgba(31, 41, 55, 0.95);
+    border-color: rgba(75, 85, 99, 0.8);
+    color: white;
+  }
+  
+  .control-panel-button {
+    color: white;
+  }
+  
+  .control-panel-button:hover {
+    background-color: rgba(55, 65, 81, 0.8);
+  }
+}
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+
+/* GPU acceleration for animations */
+.desktop-sidebar,
+.mobile-bottom-sheet,
+.floating-controls,
+.floating-tab {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize repaints */
+.control-panel-button,
+.control-badge {
+  contain: layout style paint;
+}
+
+/* ==================== CUSTOM SLIDER STYLES ==================== */
+
+.custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: linear-gradient(to right, #e5e7eb 0%, #e5e7eb 100%);
+  border-radius: 3px;
+  outline: none;
+  transition: background 0.2s ease;
+}
+
+.custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+.custom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.custom-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+.custom-slider::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* ==================== LOADING STATES ==================== */
+
+.control-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.control-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+  .desktop-sidebar,
+  .mobile-bottom-sheet,
+  .floating-controls,
+  .floating-tab {
+    display: none !important;
+  }
+}
