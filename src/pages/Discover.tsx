@@ -10,7 +10,6 @@ import { PlaqueDetail } from "@/components/plaques/PlaqueDetail";
 import { EmptyState } from "@/components/common/EmptyState";
 import { MobileButton } from "@/components/ui/mobile-button";
 import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { BottomActionBar } from "@/components/layout/BottomActionBar";
 import Pagination from '@/components/plaques/Pagination';
 import DiscoverFilterDialog from '../components/plaques/DiscoverFilterDialog';
 import DiscoverHeader from '../components/discover/DiscoverHeader';

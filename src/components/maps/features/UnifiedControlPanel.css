@@ -397,3 +397,505 @@
     display: none !important;
   }
 }
+
+/* src/components/maps/features/UnifiedControlPanel.css - ENHANCED: Mobile-first with compact desktop */
+
+/* ==================== DESKTOP COMPACT SIDEBAR ==================== */
+
+/* Compact sidebar positioning */
+.desktop-compact-sidebar {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 280px;
+}
+
+/* Collapsed floating button */
+.desktop-floating-toggle {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.desktop-floating-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Compact section styling */
+.compact-section {
+  transition: all 0.2s ease;
+}
+
+.compact-section-header {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.compact-section-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.compact-section-header:hover::before {
+  left: 100%;
+}
+
+.compact-section-content {
+  animation: expand 0.2s ease-out;
+}
+
+@keyframes expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== MOBILE BOTTOM SHEET ==================== */
+
+/* Enhanced bottom sheet */
+.mobile-bottom-sheet {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  will-change: transform;
+  touch-action: pan-y;
+}
+
+/* Optimized animations */
+.bottom-sheet-enter {
+  transform: translateY(100%);
+}
+
+.bottom-sheet-enter-active {
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.bottom-sheet-exit {
+  transform: translateY(0);
+}
+
+.bottom-sheet-exit-active {
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.55, 0.06, 0.68, 0.19);
+}
+
+/* Floating tab enhancement */
+.mobile-floating-tab {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.mobile-floating-tab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.mobile-floating-tab:active {
+  transform: translateY(-1px);
+  transition: transform 0.1s ease;
+}
+
+/* ==================== DISTANCE FILTER COMPONENT ==================== */
+
+/* Compact distance filter styling */
+.compact-distance-filter {
+  transition: all 0.2s ease;
+}
+
+.distance-filter-expanded {
+  animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Active location display */
+.active-location-display {
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #a7f3d0;
+  animation: glow-green 0.5s ease-out;
+}
+
+@keyframes glow-green {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* Quick radius buttons */
+.radius-quick-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.radius-quick-button {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.radius-quick-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.radius-quick-button.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Fine control buttons */
+.radius-fine-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.radius-fine-button {
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radius-fine-button:hover {
+  transform: scale(1.1);
+  background-color: #f3f4f6;
+}
+
+.radius-fine-button:active {
+  transform: scale(0.95);
+}
+
+/* ==================== GRID LAYOUTS ==================== */
+
+/* Mobile control grid */
+.mobile-control-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mobile-control-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-control-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.mobile-control-button:active::before {
+  left: 100%;
+}
+
+.mobile-control-button:active {
+  transform: scale(0.98);
+}
+
+/* ==================== BADGE ENHANCEMENTS ==================== */
+
+.control-badge {
+  animation: pulse-badge 2s infinite;
+  font-weight: 600;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.badge-destructive {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.badge-secondary {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* ==================== RESPONSIVE BREAKPOINTS ==================== */
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  .desktop-compact-sidebar {
+    width: calc(100vw - 1rem);
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+  
+  .mobile-control-grid {
+    gap: 8px;
+  }
+  
+  .mobile-control-button {
+    min-height: 52px;
+    padding: 6px;
+  }
+  
+  .mobile-floating-tab {
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: translateX(0);
+  }
+}
+
+/* Tablet and small desktop */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .desktop-compact-sidebar {
+    width: 240px;
+  }
+}
+
+/* Large desktop */
+@media (min-width: 1025px) {
+  .desktop-compact-sidebar {
+    width: 280px;
+  }
+}
+
+/* ==================== ACCESSIBILITY ENHANCEMENTS ==================== */
+
+/* Focus indicators */
+.control-button:focus-visible,
+.compact-section-header:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .desktop-compact-sidebar,
+  .mobile-bottom-sheet {
+    border: 2px solid;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+  
+  .desktop-floating-toggle,
+  .mobile-floating-tab {
+    border: 2px solid;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+  
+  .control-badge {
+    border: 1px solid;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .desktop-compact-sidebar,
+  .mobile-bottom-sheet,
+  .desktop-floating-toggle,
+  .mobile-floating-tab,
+  .compact-section,
+  .mobile-control-button,
+  .radius-quick-button,
+  .radius-fine-button {
+    animation: none;
+    transition: none;
+  }
+  
+  .compact-section-header::before,
+  .mobile-control-button::before {
+    display: none;
+  }
+}
+
+/* ==================== DARK MODE SUPPORT ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .desktop-compact-sidebar {
+    background-color: rgba(17, 24, 39, 0.95);
+    border-color: rgba(55, 65, 81, 0.8);
+    color: white;
+  }
+  
+  .mobile-bottom-sheet {
+    background-color: #111827;
+    border-color: #374151;
+    color: white;
+  }
+  
+  .desktop-floating-toggle,
+  .mobile-floating-tab {
+    background-color: rgba(17, 24, 39, 0.95);
+    border-color: rgba(55, 65, 81, 0.8);
+    color: white;
+  }
+  
+  .active-location-display {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    border-color: #047857;
+    color: #a7f3d0;
+  }
+  
+  .badge-secondary {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    color: #d1d5db;
+    border-color: #6b7280;
+  }
+}
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+
+/* GPU acceleration */
+.desktop-compact-sidebar,
+.mobile-bottom-sheet,
+.desktop-floating-toggle,
+.mobile-floating-tab,
+.mobile-control-button {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize repaints */
+.control-badge,
+.radius-quick-button,
+.mobile-control-button {
+  contain: layout style paint;
+}
+
+/* ==================== LOADING STATES ==================== */
+
+.control-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.control-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Location loading spinner */
+.location-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==================== TOUCH OPTIMIZATIONS ==================== */
+
+/* Larger touch targets for mobile */
+@media (max-width: 768px) {
+  .control-button,
+  .mobile-control-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .radius-quick-button {
+    min-height: 32px;
+  }
+  
+  .radius-fine-button {
+    min-height: 28px;
+    min-width: 28px;
+  }
+}
+
+/* iOS safe area support */
+@supports (padding: max(0px)) {
+  .mobile-bottom-sheet {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .mobile-floating-tab {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+  .desktop-compact-sidebar,
+  .mobile-bottom-sheet,
+  .desktop-floating-toggle,
+  .mobile-floating-tab {
+    display: none !important;
+  }
+}
