@@ -21,8 +21,6 @@ import { capitalizeWords } from '@/utils/stringUtils';
 import { triggerHapticFeedback } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
 import { toast } from 'sonner';
-import { MapboxSearchBar } from '../Search/MapboxSearchBar';
-import { useMap } from '@/components/maps/core/useMap'; // To get map center for biasing
 
 interface DistanceFilter {
   enabled: boolean;
@@ -105,9 +103,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
   const [showStandardFilters, setShowStandardFilters] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // Use a dummy ref and default options to access the map instance
-  const dummyRef = React.useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
-  const { map } = useMap(dummyRef, { center: [0, 0], zoom: 1 }); // Get map instance for proximity biasing
 
   const activeStandardFilters = selectedColors.length + selectedPostcodes.length +
     selectedProfessions.length + selectedOrganisations.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
@@ -196,20 +191,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
     );
   };
 
-  const handleMapboxPlaceSelect = (coords: [number, number]) => {
-    onSetLocation(coords);
-    if (map) {
-      map.flyTo(coords, 13); // Pan and zoom to the selected location
-    }
-  };
-
-  // Explicitly cast to tuple type for currentProximity
-  const mapCenterForProximity: [number, number] | null = map ? [map.getCenter().lng, map.getCenter().lat] : null;
-  // Explicitly cast to tuple type for currentBbox
-  const mapBoundsForBbox: [number, number, number, number] | null = map ? [
-    map.getBounds().getWest(), map.getBounds().getSouth(),
-    map.getBounds().getEast(), map.getBounds().getNorth()
-  ] : null;
 
   return (
     <>
@@ -296,15 +277,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                     )}
                     {isLocating ? 'Finding location...' : 'Use my current location'}
                   </MobileButton>
-
-                  {/* Address Search (NEW COMPONENT) */}
-                  <MapboxSearchBar
-                    onPlaceSelect={handleMapboxPlaceSelect}
-                    placeholder="Enter address or postcode..."
-                    currentProximity={mapCenterForProximity}
-                    currentBbox={mapBoundsForBbox}
-                    mobileOptimized={true}
-                  />
 
                   <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
                     庁 Try: "NW1 2DB", "Camden", "Westminster Bridge"
