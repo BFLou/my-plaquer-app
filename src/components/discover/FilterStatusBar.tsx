@@ -1,4 +1,5 @@
-// src/components/discover/FilterStatusBar.tsx
+// src/components/discover/FilterStatusBar.tsx - FIXED: High z-index positioning
+
 import React from 'react';
 import { X, MapPin, Filter, Clock, Star } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
@@ -72,16 +73,24 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
       key={`${type}-${value || 'toggle'}`}
       variant="secondary"
       className={cn(
-        "gap-1 pr-1 transition-all hover:scale-105",
+        "gap-1 pr-1 transition-all hover:scale-105 relative z-10",
         getFilterBadgeColor(type)
       )}
+      style={{ 
+        position: 'relative',
+        zIndex: 1005
+      }}
     >
       {icon && <span className="text-xs">{icon}</span>}
       <span className="text-xs font-medium">{label}</span>
       <button
         onClick={() => onRemoveFilter(type, value)}
-        className="ml-1 hover:bg-black/10 rounded-full p-0.5 transition-colors"
+        className="ml-1 hover:bg-black/10 rounded-full p-0.5 transition-colors relative z-10"
         aria-label={`Remove ${label} filter`}
+        style={{ 
+          position: 'relative',
+          zIndex: 1006
+        }}
       >
         <X size={12} />
       </button>
@@ -89,12 +98,24 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
   );
 
   return (
-    <div className={cn(
-      "bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 p-3 rounded-lg shadow-sm",
-      className
-    )}>
+    <div 
+      className={cn(
+        "filter-status-bar bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 p-3 rounded-lg shadow-sm",
+        className
+      )}
+      style={{ 
+        position: 'relative',
+        zIndex: 1003,
+        isolation: 'isolate',
+        transformStyle: 'preserve-3d',
+        transform: 'translateZ(0)'
+      }}
+    >
       {/* Results Summary */}
-      <div className="flex items-center justify-between mb-2">
+      <div 
+        className="flex items-center justify-between mb-2"
+        style={{ position: 'relative', zIndex: 1004 }}
+      >
         <div className="flex items-center gap-2">
           <Filter className="text-blue-600" size={16} />
           <span className="text-sm font-medium text-gray-800">
@@ -111,7 +132,11 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
             variant="ghost"
             size="sm"
             onClick={onClearAll}
-            className="text-xs h-7 px-2 text-red-600 hover:text-red-700"
+            className="text-xs h-7 px-2 text-red-600 hover:text-red-700 relative z-10"
+            style={{ 
+              position: 'relative',
+              zIndex: 1005
+            }}
           >
             Clear All
           </Button>
@@ -119,7 +144,10 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
       </div>
 
       {/* Active Filters */}
-      <div className="flex flex-wrap gap-1.5">
+      <div 
+        className="flex flex-wrap gap-1.5"
+        style={{ position: 'relative', zIndex: 1004 }}
+      >
         {/* Search Filter */}
         {activeFilters.search && renderFilterBadge(
           'search',

@@ -25,7 +25,7 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
   allPlaques, // Receive all plaques here
 }) => {
   // Use the new combined search hook
-  const { results: suggestions, search, isSearching: isLoading } = useSearch(allPlaques);
+  const { results: suggestions, handleSearchTermChange, isSearching: isLoading } = useSearch(allPlaques);
 
   const [query, setQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -37,10 +37,10 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
     const newQuery = e.target.value;
     setQuery(newQuery);
     // Trigger search on every input change, useSearch hook handles internal debouncing
-    search(newQuery); 
+    handleSearchTermChange(newQuery); 
     setShowSuggestions(true);
     activeSuggestionIndexRef.current = -1; // Reset active selection on new input
-  }, [search]);
+  }, [handleSearchTermChange]);
 
   // Handle selecting a suggestion from the list
   const handleSelectSuggestion = useCallback((selectedResult: typeof suggestions[0]) => {
@@ -78,11 +78,11 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
   // Handle clearing the search input
   const handleClearSearch = useCallback(() => {
     setQuery('');
-    search(''); // Clear search results
+    handleSearchTermChange(''); // Clear search results
     setShowSuggestions(false);
     activeSuggestionIndexRef.current = -1;
     if (mobileOptimized) triggerHapticFeedback('light');
-  }, [search, mobileOptimized]);
+  }, [mobileOptimized]);
 
   // Handle keyboard navigation for suggestions
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {

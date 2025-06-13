@@ -1,4 +1,5 @@
-// src/components/maps/MapContainer.tsx - FIXED: Proper height management for full-screen map
+// src/components/maps/MapContainer.tsx - COMPLETE FIX with proper SearchBar integration
+
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { SearchBar } from './features/Search/SearchBar';
@@ -18,7 +19,6 @@ function parseCoordinate(coord: string | number | undefined): number {
 interface MapState {
   center: [number, number];
   zoom: number;
-  searchQuery: string;
   selectedResult: any | null;
   filterCenter: [number, number] | null;
   filterRadius: number;
@@ -36,7 +36,6 @@ interface MapState {
 
 type MapAction = 
   | { type: 'SET_VIEW'; center: [number, number]; zoom: number }
-  | { type: 'SET_SEARCH'; query: string }
   | { type: 'SELECT_RESULT'; result: any }
   | { type: 'SET_LOCATION_FILTER'; center: [number, number]; radius: number; location: string }
   | { type: 'UPDATE_RADIUS'; radius: number }
@@ -60,9 +59,6 @@ function mapReducer(state: MapState, action: MapAction): MapState {
   switch (action.type) {
     case 'SET_VIEW':
       return { ...state, center: action.center, zoom: action.zoom };
-    
-    case 'SET_SEARCH':
-      return { ...state, searchQuery: action.query };
     
     case 'SELECT_RESULT':
       return { ...state, selectedResult: action.result };
@@ -155,7 +151,6 @@ function mapReducer(state: MapState, action: MapAction): MapState {
 const initialState: MapState = {
   center: [51.505, -0.09],
   zoom: 13,
-  searchQuery: '',
   selectedResult: null,
   filterCenter: null,
   filterRadius: 1,
@@ -256,19 +251,11 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     toastTimeouts.current.set(key, timeout);
   }, []);
 
-  // Filter plaques based on current state
+  // Filter plaques based on current state (SearchBar now handles its own filtering)
   const visiblePlaques = useMemo(() => {
     let filtered = plaques;
     
-    if (state.searchQuery && !state.filterEnabled) {
-      const query = state.searchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.title?.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query) ||
-        p.location?.toLowerCase().includes(query)
-      );
-    }
-    
+    // Distance filter
     if (state.filterEnabled && state.filterCenter) {
       filtered = plaques.filter(p => {
         if (!p.latitude || !p.longitude) return false;
@@ -282,6 +269,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       });
     }
     
+    // Standard filters
     filtered = filtered.filter(p => {
       const matchesColor = state.selectedColors.length === 0 || 
         (p.color && state.selectedColors.includes(p.color.toLowerCase()));
@@ -305,7 +293,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     return filtered;
   }, [
     plaques, 
-    state.searchQuery, 
     state.filterEnabled, 
     state.filterCenter, 
     state.filterRadius,
@@ -344,98 +331,39 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     showToastOnce(`added-${plaque.id}`, `Added "${plaque.title}" to route`, 'success');
   }, [state.routePoints, showToastOnce]);
 
-  // Search handlers
-const handleSearchSelect = useCallback((result: any) => {
-  console.log('🔍 Search result selected:', result);
-  dispatch({ type: 'SELECT_RESULT', result });
-  
-  if (result.type === 'plaque' && result.plaque) {
-    // Handle plaque selection - zoom to plaque and show details
-    if (result.coordinates) {
+  // FIXED: Search handler for plaque results
+  const handleSearchSelect = useCallback((result: any) => {
+    console.log('🔍 Search result selected:', result);
+    dispatch({ type: 'SELECT_RESULT', result });
+    
+    if (result.type === 'plaque' && result.plaque) {
+      // Handle plaque selection - zoom to plaque and show details
+      if (result.coordinates) {
+        dispatch({ 
+          type: 'SET_VIEW', 
+          center: result.coordinates, 
+          zoom: 16 
+        });
+      }
+      
+      // Trigger plaque click to show details
+      if (onPlaqueClick) {
+        onPlaqueClick(result.plaque);
+      } else {
+        dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque: result.plaque });
+      }
+    } else if (result.coordinates) {
+      // Handle general coordinate-based results
       dispatch({ 
         type: 'SET_VIEW', 
         center: result.coordinates, 
-        zoom: 16 
+        zoom: result.type === 'plaque' ? 16 : 14 
       });
     }
-    
-    // Trigger plaque click to show details
-    if (onPlaqueClick) {
-      onPlaqueClick(result.plaque);
-    } else {
-      dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque: result.plaque });
-    }
-  } else if (result.coordinates) {
-    // Handle general coordinate-based results
-    dispatch({ 
-      type: 'SET_VIEW', 
-      center: result.coordinates, 
-      zoom: result.type === 'plaque' ? 16 : 14 
-    });
-  }
-}, [onPlaqueClick]);
-
-
-const handleLocationSelect = useCallback((result: any) => {
-  console.log('📍 Location selected for distance filter:', result);
-  dispatch({ type: 'SELECT_RESULT', result });
-  
-  if (result.coordinates) {
-    // Clear search when setting location filter
-    dispatch({ type: 'SET_SEARCH', query: '' });
-    
-    // Zoom to location
-    dispatch({ 
-      type: 'SET_VIEW', 
-      center: result.coordinates, 
-      zoom: result.type === 'current-location' ? 15 : 13
-    });
-    
-    // Set up distance filter
-    const defaultRadius = result.type === 'current-location' ? 1.0 : 1.5;
-    const locationName = result.title || 'Selected Location';
-    
-    dispatch({ 
-      type: 'SET_LOCATION_FILTER', 
-      center: result.coordinates, 
-      radius: defaultRadius,
-      location: locationName
-    });
-    
-    // Notify parent component of distance filter change
-    if (onDistanceFilterChange) {
-      onDistanceFilterChange({
-        enabled: true,
-        center: result.coordinates,
-        radius: defaultRadius,
-        locationName
-      });
-    }
-    
-    // Calculate and show plaque count
-    const plaqueCount = plaques.filter(p => {
-      if (!p.latitude || !p.longitude) return false;
-      const distance = calculateDistance(
-        result.coordinates[0], 
-        result.coordinates[1],
-        parseCoordinate(p.latitude),
-        parseCoordinate(p.longitude)
-      );
-      return distance <= defaultRadius;
-    }).length;
-    
-    showToastOnce(
-      'location-filter-set',
-      `Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${defaultRadius}km of ${locationName}`,
-      'success'
-    );
-  }
-}, [plaques, onDistanceFilterChange, showToastOnce]);
+  }, [onPlaqueClick]);
 
   // Location filter handlers
   const handleLocationFilterSet = useCallback(async (coords: [number, number]) => {
-    dispatch({ type: 'SET_SEARCH', query: '' });
-    
     let locationName = 'Selected Location';
     try {
       const response = await fetch(
@@ -592,22 +520,26 @@ const handleLocationSelect = useCallback((result: any) => {
   }, []);
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
-{/* Enhanced Search Bar - FIXED positioning and integration */}
-<div className={`
-  absolute z-[1001] search-bar-container
-  ${mobile ? 'top-3 left-3 right-3' : 'top-4 left-1/2 transform -translate-x-1/2'} 
-  ${mobile ? 'w-auto' : 'w-full max-w-md px-4'}
-`}>
-  <SearchBar 
-    plaques={plaques}
-    value={state.searchQuery}
-    onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
-    onSelect={handleSearchSelect}
-    onLocationSelect={handleLocationSelect}
-    className="w-full"
-  />
-</div>
+    <div className={`relative w-full h-full ${className}`} style={{ isolation: 'isolate' }}>
+      {/* FIXED: Enhanced Search Bar with proper props and z-index */}
+      <div 
+        className={`
+          absolute search-bar-container
+          ${mobile ? 'top-3 left-3 right-3' : 'top-4 left-1/2 transform -translate-x-1/2'} 
+          ${mobile ? 'w-auto' : 'w-full max-w-md px-4'}
+        `}
+        style={{ 
+          position: 'absolute',
+          zIndex: 1005,
+          isolation: 'isolate'
+        }}
+      >
+        <SearchBar 
+          plaques={plaques}
+          onSelect={handleSearchSelect}
+          className="w-full"
+        />
+      </div>
 
       {/* Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
       <UnifiedControlPanel
@@ -686,11 +618,6 @@ const handleLocationSelect = useCallback((result: any) => {
                 Within {state.filterRadius < 1 
                   ? `${Math.round(state.filterRadius * 1000)}m` 
                   : `${state.filterRadius}km`} of {state.filterLocation}
-              </div>
-            )}
-            {state.searchQuery && !state.filterEnabled && (
-              <div className={`${mobile ? 'mt-1 w-full text-center' : 'ml-2'} px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs`}>
-                Matching "{state.searchQuery}"
               </div>
             )}
             {state.routeMode && (
