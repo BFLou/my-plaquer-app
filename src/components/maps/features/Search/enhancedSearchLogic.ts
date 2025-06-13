@@ -1,8 +1,10 @@
 // src/components/maps/features/Search/enhancedSearchLogic.ts
-// Enhanced Search Logic with improved relevance and debugging
+// Enhanced Search Logic using Fuse.js for improved performance
 import { Plaque } from '@/types/plaque';
+import Fuse from 'fuse.js';
+import type { IFuseOptions, FuseResultMatch } from 'fuse.js';
 
-// Define SearchResult type for searchPlaques results
+// Define SearchResult type for searchPlaques results (Removed relevanceScore)
 export type SearchResult = {
   type: 'plaque';
   id: string | number;
@@ -10,267 +12,129 @@ export type SearchResult = {
   subtitle: string;
   coordinates: [number, number];
   plaque: Plaque;
-  relevanceScore: number;
-  matchedFields: string[];
+  matchedFields: string[]; // Fuse.js can provide matched fields
 };
 
-// Exported for reuse in useSearch.ts
-/**
- * Calculate Levenshtein distance for fuzzy matching
- */
-export function levenshteinDistance(str1: string, str2: string): number {
-  const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-  
-  for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-  for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-  
-  for (let j = 1; j <= str2.length; j++) {
-    for (let i = 1; i <= str1.length; i++) {
-      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[j][i] = Math.min(
-        matrix[j][i - 1] + 1, // deletion
-        matrix[j - 1][i] + 1, // insertion
-        matrix[j - 1][i - 1] + indicator // substitution
-      );
-    }
-  }
-  
-  return matrix[str2.length][str1.length];
-}
+let fuse: Fuse<Plaque> | null = null;
 
-// Exported for reuse in useSearch.ts
 /**
- * Calculate similarity score (0-1, where 1 is perfect match)
+ * Initialize the Fuse.js search index.
+ * Call this once when your plaque data is loaded (e.g., in a parent component or context).
  */
-export function calculateSimilarity(str1: string, str2: string): number {
-  if (str1 === str2) return 1;
-  
-  const maxLength = Math.max(str1.length, str2.length);
-  if (maxLength === 0) return 1;
-  
-  const distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
-  return (maxLength - distance) / maxLength;
+export function initializePlaqueSearchIndex(plaques: Plaque[]): void {
+  const options: IFuseOptions<Plaque> = { // Use the imported type
+    keys: [
+      { name: 'title', weight: 1.0 },
+      { name: 'profession', weight: 0.7 },
+      { name: 'description', weight: 0.6 },
+      { name: 'location', weight: 0.5 },
+      { name: 'address', weight: 0.4 },
+      { name: 'postcode', weight: 0.6 },
+      { name: 'inscription', weight: 0.3 },
+      { name: 'organisations', weight: 0.4 }, // Assuming organisations is an array of strings
+    ],
+    includeScore: true, // Still include score for internal sorting
+    includeMatches: true,
+    threshold: 0.3, // Adjust this threshold based on how fuzzy you want the matches
+    ignoreLocation: true, // Ignore the location of the match in the string
+    // distance: 100, // Consider matches up to a certain distance
+  };
+
+  fuse = new Fuse(plaques, options);
+  console.log('Fuse.js plaque search index initialized.');
 }
 
 /**
- * Check if search term partially matches any word in the text
- */
-function hasPartialWordMatch(searchTerm: string, text: string): boolean {
-  const words = text.toLowerCase().split(/\s+/);
-  const search = searchTerm.toLowerCase();
-  
-  return words.some(word => 
-    word.includes(search) || 
-    search.includes(word) ||
-    calculateSimilarity(word, search) > 0.7
-  );
-}
-
-/**
- * Extract searchable text from plaque with proper field weighting
- */
-function extractSearchableFields(plaque: Plaque): Array<{field: string, text: string, weight: number}> {
-  const fields = [];
-  
-  // High priority fields
-  if (plaque.title) {
-    fields.push({ field: 'title', text: plaque.title, weight: 1.0 });
-  }
-  
-  // Extract person names from titles (common patterns)
-  if (plaque.title) {
-    const namePatterns = [
-      /([A-Z][a-z]+ [A-Z][a-z]+)/g, // First Last
-      /Sir ([A-Z][a-z]+ [A-Z][a-z]+)/g, // Sir First Last
-      /Dame ([A-Z][a-z]+ [A-Z][a-z]+)/g, // Dame First Last
-      /Dr\.? ([A-Z][a-z]+ [A-z][a-z]+)/g, // Dr First Last
-    ];
-    
-    namePatterns.forEach(pattern => {
-      const matches = plaque.title.match(pattern);
-      if (matches) {
-        matches.forEach(match => {
-          const cleanName = match.replace(/^(Sir|Dame|Dr\.?)\s+/, '');
-          fields.push({ field: 'name', text: cleanName, weight: 0.95 });
-          
-          // Also add individual name parts
-          const nameParts = cleanName.split(' ');
-          nameParts.forEach(part => {
-            if (part.length > 2) {
-              fields.push({ field: 'namepart', text: part, weight: 0.8 });
-            }
-          });
-        });
-      }
-    });
-  }
-  
-  // Medium priority fields
-  if (plaque.profession) {
-    fields.push({ field: 'profession', text: plaque.profession, weight: 0.7 });
-  }
-  
-  if (plaque.description) {
-    fields.push({ field: 'description', text: plaque.description, weight: 0.6 });
-  }
-  
-  // Location fields
-  if (plaque.location) {
-    fields.push({ field: 'location', text: plaque.location, weight: 0.5 });
-  }
-  
-  if (plaque.address) {
-    fields.push({ field: 'address', text: plaque.address, weight: 0.4 });
-  }
-  
-  if (plaque.postcode) {
-    fields.push({ field: 'postcode', text: plaque.postcode, weight: 0.6 });
-  }
-  
-  // Lower priority fields
-  if (plaque.inscription) {
-    fields.push({ field: 'inscription', text: plaque.inscription, weight: 0.3 });
-  }
-  
-  // Organization field if available (now always an array of strings)
-  if (plaque.organisations && Array.isArray(plaque.organisations)) {
-    plaque.organisations.forEach(org => {
-      if (org && typeof org === 'string') {
-        fields.push({ field: 'organisation', text: org, weight: 0.4 });
-      }
-    });
-  }
-  
-  return fields;
-}
-
-/**
- * Enhanced search function with fuzzy matching and relevance scoring for plaques.
- * Note: This function is kept for any existing consumers. The main search logic
- * for the search bar will now be in `useSearch.ts`.
+ * Search plaques using the initialized Fuse.js index.
  */
 export function searchPlaques(plaques: Plaque[], searchTerm: string): SearchResult[] {
-  if (!searchTerm.trim() || searchTerm.length < 2) {
-    return [];
-  }
-  
-  const query = searchTerm.trim();
-  const results: SearchResult[] = [];
-  
-  console.log(`🔍 Searching ${plaques.length} plaques for: "${query}"`);
-  
-  plaques.forEach(plaque => {
-    const searchableFields = extractSearchableFields(plaque);
-    let bestScore = 0;
-    let matchedFields: string[] = [];
-    let totalWeightedScore = 0;
-    
-    searchableFields.forEach(({ field, text, weight }) => {
-      if (!text) return;
-      
-      let fieldScore = 0;
-      
-      // Exact match (highest score)
-      if (text.toLowerCase() === query.toLowerCase()) {
-        fieldScore = 1.0;
-      }
-      // Starts with query (very high score)
-      else if (text.toLowerCase().startsWith(query.toLowerCase())) {
-        fieldScore = 0.9;
-      }
-      // Contains exact query (high score)
-      else if (text.toLowerCase().includes(query.toLowerCase())) {
-        fieldScore = 0.8;
-      }
-      // Partial word matches (good score)
-      else if (hasPartialWordMatch(query, text)) {
-        fieldScore = 0.6;
-      }
-      // Fuzzy matching for typos (moderate score)
-      else {
-        const similarity = calculateSimilarity(query, text);
-        if (similarity > 0.6) {
-          fieldScore = similarity * 0.5;
-        }
-        
-        // Also check individual words for fuzzy matching
-        const words = text.toLowerCase().split(/\s+/);
-        const maxWordSimilarity = Math.max(...words.map(word => 
-          calculateSimilarity(query.toLowerCase(), word)
-        ));
-        
-        if (maxWordSimilarity > 0.7) {
-          fieldScore = Math.max(fieldScore, maxWordSimilarity * 0.4);
-        }
-      }
-      
-      if (fieldScore > 0) {
-        matchedFields.push(field);
-        const weightedScore = fieldScore * weight;
-        totalWeightedScore += weightedScore;
-        bestScore = Math.max(bestScore, fieldScore);
-      }
-    });
-    
-    // Only include results with meaningful matches
-    if (bestScore > 0.3 && matchedFields.length > 0) {
-      // Convert coordinates safely
-      const lat = typeof plaque.latitude === 'string' 
-        ? parseFloat(plaque.latitude) 
-        : plaque.latitude || 0;
-      const lng = typeof plaque.longitude === 'string' 
-        ? parseFloat(plaque.longitude) 
-        : plaque.longitude || 0;
-      
-      // Skip plaques with invalid coordinates
-      if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
-      
-      results.push({
+  // Minimum query length handled in useSearch.ts now
+
+  if (!fuse) {
+      console.error("Fuse.js index not initialized. Call initializePlaqueSearchIndex first.");
+      // Fallback to a simple filter if index is not initialized
+      return plaques.filter(plaque =>
+          plaque.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          plaque.profession?.toLowerCase().includes(searchTerm.toLowerCase())
+      ).slice(0, 10).map(plaque => ({
         type: 'plaque',
         id: plaque.id,
         title: plaque.title || 'Unnamed Plaque',
-        subtitle: formatPlaqueSubtitle(plaque, matchedFields),
-        coordinates: [lat, lng] as [number, number],
-        plaque,
-        relevanceScore: totalWeightedScore,
-        matchedFields
-      });
-    }
-  });
-  
-  console.log(`🎯 Found ${results.length} matching plaques`);
-  
-  // Sort by relevance score (highest first)
-  return results
-    .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, 10); // Limit to top 10 results
+        subtitle: plaque.profession || plaque.location || plaque.address || 'Historic Plaque',
+        coordinates: [
+            typeof plaque.latitude === 'string' ? parseFloat(plaque.latitude) : plaque.latitude || 0,
+            typeof plaque.longitude === 'string' ? parseFloat(plaque.longitude) : plaque.longitude || 0
+        ] as [number, number],
+        plaque: plaque,
+        matchedFields: [], // No matched fields in fallback
+      }));
+  }
+
+  const query = searchTerm.trim();
+  // console.log(`🔍 Searching for: "${query}" using Fuse.js`); // Avoid excessive logs
+
+  const fuseResults = fuse.search(query);
+
+  // console.log(`🎯 Found ${fuseResults.length} matching plaques`); // Avoid excessive logs
+
+  // Convert Fuse.js results to your SearchResult format and sort/slice
+  return fuseResults
+    .sort((a, b) => (a.score || 0) - (b.score || 0)) // Sort by Fuse.js score (lower is better)
+    .slice(0, 10) // Limit to top 10 results
+    .map(fuseResult => {
+        const plaque = fuseResult.item;
+        const lat = typeof plaque.latitude === 'string'
+          ? parseFloat(plaque.latitude)
+          : plaque.latitude || 0;
+        const lng = typeof plaque.longitude === 'string'
+          ? parseFloat(plaque.longitude)
+          : plaque.longitude || 0;
+
+        // Skip plaques with invalid coordinates
+        if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+            // You might want to log a warning here if this happens
+            return null; // Filter out nulls later
+        }
+
+        return {
+          type: 'plaque',
+          id: plaque.id,
+          title: plaque.title || 'Unnamed Plaque',
+          subtitle: formatPlaqueSubtitle(plaque, fuseResult.matches || []),
+          coordinates: [lat, lng] as [number, number],
+          plaque: plaque,
+          matchedFields: fuseResult.matches ? fuseResult.matches.map(match => match.key as string) : [], // Extract matched fields
+        };
+  }).filter(result => result !== null) as SearchResult[]; // Filter out null results
 }
 
 /**
  * Format subtitle showing what matched and location
+ * Adapted to work with Fuse.js matches
  */
-function formatPlaqueSubtitle(plaque: Plaque, matchedFields: string[]): string {
+function formatPlaqueSubtitle(plaque: Plaque, matches: readonly FuseResultMatch[]): string {
   const parts = [];
-  
+
   // Show location if available
   if (plaque.location) {
     parts.push(plaque.location);
   } else if (plaque.address) {
     parts.push(plaque.address.split(',')[0]); // First part of address
   }
-  
+
   // Show profession if it was matched or if no location
-  if (matchedFields.includes('profession') && plaque.profession) {
+  const professionMatched = matches.some(match => match.key === 'profession');
+  if (professionMatched && plaque.profession) {
     parts.push(plaque.profession);
   } else if (!plaque.location && !plaque.address && plaque.profession) {
     parts.push(plaque.profession);
   }
-  
+
   // If still no parts, use postcode
   if (parts.length === 0 && plaque.postcode) {
     parts.push(plaque.postcode);
   }
-  
+
   return parts.join(' • ') || 'Historic Plaque';
 }
 
@@ -279,94 +143,12 @@ function formatPlaqueSubtitle(plaque: Plaque, matchedFields: string[]): string {
  */
 export function highlightSearchTerms(text: string, searchTerm: string): string {
   if (!searchTerm.trim()) return text;
-  
+
   const query = searchTerm.trim();
-  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  // Corrected regex to properly escape special characters for new RegExp()
+  // We escape all characters that have special meaning in regex:
+  // . \ + * ? ^ $ { } ( ) | [ ]
+  const escapedQuery = query.replace(/[.\+*?^$(){}|[\]]/g, '\$&');
+  const regex = new RegExp(`(${escapedQuery})`, 'gi');
   return text.replace(regex, '<mark class="bg-yellow-200 px-1 rounded">$1</mark>');
-}
-
-/**
- * Get search suggestions based on popular terms
- */
-export function getSearchSuggestions(plaques: Plaque[]): string[] {
-  const suggestions = new Set<string>();
-  
-  // Popular professions
-  const professionCounts: Record<string, number> = {};
-  plaques.forEach(plaque => {
-    if (plaque.profession && plaque.profession !== 'Unknown') {
-      professionCounts[plaque.profession] = (professionCounts[plaque.profession] || 0) + 1;
-    }
-  });
-  
-  // Add top professions
-  Object.entries(professionCounts)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 4)
-    .forEach(([profession]) => suggestions.add(profession));
-  
-  // Popular first names from titles
-  const namePattern = /\b([A-Z][a-z]{3,})\s+[A-Z][a-z]+\b/g;
-  const firstNames: Record<string, number> = {};
-  
-  plaques.forEach(plaque => {
-    if (plaque.title) {
-      let match;
-      namePattern.lastIndex = 0; // Reset regex
-      while ((match = namePattern.exec(plaque.title)) !== null) {
-        const firstName = match[1];
-        if (firstName.length > 3 && !['London', 'Street', 'House', 'Road'].includes(firstName)) {
-          firstNames[firstName] = (firstNames[firstName] || 0) + 1;
-        }
-      }
-    }
-  });
-  
-  // Add popular first names
-  Object.entries(firstNames)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 6)
-    .forEach(([name]) => suggestions.add(name));
-  
-  // Add some popular search terms
-  const popularTerms = [
-    'author', 'writer', 'artist', 'scientist', 'politician', 
-    'actor', 'musician', 'poet', 'doctor', 'engineer'
-  ];
-  
-  popularTerms.forEach(term => {
-    // Only add if we have plaques with this profession
-    if (professionCounts[term] || professionCounts[term.charAt(0).toUpperCase() + term.slice(1)]) {
-      suggestions.add(term);
-    }
-  });
-  
-  return Array.from(suggestions).slice(0, 8);
-}
-
-/**
- * Debug search results - useful for troubleshooting
- */
-export function debugSearchResults(plaques: Plaque[], searchTerm: string): void {
-  console.group(`🔍 Search Debug: "${searchTerm}"`);
-  
-  const results = searchPlaques(plaques, searchTerm);
-  
-  console.log(`Total plaques: ${plaques.length}`);
-  console.log(`Results found: ${results.length}`);
-  
-  results.slice(0, 5).forEach((result, index) => {
-    console.log(`${index + 1}. ${result.title} (Score: ${result.relevanceScore.toFixed(3)})`);
-    console.log(`   Matched fields: ${result.matchedFields.join(', ')}`);
-    console.log(`   Subtitle: ${result.subtitle}`);
-  });
-  
-  if (results.length === 0) {
-    console.log('No results found. Checking sample plaques...');
-    plaques.slice(0, 3).forEach(plaque => {
-      console.log(`Sample: ${plaque.title} - ${plaque.profession || 'No profession'}`);
-    });
-  }
-  
-  console.groupEnd();
 }
