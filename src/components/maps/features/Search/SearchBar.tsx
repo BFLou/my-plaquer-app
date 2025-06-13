@@ -1,6 +1,6 @@
 // Enhanced SearchBar Component with improved styling and functionality
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Search, MapPin, X, Loader, Navigation, Star, Zap, ChevronRight } from 'lucide-react';
+import { Search, MapPin, X, Loader, Navigation, Star, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,9 +9,10 @@ import { Plaque } from '@/types/plaque';
 import { useMapboxGeocoding } from '@/hooks/useMapboxGeocoding';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { toast } from 'sonner';
-import { searchPlaques, highlightSearchTerms, getSearchSuggestions } from './enhancedSearchLogic';
+import { searchPlaques, highlightSearchTerms } from './enhancedSearchLogic';
 
-interface SearchResult {
+// FIXED: Extended interface that includes both plaque and location result properties
+interface ExtendedSearchResult {
   type: 'plaque' | 'location' | 'postcode' | 'area';
   id: string | number;
   title: string;
@@ -20,7 +21,7 @@ interface SearchResult {
   plaque?: Plaque;
   relevanceScore?: number;
   matchedFields?: string[];
-  placeType?: string; // Optional: present for location results
+  placeType?: string; // For location results from Mapbox
 }
 
 interface SearchBarProps {
@@ -31,7 +32,6 @@ interface SearchBarProps {
   onLocationSelect: (result: any) => void;
   className?: string;
   placeholder?: string;
-  showSuggestions?: boolean;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -41,8 +41,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   onSelect,
   onLocationSelect,
   className = '',
-  placeholder = "Search plaques, people, or locations...",
-  showSuggestions = true
+  placeholder = "Search plaques, people, or locations..."
 }) => {
   const mobile = isMobile();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -92,15 +91,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     }
   }, [value, mapboxHook.setQuery, mapboxHook.query]);
 
-  // Enhanced plaque search with fuzzy matching
+  // Enhanced plaque search with fuzzy matching - convert to ExtendedSearchResult
   const plaqueResults = useMemo(() => {
     if (!value.trim() || value.length < 2) return [];
     
     const results = searchPlaques(plaques, value);
-    return results.slice(0, 6); // Increased limit for better results
+    // Convert to ExtendedSearchResult format
+    return results.slice(0, 6).map(result => ({
+      ...result,
+      placeType: undefined // Plaque results don't have placeType
+    } as ExtendedSearchResult));
   }, [plaques, value]);
 
-  // Enhanced location results with better address formatting
+  // Enhanced location results with better address formatting and FIXED typing
   const locationResults = useMemo(() => {
     console.log(`📍 Processing ${mapboxHook.suggestions.length} Mapbox suggestions`);
     
@@ -132,15 +135,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         
         console.log(`📍 ${feature.place_type.join('/')}: ${title} - ${subtitle}`);
         
+        // Return properly typed ExtendedSearchResult with placeType
         return {
           type: 'location' as const,
           id: feature.id,
           title,
           subtitle,
           coordinates: [lat, lng] as [number, number],
-          feature,
           placeType: feature.place_type[0] // Store primary place type for styling
-        };
+        } as ExtendedSearchResult;
       });
   }, [mapboxHook.suggestions]);
 
@@ -159,22 +162,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     });
   }, [plaqueResults, locationResults]);
 
-  // Get search suggestions
-  const searchSuggestions = useMemo(() => {
-    if (value.trim() || !showSuggestions) return [];
-    return getSearchSuggestions(plaques).slice(0, 6);
-  }, [plaques, value, showSuggestions]);
-
   // Handle input changes
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    setShowSuggestionsState(newValue.length > 0 || searchSuggestions.length > 0);
+    setShowSuggestionsState(newValue.length > 0);
     setSelectedIndex(-1);
-  }, [onChange, searchSuggestions.length]);
+  }, [onChange]);
 
   // Enhanced result selection
-  const handleSelectResult = useCallback((result: SearchResult) => {
+  const handleSelectResult = useCallback((result: ExtendedSearchResult) => {
     if (mobile) triggerHapticFeedback('selection');
     
     if (result.type === 'plaque' && result.plaque) {
@@ -203,14 +200,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     setSelectedIndex(-1);
   }, [mobile, onSelect, onLocationSelect, saveRecentSearch, value]);
 
-  // Handle suggestion selection
-  const handleSelectSuggestion = useCallback((suggestion: string) => {
-    onChange(suggestion);
-    setShowSuggestionsState(true);
-    setIsExpanded(true);
-    searchInputRef.current?.focus();
-    if (mobile) triggerHapticFeedback('light');
-  }, [onChange, mobile]);
+
 
   // Handle recent search selection
   const handleSelectRecentSearch = useCallback((search: string) => {
@@ -221,9 +211,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     if (mobile) triggerHapticFeedback('light');
   }, [onChange, mobile]);
 
-  // Enhanced keyboard navigation
+  // Enhanced keyboard navigation - removed quick suggestions
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const totalItems = allResults.length + searchSuggestions.length + recentSearches.length;
+    const totalItems = allResults.length + recentSearches.length;
     
     if (!showSuggestionsState || totalItems === 0) return;
 
@@ -245,11 +235,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         if (selectedIndex >= 0) {
           if (selectedIndex < allResults.length) {
             handleSelectResult(allResults[selectedIndex]);
-          } else if (selectedIndex < allResults.length + searchSuggestions.length) {
-            const suggestionIndex = selectedIndex - allResults.length;
-            handleSelectSuggestion(searchSuggestions[suggestionIndex]);
           } else {
-            const recentIndex = selectedIndex - allResults.length - searchSuggestions.length;
+            const recentIndex = selectedIndex - allResults.length;
             handleSelectRecentSearch(recentSearches[recentIndex]);
           }
         }
@@ -260,13 +247,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         searchInputRef.current?.blur();
         break;
     }
-  }, [showSuggestionsState, allResults, searchSuggestions, recentSearches, selectedIndex, handleSelectResult, handleSelectSuggestion, handleSelectRecentSearch]);
+  }, [showSuggestionsState, allResults, recentSearches, selectedIndex, handleSelectResult, handleSelectRecentSearch]);
 
-  // Handle focus and blur
+  // Handle focus and blur - removed quick suggestions
   const handleFocus = useCallback(() => {
     setIsExpanded(true);
-    setShowSuggestionsState(value.length > 0 || searchSuggestions.length > 0 || recentSearches.length > 0);
-  }, [value, searchSuggestions.length, recentSearches.length]);
+    setShowSuggestionsState(value.length > 0 || recentSearches.length > 0);
+  }, [value, recentSearches.length]);
 
   const handleBlur = useCallback(() => {
     setTimeout(() => {
@@ -473,55 +460,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 </div>
               )}
               
-              {/* Quick Search Suggestions */}
-              {!value.trim() && searchSuggestions.length > 0 && (
-                <div className={allResults.length > 0 ? 'border-t border-gray-100' : ''}>
-                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
-                    ⚡ Quick Search
-                  </div>
-                  {searchSuggestions.map((suggestion: string, index: number) => {
-                    const adjustedIndex = allResults.length + index;
-                    return (
-                      <button
-                        key={`suggestion-${suggestion}`}
-                        onClick={() => handleSelectSuggestion(suggestion)}
-                        className={`
-                          w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors
-                          ${selectedIndex === adjustedIndex ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}
-                          flex items-center gap-3
-                        `}
-                        onMouseEnter={() => setSelectedIndex(adjustedIndex)}
-                      >
-                        <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Zap size={16} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 text-sm">
-                            {suggestion}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            Popular search term
-                          </div>
-                        </div>
-                        <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              
-              {/* Recent Searches */}
+              {/* Recent Searches - moved up since no more quick suggestions */}
               {!value.trim() && recentSearches.length > 0 && (
-                <div className={
-                  (allResults.length > 0 || searchSuggestions.length > 0) 
-                    ? 'border-t border-gray-100' 
-                    : ''
-                }>
+                <div className={allResults.length > 0 ? 'border-t border-gray-100' : ''}>
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
                     🕒 Recent Searches
                   </div>
                   {recentSearches.map((search, index) => {
-                    const adjustedIndex = allResults.length + searchSuggestions.length + index;
+                    const adjustedIndex = allResults.length + index;
                     return (
                       <button
                         key={`recent-${search}`}
@@ -563,7 +509,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             </div>
           )}
           
-          {/* Helper Text */}
+          {/* Helper Text - simplified without quick search reference */}
           {!value && allResults.length === 0 && (
             <div className="px-4 py-3 text-xs text-gray-500 bg-blue-50 border-t border-gray-100">
               💡 Search for people, professions, or London locations. Try "Hendrix", "author", or "Camden"
