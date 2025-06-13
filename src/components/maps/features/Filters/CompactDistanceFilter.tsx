@@ -1,10 +1,10 @@
-// src/components/maps/features/filters/CompactDistanceFilter.tsx
+// src/components/maps/features/Filters/CompactDistanceFilter.tsx
 import React, { useState } from 'react';
-import { MapPin, Target, ChevronUp, ChevronDown, Minus, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { ChevronDown, ChevronUp, MapPin, Target, Loader, X, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { MapboxSearchBar } from '../Search/MapboxSearchBar';
+import { useMap } from '@/components/maps/core/useMap'; // To get map center for biasing
 
 interface DistanceFilter {
   enabled: boolean;
@@ -31,16 +31,18 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
   onToggleExpanded
 }) => {
   const [isLocating, setIsLocating] = useState(false);
-  const [searchAddress, setSearchAddress] = useState('');
+
+  // Create a dummy ref since we only need the map instance for proximity biasing
+  const dummyRef = React.useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
+  const { map } = useMap(dummyRef, { center: [0, 0], zoom: 1 }); // Provide required arguments
 
   const handleMyLocation = async () => {
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported');
+      toast.error('Geolocation not supported');
       return;
     }
 
     setIsLocating(true);
-    
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const coords: [number, number] = [position.coords.latitude, position.coords.longitude];
@@ -56,159 +58,129 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
     );
   };
 
-  const handleAddressSearch = async () => {
-    if (!searchAddress.trim()) return;
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchAddress + ', London')}&limit=1&countrycodes=gb`
-      );
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        const coords: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-        onSetLocation(coords);
-        setSearchAddress('');
-        toast.success('Location found');
-      } else {
-        toast.error('Location not found');
-      }
-    } catch {
-      toast.error('Search failed');
+  const handleMapboxPlaceSelect = (coords: [number, number]) => {
+    onSetLocation(coords);
+    if (map) {
+      map.flyTo(coords, 13); // Pan and zoom to the selected location
     }
   };
 
+  // Explicitly cast to tuple type for currentProximity
+  const mapCenterForProximity: [number, number] | null = map ? [map.getCenter().lng, map.getCenter().lat] : null;
+  // Explicitly cast to tuple type for currentBbox
+  const mapBoundsForBbox: [number, number, number, number] | null = map ? [
+    map.getBounds().getWest(), map.getBounds().getSouth(),
+    map.getBounds().getEast(), map.getBounds().getNorth()
+  ] : null;
+
   return (
-    <div className="space-y-2">
-      {/* Compact header */}
-      <Button
-        variant={distanceFilter.enabled ? "default" : "outline"}
-        size="sm"
-        className="w-full h-9 justify-between text-xs"
+    <div className="bg-white rounded-md border p-3">
+      <div
+        className="flex items-center justify-between cursor-pointer py-1"
         onClick={onToggleExpanded}
       >
-        <div className="flex items-center gap-1.5 min-w-0">
-          <MapPin size={14} />
-          <span className="truncate">
-            {distanceFilter.enabled ? distanceFilter.locationName : 'Distance Filter'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {distanceFilter.enabled && (
-            <Badge variant="secondary" className="text-xs px-1 h-5">
-              {distanceFilter.radius < 1 
-                ? `${Math.round(distanceFilter.radius * 1000)}m` 
-                : `${distanceFilter.radius}km`}
-            </Badge>
-          )}
-          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-        </div>
-      </Button>
+        <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+          <MapPin size={16} className="text-green-500" />
+          Distance Filter
+        </h4>
+        {isExpanded ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+      </div>
 
-      {/* Expanded content */}
       {isExpanded && (
-        <div className="space-y-2 p-2 bg-gray-50 rounded-md">
+        <div className="pt-3 border-t mt-3 -mx-3 px-3">
           {!distanceFilter.enabled ? (
-            <>
-              {/* Location setup */}
+            <div className="space-y-3">
               <Button
                 variant="outline"
-                size="sm"
-                className="w-full h-8 text-xs justify-start"
+                className="w-full h-9 justify-start text-xs"
                 onClick={handleMyLocation}
                 disabled={isLocating}
               >
                 {isLocating ? (
-                  <div className="animate-spin h-3 w-3 border border-blue-500 rounded-full border-t-transparent mr-1" />
+                  <Loader className="mr-2 animate-spin" size={14} />
                 ) : (
-                  <Target size={12} className="mr-1" />
+                  <Target className="mr-2" size={14} />
                 )}
-                My Location
+                {isLocating ? 'Finding location...' : 'Use my current location'}
               </Button>
-              
-              <div className="flex gap-1">
-                <Input
-                  placeholder="Postcode..."
-                  value={searchAddress}
-                  onChange={(e) => setSearchAddress(e.target.value)}
-                  className="text-xs h-8"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddressSearch()}
-                />
-                <Button 
-                  size="sm" 
-                  onClick={handleAddressSearch}
-                  disabled={!searchAddress.trim()}
-                  className="h-8 px-2 text-xs"
-                >
-                  Go
-                </Button>
+
+              {/* Address Search (NEW COMPONENT) */}
+              <MapboxSearchBar
+                onPlaceSelect={handleMapboxPlaceSelect}
+                placeholder="Enter address or postcode..."
+                currentProximity={mapCenterForProximity}
+                currentBbox={mapBoundsForBbox}
+              />
+
+              <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                庁 Try: "NW1 2DB", "Camden", "Westminster Bridge"
               </div>
-            </>
+            </div>
           ) : (
-            <>
-              {/* Active filter controls */}
-              <div className="text-xs text-center p-2 bg-green-50 rounded border border-green-200">
-                <div className="font-medium text-green-800 truncate">
-                  {distanceFilter.locationName}
-                </div>
-                <div className="text-green-600">
-                  Within {distanceFilter.radius < 1 
-                    ? `${Math.round(distanceFilter.radius * 1000)}m` 
-                    : `${distanceFilter.radius}km`}
-                </div>
-              </div>
-              
-              {/* Quick radius controls */}
-              <div className="grid grid-cols-4 gap-1">
-                {[0.5, 1, 2, 5].map((distance) => (
+            <div className="space-y-3">
+              <div className="p-2 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-green-800">
+                      桃 {distanceFilter.locationName}
+                    </div>
+                    <div className="text-xs text-green-600">
+                      Within {distanceFilter.radius < 1
+                        ? `${Math.round(distanceFilter.radius * 1000)}m`
+                        : `${distanceFilter.radius}km`} radius
+                    </div>
+                  </div>
                   <Button
-                    key={distance}
-                    variant={Math.abs(distanceFilter.radius - distance) < 0.01 ? "default" : "outline"}
+                    variant="ghost"
                     size="sm"
-                    onClick={() => onRadiusChange(distance)}
-                    className="h-6 text-xs p-0"
+                    onClick={onClear}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 w-7 p-0"
                   >
-                    {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
+                    <X size={12} />
                   </Button>
-                ))}
+                </div>
               </div>
-              
-              {/* Fine control */}
-              <div className="space-y-1">
+
+              <div>
+                <div className="text-xs font-medium text-gray-600 mb-2">Search Radius</div>
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[0.5, 1, 2, 5].map((distance) => (
+                    <Button
+                      key={distance}
+                      variant={Math.abs(distanceFilter.radius - distance) < 0.01 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onRadiusChange(distance)}
+                      className="h-7 text-xs font-medium"
+                    >
+                      {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
+                    </Button>
+                  ))}
+                </div>
                 <div className="flex items-center justify-between">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => onRadiusChange(Math.max(0.1, distanceFilter.radius - 0.1))}
-                    className="h-6 w-6 p-0"
+                    className="h-7 w-7 p-0"
                   >
-                    <Minus size={10} />
+                    <Minus size={12} />
                   </Button>
-                  <span className="text-xs font-medium px-2">
-                    {distanceFilter.radius < 1 
-                      ? `${Math.round(distanceFilter.radius * 1000)}m` 
+                  <span className="text-sm font-medium px-3">
+                    {distanceFilter.radius < 1
+                      ? `${Math.round(distanceFilter.radius * 1000)}m`
                       : `${distanceFilter.radius}km`}
                   </span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => onRadiusChange(Math.min(10, distanceFilter.radius + 0.1))}
-                    className="h-6 w-6 p-0"
+                    className="h-7 w-7 p-0"
                   >
-                    <Plus size={10} />
+                    <Plus size={12} />
                   </Button>
                 </div>
               </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onClear}
-                className="w-full h-6 text-xs text-red-600 hover:bg-red-50"
-              >
-                Clear Filter
-              </Button>
-            </>
+            </div>
           )}
         </div>
       )}
