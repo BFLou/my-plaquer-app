@@ -48,6 +48,10 @@ interface UnifiedControlPanelProps {
   isFavorite?: (id: number) => boolean;
   
   className?: string;
+
+  // Organisation filter props
+  selectedOrganisations?: string[];
+  onOrganisationsChange?: (values: string[]) => void;
 }
 
 // Main Unified Control Panel Component
@@ -102,6 +106,8 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = (props) =
           triggerHapticFeedback('selection');
           setIsMobileOpen(!isMobileOpen);
         }}
+        selectedOrganisations={props.selectedOrganisations}
+        onOrganisationsChange={props.onOrganisationsChange}
       />
     );
   }
@@ -111,6 +117,8 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = (props) =
       {...props}
       isCollapsed={isDesktopCollapsed}
       onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
+      selectedOrganisations={props.selectedOrganisations}
+      onOrganisationsChange={props.onOrganisationsChange}
     />
   );
 };

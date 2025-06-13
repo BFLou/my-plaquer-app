@@ -42,11 +42,13 @@ interface MobileBottomSheetProps {
   selectedColors: string[];
   selectedPostcodes: string[];
   selectedProfessions: string[];
+  selectedOrganisations: string[];
   onlyVisited: boolean;
   onlyFavorites: boolean;
   onColorsChange: (values: string[]) => void;
   onPostcodesChange: (values: string[]) => void;
   onProfessionsChange: (values: string[]) => void;
+  onOrganisationsChange: (values: string[]) => void;
   onVisitedChange: (value: boolean) => void;
   onFavoritesChange: (value: boolean) => void;
   onResetStandardFilters: () => void;
@@ -77,11 +79,13 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
     selectedColors,
     selectedPostcodes,
     selectedProfessions,
+    selectedOrganisations,
     onlyVisited,
     onlyFavorites,
     onColorsChange,
     onPostcodesChange,
     onProfessionsChange,
+    onOrganisationsChange,
     onVisitedChange,
     onFavoritesChange,
     onResetStandardFilters,
@@ -102,13 +106,14 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
   const [searchAddress, setSearchAddress] = useState('');
 
   const activeStandardFilters = selectedColors.length + selectedPostcodes.length + 
-    selectedProfessions.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
+    selectedProfessions.length + selectedOrganisations.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
   const totalActiveFilters = activeStandardFilters + (distanceFilter.enabled ? 1 : 0);
 
   const filterOptions = React.useMemo(() => {
     const postcodeCount: Record<string, number> = {};
     const colorCount: Record<string, number> = {};
     const professionCount: Record<string, number> = {};
+    const organisationCount: Record<string, number> = {};
     
     plaques.forEach(plaque => {
       if (plaque.postcode && plaque.postcode !== "Unknown") {
@@ -122,6 +127,10 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
       
       if (plaque.profession && plaque.profession !== "Unknown") {
         professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
+      }
+
+      if (plaque.organisations && plaque.organisations !== "Unknown") {
+        organisationCount[plaque.organisations] = (organisationCount[plaque.organisations] || 0) + 1;
       }
     });
     
@@ -139,6 +148,14 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
         .sort((a, b) => b.count - a.count),
       
       professionOptions: Object.entries(professionCount)
+        .map(([value, count]) => ({
+          label: capitalizeWords(value),
+          value,
+          count
+        }))
+        .sort((a, b) => b.count - a.count),
+
+      organisationOptions: Object.entries(organisationCount)
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
@@ -479,6 +496,10 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
         professions={filterOptions.professionOptions}
         selectedProfessions={selectedProfessions}
         onProfessionsChange={onProfessionsChange}
+        
+        organisations={filterOptions.organisationOptions}
+        selectedOrganisations={selectedOrganisations}
+        onOrganisationsChange={onOrganisationsChange}
         
         onlyVisited={onlyVisited}
         onVisitedChange={onVisitedChange}
