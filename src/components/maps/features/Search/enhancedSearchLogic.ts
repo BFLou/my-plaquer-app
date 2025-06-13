@@ -1,21 +1,24 @@
+// src/components/maps/features/Search/enhancedSearchLogic.ts
 // Enhanced Search Logic with improved relevance and debugging
 import { Plaque } from '@/types/plaque';
 
-interface SearchResult {
-  type: 'plaque' | 'location';
+// Define SearchResult type for searchPlaques results
+export type SearchResult = {
+  type: 'plaque';
   id: string | number;
   title: string;
   subtitle: string;
   coordinates: [number, number];
-  plaque?: Plaque;
+  plaque: Plaque;
   relevanceScore: number;
   matchedFields: string[];
-}
+};
 
+// Exported for reuse in useSearch.ts
 /**
  * Calculate Levenshtein distance for fuzzy matching
  */
-function levenshteinDistance(str1: string, str2: string): number {
+export function levenshteinDistance(str1: string, str2: string): number {
   const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
   
   for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
@@ -35,10 +38,11 @@ function levenshteinDistance(str1: string, str2: string): number {
   return matrix[str2.length][str1.length];
 }
 
+// Exported for reuse in useSearch.ts
 /**
  * Calculate similarity score (0-1, where 1 is perfect match)
  */
-function calculateSimilarity(str1: string, str2: string): number {
+export function calculateSimilarity(str1: string, str2: string): number {
   if (str1 === str2) return 1;
   
   const maxLength = Math.max(str1.length, str2.length);
@@ -79,7 +83,7 @@ function extractSearchableFields(plaque: Plaque): Array<{field: string, text: st
       /([A-Z][a-z]+ [A-Z][a-z]+)/g, // First Last
       /Sir ([A-Z][a-z]+ [A-Z][a-z]+)/g, // Sir First Last
       /Dame ([A-Z][a-z]+ [A-Z][a-z]+)/g, // Dame First Last
-      /Dr\.? ([A-Z][a-z]+ [A-Z][a-z]+)/g, // Dr First Last
+      /Dr\.? ([A-Z][a-z]+ [A-z][a-z]+)/g, // Dr First Last
     ];
     
     namePatterns.forEach(pattern => {
@@ -128,30 +132,22 @@ function extractSearchableFields(plaque: Plaque): Array<{field: string, text: st
     fields.push({ field: 'inscription', text: plaque.inscription, weight: 0.3 });
   }
   
-  // Organization field if available
-  if ((plaque as any).organisations) {
-    try {
-      const orgs = JSON.parse((plaque as any).organisations);
-      if (Array.isArray(orgs)) {
-        orgs.forEach(org => {
-          if (org && typeof org === 'string') {
-            fields.push({ field: 'organisation', text: org, weight: 0.4 });
-          }
-        });
+  // Organization field if available (now always an array of strings)
+  if (plaque.organisations && Array.isArray(plaque.organisations)) {
+    plaque.organisations.forEach(org => {
+      if (org && typeof org === 'string') {
+        fields.push({ field: 'organisation', text: org, weight: 0.4 });
       }
-    } catch (e) {
-      // If not JSON, treat as single string
-      if (typeof (plaque as any).organisations === 'string') {
-        fields.push({ field: 'organisation', text: (plaque as any).organisations, weight: 0.4 });
-      }
-    }
+    });
   }
   
   return fields;
 }
 
 /**
- * Enhanced search function with fuzzy matching and relevance scoring
+ * Enhanced search function with fuzzy matching and relevance scoring for plaques.
+ * Note: This function is kept for any existing consumers. The main search logic
+ * for the search bar will now be in `useSearch.ts`.
  */
 export function searchPlaques(plaques: Plaque[], searchTerm: string): SearchResult[] {
   if (!searchTerm.trim() || searchTerm.length < 2) {
@@ -227,7 +223,7 @@ export function searchPlaques(plaques: Plaque[], searchTerm: string): SearchResu
         : plaque.longitude || 0;
       
       // Skip plaques with invalid coordinates
-      if (lat === 0 && lng === 0) return;
+      if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
       
       results.push({
         type: 'plaque',
