@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMapboxGeocoding } from '@/hooks/useMapboxGeocoding';
-import { triggerHapticFeedback } from '@/utils/mobileUtils'; // Assuming this is available
+import { triggerHapticFeedback } from '@/utils/mobileUtils';
 import { toast } from 'sonner';
 
 interface MapboxSearchBarProps {
@@ -28,7 +28,7 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
   const { query, setQuery, suggestions, isLoading, error, handleInputChange, clearSearch } = useMapboxGeocoding({
     proximity: currentProximity,
     bbox: currentBbox,
-    country: ['gb'], // Default to UK/Great Britain
+    country: ['gb'],
   });
 
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -47,22 +47,18 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
 
   const handleSearchButtonClick = useCallback(() => {
     if (query.trim() && suggestions.length > 0) {
-      // If there are suggestions, select the first one or the highlighted one
       const selectedFeature = activeSuggestionIndexRef.current !== -1
         ? suggestions[activeSuggestionIndexRef.current]
         : suggestions[0];
       handleSelectSuggestion(selectedFeature);
     } else if (query.trim() && !isLoading) {
       // If no suggestions, but a query, try a direct geocode (Mapbox hook already does this for empty suggestions)
-      // This path is mostly for explicit "Go" button behavior if autocomplete isn't sufficient
-      // The useMapboxGeocoding hook already sets error if no results, which toast.error will display
     } else if (mobileOptimized) {
         triggerHapticFeedback('warning');
     }
   }, [query, suggestions, isLoading, handleSelectSuggestion, mobileOptimized]);
 
   useEffect(() => {
-    // Close suggestions if clicked outside
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
@@ -78,50 +74,45 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       activeSuggestionIndexRef.current = Math.min(activeSuggestionIndexRef.current + 1, suggestions.length - 1);
-      // Optionally scroll the suggestion into view
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       activeSuggestionIndexRef.current = Math.max(activeSuggestionIndexRef.current - 1, 0);
-      // Optionally scroll the suggestion into view
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeSuggestionIndexRef.current !== -1) {
         handleSelectSuggestion(suggestions[activeSuggestionIndexRef.current]);
       } else if (suggestions.length > 0) {
-        handleSelectSuggestion(suggestions[0]); // Select first if nothing highlighted
+        handleSelectSuggestion(suggestions[0]);
       } else if (query.trim() && !isLoading) {
-        // If enter is pressed and no suggestions (or they're not shown), try explicit search
-        // The useMapboxGeocoding hook already tries to fetch.
-        // If it's already fetched and no suggestions, error is set.
         if (error) {
           toast.error(error);
         } else {
-           // Optionally trigger the "Go" button logic for a non-autocomplete search
            handleSearchButtonClick();
         }
       }
     } else if (e.key === 'Escape') {
       setShowSuggestions(false);
       activeSuggestionIndexRef.current = -1;
-      e.stopPropagation(); // Prevent propagation that might close parent dialogs
+      e.stopPropagation();
     }
   }, [suggestions, query, isLoading, error, handleSelectSuggestion, handleSearchButtonClick]);
 
 
   return (
     <div className={`relative ${className}`} ref={searchContainerRef}>
-      <div className="flex gap-2">
+      {/* Added container div for styling the search input group */}
+      <div className="flex gap-2 p-2 bg-white rounded-lg shadow-lg border border-gray-200">
         <Input
           placeholder={placeholder}
           value={query}
           onChange={(e) => {
             handleInputChange(e);
-            setShowSuggestions(true); // Show suggestions when typing
-            activeSuggestionIndexRef.current = -1; // Reset active highlight
+            setShowSuggestions(true);
+            activeSuggestionIndexRef.current = -1;
           }}
           onFocus={() => query.trim() && suggestions.length > 0 && setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
-          className="flex-1"
+          className="flex-1 border-none focus-visible:ring-0 shadow-none" // Remove default input border/shadow
           aria-label="Location search input"
           aria-controls="mapbox-suggestions-list"
           aria-expanded={showSuggestions && suggestions.length > 0}
@@ -135,6 +126,7 @@ export const MapboxSearchBar: React.FC<MapboxSearchBarProps> = ({
         ) : (
           <>
             {query && (
+              // Adjusted clear button position
               <Button
                 variant="ghost"
                 size="sm"

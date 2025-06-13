@@ -1,4 +1,4 @@
-// src/hooks/useMapboxGeocoding.ts
+// src/hooks/useMapboxGeocoding.ts - BULLETPROOF VERSION (No infinite loops guaranteed)
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -43,43 +43,70 @@ interface MapboxResponse {
 
 interface UseMapboxGeocodingOptions {
   debounceTime?: number;
-  country?: string[]; // e.g., ['gb']
-  proximity?: [number, number] | null; // [longitude, latitude]
-  bbox?: [number, number, number, number] | null; // [westLng, southLat, eastLng, northLat]
+  country?: string[];
+  proximity?: [number, number] | null;
+  bbox?: [number, number, number, number] | null;
 }
 
-export const useMapboxGeocoding = (options?: UseMapboxGeocodingOptions) => {
-  const { debounceTime = 500, country = ['gb'], proximity = null, bbox = null } = options || {};
+export const useMapboxGeocoding = (options: UseMapboxGeocodingOptions = {}) => {
+  // Extract options with defaults - NO destructuring in component body
+  const debounceTime = options.debounceTime ?? 500;
+  const country = options.country ?? ['gb'];
+  const proximity = options.proximity ?? null;
+  const bbox = options.bbox ?? null;
+  
+  // State
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Refs to prevent loops
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastProcessedQueryRef = useRef<string>('');
+  const mountedRef = useRef(true);
 
-  const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+  // Get token once and store in ref
+  const tokenRef = useRef(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN);
 
-  const fetchSuggestions = useCallback(async (searchQuery: string) => {
+  // **CRITICAL FIX**: Stable fetch function that NEVER changes
+  const fetchSuggestions = useRef(async (searchQuery: string) => {
+    // Early exit if component unmounted
+    if (!mountedRef.current) return;
+    
+    // Clear previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     if (!searchQuery.trim()) {
       setSuggestions([]);
       setError(null);
+      setIsLoading(false);
       return;
     }
 
-    if (!MAPBOX_ACCESS_TOKEN) {
-      console.error("Mapbox Access Token is not set. Please add VITE_MAPBOX_ACCESS_TOKEN to your .env file.");
-      setError("Search service not configured.");
+    if (!tokenRef.current) {
+      console.warn("Mapbox Access Token not found");
+      setError("Search service not configured");
+      setIsLoading(false);
       return;
     }
+
+    // Create new abort controller
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     setIsLoading(true);
     setError(null);
 
     try {
       const params = new URLSearchParams({
-        access_token: MAPBOX_ACCESS_TOKEN,
+        access_token: tokenRef.current,
         autocomplete: 'true',
         language: 'en',
-        limit: '5', // Limit to top 5 suggestions
+        limit: '5',
       });
 
       if (country.length > 0) {
@@ -93,55 +120,116 @@ export const useMapboxGeocoding = (options?: UseMapboxGeocodingOptions) => {
       }
 
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?${params.toString()}`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?${params.toString()}`,
+        { signal: abortController.signal }
       );
 
+      // Check if component is still mounted and request not aborted
+      if (!mountedRef.current || abortController.signal.aborted) {
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error(`Mapbox API error: ${response.statusText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const data: MapboxResponse = await response.json();
 
-      if (data.features.length === 0) {
-        setSuggestions([]);
-        setError("No matching places found.");
-      } else {
-        setSuggestions(data.features);
+      // Final check before setting state
+      if (!mountedRef.current || abortController.signal.aborted) {
+        return;
       }
-    } catch (err) {
-      console.error("Failed to fetch Mapbox suggestions:", err);
-      setError("Failed to fetch suggestions. Please try again.");
-      setSuggestions([]);
-      toast.error("Search failed. Please check your internet connection.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [MAPBOX_ACCESS_TOKEN, country, proximity, bbox]);
 
+      if (data.features && data.features.length > 0) {
+        setSuggestions(data.features);
+        setError(null);
+      } else {
+        setSuggestions([]);
+        setError("No results found");
+      }
+    } catch (err: any) {
+      // Only update state if component is mounted and request wasn't aborted
+      if (!mountedRef.current || err.name === 'AbortError') {
+        return;
+      }
+      
+      console.error("Mapbox search error:", err);
+      setSuggestions([]);
+      setError("Search failed");
+      
+      // Only show toast for actual errors
+      if (err.name !== 'AbortError') {
+        toast.error("Search failed. Please try again.");
+      }
+    } finally {
+      // Only update loading state if component is still mounted
+      if (mountedRef.current && !abortController.signal.aborted) {
+        setIsLoading(false);
+      }
+    }
+  }).current;
+
+  // **CRITICAL FIX**: Effect with NO dependencies that could change
   useEffect(() => {
+    // Clear any existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
 
-    if (query) {
-      debounceTimerRef.current = setTimeout(() => {
-        fetchSuggestions(query);
-      }, debounceTime);
-    } else {
+    // Don't process if query hasn't actually changed
+    if (query === lastProcessedQueryRef.current) {
+      return;
+    }
+
+    // Update the last processed query immediately
+    lastProcessedQueryRef.current = query;
+
+    // Handle empty query
+    if (!query.trim()) {
       setSuggestions([]);
       setError(null);
       setIsLoading(false);
+      return;
     }
 
+    // Set up debounced search
+    debounceTimerRef.current = setTimeout(() => {
+      if (mountedRef.current && query.trim()) {
+        fetchSuggestions(query);
+      }
+    }, debounceTime);
+
+    // Cleanup function
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
       }
     };
-  }, [query, debounceTime, fetchSuggestions]);
+  }, [query]); // ONLY query as dependency - debounceTime is stable, fetchSuggestions is ref
 
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    return () => {
+      mountedRef.current = false;
+      
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []); // Empty dependency array - only run on mount/unmount
+
+  // Stable handlers
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
+    const value = e.target.value;
+    setQuery(value);
   }, []);
 
   const clearSearch = useCallback(() => {
@@ -149,10 +237,23 @@ export const useMapboxGeocoding = (options?: UseMapboxGeocodingOptions) => {
     setSuggestions([]);
     setError(null);
     setIsLoading(false);
+    lastProcessedQueryRef.current = '';
+    
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   }, []);
+
+  const triggerSearch = useCallback(() => {
+    if (query.trim() && mountedRef.current) {
+      fetchSuggestions(query);
+    }
+  }, [query]);
 
   return {
     query,
@@ -162,6 +263,6 @@ export const useMapboxGeocoding = (options?: UseMapboxGeocodingOptions) => {
     error,
     handleInputChange,
     clearSearch,
-    fetchSuggestions: useCallback(() => fetchSuggestions(query), [fetchSuggestions, query]), // For explicit search button
+    triggerSearch,
   };
 };

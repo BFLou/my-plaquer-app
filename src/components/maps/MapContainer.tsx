@@ -345,65 +345,92 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
   }, [state.routePoints, showToastOnce]);
 
   // Search handlers
-  const handleSearchSelect = useCallback((result: any) => {
-    dispatch({ type: 'SELECT_RESULT', result });
-    
+const handleSearchSelect = useCallback((result: any) => {
+  console.log('🔍 Search result selected:', result);
+  dispatch({ type: 'SELECT_RESULT', result });
+  
+  if (result.type === 'plaque' && result.plaque) {
+    // Handle plaque selection - zoom to plaque and show details
     if (result.coordinates) {
       dispatch({ 
         type: 'SET_VIEW', 
         center: result.coordinates, 
-        zoom: result.type === 'plaque' ? 16 : 14 
+        zoom: 16 
       });
     }
-  }, []);
+    
+    // Trigger plaque click to show details
+    if (onPlaqueClick) {
+      onPlaqueClick(result.plaque);
+    } else {
+      dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque: result.plaque });
+    }
+  } else if (result.coordinates) {
+    // Handle general coordinate-based results
+    dispatch({ 
+      type: 'SET_VIEW', 
+      center: result.coordinates, 
+      zoom: result.type === 'plaque' ? 16 : 14 
+    });
+  }
+}, [onPlaqueClick]);
 
-  const handleLocationSelect = useCallback((result: any) => {
-    dispatch({ type: 'SELECT_RESULT', result });
+
+const handleLocationSelect = useCallback((result: any) => {
+  console.log('📍 Location selected for distance filter:', result);
+  dispatch({ type: 'SELECT_RESULT', result });
+  
+  if (result.coordinates) {
+    // Clear search when setting location filter
+    dispatch({ type: 'SET_SEARCH', query: '' });
     
-    if (result.coordinates) {
-      dispatch({ type: 'SET_SEARCH', query: '' });
-      
-      dispatch({ 
-        type: 'SET_VIEW', 
-        center: result.coordinates, 
-        zoom: result.type === 'postcode' ? 15 : 13
-      });
-      
-      const defaultRadius = result.type === 'postcode' ? 0.5 : 1.5;
-      dispatch({ 
-        type: 'SET_LOCATION_FILTER', 
-        center: result.coordinates, 
+    // Zoom to location
+    dispatch({ 
+      type: 'SET_VIEW', 
+      center: result.coordinates, 
+      zoom: result.type === 'current-location' ? 15 : 13
+    });
+    
+    // Set up distance filter
+    const defaultRadius = result.type === 'current-location' ? 1.0 : 1.5;
+    const locationName = result.title || 'Selected Location';
+    
+    dispatch({ 
+      type: 'SET_LOCATION_FILTER', 
+      center: result.coordinates, 
+      radius: defaultRadius,
+      location: locationName
+    });
+    
+    // Notify parent component of distance filter change
+    if (onDistanceFilterChange) {
+      onDistanceFilterChange({
+        enabled: true,
+        center: result.coordinates,
         radius: defaultRadius,
-        location: result.title
+        locationName
       });
-      
-      if (onDistanceFilterChange) {
-        onDistanceFilterChange({
-          enabled: true,
-          center: result.coordinates,
-          radius: defaultRadius,
-          locationName: result.title
-        });
-      }
-      
-      const plaqueCount = plaques.filter(p => {
-        if (!p.latitude || !p.longitude) return false;
-        const distance = calculateDistance(
-          result.coordinates[0], 
-          result.coordinates[1],
-          parseCoordinate(p.latitude),
-          parseCoordinate(p.longitude)
-        );
-        return distance <= defaultRadius;
-      }).length;
-      
-      showToastOnce(
-        'location-filter-set',
-        `Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${defaultRadius}km of ${result.title}`,
-        'success'
-      );
     }
-  }, [plaques, onDistanceFilterChange, showToastOnce]);
+    
+    // Calculate and show plaque count
+    const plaqueCount = plaques.filter(p => {
+      if (!p.latitude || !p.longitude) return false;
+      const distance = calculateDistance(
+        result.coordinates[0], 
+        result.coordinates[1],
+        parseCoordinate(p.latitude),
+        parseCoordinate(p.longitude)
+      );
+      return distance <= defaultRadius;
+    }).length;
+    
+    showToastOnce(
+      'location-filter-set',
+      `Found ${plaqueCount} plaque${plaqueCount !== 1 ? 's' : ''} within ${defaultRadius}km of ${locationName}`,
+      'success'
+    );
+  }
+}, [plaques, onDistanceFilterChange, showToastOnce]);
 
   // Location filter handlers
   const handleLocationFilterSet = useCallback(async (coords: [number, number]) => {
@@ -566,20 +593,21 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
 
   return (
     <div className={`relative w-full h-full ${className}`}>
-      {/* Search Bar - FIXED: Positioned absolutely with high z-index */}
-      <div className={`
-        absolute z-[1001] search-bar-container
-        ${mobile ? 'top-2 left-2 right-2' : 'top-4 left-1/2 transform -translate-x-1/2'} 
-        ${mobile ? 'w-auto' : 'w-full max-w-sm px-4'}
-      `}>
-        <SearchBar 
-          plaques={plaques}
-          value={state.searchQuery}
-          onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
-          onSelect={handleSearchSelect}
-          onLocationSelect={handleLocationSelect}
-        />
-      </div>
+{/* Enhanced Search Bar - FIXED positioning and integration */}
+<div className={`
+  absolute z-[1001] search-bar-container
+  ${mobile ? 'top-3 left-3 right-3' : 'top-4 left-1/2 transform -translate-x-1/2'} 
+  ${mobile ? 'w-auto' : 'w-full max-w-md px-4'}
+`}>
+  <SearchBar 
+    plaques={plaques}
+    value={state.searchQuery}
+    onChange={(query) => dispatch({ type: 'SET_SEARCH', query })}
+    onSelect={handleSearchSelect}
+    onLocationSelect={handleLocationSelect}
+    className="w-full"
+  />
+</div>
 
       {/* Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
       <UnifiedControlPanel
