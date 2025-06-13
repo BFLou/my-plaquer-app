@@ -30,8 +30,6 @@ export { MapContainer } from './maps/MapContainer';
 export { MapView } from './maps/MapView';
 
 // Map features
-export { SearchBar } from './maps/features/Search/SearchBar';
-export { useSearch } from './maps/features/Search/useSearch';
 export { LocationFilter } from './maps/features/LocationFilter/LocationFilter';
 export { useLocationFilter } from './maps/features/LocationFilter/useLocationFilter';
 

@@ -1,8 +1,7 @@
-// src/components/maps/MapContainer.tsx - COMPLETE FIXED VERSION
+// src/components/maps/MapContainer.tsx - COMPLETE VERSION WITHOUT SEARCHBAR
 
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
-import { SearchBar } from './features/Search/SearchBar';
 import { EnhancedRoutePanel } from './features/RouteBuilder/EnhancedRoutePanel';
 import { UnifiedControlPanel } from './features/UnifiedControlPanel';
 import { Plaque } from '@/types/plaque';
@@ -19,7 +18,6 @@ function parseCoordinate(coord: string | number | undefined): number {
 interface MapState {
   center: [number, number];
   zoom: number;
-  selectedResult: any | null;
   filterCenter: [number, number] | null;
   filterRadius: number;
   filterEnabled: boolean;
@@ -36,7 +34,6 @@ interface MapState {
 
 type MapAction = 
   | { type: 'SET_VIEW'; center: [number, number]; zoom: number }
-  | { type: 'SELECT_RESULT'; result: any }
   | { type: 'SET_LOCATION_FILTER'; center: [number, number]; radius: number; location: string }
   | { type: 'UPDATE_RADIUS'; radius: number }
   | { type: 'CLEAR_FILTER' }
@@ -59,9 +56,6 @@ function mapReducer(state: MapState, action: MapAction): MapState {
   switch (action.type) {
     case 'SET_VIEW':
       return { ...state, center: action.center, zoom: action.zoom };
-    
-    case 'SELECT_RESULT':
-      return { ...state, selectedResult: action.result };
     
     case 'SET_LOCATION_FILTER':
       return { 
@@ -151,7 +145,6 @@ function mapReducer(state: MapState, action: MapAction): MapState {
 const initialState: MapState = {
   center: [51.505, -0.09],
   zoom: 13,
-  selectedResult: null,
   filterCenter: null,
   filterRadius: 1,
   filterEnabled: false,
@@ -251,7 +244,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     toastTimeouts.current.set(key, timeout);
   }, []);
 
-  // Filter plaques based on current state
+  // Filter plaques based on current state (SearchBar now handles its own filtering)
   const visiblePlaques = useMemo(() => {
     let filtered = plaques;
     
@@ -330,37 +323,6 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     dispatch({ type: 'ADD_TO_ROUTE', plaque });
     showToastOnce(`added-${plaque.id}`, `Added "${plaque.title}" to route`, 'success');
   }, [state.routePoints, showToastOnce]);
-
-  // FIXED: Search handler for plaque results
-  const handleSearchSelect = useCallback((result: any) => {
-    console.log('🔍 Search result selected:', result);
-    dispatch({ type: 'SELECT_RESULT', result });
-    
-    if (result.type === 'plaque' && result.plaque) {
-      // Handle plaque selection - zoom to plaque and show details
-      if (result.coordinates) {
-        dispatch({ 
-          type: 'SET_VIEW', 
-          center: result.coordinates, 
-          zoom: 16 
-        });
-      }
-      
-      // Trigger plaque click to show details
-      if (onPlaqueClick) {
-        onPlaqueClick(result.plaque);
-      } else {
-        dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque: result.plaque });
-      }
-    } else if (result.coordinates) {
-      // Handle general coordinate-based results
-      dispatch({ 
-        type: 'SET_VIEW', 
-        center: result.coordinates, 
-        zoom: result.type === 'plaque' ? 16 : 14 
-      });
-    }
-  }, [onPlaqueClick]);
 
   // Location filter handlers
   const handleLocationFilterSet = useCallback(async (coords: [number, number]) => {
@@ -521,38 +483,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
 
   return (
     <div className={`relative w-full h-full ${className}`} style={{ isolation: 'isolate' }}>
-      {/* CRITICAL: SearchBar with maximum z-index and forced positioning */}
-      <div 
-        className="search-bar-container"
-        style={{ 
-          position: 'absolute',
-          zIndex: 99999, // Maximum z-index
-          isolation: 'isolate',
-          pointerEvents: 'auto',
-          transform: 'translateZ(0)', // Force GPU layer
-          // Responsive positioning
-          ...(mobile ? {
-            top: '12px',
-            left: '12px',
-            right: '12px',
-            width: 'auto'
-          } : {
-            top: '16px',
-            left: '50%',
-            transform: 'translateX(-50%) translateZ(0)',
-            width: '400px',
-            maxWidth: 'calc(100vw - 32px)'
-          })
-        }}
-      >
-        <SearchBar 
-          plaques={plaques}
-          onSelect={handleSearchSelect}
-          className="w-full"
-        />
-      </div>
-
-      {/* Unified Control Panel */}
+      {/* Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
       <UnifiedControlPanel
         distanceFilter={{
           enabled: state.filterEnabled,
@@ -589,7 +520,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         className="unified-control-panel"
       />
 
-      {/* Enhanced Route Panel */}
+      {/* Enhanced Route Panel - Positioned for both mobile and desktop */}
       {state.routeMode && (
         <div className={`absolute ${
           mobile 
@@ -612,7 +543,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* Status Bar */}
+      {/* Status Bar - Positioned properly for both mobile and desktop */}
       {(!mobile || !state.routeMode) && (
         <div className={`absolute ${
           mobile 
@@ -640,7 +571,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* The Map */}
+      {/* The Map - Full height and width without competing containers */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}
