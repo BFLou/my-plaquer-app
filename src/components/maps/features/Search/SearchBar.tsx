@@ -1,6 +1,6 @@
-// src/components/maps/features/Search/SearchBar.tsx - FINAL VERSION with fixed Mapbox
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { Search, MapPin, X, Loader, Navigation } from 'lucide-react';
+// Enhanced SearchBar Component with Improved Search and Styling
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { Search, MapPin, X, Loader, Navigation, Star, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +9,7 @@ import { Plaque } from '@/types/plaque';
 import { useMapboxGeocoding } from '@/hooks/useMapboxGeocoding';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { toast } from 'sonner';
+import { searchPlaques, highlightSearchTerms, getSearchSuggestions } from './enhancedSearchLogic';
 import './SearchBar.css';
 
 interface SearchResult {
@@ -18,6 +19,8 @@ interface SearchResult {
   subtitle: string;
   coordinates: [number, number];
   plaque?: Plaque;
+  relevanceScore?: number;
+  matchedFields?: string[];
 }
 
 interface SearchBarProps {
@@ -27,6 +30,8 @@ interface SearchBarProps {
   onSelect: (result: any) => void;
   onLocationSelect: (result: any) => void;
   className?: string;
+  placeholder?: string;
+  showSuggestions?: boolean;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -35,60 +40,67 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   onChange,
   onSelect,
   onLocationSelect,
-  className = ''
+  className = '',
+  placeholder = "Search for plaques, people, or locations...",
+  showSuggestions = true
 }) => {
   const mobile = isMobile();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSuggestionsState, setShowSuggestionsState] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Use the bulletproof Mapbox hook
+  // Enhanced Mapbox integration
   const mapboxHook = useMapboxGeocoding({
-    debounceTime: 300,
+    debounceTime: 400,
     country: ['gb'],
-    bbox: [-0.489, 51.28, 0.236, 51.686] // London bounding box
+    bbox: [-0.489, 51.28, 0.236, 51.686]
   });
 
-  // Sync the internal query with the external value
-  React.useEffect(() => {
+  // Load recent searches
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('recentPlaqueSearches');
+      if (saved) {
+        setRecentSearches(JSON.parse(saved).slice(0, 5));
+      }
+    } catch (error) {
+      console.warn('Could not load recent searches:', error);
+    }
+  }, []);
+
+  // Save recent search
+  const saveRecentSearch = useCallback((query: string) => {
+    if (query.trim().length < 2) return;
+    
+    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+    setRecentSearches(updated);
+    
+    try {
+      localStorage.setItem('recentPlaqueSearches', JSON.stringify(updated));
+    } catch (error) {
+      console.warn('Could not save recent search:', error);
+    }
+  }, [recentSearches]);
+
+  // Sync Mapbox query with external value
+  useEffect(() => {
     if (mapboxHook.query !== value) {
       mapboxHook.setQuery(value);
     }
   }, [value, mapboxHook.setQuery, mapboxHook.query]);
 
-  // Search plaques locally - memoized
+  // Enhanced plaque search with fuzzy matching
   const plaqueResults = useMemo(() => {
     if (!value.trim() || value.length < 2) return [];
     
-    const searchTerm = value.toLowerCase();
-    return plaques
-      .filter(p => 
-        p.title?.toLowerCase().includes(searchTerm) ||
-        p.description?.toLowerCase().includes(searchTerm) ||
-        p.location?.toLowerCase().includes(searchTerm) ||
-        p.address?.toLowerCase().includes(searchTerm) ||
-        p.profession?.toLowerCase().includes(searchTerm)
-      )
-      .slice(0, 3)
-      .map(p => {
-        const lat = typeof p.latitude === 'string' ? parseFloat(p.latitude) : p.latitude || 0;
-        const lng = typeof p.longitude === 'string' ? parseFloat(p.longitude) : p.longitude || 0;
-        
-        return {
-          type: 'plaque' as const,
-          id: p.id,
-          title: p.title || 'Unnamed Plaque',
-          subtitle: p.location || p.address || 'No location',
-          coordinates: [lat, lng] as [number, number],
-          plaque: p
-        };
-      })
-      .filter(p => p.coordinates[0] !== 0 && p.coordinates[1] !== 0);
+    const results = searchPlaques(plaques, value);
+    return results.slice(0, 4); // Limit plaque results to make room for locations
   }, [plaques, value]);
 
-  // Filter Mapbox results for London - memoized
+  // Filter and enhance location results
   const locationResults = useMemo(() => {
     return mapboxHook.suggestions
       .filter(feature => {
@@ -105,42 +117,61 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         
         return isInLondon || inLondonBounds;
       })
-      .slice(0, 5)
+      .slice(0, 4)
       .map(feature => ({
         type: 'location' as const,
         id: feature.id,
         title: feature.text,
         subtitle: feature.place_name,
-        coordinates: [feature.center[1], feature.center[0]] as [number, number], // Convert to [lat, lng]
+        coordinates: [feature.center[1], feature.center[0]] as [number, number],
         feature
       }));
   }, [mapboxHook.suggestions]);
 
-  // Combined results - memoized
+  // Combined results with relevance sorting
   const allResults = useMemo(() => {
-    return [...plaqueResults, ...locationResults];
+    const combined = [...plaqueResults, ...locationResults];
+    
+    // Sort plaques by relevance score, locations by Mapbox relevance
+    return combined.sort((a, b) => {
+      if (a.type === 'plaque' && b.type === 'plaque') {
+        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+      }
+      if (a.type === 'plaque') return -1; // Prioritize plaque results
+      if (b.type === 'plaque') return 1;
+      return 0;
+    });
   }, [plaqueResults, locationResults]);
+
+  // Get search suggestions
+  const searchSuggestions = useMemo(() => {
+    if (value.trim() || !showSuggestions) return [];
+    return getSearchSuggestions(plaques).slice(0, 6);
+  }, [plaques, value, showSuggestions]);
 
   // Handle input changes
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    onChange(newValue); // Update external state
-    setShowSuggestions(newValue.length > 0);
+    onChange(newValue);
+    setShowSuggestionsState(newValue.length > 0 || searchSuggestions.length > 0);
     setSelectedIndex(-1);
-  }, [onChange]);
+  }, [onChange, searchSuggestions.length]);
 
-  // Handle result selection
+  // Enhanced result selection
   const handleSelectResult = useCallback((result: SearchResult) => {
     if (mobile) triggerHapticFeedback('selection');
     
     if (result.type === 'plaque' && result.plaque) {
+      saveRecentSearch(value);
       onSelect({
         type: 'plaque',
         coordinates: result.coordinates,
         plaque: result.plaque,
         title: result.title
       });
-      toast.success(`Found plaque: ${result.title}`);
+      toast.success(`Found: ${result.title}`, {
+        description: result.subtitle
+      });
     } else if (result.type === 'location') {
       onLocationSelect({
         type: 'location',
@@ -151,55 +182,80 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       toast.success(`Location set: ${result.title}`);
     }
     
-    setShowSuggestions(false);
+    setShowSuggestionsState(false);
     setIsExpanded(false);
     setSelectedIndex(-1);
-  }, [mobile, onSelect, onLocationSelect]);
+  }, [mobile, onSelect, onLocationSelect, saveRecentSearch, value]);
 
-  // Keyboard navigation
+  // Handle suggestion selection
+  const handleSelectSuggestion = useCallback((suggestion: string) => {
+    onChange(suggestion);
+    setShowSuggestionsState(true);
+    setIsExpanded(true);
+    searchInputRef.current?.focus();
+    if (mobile) triggerHapticFeedback('light');
+  }, [onChange, mobile]);
+
+  // Handle recent search selection
+  const handleSelectRecentSearch = useCallback((search: string) => {
+    onChange(search);
+    setShowSuggestionsState(true);
+    setIsExpanded(true);
+    searchInputRef.current?.focus();
+    if (mobile) triggerHapticFeedback('light');
+  }, [onChange, mobile]);
+
+  // Enhanced keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!showSuggestions || allResults.length === 0) return;
+    const totalItems = allResults.length + searchSuggestions.length + recentSearches.length;
+    
+    if (!showSuggestionsState || totalItems === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         setSelectedIndex(prev => 
-          prev < allResults.length - 1 ? prev + 1 : 0
+          prev < totalItems - 1 ? prev + 1 : 0
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
         setSelectedIndex(prev => 
-          prev > 0 ? prev - 1 : allResults.length - 1
+          prev > 0 ? prev - 1 : totalItems - 1
         );
         break;
       case 'Enter':
         e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < allResults.length) {
-          handleSelectResult(allResults[selectedIndex]);
+        if (selectedIndex >= 0) {
+          if (selectedIndex < allResults.length) {
+            handleSelectResult(allResults[selectedIndex]);
+          } else if (selectedIndex < allResults.length + searchSuggestions.length) {
+            const suggestionIndex = selectedIndex - allResults.length;
+            handleSelectSuggestion(searchSuggestions[suggestionIndex]);
+          } else {
+            const recentIndex = selectedIndex - allResults.length - searchSuggestions.length;
+            handleSelectRecentSearch(recentSearches[recentIndex]);
+          }
         }
         break;
       case 'Escape':
-        setShowSuggestions(false);
+        setShowSuggestionsState(false);
         setSelectedIndex(-1);
         searchInputRef.current?.blur();
         break;
     }
-  }, [showSuggestions, allResults, selectedIndex, handleSelectResult]);
+  }, [showSuggestionsState, allResults, searchSuggestions, recentSearches, selectedIndex, handleSelectResult, handleSelectSuggestion, handleSelectRecentSearch]);
 
-  // Handle focus
+  // Handle focus and blur
   const handleFocus = useCallback(() => {
     setIsExpanded(true);
-    if (value.length > 0) {
-      setShowSuggestions(true);
-    }
-  }, [value]);
+    setShowSuggestionsState(value.length > 0 || searchSuggestions.length > 0 || recentSearches.length > 0);
+  }, [value, searchSuggestions.length, recentSearches.length]);
 
-  // Handle blur with delay for clicks
   const handleBlur = useCallback(() => {
     setTimeout(() => {
       if (!containerRef.current?.contains(document.activeElement)) {
-        setShowSuggestions(false);
+        setShowSuggestionsState(false);
         setIsExpanded(false);
       }
     }, 150);
@@ -209,7 +265,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   const handleClear = useCallback(() => {
     onChange('');
     mapboxHook.clearSearch();
-    setShowSuggestions(false);
+    setShowSuggestionsState(false);
     setSelectedIndex(-1);
     searchInputRef.current?.focus();
     if (mobile) triggerHapticFeedback('light');
@@ -251,167 +307,222 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       ref={containerRef}
       className={`search-bar-container ${className}`}
     >
-      {/* Search Input Container */}
+      {/* Enhanced Search Input Container */}
       <div className={`
         search-input-container
         ${isExpanded ? 'focused' : ''}
-        ${mobile ? 'h-12' : 'h-11'}
+        ${mobile ? 'h-14' : 'h-12'}
+        px-4 flex items-center gap-3
       `}>
-        <div className="flex items-center">
-          {/* Search Icon */}
-          <div className="pl-3 pr-2">
-            <Search 
-              size={mobile ? 20 : 18} 
-              className="text-gray-400"
-            />
-          </div>
+        {/* Search Icon */}
+        <Search 
+          size={mobile ? 22 : 20} 
+          className="search-icon flex-shrink-0"
+        />
+        
+        {/* Input Field */}
+        <Input
+          ref={searchInputRef}
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={`
+            search-input flex-1 border-0 bg-transparent focus-visible:ring-0 shadow-none p-0
+            ${mobile ? 'text-base' : 'text-sm'}
+          `}
+        />
+        
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {mapboxHook.isLoading && (
+            <Loader size={18} className="text-gray-400 animate-spin" />
+          )}
           
-          {/* Input Field */}
-          <Input
-            ref={searchInputRef}
-            type="text"
-            placeholder={mobile ? "Search plaques or locations..." : "Search for plaques or enter a London address..."}
-            value={value}
-            onChange={handleInputChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className={`
-              search-input flex-1
-              ${mobile ? 'text-base' : 'text-sm'}
-            `}
-          />
+          {value && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClear}
+              className="h-7 w-7 p-0 hover:bg-white/20 rounded-full search-action-button"
+            >
+              <X size={16} />
+            </Button>
+          )}
           
-          {/* Action Buttons */}
-          <div className="flex items-center pr-2 gap-1">
-            {mapboxHook.isLoading && (
-              <Loader size={16} className="text-gray-400 animate-spin" />
-            )}
-            
-            {value && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClear}
-                className="h-6 w-6 p-0 hover:bg-gray-100 rounded-full"
-              >
-                <X size={14} className="text-gray-400" />
-              </Button>
-            )}
-            
-            {mobile && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCurrentLocation}
-                className="h-6 w-6 p-0 hover:bg-gray-100 rounded-full"
-                title="Use current location"
-              >
-                <Navigation size={14} className="text-blue-500" />
-              </Button>
-            )}
-          </div>
+          {mobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCurrentLocation}
+              className="h-7 w-7 p-0 hover:bg-white/20 rounded-full search-action-button"
+              title="Use current location"
+            >
+              <Navigation size={16} className="text-blue-400" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Suggestions Dropdown */}
-      {showSuggestions && (
+      {/* Enhanced Suggestions Dropdown */}
+      {showSuggestionsState && (
         <div className="search-suggestions">
           {mapboxHook.error && (
-            <div className="search-error">
-              {mapboxHook.error}
+            <div className="px-4 py-3 text-red-400 text-sm border-b border-white/5">
+              ⚠️ {mapboxHook.error}
             </div>
           )}
           
-          {allResults.length > 0 ? (
-            <ScrollArea className="max-h-80">
-              <div className="py-2">
-                {/* Plaque Results Section */}
-                {plaqueResults.length > 0 && (
-                  <div>
-                    <div className="suggestion-section-header">
-                      Blue Plaques
-                    </div>
-                    {plaqueResults.map((result, index) => (
+          <ScrollArea className="max-h-80">
+            <div className="py-2">
+              
+              {/* Search Results Section */}
+              {allResults.length > 0 && (
+                <div>
+                  <div className="suggestion-section-header">
+                    {plaqueResults.length > 0 ? '🏛️ Blue Plaques' : '📍 Locations'}
+                  </div>
+                  {allResults.map((result, index) => (
+                    <button
+                      key={`${result.type}-${result.id}`}
+                      onClick={() => handleSelectResult(result)}
+                      className={`
+                        suggestion-item ${result.type}-result
+                        ${selectedIndex === index ? 'selected' : ''}
+                      `}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                    >
+                      <div className={`suggestion-icon ${result.type}`}>
+                        {result.type === 'plaque' ? (
+                          <MapPin size={18} />
+                        ) : (
+                          <Navigation size={18} />
+                        )}
+                      </div>
+                      <div className="suggestion-content">
+                        <div 
+                          className="suggestion-title"
+                          dangerouslySetInnerHTML={{
+                            __html: highlightSearchTerms(result.title, value)
+                          }}
+                        />
+                        <div className="suggestion-subtitle">
+                          {result.subtitle}
+                        </div>
+                        {result.type === 'plaque' && result.plaque?.profession && (
+                          <Badge variant="secondary" className="suggestion-badge mt-2">
+                            {result.plaque.profession}
+                          </Badge>
+                        )}
+                        {result.type === 'plaque' && result.relevanceScore && result.relevanceScore > 0.8 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star size={12} className="text-yellow-400 fill-current" />
+                            <span className="text-xs text-yellow-400">High match</span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Quick Search Suggestions */}
+              {!value.trim() && searchSuggestions.length > 0 && (
+                <div className={allResults.length > 0 ? 'border-t border-white/5 mt-2 pt-2' : ''}>
+                  <div className="suggestion-section-header">
+                    ⚡ Quick Search
+                  </div>
+                  {searchSuggestions.map((suggestion: string, index: number) => {
+                    const adjustedIndex = allResults.length + index;
+                    return (
                       <button
-                        key={`plaque-${result.id}`}
-                        onClick={() => handleSelectResult(result)}
+                        key={`suggestion-${suggestion}`}
+                        onClick={() => handleSelectSuggestion(suggestion)}
                         className={`
-                          suggestion-item plaque-result
-                          ${selectedIndex === index ? 'selected' : ''}
+                          suggestion-item
+                          ${selectedIndex === adjustedIndex ? 'selected' : ''}
                         `}
-                        onMouseEnter={() => setSelectedIndex(index)}
+                        onMouseEnter={() => setSelectedIndex(adjustedIndex)}
                       >
-                        <div className="suggestion-icon plaque">
-                          <MapPin size={12} />
+                        <div className="suggestion-icon" style={{
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                        }}>
+                          <Zap size={16} />
                         </div>
                         <div className="suggestion-content">
                           <div className="suggestion-title">
-                            {result.title}
+                            {suggestion}
                           </div>
                           <div className="suggestion-subtitle">
-                            {result.subtitle}
+                            Popular search term
                           </div>
-                          {result.plaque?.profession && (
-                            <Badge variant="secondary" className="suggestion-badge">
-                              {result.plaque.profession}
-                            </Badge>
-                          )}
                         </div>
                       </button>
-                    ))}
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Recent Searches */}
+              {!value.trim() && recentSearches.length > 0 && (
+                <div className={
+                  (allResults.length > 0 || searchSuggestions.length > 0) 
+                    ? 'border-t border-white/5 mt-2 pt-2' 
+                    : ''
+                }>
+                  <div className="suggestion-section-header">
+                    🕒 Recent Searches
                   </div>
-                )}
-                
-                {/* Location Results Section */}
-                {locationResults.length > 0 && (
-                  <div className={plaqueResults.length > 0 ? 'border-t border-gray-100 mt-2 pt-2' : ''}>
-                    <div className="suggestion-section-header">
-                      London Locations
-                    </div>
-                    {locationResults.map((result, index) => {
-                      const adjustedIndex = index + plaqueResults.length;
-                      return (
-                        <button
-                          key={`location-${result.id}`}
-                          onClick={() => handleSelectResult(result)}
-                          className={`
-                            suggestion-item location-result
-                            ${selectedIndex === adjustedIndex ? 'selected' : ''}
-                          `}
-                          onMouseEnter={() => setSelectedIndex(adjustedIndex)}
-                        >
-                          <div className="suggestion-icon location">
-                            <Navigation size={12} />
+                  {recentSearches.map((search, index) => {
+                    const adjustedIndex = allResults.length + searchSuggestions.length + index;
+                    return (
+                      <button
+                        key={`recent-${search}`}
+                        onClick={() => handleSelectRecentSearch(search)}
+                        className={`
+                          suggestion-item
+                          ${selectedIndex === adjustedIndex ? 'selected' : ''}
+                        `}
+                        onMouseEnter={() => setSelectedIndex(adjustedIndex)}
+                      >
+                        <div className="suggestion-icon" style={{
+                          background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'
+                        }}>
+                          <Search size={16} />
+                        </div>
+                        <div className="suggestion-content">
+                          <div className="suggestion-title">
+                            {search}
                           </div>
-                          <div className="suggestion-content">
-                            <div className="suggestion-title">
-                              {result.title}
-                            </div>
-                            <div className="suggestion-subtitle">
-                              {result.subtitle.split(',').slice(0, 2).join(', ')}
-                            </div>
+                          <div className="suggestion-subtitle">
+                            Previous search
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          ) : value.length > 0 && !mapboxHook.isLoading ? (
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          
+          {/* No Results State */}
+          {value.length > 0 && !mapboxHook.isLoading && allResults.length === 0 && (
             <div className="search-empty-state">
               <div className="search-empty-title">No results found</div>
               <div className="search-empty-description">
-                Try searching for plaque names, people, or London locations
+                Try different keywords or check spelling
               </div>
             </div>
-          ) : null}
+          )}
           
           {/* Helper Text */}
-          {!value && (
+          {!value && allResults.length === 0 && (
             <div className="search-helper-text">
-              💡 Search for blue plaques or enter London addresses for distance filtering
+              💡 Search for people, professions, or London locations. Try "Hendrix", "author", or "Camden"
             </div>
           )}
         </div>
@@ -419,3 +530,5 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     </div>
   );
 };
+
+export default SearchBar;
