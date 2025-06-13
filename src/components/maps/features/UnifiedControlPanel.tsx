@@ -97,28 +97,35 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = (props) =
     }
   }, [mobile, isMobileOpen]);
 
+  // Destructure props and provide default empty array/function for optional props
+  const {
+    selectedOrganisations = [],
+    onOrganisationsChange = () => {},
+    ...rest
+  } = props;
+
   if (mobile) {
     return (
       <MobileBottomSheet
-        {...props}
+        {...rest}
         isOpen={isMobileOpen}
         onToggle={() => {
           triggerHapticFeedback('selection');
           setIsMobileOpen(!isMobileOpen);
         }}
-        selectedOrganisations={props.selectedOrganisations}
-        onOrganisationsChange={props.onOrganisationsChange}
+        selectedOrganisations={selectedOrganisations}
+        onOrganisationsChange={onOrganisationsChange}
       />
     );
   }
 
   return (
     <DesktopCompactSidebar
-      {...props}
+      {...rest}
       isCollapsed={isDesktopCollapsed}
       onToggleCollapse={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
-      selectedOrganisations={props.selectedOrganisations}
-      onOrganisationsChange={props.onOrganisationsChange}
+      selectedOrganisations={selectedOrganisations}
+      onOrganisationsChange={onOrganisationsChange}
     />
   );
 };
