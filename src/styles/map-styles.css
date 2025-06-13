@@ -190,3 +190,116 @@
 @media (prefers-contrast: high) { .mobile-nav-bar, .mobile-header { border-width: 2px; border-color: #000; } .mobile-button, .mobile-form-input, .mobile-form-textarea { border-width: 2px; border-color: #000; } .leaflet-popup-content-wrapper { border: 2px solid #000 !important; } .filter-status-bar { border: 2px solid #000 !important; } .plaque-popup-container button { border: 2px solid currentColor; } }
 @media (prefers-color-scheme: dark) { .mobile-nav-bar, .mobile-header, .mobile-card, .mobile-modal-container, .mobile-list, .mobile-tab-bar { background-color: #1f2937; color: #e5e7eb; } .mobile-nav-bar { border-top-color: #374151; } .mobile-header, .mobile-list-item, .mobile-tab-bar { border-bottom-color: #374151; } .mobile-header.transparent { background-color: transparent; } .mobile-list-item:active { background-color: #374151; } .mobile-form-input, .mobile-form-textarea { background-color: #374151; border-color: #4b5563; color: #e5e7eb; } .mobile-form-input:focus, .mobile-form-textarea:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); } .plaque-popup-container, .leaflet-popup-content-wrapper { background: #1f2937; color: #f9fafb; } .plaque-popup-container .text-gray-600 { color: #9ca3af; } .leaflet-popup-tip { background: #1f2937; } }
 @media print { .mobile-nav-bar, .fab, .bottom-action-bar, .mobile-header-actions, .search-bar-container, .filter-status-bar, .unified-control-panel, .mobile-bottom-sheet, .leaflet-popup, .map-status-indicator { display: none !important; } .mobile-modal-container { position: relative !important; transform: none !important; max-height: none !important; box-shadow: none !important; } }
+
+.search-bar-container {
+  position: absolute !important;
+  z-index: 99999 !important; /* Maximum z-index */
+  isolation: isolate !important;
+  pointer-events: auto !important;
+  transform: translateZ(0) !important; /* Force GPU layer */
+  will-change: transform !important;
+  contain: layout style paint !important;
+}
+
+/* Mobile positioning */
+@media (max-width: 768px) {
+  .search-bar-container {
+    top: 12px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+/* Desktop positioning */
+@media (min-width: 769px) {
+  .search-bar-container {
+    top: 16px !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateZ(0) !important;
+    width: 400px !important;
+    max-width: calc(100vw - 32px) !important;
+  }
+}
+
+/* SearchBar input container styling */
+.search-bar-container > div,
+.search-bar-container .relative {
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-radius: 12px !important;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  position: relative !important;
+  z-index: 1 !important;
+  isolation: isolate !important;
+}
+
+/* SearchBar input field */
+.search-bar-container input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  color: #1f2937 !important;
+  padding: 12px 16px !important;
+  font-weight: 500 !important;
+  width: 100% !important;
+  z-index: 1 !important;
+  position: relative !important;
+}
+
+.search-bar-container input::placeholder {
+  color: rgba(107, 114, 128, 0.7) !important;
+  font-weight: 400 !important;
+}
+
+/* Mobile input optimization */
+@media (max-width: 768px) {
+  .search-bar-container input {
+    font-size: 16px !important; /* Prevent iOS zoom */
+    min-height: 44px !important; /* Touch target size */
+    padding: 14px 16px !important;
+  }
+}
+
+/* SearchBar buttons */
+.search-bar-container button {
+  position: relative !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+@media (max-width: 768px) {
+  .search-bar-container button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
+/* SearchBar suggestions dropdown */
+.search-suggestions {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 99999 !important; /* Same as search bar */
+  margin-top: 8px !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-radius: 12px !important;
+}

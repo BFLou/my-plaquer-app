@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - COMPLETE FIX with proper SearchBar integration
+// src/components/maps/MapContainer.tsx - COMPLETE FIXED VERSION
 
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
@@ -251,7 +251,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     toastTimeouts.current.set(key, timeout);
   }, []);
 
-  // Filter plaques based on current state (SearchBar now handles its own filtering)
+  // Filter plaques based on current state
   const visiblePlaques = useMemo(() => {
     let filtered = plaques;
     
@@ -521,17 +521,28 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
 
   return (
     <div className={`relative w-full h-full ${className}`} style={{ isolation: 'isolate' }}>
-      {/* FIXED: Enhanced Search Bar with proper props and z-index */}
+      {/* CRITICAL: SearchBar with maximum z-index and forced positioning */}
       <div 
-        className={`
-          absolute search-bar-container
-          ${mobile ? 'top-3 left-3 right-3' : 'top-4 left-1/2 transform -translate-x-1/2'} 
-          ${mobile ? 'w-auto' : 'w-full max-w-md px-4'}
-        `}
+        className="search-bar-container"
         style={{ 
           position: 'absolute',
-          zIndex: 1005,
-          isolation: 'isolate'
+          zIndex: 99999, // Maximum z-index
+          isolation: 'isolate',
+          pointerEvents: 'auto',
+          transform: 'translateZ(0)', // Force GPU layer
+          // Responsive positioning
+          ...(mobile ? {
+            top: '12px',
+            left: '12px',
+            right: '12px',
+            width: 'auto'
+          } : {
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%) translateZ(0)',
+            width: '400px',
+            maxWidth: 'calc(100vw - 32px)'
+          })
         }}
       >
         <SearchBar 
@@ -541,7 +552,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         />
       </div>
 
-      {/* Unified Control Panel - Desktop Sidebar or Mobile Bottom Sheet */}
+      {/* Unified Control Panel */}
       <UnifiedControlPanel
         distanceFilter={{
           enabled: state.filterEnabled,
@@ -578,7 +589,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         className="unified-control-panel"
       />
 
-      {/* Enhanced Route Panel - FIXED: Positioned for both mobile and desktop */}
+      {/* Enhanced Route Panel */}
       {state.routeMode && (
         <div className={`absolute ${
           mobile 
@@ -601,7 +612,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* Status Bar - FIXED: Positioned properly for both mobile and desktop */}
+      {/* Status Bar */}
       {(!mobile || !state.routeMode) && (
         <div className={`absolute ${
           mobile 
@@ -629,7 +640,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* The Map - FIXED: Full height and width without competing containers */}
+      {/* The Map */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}
