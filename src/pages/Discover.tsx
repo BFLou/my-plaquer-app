@@ -765,20 +765,20 @@ const filteredPlaques = useMemo(() => {
           onRouteAction={handlePendingRouteAction}
         />
         
-        {/* Header with compact spacing */}
-        <div className="flex-shrink-0 bg-white border-b border-gray-200 sticky top-0 md:top-[61px] z-30">
-          <DiscoverHeader
-            viewMode={urlState.view}
-            onViewModeChange={handleViewModeChange}
-            searchValue={urlState.search}
-            onSearchChange={handleSearchChange}
-            activeFiltersCount={activeFiltersCount}
-            onOpenFilters={() => {
-              triggerHapticFeedback('light');
-              setFiltersOpen(true);
-            }}
-          />
-          
+{/* Header with compact spacing */}
+<div className="flex-shrink-0 bg-white border-b border-gray-200 sticky top-0 z-30"> {/* Remove md:top-[61px] */}
+  <DiscoverHeader
+    viewMode={urlState.view}
+    onViewModeChange={handleViewModeChange}
+    searchValue={urlState.search}
+    onSearchChange={handleSearchChange}
+    activeFiltersCount={activeFiltersCount}
+    onOpenFilters={() => {
+      triggerHapticFeedback('light');
+      setFiltersOpen(true);
+    }}
+  />
+  
           {/* Active filters display */}
 <DiscoverFilters
   urlState={urlState}

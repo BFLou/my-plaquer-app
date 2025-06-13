@@ -39,17 +39,17 @@ const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
 
   return (
     <div 
-      className="bg-white border-b border-gray-200 discover-header sticky"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 1001,
-        isolation: 'isolate',
-        transform: 'translateZ(0)',
-        willChange: 'transform'
-      }}
-    >
-      <div className="container mx-auto px-4 py-2">
+    className="bg-white border-b border-gray-200 discover-header sticky"
+    style={{
+      position: 'sticky',
+      top: 0, // Remove the desktop offset
+      zIndex: 1001,
+      isolation: 'isolate',
+      transform: 'translateZ(0)',
+      willChange: 'transform'
+    }}
+  >
+    <div className="container mx-auto px-4 py-2"> 
         <div className="flex flex-col gap-2">
           {/* View Mode Tabs - More compact with proper z-index */}
           <div style={{ position: 'relative', zIndex: 1002 }}>
