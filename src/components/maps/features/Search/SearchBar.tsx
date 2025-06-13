@@ -1,6 +1,6 @@
-// Enhanced SearchBar Component with Improved Search and Styling
+// Enhanced SearchBar Component with improved styling and functionality
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { Search, MapPin, X, Loader, Navigation, Star, Zap } from 'lucide-react';
+import { Search, MapPin, X, Loader, Navigation, Star, Zap, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,10 +10,9 @@ import { useMapboxGeocoding } from '@/hooks/useMapboxGeocoding';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { toast } from 'sonner';
 import { searchPlaques, highlightSearchTerms, getSearchSuggestions } from './enhancedSearchLogic';
-import './SearchBar.css';
 
 interface SearchResult {
-  type: 'plaque' | 'location';
+  type: 'plaque' | 'location' | 'postcode' | 'area';
   id: string | number;
   title: string;
   subtitle: string;
@@ -21,6 +20,7 @@ interface SearchResult {
   plaque?: Plaque;
   relevanceScore?: number;
   matchedFields?: string[];
+  placeType?: string; // Optional: present for location results
 }
 
 interface SearchBarProps {
@@ -41,7 +41,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   onSelect,
   onLocationSelect,
   className = '',
-  placeholder = "Search for plaques, people, or locations...",
+  placeholder = "Search plaques, people, or locations...",
   showSuggestions = true
 }) => {
   const mobile = isMobile();
@@ -97,35 +97,51 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     if (!value.trim() || value.length < 2) return [];
     
     const results = searchPlaques(plaques, value);
-    return results.slice(0, 4); // Limit plaque results to make room for locations
+    return results.slice(0, 6); // Increased limit for better results
   }, [plaques, value]);
 
-  // Filter and enhance location results
+  // Enhanced location results with better address formatting
   const locationResults = useMemo(() => {
+    console.log(`📍 Processing ${mapboxHook.suggestions.length} Mapbox suggestions`);
+    
     return mapboxHook.suggestions
-      .filter(feature => {
-        const placeName = feature.place_name.toLowerCase();
-        const isInLondon = placeName.includes('london') ||
-                          placeName.includes('greater london') ||
-                          feature.context?.some(ctx => 
-                            ctx.text.toLowerCase().includes('london')
-                          );
-        
+      .map(feature => {
         const [lng, lat] = feature.center;
-        const inLondonBounds = lat >= 51.28 && lat <= 51.686 && 
-                              lng >= -0.489 && lng <= 0.236;
         
-        return isInLondon || inLondonBounds;
-      })
-      .slice(0, 4)
-      .map(feature => ({
-        type: 'location' as const,
-        id: feature.id,
-        title: feature.text,
-        subtitle: feature.place_name,
-        coordinates: [feature.center[1], feature.center[0]] as [number, number],
-        feature
-      }));
+        // Format title and subtitle based on place type
+        let title = feature.text;
+        let subtitle = feature.place_name;
+        
+        // For addresses, show the full address as title
+        if (feature.place_type.includes('address')) {
+          const addressParts = feature.place_name.split(',');
+          title = addressParts[0]; // Full address number and street
+          subtitle = addressParts.slice(1).join(',').trim(); // Area, postcode, etc.
+        }
+        // For postcodes, highlight them
+        else if (feature.place_type.includes('postcode')) {
+          title = feature.text; // The postcode
+          subtitle = feature.place_name.replace(feature.text, '').replace(/^,\s*/, '');
+        }
+        // For POIs and places
+        else {
+          title = feature.text;
+          const contextParts = feature.place_name.split(',');
+          subtitle = contextParts.slice(1, 3).join(',').trim() || 'London';
+        }
+        
+        console.log(`📍 ${feature.place_type.join('/')}: ${title} - ${subtitle}`);
+        
+        return {
+          type: 'location' as const,
+          id: feature.id,
+          title,
+          subtitle,
+          coordinates: [lat, lng] as [number, number],
+          feature,
+          placeType: feature.place_type[0] // Store primary place type for styling
+        };
+      });
   }, [mapboxHook.suggestions]);
 
   // Combined results with relevance sorting
@@ -305,19 +321,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <div 
       ref={containerRef}
-      className={`search-bar-container ${className}`}
+      className={`relative ${className}`}
     >
       {/* Enhanced Search Input Container */}
       <div className={`
-        search-input-container
-        ${isExpanded ? 'focused' : ''}
-        ${mobile ? 'h-14' : 'h-12'}
-        px-4 flex items-center gap-3
+        relative bg-white/95 backdrop-blur-sm border border-gray-200
+        ${isExpanded ? 'ring-2 ring-blue-500/20 border-blue-300' : 'hover:border-gray-300'}
+        ${mobile ? 'h-12' : 'h-11'}
+        px-4 flex items-center gap-3 rounded-xl shadow-sm transition-all duration-200
       `}>
         {/* Search Icon */}
         <Search 
-          size={mobile ? 22 : 20} 
-          className="search-icon flex-shrink-0"
+          size={mobile ? 20 : 18} 
+          className={`${isExpanded ? 'text-blue-600' : 'text-gray-400'} flex-shrink-0 transition-colors`}
         />
         
         {/* Input Field */}
@@ -331,15 +347,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={`
-            search-input flex-1 border-0 bg-transparent focus-visible:ring-0 shadow-none p-0
-            ${mobile ? 'text-base' : 'text-sm'}
+            flex-1 border-0 bg-transparent focus-visible:ring-0 shadow-none p-0
+            ${mobile ? 'text-base' : 'text-sm'} placeholder:text-gray-500
           `}
         />
         
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {mapboxHook.isLoading && (
-            <Loader size={18} className="text-gray-400 animate-spin" />
+            <Loader size={16} className="text-blue-500 animate-spin" />
           )}
           
           {value && (
@@ -347,83 +363,111 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               variant="ghost"
               size="sm"
               onClick={handleClear}
-              className="h-7 w-7 p-0 hover:bg-white/20 rounded-full search-action-button"
+              className="h-7 w-7 p-0 hover:bg-gray-100 rounded-full"
             >
-              <X size={16} />
+              <X size={14} />
             </Button>
           )}
           
-          {mobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCurrentLocation}
-              className="h-7 w-7 p-0 hover:bg-white/20 rounded-full search-action-button"
-              title="Use current location"
-            >
-              <Navigation size={16} className="text-blue-400" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCurrentLocation}
+            className="h-7 w-7 p-0 hover:bg-blue-50 hover:text-blue-600 rounded-full"
+            title="Use current location"
+          >
+            <Navigation size={14} />
+          </Button>
         </div>
       </div>
 
       {/* Enhanced Suggestions Dropdown */}
       {showSuggestionsState && (
-        <div className="search-suggestions">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-[1010] max-h-[400px]">
           {mapboxHook.error && (
-            <div className="px-4 py-3 text-red-400 text-sm border-b border-white/5">
+            <div className="px-4 py-3 text-red-600 text-sm border-b border-gray-100 bg-red-50">
               ⚠️ {mapboxHook.error}
             </div>
           )}
           
-          <ScrollArea className="max-h-80">
+          <ScrollArea className="max-h-[350px]">
             <div className="py-2">
               
               {/* Search Results Section */}
               {allResults.length > 0 && (
                 <div>
-                  <div className="suggestion-section-header">
-                    {plaqueResults.length > 0 ? '🏛️ Blue Plaques' : '📍 Locations'}
-                  </div>
+                  {plaqueResults.length > 0 && (
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+                      Historic Plaques
+                    </div>
+                  )}
+                  {locationResults.length > 0 && (
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
+                      📍 London Addresses & Places
+                    </div>
+                  )}
                   {allResults.map((result, index) => (
                     <button
                       key={`${result.type}-${result.id}`}
                       onClick={() => handleSelectResult(result)}
                       className={`
-                        suggestion-item ${result.type}-result
-                        ${selectedIndex === index ? 'selected' : ''}
+                        w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors
+                        ${selectedIndex === index ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}
+                        flex items-start gap-3
                       `}
                       onMouseEnter={() => setSelectedIndex(index)}
                     >
-                      <div className={`suggestion-icon ${result.type}`}>
+                      <div className={`
+                        w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5
+                        ${result.type === 'plaque' 
+                          ? 'bg-purple-100 text-purple-600' 
+                          : result.placeType === 'address' 
+                            ? 'bg-blue-100 text-blue-600'
+                            : result.placeType === 'postcode'
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-orange-100 text-orange-600'
+                        }
+                      `}>
                         {result.type === 'plaque' ? (
-                          <MapPin size={18} />
+                          <MapPin size={16} />
+                        ) : result.placeType === 'address' ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/>
+                            <path d="m3 9 9-7 9 7"/>
+                          </svg>
+                        ) : result.placeType === 'postcode' ? (
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                          </svg>
                         ) : (
-                          <Navigation size={18} />
+                          <Navigation size={16} />
                         )}
                       </div>
-                      <div className="suggestion-content">
+                      <div className="flex-1 min-w-0">
                         <div 
-                          className="suggestion-title"
+                          className="font-medium text-gray-900 text-sm leading-tight"
                           dangerouslySetInnerHTML={{
                             __html: highlightSearchTerms(result.title, value)
                           }}
                         />
-                        <div className="suggestion-subtitle">
+                        <div className="text-gray-500 text-xs mt-1 leading-tight">
                           {result.subtitle}
                         </div>
                         {result.type === 'plaque' && result.plaque?.profession && (
-                          <Badge variant="secondary" className="suggestion-badge mt-2">
+                          <Badge variant="secondary" className="mt-2 text-xs h-5 px-2">
                             {result.plaque.profession}
                           </Badge>
                         )}
                         {result.type === 'plaque' && result.relevanceScore && result.relevanceScore > 0.8 && (
                           <div className="flex items-center gap-1 mt-1">
-                            <Star size={12} className="text-yellow-400 fill-current" />
-                            <span className="text-xs text-yellow-400">High match</span>
+                            <Star size={10} className="text-yellow-500 fill-current" />
+                            <span className="text-xs text-yellow-600">High match</span>
                           </div>
                         )}
                       </div>
+                      <ChevronRight size={14} className="text-gray-400 flex-shrink-0 mt-1" />
                     </button>
                   ))}
                 </div>
@@ -431,8 +475,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               
               {/* Quick Search Suggestions */}
               {!value.trim() && searchSuggestions.length > 0 && (
-                <div className={allResults.length > 0 ? 'border-t border-white/5 mt-2 pt-2' : ''}>
-                  <div className="suggestion-section-header">
+                <div className={allResults.length > 0 ? 'border-t border-gray-100' : ''}>
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
                     ⚡ Quick Search
                   </div>
                   {searchSuggestions.map((suggestion: string, index: number) => {
@@ -442,24 +486,24 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         key={`suggestion-${suggestion}`}
                         onClick={() => handleSelectSuggestion(suggestion)}
                         className={`
-                          suggestion-item
-                          ${selectedIndex === adjustedIndex ? 'selected' : ''}
+                          w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors
+                          ${selectedIndex === adjustedIndex ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}
+                          flex items-center gap-3
                         `}
                         onMouseEnter={() => setSelectedIndex(adjustedIndex)}
                       >
-                        <div className="suggestion-icon" style={{
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-                        }}>
+                        <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Zap size={16} />
                         </div>
-                        <div className="suggestion-content">
-                          <div className="suggestion-title">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 text-sm">
                             {suggestion}
                           </div>
-                          <div className="suggestion-subtitle">
+                          <div className="text-gray-500 text-xs">
                             Popular search term
                           </div>
                         </div>
+                        <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
                       </button>
                     );
                   })}
@@ -470,10 +514,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               {!value.trim() && recentSearches.length > 0 && (
                 <div className={
                   (allResults.length > 0 || searchSuggestions.length > 0) 
-                    ? 'border-t border-white/5 mt-2 pt-2' 
+                    ? 'border-t border-gray-100' 
                     : ''
                 }>
-                  <div className="suggestion-section-header">
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
                     🕒 Recent Searches
                   </div>
                   {recentSearches.map((search, index) => {
@@ -483,24 +527,24 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         key={`recent-${search}`}
                         onClick={() => handleSelectRecentSearch(search)}
                         className={`
-                          suggestion-item
-                          ${selectedIndex === adjustedIndex ? 'selected' : ''}
+                          w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors
+                          ${selectedIndex === adjustedIndex ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}
+                          flex items-center gap-3
                         `}
                         onMouseEnter={() => setSelectedIndex(adjustedIndex)}
                       >
-                        <div className="suggestion-icon" style={{
-                          background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'
-                        }}>
+                        <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Search size={16} />
                         </div>
-                        <div className="suggestion-content">
-                          <div className="suggestion-title">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 text-sm">
                             {search}
                           </div>
-                          <div className="suggestion-subtitle">
+                          <div className="text-gray-500 text-xs">
                             Previous search
                           </div>
                         </div>
+                        <ChevronRight size={14} className="text-gray-400 flex-shrink-0" />
                       </button>
                     );
                   })}
@@ -511,9 +555,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           
           {/* No Results State */}
           {value.length > 0 && !mapboxHook.isLoading && allResults.length === 0 && (
-            <div className="search-empty-state">
-              <div className="search-empty-title">No results found</div>
-              <div className="search-empty-description">
+            <div className="px-4 py-8 text-center">
+              <div className="text-gray-900 font-medium mb-2">No results found</div>
+              <div className="text-gray-500 text-sm">
                 Try different keywords or check spelling
               </div>
             </div>
@@ -521,7 +565,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           
           {/* Helper Text */}
           {!value && allResults.length === 0 && (
-            <div className="search-helper-text">
+            <div className="px-4 py-3 text-xs text-gray-500 bg-blue-50 border-t border-gray-100">
               💡 Search for people, professions, or London locations. Try "Hendrix", "author", or "Camden"
             </div>
           )}

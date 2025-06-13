@@ -1,5 +1,4 @@
-// src/components/maps/features/Search/enhancedSearchLogic.ts
-// Enhanced Search Logic with Fuzzy Matching and Flexible Search
+// Enhanced Search Logic with improved relevance and debugging
 import { Plaque } from '@/types/plaque';
 
 interface SearchResult {
@@ -162,6 +161,8 @@ export function searchPlaques(plaques: Plaque[], searchTerm: string): SearchResu
   const query = searchTerm.trim();
   const results: SearchResult[] = [];
   
+  console.log(`🔍 Searching ${plaques.length} plaques for: "${query}"`);
+  
   plaques.forEach(plaque => {
     const searchableFields = extractSearchableFields(plaque);
     let bestScore = 0;
@@ -225,6 +226,9 @@ export function searchPlaques(plaques: Plaque[], searchTerm: string): SearchResu
         ? parseFloat(plaque.longitude) 
         : plaque.longitude || 0;
       
+      // Skip plaques with invalid coordinates
+      if (lat === 0 && lng === 0) return;
+      
       results.push({
         type: 'plaque',
         id: plaque.id,
@@ -238,14 +242,16 @@ export function searchPlaques(plaques: Plaque[], searchTerm: string): SearchResu
     }
   });
   
+  console.log(`🎯 Found ${results.length} matching plaques`);
+  
   // Sort by relevance score (highest first)
   return results
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
-    .slice(0, 8); // Limit to top 8 results
+    .slice(0, 10); // Limit to top 10 results
 }
 
 /**
- * Format subtitle showing what matched
+ * Format subtitle showing what matched and location
  */
 function formatPlaqueSubtitle(plaque: Plaque, matchedFields: string[]): string {
   const parts = [];
@@ -257,22 +263,19 @@ function formatPlaqueSubtitle(plaque: Plaque, matchedFields: string[]): string {
     parts.push(plaque.address.split(',')[0]); // First part of address
   }
   
-  // Show profession if it was matched
+  // Show profession if it was matched or if no location
   if (matchedFields.includes('profession') && plaque.profession) {
+    parts.push(plaque.profession);
+  } else if (!plaque.location && !plaque.address && plaque.profession) {
     parts.push(plaque.profession);
   }
   
-  // Show what fields were matched (for debugging)
-  const matchInfo = matchedFields
-    .filter(field => !['location', 'address'].includes(field))
-    .slice(0, 2)
-    .join(', ');
-  
-  if (matchInfo && parts.length > 0) {
-    parts.push(`• ${matchInfo}`);
+  // If still no parts, use postcode
+  if (parts.length === 0 && plaque.postcode) {
+    parts.push(plaque.postcode);
   }
   
-  return parts.join(' • ') || 'Blue Plaque';
+  return parts.join(' • ') || 'Historic Plaque';
 }
 
 /**
@@ -283,8 +286,7 @@ export function highlightSearchTerms(text: string, searchTerm: string): string {
   
   const query = searchTerm.trim();
   const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-  
-  return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+  return text.replace(regex, '<mark class="bg-yellow-200 px-1 rounded">$1</mark>');
 }
 
 /**
@@ -304,7 +306,7 @@ export function getSearchSuggestions(plaques: Plaque[]): string[] {
   // Add top professions
   Object.entries(professionCounts)
     .sort(([,a], [,b]) => b - a)
-    .slice(0, 5)
+    .slice(0, 4)
     .forEach(([profession]) => suggestions.add(profession));
   
   // Popular first names from titles
@@ -314,9 +316,10 @@ export function getSearchSuggestions(plaques: Plaque[]): string[] {
   plaques.forEach(plaque => {
     if (plaque.title) {
       let match;
+      namePattern.lastIndex = 0; // Reset regex
       while ((match = namePattern.exec(plaque.title)) !== null) {
         const firstName = match[1];
-        if (firstName.length > 3) {
+        if (firstName.length > 3 && !['London', 'Street', 'House', 'Road'].includes(firstName)) {
           firstNames[firstName] = (firstNames[firstName] || 0) + 1;
         }
       }
@@ -326,7 +329,7 @@ export function getSearchSuggestions(plaques: Plaque[]): string[] {
   // Add popular first names
   Object.entries(firstNames)
     .sort(([,a], [,b]) => b - a)
-    .slice(0, 8)
+    .slice(0, 6)
     .forEach(([name]) => suggestions.add(name));
   
   // Add some popular search terms
@@ -335,7 +338,39 @@ export function getSearchSuggestions(plaques: Plaque[]): string[] {
     'actor', 'musician', 'poet', 'doctor', 'engineer'
   ];
   
-  popularTerms.forEach(term => suggestions.add(term));
+  popularTerms.forEach(term => {
+    // Only add if we have plaques with this profession
+    if (professionCounts[term] || professionCounts[term.charAt(0).toUpperCase() + term.slice(1)]) {
+      suggestions.add(term);
+    }
+  });
   
-  return Array.from(suggestions);
+  return Array.from(suggestions).slice(0, 8);
+}
+
+/**
+ * Debug search results - useful for troubleshooting
+ */
+export function debugSearchResults(plaques: Plaque[], searchTerm: string): void {
+  console.group(`🔍 Search Debug: "${searchTerm}"`);
+  
+  const results = searchPlaques(plaques, searchTerm);
+  
+  console.log(`Total plaques: ${plaques.length}`);
+  console.log(`Results found: ${results.length}`);
+  
+  results.slice(0, 5).forEach((result, index) => {
+    console.log(`${index + 1}. ${result.title} (Score: ${result.relevanceScore.toFixed(3)})`);
+    console.log(`   Matched fields: ${result.matchedFields.join(', ')}`);
+    console.log(`   Subtitle: ${result.subtitle}`);
+  });
+  
+  if (results.length === 0) {
+    console.log('No results found. Checking sample plaques...');
+    plaques.slice(0, 3).forEach(plaque => {
+      console.log(`Sample: ${plaque.title} - ${plaque.profession || 'No profession'}`);
+    });
+  }
+  
+  console.groupEnd();
 }
