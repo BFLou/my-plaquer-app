@@ -5,9 +5,11 @@ interface OptimizedRouteProps {
   element: React.ComponentType<any>;
 }
 
-export const OptimizedRoute: React.FC<OptimizedRouteProps> = ({ element: Component }) => {
+export const OptimizedRoute: React.FC<OptimizedRouteProps> = ({
+  element: Component,
+}) => {
   return (
-    <React.Suspense 
+    <React.Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
           <div className="flex flex-col items-center">

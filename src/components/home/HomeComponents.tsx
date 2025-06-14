@@ -1,23 +1,25 @@
 // src/components/home/HomeComponents.tsx
 import React from 'react';
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 // Category Card Component
-export const CategoryCard = ({ category }: { 
-  category: { 
-    label: string; 
-    icon: string; 
+export const CategoryCard = ({
+  category,
+}: {
+  category: {
+    label: string;
+    icon: string;
     count: number;
     onClick: () => void;
-  }; 
-  onClick: () => void 
+  };
+  onClick: () => void;
 }) => {
   return (
-    <Button 
-      variant="outline" 
+    <Button
+      variant="outline"
       className="whitespace-nowrap flex items-center justify-start h-10 gap-1.5 shadow-sm bg-white hover:bg-gray-50 border text-left"
       onClick={category.onClick}
     >
@@ -31,17 +33,21 @@ export const CategoryCard = ({ category }: {
 };
 
 // Popular Locations Section
-export const PopularLocations = ({ locations }: { 
-  locations: { name: string; count: number }[] 
+export const PopularLocations = ({
+  locations,
+}: {
+  locations: { name: string; count: number }[];
 }) => {
   const navigate = useNavigate();
-  
+
   return (
     <div className="p-3">
-      <h3 className="font-medium text-sm text-gray-700 mb-2">Popular Locations</h3>
+      <h3 className="font-medium text-sm text-gray-700 mb-2">
+        Popular Locations
+      </h3>
       <div className="flex flex-wrap gap-2">
         {locations.map((location, idx) => (
-          <div 
+          <div
             key={idx}
             className="px-3 py-1.5 bg-gray-50 rounded-md text-sm cursor-pointer hover:bg-blue-50 transition flex items-center"
             onClick={() => {
@@ -50,7 +56,9 @@ export const PopularLocations = ({ locations }: {
           >
             <MapPin size={14} className="mr-1 text-gray-400" />
             <span className="font-medium">{location.name}</span>
-            <Badge variant="secondary" className="ml-1.5 text-xs">{location.count}</Badge>
+            <Badge variant="secondary" className="ml-1.5 text-xs">
+              {location.count}
+            </Badge>
           </div>
         ))}
       </div>
@@ -59,17 +67,21 @@ export const PopularLocations = ({ locations }: {
 };
 
 // Popular Historical Figures Section
-export const PopularFigures = ({ figures }: { 
-  figures: { name: string; profession: string }[] 
+export const PopularFigures = ({
+  figures,
+}: {
+  figures: { name: string; profession: string }[];
 }) => {
   const navigate = useNavigate();
-  
+
   return (
     <div className="p-3">
-      <h3 className="font-medium text-sm text-gray-700 mb-2">Popular Historical Figures</h3>
+      <h3 className="font-medium text-sm text-gray-700 mb-2">
+        Popular Historical Figures
+      </h3>
       <div className="flex flex-wrap gap-2">
         {figures.map((figure, idx) => (
-          <div 
+          <div
             key={idx}
             className="px-3 py-1.5 bg-gray-50 rounded-md text-sm cursor-pointer hover:bg-blue-50 transition flex items-center"
             onClick={() => {
@@ -77,7 +89,9 @@ export const PopularFigures = ({ figures }: {
             }}
           >
             <span className="font-medium">{figure.name}</span>
-            <span className="text-xs text-gray-500 ml-1">({figure.profession})</span>
+            <span className="text-xs text-gray-500 ml-1">
+              ({figure.profession})
+            </span>
           </div>
         ))}
       </div>
@@ -86,19 +100,19 @@ export const PopularFigures = ({ figures }: {
 };
 
 // Enhanced Map Preview component
-export const MapPreview = ({ 
-  isMapLoaded, 
+export const MapPreview = ({
+  isMapLoaded,
   mapContainerRef,
-  navigateToDiscover 
-}: { 
+  navigateToDiscover,
+}: {
   isMapLoaded: boolean;
   mapContainerRef: React.RefObject<HTMLDivElement>;
   navigateToDiscover: () => void;
 }) => {
   return (
     <div className="w-full h-full relative">
-      <div 
-        ref={mapContainerRef} 
+      <div
+        ref={mapContainerRef}
         className="w-full h-full bg-gray-100 cursor-pointer transition duration-200 hover:opacity-95"
         onClick={navigateToDiscover}
       >
@@ -111,20 +125,20 @@ export const MapPreview = ({
           </div>
         )}
       </div>
-      
+
       {/* Always visible overlay button */}
       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 opacity-0 hover:opacity-100 transition-opacity duration-300">
-        <Button 
+        <Button
           className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg transform hover:scale-105 transition-transform"
           onClick={navigateToDiscover}
         >
           Open Map View
         </Button>
       </div>
-      
+
       {/* Fixed bottom button for easier access */}
       <div className="absolute bottom-4 right-4 left-4">
-        <Button 
+        <Button
           className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
           onClick={navigateToDiscover}
         >
@@ -136,45 +150,45 @@ export const MapPreview = ({
 };
 
 // Onboarding Dialog Content
-export const OnboardingStepContent = ({ 
-  step, 
-  steps 
-}: { 
-  step: number; 
+export const OnboardingStepContent = ({
+  step,
+  steps,
+}: {
+  step: number;
   steps: {
     title: string;
     description: string;
     icon: React.ReactNode;
-  }[] 
+  }[];
 }) => {
   return (
     <div className="flex flex-col items-center text-center">
       {steps[step].icon}
       <h2 className="mt-4 text-xl font-semibold">{steps[step].title}</h2>
-      <p className="mt-2 text-gray-500">
-        {steps[step].description}
-      </p>
+      <p className="mt-2 text-gray-500">{steps[step].description}</p>
     </div>
   );
 };
 
 // Categories Section
-export const CategoriesSection = ({ categories }: { 
+export const CategoriesSection = ({
+  categories,
+}: {
   categories: {
     label: string;
     icon: string;
     count: number;
     onClick: () => void;
-  }[] 
+  }[];
 }) => {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-1">
         {categories.map((category, index) => (
-          <CategoryCard 
-            key={index} 
-            category={category} 
-            onClick={category.onClick} 
+          <CategoryCard
+            key={index}
+            category={category}
+            onClick={category.onClick}
           />
         ))}
       </div>
@@ -183,14 +197,14 @@ export const CategoriesSection = ({ categories }: {
 };
 
 // Feature Section Item
-export const FeatureItem = ({ 
-  number, 
-  title, 
-  description 
-}: { 
-  number: number; 
-  title: string; 
-  description: string 
+export const FeatureItem = ({
+  number,
+  title,
+  description,
+}: {
+  number: number;
+  title: string;
+  description: string;
 }) => {
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm text-center">

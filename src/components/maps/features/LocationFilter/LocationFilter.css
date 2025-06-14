@@ -360,25 +360,25 @@
     right: -10px;
     left: 10px;
   }
-  
+
   .location-filter-button {
     min-width: 140px;
     font-size: 13px;
   }
-  
+
   .distance-presets {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .distance-preset-button {
     height: 28px;
     font-size: 11px;
   }
-  
+
   .location-filter-actions {
     flex-direction: column;
   }
-  
+
   .action-button {
     height: 40px;
   }
@@ -390,16 +390,16 @@
     right: -8px;
     left: 8px;
   }
-  
+
   .location-filter-content {
     padding: 12px 16px 16px;
   }
-  
+
   .distance-presets {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
-  
+
   .distance-preset-button {
     height: 36px;
     font-size: 12px;
@@ -428,11 +428,11 @@
   .location-filter-panel {
     border: 2px solid #000;
   }
-  
+
   .distance-preset-button {
     border-width: 2px;
   }
-  
+
   .distance-preset-button.active {
     background: #000;
     color: white;
@@ -465,8 +465,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ==================== DARK MODE SUPPORT ==================== */
@@ -477,67 +481,67 @@
     color: white;
     border-color: rgba(75, 85, 99, 0.8);
   }
-  
+
   .location-filter-panel {
     background: #1f2937;
     border-color: #374151;
   }
-  
+
   .location-filter-header {
     background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
     border-color: #374151;
   }
-  
+
   .location-filter-title {
     color: white;
   }
-  
+
   .location-status-active {
     background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
     border-color: #047857;
   }
-  
+
   .location-status-info {
     color: #a7f3d0;
   }
-  
+
   .my-location-button {
     background: #374151;
     color: white;
     border-color: #4b5563;
   }
-  
+
   .my-location-button:hover:not(:disabled) {
     background: #4b5563;
     border-color: #60a5fa;
   }
-  
+
   .address-search-input {
     background: #374151;
     color: white;
     border-color: #4b5563;
   }
-  
+
   .distance-preset-button {
     background: #374151;
     color: white;
     border-color: #4b5563;
   }
-  
+
   .distance-preset-button:hover {
     border-color: #60a5fa;
     background: #1e3a8a;
   }
-  
+
   .distance-info {
     background: #374151;
     color: #d1d5db;
   }
-  
+
   .distance-info-value {
     color: white;
   }
-  
+
   .location-hint {
     background: #1e3a8a;
     color: #dbeafe;
@@ -560,10 +564,18 @@
   opacity: 0;
 }
 
-.location-filter-content > *:nth-child(1) { animation-delay: 0.05s; }
-.location-filter-content > *:nth-child(2) { animation-delay: 0.1s; }
-.location-filter-content > *:nth-child(3) { animation-delay: 0.15s; }
-.location-filter-content > *:nth-child(4) { animation-delay: 0.2s; }
+.location-filter-content > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.location-filter-content > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.location-filter-content > *:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.location-filter-content > *:nth-child(4) {
+  animation-delay: 0.2s;
+}
 
 @keyframes content-fade-in {
   from {

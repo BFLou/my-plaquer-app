@@ -18,18 +18,18 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   label,
   disabled = false,
   className = '',
-  variant = 'default'
+  variant = 'default',
 }) => {
   const baseClasses = `fixed bottom-20 right-4 z-40 shadow-lg hover:shadow-xl transition-all duration-200 md:hidden ${className}`;
-  
+
   if (label) {
     return (
       <Button
         onClick={onClick}
         disabled={disabled}
         className={`${baseClasses} h-12 px-4 rounded-full ${
-          variant === 'default' 
-            ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+          variant === 'default'
+            ? 'bg-blue-600 hover:bg-blue-700 text-white'
             : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
         }`}
       >
@@ -44,8 +44,8 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       className={`${baseClasses} h-14 w-14 rounded-full ${
-        variant === 'default' 
-          ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+        variant === 'default'
+          ? 'bg-blue-600 hover:bg-blue-700 text-white'
           : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
       }`}
     >

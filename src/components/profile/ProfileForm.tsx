@@ -1,11 +1,11 @@
 // src/components/profile/ProfileForm.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { MobileInput } from "@/components/ui/mobile-input"; // Use mobile-optimized input
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from '@/components/ui/button';
+import { MobileInput } from '@/components/ui/mobile-input'; // Use mobile-optimized input
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Camera, Save, Loader, User, X, Upload } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { profileImageService } from '@/services/profileImageService';
@@ -23,7 +23,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,7 +31,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!user) return;
-      
+
       try {
         const userProfile = await profileService.getUserProfile(user.uid);
         if (userProfile) {
@@ -43,7 +43,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
         console.error('Error loading user profile:', error);
       }
     };
-    
+
     loadUserProfile();
   }, [user]);
 
@@ -51,38 +51,42 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !user) return;
     const file = e.target.files[0];
-    
+
     // Validate file
     const validation = profileImageService.validateImageFile(file);
     if (!validation.valid) {
       toast.error(validation.error);
       return;
     }
-    
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPhotoPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-    
+
     // Upload to Firebase Storage
     try {
       setIsUploadingPhoto(true);
-      
+
       // Compress image if needed
-      const fileToUpload = file.size > 1024 * 1024 ? // If larger than 1MB
-        await profileImageService.compressImage(file) : 
-        file;
-      
+      const fileToUpload =
+        file.size > 1024 * 1024 // If larger than 1MB
+          ? await profileImageService.compressImage(file)
+          : file;
+
       // Delete old image if exists
       if (user.photoURL) {
         await profileImageService.deleteOldProfileImage(user.photoURL);
       }
-      
+
       // Upload new image
-      const downloadURL = await profileImageService.uploadProfileImage(user.uid, fileToUpload);
-      
+      const downloadURL = await profileImageService.uploadProfileImage(
+        user.uid,
+        fileToUpload
+      );
+
       if (downloadURL) {
         setPhotoURL(downloadURL);
         toast.success('Profile photo uploaded successfully');
@@ -98,13 +102,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
 
   const removePhoto = async () => {
     if (!user) return;
-    
+
     try {
       setIsUploadingPhoto(true);
-      
+
       // Remove photo using profile service
       await profileService.removeProfilePhoto(user.uid);
-      
+
       setPhotoPreview(null);
       setPhotoURL('');
       if (fileInputRef.current) {
@@ -113,7 +117,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
       if (cameraInputRef.current) {
         cameraInputRef.current.value = '';
       }
-      
+
       toast.success('Profile photo removed');
     } catch (error: any) {
       console.error('Error removing photo:', error);
@@ -126,21 +130,21 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       // Update user profile using profile service
       await profileService.updateProfile(user.uid, {
         displayName,
         bio,
-        photoURL: photoURL || null
+        photoURL: photoURL || null,
       });
-      
+
       toast.success('Profile updated successfully');
-      
+
       if (onSuccess) {
         onSuccess();
       }
@@ -160,9 +164,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
           <div className="relative group">
             {photoPreview || photoURL ? (
               <div className="relative">
-                <img 
-                  src={photoPreview || photoURL} 
-                  alt={displayName || 'User'} 
+                <img
+                  src={photoPreview || photoURL}
+                  alt={displayName || 'User'}
                   className="h-28 w-28 rounded-full object-cover border-4 border-gray-100"
                 />
                 {!isUploadingPhoto && (
@@ -180,19 +184,19 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                 <User className="h-14 w-14 text-blue-600" />
               </div>
             )}
-            
+
             {isUploadingPhoto && (
               <div className="absolute inset-0 h-28 w-28 rounded-full bg-black/50 flex items-center justify-center">
                 <Loader className="h-8 w-8 text-white animate-spin" />
               </div>
             )}
           </div>
-          
+
           <div className="flex-1 w-full">
             <p className="text-sm text-gray-600 mb-4">
               Upload a new profile photo to personalize your account
             </p>
-            
+
             {/* Mobile-optimized photo buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Camera Button - Mobile Only */}
@@ -207,7 +211,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                 <Camera size={16} />
                 Take Photo
               </Button>
-              
+
               {/* File Upload Button */}
               <Button
                 type="button"
@@ -221,7 +225,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                 <span className="hidden sm:inline">Choose Photo</span>
                 <span className="sm:hidden">Choose File</span>
               </Button>
-              
+
               {/* Remove Button */}
               {(photoPreview || photoURL) && (
                 <Button
@@ -236,18 +240,18 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
                 </Button>
               )}
             </div>
-            
+
             {/* File inputs */}
-            <input 
+            <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
               accept="image/*"
               className="hidden"
             />
-            
+
             {/* Camera input for mobile */}
-            <input 
+            <input
               type="file"
               ref={cameraInputRef}
               onChange={handleFileChange}
@@ -255,18 +259,18 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
               capture="user" // This enables camera on mobile
               className="hidden"
             />
-            
+
             <p className="text-xs text-gray-500 mt-3">
               Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
             </p>
           </div>
         </div>
       </div>
-      
+
       {/* Display Name - Mobile Optimized */}
       <div className="space-y-2">
         <Label htmlFor="displayName">Display Name</Label>
-        <MobileInput 
+        <MobileInput
           id="displayName"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
@@ -279,7 +283,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
           This is how your name will appear to other users
         </p>
       </div>
-      
+
       {/* Bio - Mobile Optimized */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -298,7 +302,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
           style={{ fontSize: '16px' }} // Prevent iOS zoom
         />
       </div>
-      
+
       {/* Email - Mobile Optimized */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -307,7 +311,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
             Verified
           </Badge>
         </div>
-        <MobileInput 
+        <MobileInput
           id="email"
           value={user?.email || ''}
           readOnly
@@ -318,26 +322,28 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onSuccess }) => {
           Contact support to update your email address
         </p>
       </div>
-      
+
       {/* Member Since - Mobile Optimized */}
       <div className="space-y-2">
         <Label>Member Since</Label>
         <div className="p-4 bg-gray-50 rounded-lg">
           <p className="text-sm font-medium">
-            {new Date(user?.metadata.creationTime || Date.now()).toLocaleDateString('en-US', { 
-              year: 'numeric', 
+            {new Date(
+              user?.metadata.creationTime || Date.now()
+            ).toLocaleDateString('en-US', {
+              year: 'numeric',
               month: 'long',
-              day: 'numeric'
+              day: 'numeric',
             })}
           </p>
         </div>
       </div>
-      
+
       {/* Submit Button - Mobile Optimized */}
       <div className="pt-4">
-        <Button 
-          type="submit" 
-          className="w-full h-12" 
+        <Button
+          type="submit"
+          className="w-full h-12"
           disabled={isLoading || isUploadingPhoto}
         >
           {isLoading ? (

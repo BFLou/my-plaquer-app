@@ -11,10 +11,10 @@ import {
   MapPin,
   Minus,
   Plus,
-  Loader
+  Loader,
 } from 'lucide-react';
-import { MobileButton } from "@/components/ui/mobile-button";
-import { Badge } from "@/components/ui/badge";
+import { MobileButton } from '@/components/ui/mobile-button';
+import { Badge } from '@/components/ui/badge';
 import { Plaque } from '@/types/plaque';
 import DiscoverFilterDialog from '../../../plaques/DiscoverFilterDialog';
 import { capitalizeWords } from '@/utils/stringUtils';
@@ -96,16 +96,22 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
     isFavorite,
     isOpen,
     onToggle,
-    plaques
+    plaques,
   } = props;
 
   const safeArea = useSafeArea();
   const [showStandardFilters, setShowStandardFilters] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  const activeStandardFilters = selectedColors.length + selectedPostcodes.length +
-    selectedProfessions.length + selectedOrganisations.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
-  const totalActiveFilters = activeStandardFilters + (distanceFilter.enabled ? 1 : 0);
+  const activeStandardFilters =
+    selectedColors.length +
+    selectedPostcodes.length +
+    selectedProfessions.length +
+    selectedOrganisations.length +
+    (onlyVisited ? 1 : 0) +
+    (onlyFavorites ? 1 : 0);
+  const totalActiveFilters =
+    activeStandardFilters + (distanceFilter.enabled ? 1 : 0);
 
   const filterOptions = React.useMemo(() => {
     const postcodeCount: Record<string, number> = {};
@@ -113,22 +119,25 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
     const professionCount: Record<string, number> = {};
     const organisationCount: Record<string, number> = {};
 
-    plaques.forEach(plaque => {
-      if (plaque.postcode && plaque.postcode !== "Unknown") {
-        postcodeCount[plaque.postcode] = (postcodeCount[plaque.postcode] || 0) + 1;
+    plaques.forEach((plaque) => {
+      if (plaque.postcode && plaque.postcode !== 'Unknown') {
+        postcodeCount[plaque.postcode] =
+          (postcodeCount[plaque.postcode] || 0) + 1;
       }
 
       const color = plaque.color?.toLowerCase();
-      if (color && color !== "unknown") {
+      if (color && color !== 'unknown') {
         colorCount[color] = (colorCount[color] || 0) + 1;
       }
 
-      if (plaque.profession && plaque.profession !== "Unknown") {
-        professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
+      if (plaque.profession && plaque.profession !== 'Unknown') {
+        professionCount[plaque.profession] =
+          (professionCount[plaque.profession] || 0) + 1;
       }
 
-      if (plaque.organisations && plaque.organisations !== "Unknown") {
-        organisationCount[plaque.organisations] = (organisationCount[plaque.organisations] || 0) + 1;
+      if (plaque.organisations && plaque.organisations !== 'Unknown') {
+        organisationCount[plaque.organisations] =
+          (organisationCount[plaque.organisations] || 0) + 1;
       }
     });
 
@@ -141,7 +150,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
-          count
+          count,
         }))
         .sort((a, b) => b.count - a.count),
 
@@ -149,7 +158,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
-          count
+          count,
         }))
         .sort((a, b) => b.count - a.count),
 
@@ -157,9 +166,9 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
-          count
+          count,
         }))
-        .sort((a, b) => b.count - a.count)
+        .sort((a, b) => b.count - a.count),
     };
   }, [plaques]);
 
@@ -175,7 +184,10 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords: [number, number] = [position.coords.latitude, position.coords.longitude];
+        const coords: [number, number] = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
         onSetLocation(coords);
         setIsLocating(false);
         triggerHapticFeedback('success');
@@ -193,7 +205,10 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
   return (
     <>
       {/* Floating Tab - More compact */}
-      <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-[999]" style={{ marginBottom: safeArea.bottom }}>
+      <div
+        className="fixed bottom-3 left-1/2 -translate-x-1/2 z-[999]"
+        style={{ marginBottom: safeArea.bottom }}
+      >
         <MobileButton
           variant="default"
           size="sm"
@@ -214,11 +229,13 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
       </div>
 
       {/* Bottom Sheet - Enhanced with distance filter */}
-      <div className={`fixed inset-x-0 bottom-0 z-[1000] transform transition-transform duration-300 ${
-        isOpen ? 'translate-y-0' : 'translate-y-full'
-      }`} style={{ paddingBottom: safeArea.bottom }}>
+      <div
+        className={`fixed inset-x-0 bottom-0 z-[1000] transform transition-transform duration-300 ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ paddingBottom: safeArea.bottom }}
+      >
         <div className="bg-white rounded-t-xl shadow-2xl border-t border-gray-200 max-h-[75vh] flex flex-col">
-
           {/* Handle */}
           <div className="flex justify-center py-2">
             <div className="w-8 h-1 bg-gray-300 rounded-full"></div>
@@ -250,7 +267,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
           {/* Content - Scrollable */}
           <div className="flex-1 overflow-y-auto p-4">
-
             {/* Distance Filter Section */}
             <div className="mb-6">
               <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
@@ -273,7 +289,9 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                     ) : (
                       <Target className="mr-2" size={16} />
                     )}
-                    {isLocating ? 'Finding location...' : 'Use my current location'}
+                    {isLocating
+                      ? 'Finding location...'
+                      : 'Use my current location'}
                   </MobileButton>
 
                   <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
@@ -290,9 +308,11 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                           📍 {distanceFilter.locationName}
                         </div>
                         <div className="text-xs text-green-600">
-                          Within {distanceFilter.radius < 1
+                          Within{' '}
+                          {distanceFilter.radius < 1
                             ? `${Math.round(distanceFilter.radius * 1000)}m`
-                            : `${distanceFilter.radius}km`} radius
+                            : `${distanceFilter.radius}km`}{' '}
+                          radius
                         </div>
                       </div>
                       <MobileButton
@@ -309,20 +329,28 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
                   {/* Radius Controls */}
                   <div>
-                    <div className="text-xs font-medium text-gray-600 mb-2">Search Radius</div>
+                    <div className="text-xs font-medium text-gray-600 mb-2">
+                      Search Radius
+                    </div>
 
                     {/* Quick Distance Buttons */}
                     <div className="grid grid-cols-4 gap-2 mb-3">
                       {[0.5, 1, 2, 5].map((distance) => (
                         <MobileButton
                           key={distance}
-                          variant={Math.abs(distanceFilter.radius - distance) < 0.01 ? "default" : "outline"}
+                          variant={
+                            Math.abs(distanceFilter.radius - distance) < 0.01
+                              ? 'default'
+                              : 'outline'
+                          }
                           size="sm"
                           onClick={() => onRadiusChange(distance)}
                           className="h-8 text-xs font-medium"
                           touchOptimized
                         >
-                          {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
+                          {distance < 1
+                            ? `${Math.round(distance * 1000)}m`
+                            : `${distance}km`}
                         </MobileButton>
                       ))}
                     </div>
@@ -332,7 +360,11 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                       <MobileButton
                         variant="outline"
                         size="sm"
-                        onClick={() => onRadiusChange(Math.max(0.1, distanceFilter.radius - 0.1))}
+                        onClick={() =>
+                          onRadiusChange(
+                            Math.max(0.1, distanceFilter.radius - 0.1)
+                          )
+                        }
                         className="h-8 w-8 p-0"
                         touchOptimized
                       >
@@ -346,7 +378,11 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                       <MobileButton
                         variant="outline"
                         size="sm"
-                        onClick={() => onRadiusChange(Math.min(10, distanceFilter.radius + 0.1))}
+                        onClick={() =>
+                          onRadiusChange(
+                            Math.min(10, distanceFilter.radius + 0.1)
+                          )
+                        }
                         className="h-8 w-8 p-0"
                         touchOptimized
                       >
@@ -361,7 +397,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
             {/* Primary Actions - Updated grid */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <MobileButton
-                variant={activeStandardFilters > 0 ? "default" : "outline"}
+                variant={activeStandardFilters > 0 ? 'default' : 'outline'}
                 className="h-14 flex-col gap-1 text-center"
                 onClick={() => setShowStandardFilters(true)}
                 touchOptimized
@@ -375,18 +411,16 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
               {/* SINGLE Route button */}
               <MobileButton
-                variant={routeMode ? "default" : "outline"}
+                variant={routeMode ? 'default' : 'outline'}
                 className="h-14 flex-col gap-1 text-center relative"
                 onClick={onToggleRoute}
                 touchOptimized
               >
                 <Route size={18} />
-                <div className="text-xs">
-                  Route
-                </div>
+                <div className="text-xs">Route</div>
                 {routePointsCount > 0 && (
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center"
                   >
                     {routePointsCount}
@@ -422,13 +456,18 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
             {/* Active Filters Summary */}
             {totalActiveFilters > 0 && (
               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <div className="text-sm font-medium text-blue-800 mb-1">Active Filters</div>
+                <div className="text-sm font-medium text-blue-800 mb-1">
+                  Active Filters
+                </div>
                 <div className="space-y-1 text-xs text-blue-700">
                   {distanceFilter.enabled && (
                     <div>📍 {distanceFilter.locationName}</div>
                   )}
                   {activeStandardFilters > 0 && (
-                    <div>🏷️ {activeStandardFilters} attribute filter{activeStandardFilters > 1 ? 's' : ''}</div>
+                    <div>
+                      🏷️ {activeStandardFilters} attribute filter
+                      {activeStandardFilters > 1 ? 's' : ''}
+                    </div>
                   )}
                 </div>
               </div>
@@ -439,39 +478,29 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
 
       {/* Backdrop */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-[999]"
-          onClick={onToggle}
-        />
+        <div className="fixed inset-0 bg-black/20 z-[999]" onClick={onToggle} />
       )}
 
       {/* Standard Filters Dialog */}
       <DiscoverFilterDialog
         isOpen={showStandardFilters}
         onClose={() => setShowStandardFilters(false)}
-
         postcodes={filterOptions.postcodeOptions}
         selectedPostcodes={selectedPostcodes}
         onPostcodesChange={onPostcodesChange}
-
         colors={filterOptions.colorOptions}
         selectedColors={selectedColors}
         onColorsChange={onColorsChange}
-
         professions={filterOptions.professionOptions}
         selectedProfessions={selectedProfessions}
         onProfessionsChange={onProfessionsChange}
-
         organisations={filterOptions.organisationOptions}
         selectedOrganisations={selectedOrganisations}
         onOrganisationsChange={onOrganisationsChange}
-
         onlyVisited={onlyVisited}
         onVisitedChange={onVisitedChange}
-
         onlyFavorites={onlyFavorites}
         onFavoritesChange={onFavoritesChange}
-
         onApply={() => {
           triggerHapticFeedback('success');
           setShowStandardFilters(false);
@@ -481,7 +510,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
           onResetStandardFilters();
           setShowStandardFilters(false);
         }}
-
         distanceFilter={distanceFilter}
         allPlaques={plaques}
         isPlaqueVisited={isPlaqueVisited}

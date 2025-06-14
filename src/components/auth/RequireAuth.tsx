@@ -16,12 +16,12 @@ type RequireAuthProps = {
   authGateUrl?: string;
 };
 
-const RequireAuth: React.FC<RequireAuthProps> = ({ 
-  children, 
+const RequireAuth: React.FC<RequireAuthProps> = ({
+  children,
   showGatePage = false,
   featureName,
   redirectTo,
-  authGateUrl 
+  authGateUrl,
 }) => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -42,8 +42,9 @@ const RequireAuth: React.FC<RequireAuthProps> = ({
   if (!user) {
     if (showGatePage) {
       // Determine auth gate URL based on path if not provided
-      const targetAuthGate = authGateUrl || determineAuthGateUrl(location.pathname);
-      
+      const targetAuthGate =
+        authGateUrl || determineAuthGateUrl(location.pathname);
+
       // Use useEffect to avoid navigation during render
       React.useEffect(() => {
         navigate(targetAuthGate, {
@@ -52,11 +53,11 @@ const RequireAuth: React.FC<RequireAuthProps> = ({
             redirectTo: redirectTo || location.pathname,
             backTo: getBackPath(location.pathname),
             preserveModal: true,
-            preserveParams: true
-          }
+            preserveParams: true,
+          },
         });
       }, []);
-      
+
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="flex flex-col items-center gap-2">
@@ -66,17 +67,17 @@ const RequireAuth: React.FC<RequireAuthProps> = ({
         </div>
       );
     }
-    
+
     // For other cases, you could show a modal or redirect to signin
     React.useEffect(() => {
       navigate('/signin', {
         state: {
           redirectTo: location.pathname,
-          backTo: getBackPath(location.pathname)
-        }
+          backTo: getBackPath(location.pathname),
+        },
       });
     }, []);
-    
+
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-2">

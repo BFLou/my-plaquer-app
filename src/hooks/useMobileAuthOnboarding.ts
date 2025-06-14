@@ -27,7 +27,7 @@ export const useMobileAuthOnboarding = () => {
     hasShownNavHint: false,
     hasShownFeatureHint: false,
     dismissedCount: 0,
-    lastShown: null
+    lastShown: null,
   });
 
   // Load onboarding state from localStorage
@@ -44,26 +44,29 @@ export const useMobileAuthOnboarding = () => {
   }, []);
 
   // Save onboarding state to localStorage
-  const saveOnboardingState = useCallback((newState: Partial<OnboardingState>) => {
-    const updatedState = { ...onboardingState, ...newState };
-    setOnboardingState(updatedState);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedState));
-  }, [onboardingState]);
+  const saveOnboardingState = useCallback(
+    (newState: Partial<OnboardingState>) => {
+      const updatedState = { ...onboardingState, ...newState };
+      setOnboardingState(updatedState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedState));
+    },
+    [onboardingState]
+  );
 
   // Check if we should show onboarding (cooldown logic)
   const shouldShowOnboarding = useCallback(() => {
     if (user || !isMobile()) return false;
-    
+
     if (onboardingState.dismissedCount >= MAX_DISMISSALS) return false;
-    
+
     if (onboardingState.lastShown) {
       const lastShownTime = new Date(onboardingState.lastShown).getTime();
       const now = Date.now();
       const hoursSinceLastShown = (now - lastShownTime) / (1000 * 60 * 60);
-      
+
       if (hoursSinceLastShown < COOLDOWN_HOURS) return false;
     }
-    
+
     return true;
   }, [user, onboardingState]);
 
@@ -83,15 +86,15 @@ export const useMobileAuthOnboarding = () => {
             triggerHapticFeedback('light');
             navigate('/join');
             toast.dismiss(toastId);
-          }
+          },
         },
         onDismiss: () => {
           saveOnboardingState({
             hasShownWelcome: true,
             dismissedCount: onboardingState.dismissedCount + 1,
-            lastShown: new Date().toISOString()
+            lastShown: new Date().toISOString(),
           });
-        }
+        },
       }
     );
 
@@ -103,7 +106,7 @@ export const useMobileAuthOnboarding = () => {
     if (!shouldShowOnboarding() || onboardingState.hasShownNavHint) return;
 
     const toastId = toast.info(
-      "💡 Tap the Profile or Library tabs below to sign in and unlock all features!",
+      '💡 Tap the Profile or Library tabs below to sign in and unlock all features!',
       {
         duration: 8000,
         position: 'bottom-center',
@@ -117,15 +120,15 @@ export const useMobileAuthOnboarding = () => {
             triggerHapticFeedback('medium');
             navigate('/signin');
             toast.dismiss(toastId);
-          }
+          },
         },
         onDismiss: () => {
           saveOnboardingState({
             hasShownNavHint: true,
             dismissedCount: onboardingState.dismissedCount + 1,
-            lastShown: new Date().toISOString()
+            lastShown: new Date().toISOString(),
           });
-        }
+        },
       }
     );
 
@@ -133,40 +136,50 @@ export const useMobileAuthOnboarding = () => {
   }, [shouldShowOnboarding, onboardingState, navigate, saveOnboardingState]);
 
   // Show feature-specific hint when user tries to access locked features
-  const showFeatureHint = useCallback((featureName: string) => {
-    if (!shouldShowOnboarding() || onboardingState.hasShownFeatureHint) return;
+  const showFeatureHint = useCallback(
+    (featureName: string) => {
+      if (!shouldShowOnboarding() || onboardingState.hasShownFeatureHint)
+        return;
 
-    const toastId = toast.info(
-      `🔐 Sign in to ${featureName} and unlock your personal plaque collection!`,
-      {
-        duration: 6000,
-        position: 'top-center',
-        className: 'mobile-onboarding-toast feature-hint-toast',
-        action: {
-          label: 'Quick Sign In',
-          onClick: () => {
-            triggerHapticFeedback('medium');
-            navigate('/signin', {
-              state: {
-                featureName: `access ${featureName}`,
-                redirectTo: location.pathname
-              }
+      const toastId = toast.info(
+        `🔐 Sign in to ${featureName} and unlock your personal plaque collection!`,
+        {
+          duration: 6000,
+          position: 'top-center',
+          className: 'mobile-onboarding-toast feature-hint-toast',
+          action: {
+            label: 'Quick Sign In',
+            onClick: () => {
+              triggerHapticFeedback('medium');
+              navigate('/signin', {
+                state: {
+                  featureName: `access ${featureName}`,
+                  redirectTo: location.pathname,
+                },
+              });
+              toast.dismiss(toastId);
+            },
+          },
+          onDismiss: () => {
+            saveOnboardingState({
+              hasShownFeatureHint: true,
+              dismissedCount: onboardingState.dismissedCount + 1,
+              lastShown: new Date().toISOString(),
             });
-            toast.dismiss(toastId);
-          }
-        },
-        onDismiss: () => {
-          saveOnboardingState({
-            hasShownFeatureHint: true,
-            dismissedCount: onboardingState.dismissedCount + 1,
-            lastShown: new Date().toISOString()
-          });
+          },
         }
-      }
-    );
+      );
 
-    saveOnboardingState({ hasShownFeatureHint: true });
-  }, [shouldShowOnboarding, onboardingState, navigate, location, saveOnboardingState]);
+      saveOnboardingState({ hasShownFeatureHint: true });
+    },
+    [
+      shouldShowOnboarding,
+      onboardingState,
+      navigate,
+      location,
+      saveOnboardingState,
+    ]
+  );
 
   // Show discovery hint on discover page
   const showDiscoveryHint = useCallback(() => {
@@ -175,7 +188,7 @@ export const useMobileAuthOnboarding = () => {
     // Only show after user has been on discover page for a few seconds
     const timer = setTimeout(() => {
       const toastId = toast.info(
-        "🌟 Sign in to save your favorite plaques and track your visits!",
+        '🌟 Sign in to save your favorite plaques and track your visits!',
         {
           duration: 5000,
           position: 'top-center',
@@ -187,12 +200,12 @@ export const useMobileAuthOnboarding = () => {
               navigate('/signin', {
                 state: {
                   featureName: 'save favorites and track visits',
-                  redirectTo: '/discover'
-                }
+                  redirectTo: '/discover',
+                },
               });
               toast.dismiss(toastId);
-            }
-          }
+            },
+          },
         }
       );
     }, 5000);
@@ -217,7 +230,10 @@ export const useMobileAuthOnboarding = () => {
         break;
 
       case '/discover':
-        if (onboardingState.hasShownWelcome && !onboardingState.hasShownNavHint) {
+        if (
+          onboardingState.hasShownWelcome &&
+          !onboardingState.hasShownNavHint
+        ) {
           setTimeout(showNavigationHint, 4000);
         } else {
           // Show discovery-specific hint
@@ -230,12 +246,12 @@ export const useMobileAuthOnboarding = () => {
         break;
     }
   }, [
-    user, 
-    location.pathname, 
-    onboardingState, 
-    showWelcomeToast, 
-    showNavigationHint, 
-    showDiscoveryHint
+    user,
+    location.pathname,
+    onboardingState,
+    showWelcomeToast,
+    showNavigationHint,
+    showDiscoveryHint,
   ]);
 
   // Clear onboarding when user signs in
@@ -243,11 +259,14 @@ export const useMobileAuthOnboarding = () => {
     if (user) {
       localStorage.removeItem(STORAGE_KEY);
       // Show success message
-      toast.success("🎉 Welcome to Plaquer! You now have access to all features.", {
-        duration: 4000,
-        position: 'top-center',
-        className: 'mobile-onboarding-toast success-toast'
-      });
+      toast.success(
+        '🎉 Welcome to Plaquer! You now have access to all features.',
+        {
+          duration: 4000,
+          position: 'top-center',
+          className: 'mobile-onboarding-toast success-toast',
+        }
+      );
     }
   }, [user]);
 
@@ -261,9 +280,9 @@ export const useMobileAuthOnboarding = () => {
         hasShownNavHint: false,
         hasShownFeatureHint: false,
         dismissedCount: 0,
-        lastShown: null
+        lastShown: null,
       });
-    }
+    },
   };
 };
 
@@ -307,12 +326,15 @@ export const useOnboardingTrigger = () => {
   const { showFeatureHint } = useMobileAuthOnboarding();
   const { user } = useAuth();
 
-  const triggerAuthHint = useCallback((featureName: string) => {
-    if (!user && isMobile()) {
-      triggerHapticFeedback('light');
-      showFeatureHint(featureName);
-    }
-  }, [user, showFeatureHint]);
+  const triggerAuthHint = useCallback(
+    (featureName: string) => {
+      if (!user && isMobile()) {
+        triggerHapticFeedback('light');
+        showFeatureHint(featureName);
+      }
+    },
+    [user, showFeatureHint]
+  );
 
   return { triggerAuthHint };
 };

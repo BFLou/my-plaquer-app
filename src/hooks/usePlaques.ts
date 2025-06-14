@@ -38,14 +38,14 @@ export const usePlaques = () => {
       // For demo purposes, import and use the sample data
       // You should replace this with the actual Firestore fetch in production
       const { default: plaqueData } = await import('../data/plaque_data.json');
-      
+
       // Handle both array and object cases for the JSON data
-      const rawData = Array.isArray(plaqueData) 
-        ? plaqueData as any[]
-        : Object.values(plaqueData) as any[];
-      
+      const rawData = Array.isArray(plaqueData)
+        ? (plaqueData as any[])
+        : (Object.values(plaqueData) as any[]);
+
       const adaptedData = adaptPlaquesData(rawData);
-      
+
       setPlaques(adaptedData);
       setLoading(false);
     } catch (err: any) {
@@ -83,11 +83,11 @@ export const usePlaques = () => {
       if (plaques.length === 0) {
         await fetchPlaques();
       }
-      
+
       const availablePlaques = plaques.filter(
-        plaque => !collectionPlaqueIds.includes(plaque.id)
+        (plaque) => !collectionPlaqueIds.includes(plaque.id)
       );
-      
+
       return availablePlaques;
     } catch (err: any) {
       console.error('Error fetching available plaques:', err);
@@ -104,12 +104,12 @@ export const usePlaques = () => {
     fetchPlaques();
   }, []);
 
-  return { 
-    plaques, 
-    loading, 
-    error, 
+  return {
+    plaques,
+    loading,
+    error,
     fetchPlaques,
-    fetchAvailablePlaques
+    fetchAvailablePlaques,
   };
 };
 

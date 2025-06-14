@@ -12,16 +12,19 @@ export class EnhancedClusterIcon {
   private static defaultOptions: ClusterPreviewOptions = {
     maxTitles: 5,
     showCategories: true,
-    enableHover: true
+    enableHover: true,
   };
 
-  static createClusterIcon(cluster: L.MarkerClusterGroup, options: Partial<ClusterPreviewOptions> = {}) {
+  static createClusterIcon(
+    cluster: L.MarkerClusterGroup,
+    options: Partial<ClusterPreviewOptions> = {}
+  ) {
     const opts = { ...this.defaultOptions, ...options };
     const count = cluster.getChildCount();
-    
+
     let size = 36;
     let fontSize = '12px';
-    
+
     if (count < 6) {
       size = 36;
       fontSize = '12px';
@@ -35,20 +38,25 @@ export class EnhancedClusterIcon {
       size = 60;
       fontSize = '18px';
     }
-    
+
     const iconElement = L.divIcon({
       html: this.createClusterHTML(count, size, fontSize, opts.showCategories),
       className: 'enhanced-cluster-icon',
       iconSize: [size, size],
-      iconAnchor: [size/2, size/2]
+      iconAnchor: [size / 2, size / 2],
     });
 
     return iconElement;
   }
 
-  private static createClusterHTML(count: number, size: number, fontSize: string, showCategories: boolean = true): string {
+  private static createClusterHTML(
+    count: number,
+    size: number,
+    fontSize: string,
+    showCategories: boolean = true
+  ): string {
     const displayCount = count > 999 ? '999+' : count.toString();
-    
+
     return `
       <div class="cluster-container" style="position: relative;">
         <!-- Main cluster circle -->
@@ -75,7 +83,9 @@ export class EnhancedClusterIcon {
         </div>
         
         <!-- Pulse rings for large clusters -->
-        ${count > 50 && showCategories ? `
+        ${
+          count > 50 && showCategories
+            ? `
           <div class="pulse-ring" style="
             position: absolute;
             top: 50%;
@@ -100,7 +110,9 @@ export class EnhancedClusterIcon {
             animation: cluster-pulse 2s infinite 0.5s;
             z-index: 0;
           "></div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
       
       <style>
@@ -134,19 +146,22 @@ export class EnhancedClusterIcon {
     `;
   }
 
-  static createClusterPreview(plaques: Plaque[], options: Partial<ClusterPreviewOptions> = {}): string {
+  static createClusterPreview(
+    plaques: Plaque[],
+    options: Partial<ClusterPreviewOptions> = {}
+  ): string {
     const opts = { ...this.defaultOptions, ...options };
     const totalCount = plaques.length;
-    
+
     // For very large clusters (100+), show category summary instead of individual titles
     if (totalCount > 50) {
       return this.createCategorySummary(plaques);
     }
-    
+
     // For medium clusters, show limited titles + "and X more"
     const displayPlaques = plaques.slice(0, opts.maxTitles);
     const remaining = Math.max(0, totalCount - opts.maxTitles);
-    
+
     return `
       <div class="cluster-preview" style="
         position: absolute;
@@ -173,7 +188,9 @@ export class EnhancedClusterIcon {
         </div>
         
         <div style="space-y: 2px; max-height: 120px; overflow-y: auto;">
-          ${displayPlaques.map(plaque => `
+          ${displayPlaques
+            .map(
+              (plaque) => `
             <div style="
               font-size: 11px;
               line-height: 1.3;
@@ -184,15 +201,23 @@ export class EnhancedClusterIcon {
               <div style="font-weight: 500; color: white;">
                 ${this.truncateText(plaque.title || 'Unnamed Plaque', 35)}
               </div>
-              ${plaque.profession ? `
+              ${
+                plaque.profession
+                  ? `
                 <div style="font-size: 10px; color: #9ca3af; margin-top: 1px;">
                   ${this.truncateText(plaque.profession, 25)}
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
           
-          ${remaining > 0 ? `
+          ${
+            remaining > 0
+              ? `
             <div style="
               font-size: 11px;
               color: #60a5fa;
@@ -201,7 +226,9 @@ export class EnhancedClusterIcon {
             ">
               + ${remaining} more plaques
             </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
         
         <div style="
@@ -233,7 +260,7 @@ export class EnhancedClusterIcon {
   private static createCategorySummary(plaques: Plaque[]): string {
     const categories = this.analyzePlaqueCategories(plaques);
     const totalCount = plaques.length;
-    
+
     return `
       <div class="cluster-preview large-cluster" style="
         position: absolute;
@@ -270,7 +297,10 @@ export class EnhancedClusterIcon {
           <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 4px; font-weight: 600;">
             Top Categories:
           </div>
-          ${categories.slice(0, 4).map(cat => `
+          ${categories
+            .slice(0, 4)
+            .map(
+              (cat) => `
             <div style="
               display: flex;
               justify-content: space-between;
@@ -292,10 +322,14 @@ export class EnhancedClusterIcon {
                 ${cat.count}
               </span>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
         
-        ${categories.length > 4 ? `
+        ${
+          categories.length > 4
+            ? `
           <div style="
             font-size: 10px;
             color: #9ca3af;
@@ -305,7 +339,9 @@ export class EnhancedClusterIcon {
           ">
             + ${categories.length - 4} more categories
           </div>
-        ` : ''}
+        `
+            : ''
+        }
         
         <div style="
           font-size: 10px;
@@ -336,24 +372,32 @@ export class EnhancedClusterIcon {
     `;
   }
 
-  private static analyzePlaqueCategories(plaques: Plaque[]): Array<{name: string, count: number}> {
+  private static analyzePlaqueCategories(
+    plaques: Plaque[]
+  ): Array<{ name: string; count: number }> {
     const categories: Record<string, number> = {};
-    
-    plaques.forEach(plaque => {
+
+    plaques.forEach((plaque) => {
       const category = plaque.profession || 'Other';
       categories[category] = (categories[category] || 0) + 1;
     });
-    
+
     return Object.entries(categories)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
   }
 
-  private static extractPlaquesFromCluster(cluster: L.MarkerClusterGroup): Plaque[] {
+  private static extractPlaquesFromCluster(
+    cluster: L.MarkerClusterGroup
+  ): Plaque[] {
     // This would need to be implemented based on how your cluster stores plaque data
     // For now, returning empty array as placeholder
     const markers = cluster.getAllChildMarkers?.() || [];
-    return markers.map((marker: any) => marker.options?.plaqueData).filter(Boolean) || [];
+    return (
+      markers
+        .map((marker: any) => marker.options?.plaqueData)
+        .filter(Boolean) || []
+    );
   }
 
   private static truncateText(text: string, maxLength: number): string {
@@ -362,11 +406,14 @@ export class EnhancedClusterIcon {
   }
 
   // Enhanced cluster interaction setup
-  static setupClusterInteractions(clusterGroup: L.MarkerClusterGroup, map: L.Map) {
+  static setupClusterInteractions(
+    clusterGroup: L.MarkerClusterGroup,
+    map: L.Map
+  ) {
     clusterGroup.on('clustermouseover', (event: any) => {
       const clusterLayer = event.layer;
       const clusterElement = clusterLayer.getElement();
-      
+
       if (clusterElement) {
         // Add hover preview if it doesn't exist
         if (!clusterElement.querySelector('.cluster-preview')) {
@@ -386,13 +433,13 @@ export class EnhancedClusterIcon {
     clusterGroup.on('clusterclick', (event: any) => {
       const clusterLayer = event.layer;
       const bounds = clusterLayer.getBounds();
-      
+
       // Smooth zoom to cluster with padding
       map.fitBounds(bounds, {
         padding: [20, 20],
         maxZoom: 16,
         animate: true,
-        duration: 0.8
+        duration: 0.8,
       });
     });
   }

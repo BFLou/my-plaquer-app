@@ -46,14 +46,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   actions = [],
   primaryAction,
   className = '',
-  transparent = false
+  transparent = false,
 }) => {
   const hasActions = actions.length > 0;
-  const leftAction = showClose ? onClose : (showBack ? onBack : undefined);
+  const leftAction = showClose ? onClose : showBack ? onBack : undefined;
   const LeftIcon = showClose ? X : ArrowLeft;
 
   return (
-    <header className={`sticky top-0 z-40 ${transparent ? 'bg-transparent' : 'bg-white border-b border-gray-200'} ${className}`}>
+    <header
+      className={`sticky top-0 z-40 ${transparent ? 'bg-transparent' : 'bg-white border-b border-gray-200'} ${className}`}
+    >
       <div className="flex items-center justify-between px-4 py-3 safe-area-pt">
         {/* Left side - Back/Close button */}
         <div className="flex items-center min-w-0 flex-1">
@@ -63,21 +65,19 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               size="sm"
               onClick={leftAction}
               className="mr-3 h-8 w-8 p-0 rounded-full hover:bg-gray-100"
-              aria-label={showClose ? 'Close' : (backLabel || 'Go back')}
+              aria-label={showClose ? 'Close' : backLabel || 'Go back'}
             >
               <LeftIcon size={18} />
             </Button>
           )}
-          
+
           {/* Title section */}
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-semibold text-gray-900 truncate">
               {title}
             </h1>
             {subtitle && (
-              <p className="text-sm text-gray-500 truncate">
-                {subtitle}
-              </p>
+              <p className="text-sm text-gray-500 truncate">{subtitle}</p>
             )}
           </div>
         </div>
@@ -95,7 +95,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
               {primaryAction.label}
             </Button>
           )}
-          
+
           {hasActions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -113,14 +113,21 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                     <DropdownMenuItem
                       onClick={action.onClick}
                       disabled={action.disabled}
-                      className={action.variant === 'destructive' ? 'text-red-600 focus:text-red-600' : ''}
+                      className={
+                        action.variant === 'destructive'
+                          ? 'text-red-600 focus:text-red-600'
+                          : ''
+                      }
                     >
-                      {action.icon && <span className="mr-2">{action.icon}</span>}
+                      {action.icon && (
+                        <span className="mr-2">{action.icon}</span>
+                      )}
                       {action.label}
                     </DropdownMenuItem>
-                    {index < actions.length - 1 && action.variant === 'destructive' && (
-                      <DropdownMenuSeparator />
-                    )}
+                    {index < actions.length - 1 &&
+                      action.variant === 'destructive' && (
+                        <DropdownMenuSeparator />
+                      )}
                   </React.Fragment>
                 ))}
               </DropdownMenuContent>

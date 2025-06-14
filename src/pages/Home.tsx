@@ -1,101 +1,111 @@
 // src/pages/Home.tsx - Mobile-optimized with touch-friendly components
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { 
-  ChevronRight, Map, Navigation, 
-  Info, CheckCircle, Filter as FilterIcon, MapPin
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ChevronRight,
+  Map,
+  Navigation,
+  Info,
+  CheckCircle,
+  Filter as FilterIcon,
+  MapPin,
 } from 'lucide-react';
-import { PageContainer } from "@/components";
-import { MobileButton } from "@/components/ui/mobile-button";
-import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
-import { toast } from "sonner";
-import { 
-  OnboardingStepContent, CategoriesSection
-} from "@/components/home/HomeComponents";
-import EnhancedSearchBar from "@/components/home/EnhancedSearchBar";
-import { usePlaqueCounts, getPlaqueCategories } from "@/utils/plaque-utils";
-import EnhancedHowItWorks from "@/components/home/EnhancedHowItWorks";
-import { isMobile, triggerHapticFeedback } from "@/utils/mobileUtils";
+import { PageContainer } from '@/components';
+import { MobileButton } from '@/components/ui/mobile-button';
+import { MobileDialog } from '@/components/ui/mobile-dialog';
+import { FloatingActionButton } from '@/components/layout/FloatingActionButton';
+import { toast } from 'sonner';
+import {
+  OnboardingStepContent,
+  CategoriesSection,
+} from '@/components/home/HomeComponents';
+import EnhancedSearchBar from '@/components/home/EnhancedSearchBar';
+import { usePlaqueCounts, getPlaqueCategories } from '@/utils/plaque-utils';
+import EnhancedHowItWorks from '@/components/home/EnhancedHowItWorks';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 
 // Famous historical figures data for the map
 const famousPlaques = [
   {
     id: 730,
-    name: "Alan Turing",
-    profession: "Mathematician & Computer Scientist",
+    name: 'Alan Turing',
+    profession: 'Mathematician & Computer Scientist',
     lat: 51.5233,
     lng: -0.1849,
-    location: "2 Warrington Crescent, Maida Vale"
+    location: '2 Warrington Crescent, Maida Vale',
   },
   {
     id: 487,
-    name: "Ada Lovelace",
-    profession: "Mathematician & Writer",
+    name: 'Ada Lovelace',
+    profession: 'Mathematician & Writer',
     lat: 51.5079,
     lng: -0.1364,
-    location: "12 St James's Square"
+    location: "12 St James's Square",
   },
   {
     id: 656,
-    name: "Florence Nightingale",
-    profession: "Nurse & Statistician",
+    name: 'Florence Nightingale',
+    profession: 'Nurse & Statistician',
     lat: 51.5083,
     lng: -0.1502,
-    location: "10 South Street, Mayfair"
+    location: '10 South Street, Mayfair',
   },
   {
     id: 302,
-    name: "Sir Isaac Newton",
-    profession: "Physicist & Mathematician",
+    name: 'Sir Isaac Newton',
+    profession: 'Physicist & Mathematician',
     lat: 51.50806,
     lng: -0.13682,
-    location: "87 Jermyn Street, St James's"
+    location: "87 Jermyn Street, St James's",
   },
   {
     id: 108,
-    name: "Charles Darwin",
-    profession: "Naturalist & Biologist",
+    name: 'Charles Darwin',
+    profession: 'Naturalist & Biologist',
     lat: 51.5245,
     lng: -0.1334,
-    location: "Biological Sciences Building, UCL"
+    location: 'Biological Sciences Building, UCL',
   },
   {
     id: 352,
-    name: "Sir Winston Churchill",
-    profession: "Prime Minister & Statesman",
-    lat: 51.50207, 
+    name: 'Sir Winston Churchill',
+    profession: 'Prime Minister & Statesman',
+    lat: 51.50207,
     lng: -0.18019,
-    location: "28 Hyde Park Gate, Kensington"
+    location: '28 Hyde Park Gate, Kensington',
   },
   {
     id: 372,
-    name: "Charles Dickens",
-    profession: "Novelist",
-    lat: 51.5223, 
+    name: 'Charles Dickens',
+    profession: 'Novelist',
+    lat: 51.5223,
     lng: -0.1146,
-    location: "48 Doughty Street, Holborn"
+    location: '48 Doughty Street, Holborn',
   },
   {
     id: 296,
-    name: "Karl Marx",
-    profession: "Philosopher & Economist",
-    lat: 51.5137, 
+    name: 'Karl Marx',
+    profession: 'Philosopher & Economist',
+    lat: 51.5137,
     lng: -0.1332,
-    location: "28 Dean Street, Soho"
-  }
+    location: '28 Dean Street, Soho',
+  },
 ];
 
 // Enhanced Map Preview component with mobile optimizations
-const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path: string) => void }) => {
+const EnhancedMapPreview = ({
+  navigateToDiscover,
+}: {
+  navigateToDiscover: (path: string) => void;
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
-  
+
   // Initialize map with mobile-specific settings
   useEffect(() => {
     if (!window.L || !mapContainerRef.current) return;
-    
+
     try {
       // Create mobile-optimized map
       const map = window.L.map(mapContainerRef.current, {
@@ -107,14 +117,18 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
         doubleClickZoom: false,
         attributionControl: true,
         touchZoom: true, // Enable touch zoom
-        tapTolerance: 15 // Increase tap tolerance for mobile
+        tapTolerance: 15, // Increase tap tolerance for mobile
       });
-      
+
       // Use a styled map tile layer
-      window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
+      window.L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        {
+          maxZoom: 19,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }
+      ).addTo(map);
 
       // Create mobile-friendly tooltip
       const tooltipEl = document.createElement('div');
@@ -136,7 +150,7 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
         font-size: 14px;
         line-height: 1.4;
       `;
-      
+
       if (mapContainerRef.current) {
         mapContainerRef.current.appendChild(tooltipEl);
       }
@@ -153,55 +167,57 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
             </div>
           `,
           iconSize: [40, 40], // Larger for mobile
-          iconAnchor: [20, 20]
+          iconAnchor: [20, 20],
         });
 
-        const marker = window.L.marker([plaque.lat, plaque.lng], { 
+        const marker = window.L.marker([plaque.lat, plaque.lng], {
           icon,
-          interactive: true
+          interactive: true,
         }).addTo(map);
-        
+
         // Mobile-optimized marker interaction
         let tooltipTimeout: NodeJS.Timeout;
-        
+
         const showTooltip = (e: any) => {
           clearTimeout(tooltipTimeout);
-          
+
           tooltipEl.innerHTML = `
             <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${plaque.name}</div>
             <div style="font-size: 13px; opacity: 0.9; margin-bottom: 6px;">${plaque.profession}</div>
             <div style="font-size: 12px; opacity: 0.8;">${plaque.location}</div>
           `;
-          
+
           const point = map.latLngToContainerPoint(e.target.getLatLng());
           const tooltipWidth = 240;
           const tooltipHeight = 80;
           const mapWidth = mapContainerRef.current?.clientWidth || 300;
           const mapHeight = mapContainerRef.current?.clientHeight || 300;
-          
+
           let top = point.y - tooltipHeight - 15;
-          let left = point.x - (tooltipWidth / 2);
-          
+          let left = point.x - tooltipWidth / 2;
+
           if (top < 10) top = point.y + 50;
           if (left < 10) left = 10;
-          if (left + tooltipWidth > mapWidth - 10) left = mapWidth - tooltipWidth - 10;
-          if (top + tooltipHeight > mapHeight - 70) top = mapHeight - tooltipHeight - 70;
-          
+          if (left + tooltipWidth > mapWidth - 10)
+            left = mapWidth - tooltipWidth - 10;
+          if (top + tooltipHeight > mapHeight - 70)
+            top = mapHeight - tooltipHeight - 70;
+
           tooltipEl.style.left = `${left}px`;
           tooltipEl.style.top = `${top}px`;
           tooltipEl.style.display = 'block';
         };
-        
+
         const hideTooltip = () => {
           tooltipTimeout = setTimeout(() => {
             tooltipEl.style.display = 'none';
           }, 100);
         };
-        
+
         if (isMobile()) {
           // Mobile: Use tap events
           marker.on('click', showTooltip);
-          
+
           // Hide tooltip after delay on mobile
           marker.on('click', () => {
             setTimeout(hideTooltip, 3000);
@@ -211,7 +227,7 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
           marker.on('mouseover', showTooltip);
           marker.on('mouseout', hideTooltip);
         }
-        
+
         // Navigate on click/tap
         marker.on('click', (e: any) => {
           e.originalEvent.stopPropagation();
@@ -221,7 +237,7 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
       });
 
       setIsMapLoaded(true);
-      
+
       return () => {
         if (map) {
           map.remove();
@@ -243,7 +259,7 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
           <MapPin className="mx-auto text-blue-400 mb-2" size={32} />
           <p className="text-blue-600 text-sm font-medium">Interactive Map</p>
           <p className="text-blue-500 text-xs mt-1">Tap to explore plaques</p>
-          <MobileButton 
+          <MobileButton
             onClick={() => navigateToDiscover('/discover?view=map')}
             className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
             touchOptimized
@@ -258,16 +274,16 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
   return (
     <div className="relative w-full h-full rounded-xl overflow-hidden">
       {/* Map container */}
-      <div 
-        ref={mapContainerRef} 
+      <div
+        ref={mapContainerRef}
         className="w-full h-full bg-gray-100 cursor-pointer touch-manipulation"
         style={{ minHeight: '280px' }}
         onClick={() => !isMobile() && navigateToDiscover('/discover?view=map')}
       />
-      
+
       {/* Mobile-optimized bottom button */}
       <div className="absolute bottom-3 left-3 right-3">
-        <MobileButton 
+        <MobileButton
           className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-sm py-3"
           onClick={() => {
             triggerHapticFeedback('light');
@@ -279,7 +295,7 @@ const EnhancedMapPreview = ({ navigateToDiscover }: { navigateToDiscover: (path:
           Explore Full Map
         </MobileButton>
       </div>
-      
+
       {/* Loading state */}
       {!isMapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -297,7 +313,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
-  
+
   // Get dynamic plaque counts from plaque_data.json
   const { counts, loading } = usePlaqueCounts();
 
@@ -334,56 +350,63 @@ const Home = () => {
   // Handle near me button click with mobile optimization
   const handleNearMe = () => {
     triggerHapticFeedback('medium');
-    
+
     if (navigator.geolocation) {
-      const loadingToast = toast.loading("Finding your location...");
-      
+      const loadingToast = toast.loading('Finding your location...');
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           toast.dismiss(loadingToast);
           triggerHapticFeedback('success');
           const { latitude, longitude } = position.coords;
-          navigate(`/discover?view=map&lat=${latitude}&lng=${longitude}&zoom=15`);
+          navigate(
+            `/discover?view=map&lat=${latitude}&lng=${longitude}&zoom=15`
+          );
         },
         (positionError) => {
           toast.dismiss(loadingToast);
           triggerHapticFeedback('error');
-          toast.error("Could not determine your location. Please allow location access.");
+          toast.error(
+            'Could not determine your location. Please allow location access.'
+          );
           console.error('Geolocation error:', positionError);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutes
+          maximumAge: 300000, // 5 minutes
         }
       );
     } else {
       triggerHapticFeedback('error');
-      toast.error("Geolocation is not supported by your browser");
+      toast.error('Geolocation is not supported by your browser');
     }
   };
 
   // Onboarding steps content
   const onboardingSteps = [
     {
-      title: "Welcome to Plaquer",
-      description: "Discover, track and collect London's iconic blue plaques marking historical sites across the city.",
-      icon: <Info size={40} className="text-blue-500" />
+      title: 'Welcome to Plaquer',
+      description:
+        "Discover, track and collect London's iconic blue plaques marking historical sites across the city.",
+      icon: <Info size={40} className="text-blue-500" />,
     },
     {
-      title: "Find Plaques",
-      description: "Use our interactive map to locate blue plaques near you or search for specific historical figures.",
-      icon: <Map size={40} className="text-blue-500" />
+      title: 'Find Plaques',
+      description:
+        'Use our interactive map to locate blue plaques near you or search for specific historical figures.',
+      icon: <Map size={40} className="text-blue-500" />,
     },
     {
-      title: "Build Your Collection",
-      description: "Visit plaques in person, mark them as visited, and create themed collections of your favorites.",
-      icon: <CheckCircle size={40} className="text-blue-500" />
-    }
+      title: 'Build Your Collection',
+      description:
+        'Visit plaques in person, mark them as visited, and create themed collections of your favorites.',
+      icon: <CheckCircle size={40} className="text-blue-500" />,
+    },
   ];
 
   return (
-    <PageContainer 
+    <PageContainer
       activePage="home"
       simplifiedFooter={false}
       hideNavBar={false}
@@ -397,7 +420,7 @@ const Home = () => {
           <div className="absolute bottom-10 right-20 w-48 md:w-60 h-48 md:h-60 rounded-full bg-white"></div>
           <div className="absolute top-32 right-32 w-16 md:w-20 h-16 md:h-20 rounded-full bg-white"></div>
         </div>
-        
+
         <div className="container mx-auto relative z-10">
           <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
             {/* Left side with content */}
@@ -406,9 +429,10 @@ const Home = () => {
                 Discover History Where You Stand
               </h1>
               <p className="text-base sm:text-lg md:text-xl mb-6 md:mb-8 opacity-90">
-                Explore London's iconic blue plaques and build your personal collection of visited landmarks.
+                Explore London's iconic blue plaques and build your personal
+                collection of visited landmarks.
               </p>
-              <MobileButton 
+              <MobileButton
                 className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg font-semibold shadow-lg text-base"
                 onClick={() => {
                   triggerHapticFeedback('light');
@@ -419,16 +443,14 @@ const Home = () => {
                 Start Exploring <ChevronRight size={18} className="ml-2" />
               </MobileButton>
             </div>
-            
+
             {/* Right side with enhanced map */}
             <div className="w-full md:w-1/2 flex justify-center">
               <div className="relative w-80 h-80 sm:w-96 sm:h-80 md:w-96 md:h-80">
                 <div className="absolute -inset-4 bg-blue-500 rounded-2xl rotate-6 transform"></div>
                 <div className="absolute -inset-2 bg-blue-400 rounded-2xl -rotate-3 transform"></div>
                 <div className="absolute inset-0 bg-white rounded-2xl shadow-xl overflow-hidden">
-                  <EnhancedMapPreview 
-                    navigateToDiscover={navigateToMapView}
-                  />
+                  <EnhancedMapPreview navigateToDiscover={navigateToMapView} />
                 </div>
               </div>
             </div>
@@ -440,34 +462,41 @@ const Home = () => {
       <section className="py-6 px-4">
         <div className="container mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 -mt-8 md:-mt-12 relative z-20 max-w-4xl mx-auto">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-center">Find Plaques</h2>
-            
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-center">
+              Find Plaques
+            </h2>
+
             {/* Enhanced search bar */}
             <div className="mb-4">
               <EnhancedSearchBar onSearch={handleSearch} />
             </div>
-            
+
             {/* Filter categories */}
             <div className="space-y-3">
               <div className="flex items-center">
                 <FilterIcon size={14} className="text-gray-500 mr-2" />
-                <h3 className="text-sm font-medium text-gray-700">Explore by Topic</h3>
+                <h3 className="text-sm font-medium text-gray-700">
+                  Explore by Topic
+                </h3>
               </div>
-              
+
               {loading ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="h-12 bg-gray-100 animate-pulse rounded-lg"></div>
+                    <div
+                      key={i}
+                      className="h-12 bg-gray-100 animate-pulse rounded-lg"
+                    ></div>
                   ))}
                 </div>
               ) : (
                 <CategoriesSection categories={categories} />
               )}
             </div>
-            
+
             {/* Near me button - Touch optimized */}
             <div className="mt-4">
-              <MobileButton 
+              <MobileButton
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-semibold"
                 onClick={handleNearMe}
                 touchOptimized
@@ -481,11 +510,13 @@ const Home = () => {
       </section>
 
       {/* Enhanced How It Works Component */}
-      <EnhancedHowItWorks onStartJourney={() => {
-        triggerHapticFeedback('light');
-        navigate('/discover');
-      }} />
-      
+      <EnhancedHowItWorks
+        onStartJourney={() => {
+          triggerHapticFeedback('light');
+          navigate('/discover');
+        }}
+      />
+
       {/* Floating Action Button for mobile */}
       <FloatingActionButton
         onClick={() => {
@@ -508,13 +539,13 @@ const Home = () => {
             {/* Progress indicators */}
             <div className="flex gap-1">
               {onboardingSteps.map((_, index) => (
-                <div 
+                <div
                   key={index}
                   className={`w-2 h-2 rounded-full ${index === onboardingStep ? 'bg-blue-500' : 'bg-gray-200'}`}
                 />
               ))}
             </div>
-            
+
             <div className="flex gap-2">
               <MobileButton
                 variant="outline"
@@ -537,7 +568,9 @@ const Home = () => {
                 }}
                 touchOptimized
               >
-                {onboardingStep < onboardingSteps.length - 1 ? 'Next' : 'Get Started'}
+                {onboardingStep < onboardingSteps.length - 1
+                  ? 'Next'
+                  : 'Get Started'}
               </MobileButton>
             </div>
           </div>

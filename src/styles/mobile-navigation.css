@@ -257,7 +257,7 @@
   .mobile-nav-container {
     border-top: 2px solid;
   }
-  
+
   .mobile-nav-button:focus {
     outline: 2px solid;
     outline-offset: 2px;
@@ -279,7 +279,7 @@
   .mobile-only {
     display: none;
   }
-  
+
   .desktop-only {
     display: block;
   }

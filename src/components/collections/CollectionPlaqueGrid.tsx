@@ -61,8 +61,12 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
     return (
       <div className="text-center py-12 bg-gray-50 rounded-lg">
         <Search className="mx-auto text-gray-400 mb-3" size={32} />
-        <h3 className="text-lg font-medium text-gray-700 mb-1">No Results Found</h3>
-        <p className="text-gray-500 mb-4">No plaques match your search criteria</p>
+        <h3 className="text-lg font-medium text-gray-700 mb-1">
+          No Results Found
+        </h3>
+        <p className="text-gray-500 mb-4">
+          No plaques match your search criteria
+        </p>
         <Button variant="outline" onClick={onClearSearch}>
           Clear Search
         </Button>
@@ -71,7 +75,9 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
   }
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${className}`}>
+    <div
+      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${className}`}
+    >
       {plaques.map((plaque) => (
         <PlaqueCard
           key={plaque.id}
@@ -82,7 +88,7 @@ const CollectionPlaqueGrid: React.FC<CollectionPlaqueGridProps> = ({
           onRemovePlaque={onRemovePlaque}
           onClick={onPlaqueClick}
           onAddToRoute={onAddToRoute}
-  showSelection={false} // Changed from true to false
+          showSelection={false} // Changed from true to false
           variant="collection"
         />
       ))}

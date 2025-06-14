@@ -5,7 +5,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from '@/components/ui/sheet';
 import { CollectionForm } from '@/components/collections/CollectionForm';
 import { Collection } from './CollectionCard';
 
@@ -22,24 +22,24 @@ const CollectionEditForm: React.FC<CollectionEditFormProps> = ({
   onClose,
   onSubmit,
   isLoading,
-  collection
+  collection,
 }) => {
   if (!collection) return null;
-  
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent side="right" className="sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Edit Collection</SheetTitle>
         </SheetHeader>
-        
+
         <CollectionForm
           initialValues={{
             name: collection.name,
             description: collection.description || '',
             icon: collection.icon,
             color: collection.color,
-            tags: collection.tags || []
+            tags: collection.tags || [],
           }}
           onSubmit={onSubmit}
           onCancel={onClose}

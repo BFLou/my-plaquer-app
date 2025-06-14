@@ -21,40 +21,40 @@ export const navigateToPlaqueWithContext = (
   context: NavigationContext
 ) => {
   const params = new URLSearchParams();
-  
+
   // Add context parameters
   if (context.from) {
     params.set('from', context.from);
   }
-  
+
   if (context.collectionId) {
     params.set('collection', context.collectionId);
   }
-  
+
   if (context.collectionName) {
     params.set('collectionName', context.collectionName);
   }
-  
+
   if (context.routeId) {
     params.set('route', context.routeId);
   }
-  
+
   if (context.routeName) {
     params.set('routeName', context.routeName);
   }
-  
+
   if (context.searchQuery) {
     params.set('search', context.searchQuery);
   }
-  
+
   if (context.progress) {
     params.set('progress', context.progress);
   }
-  
+
   if (context.next) {
     params.set('next', context.next);
   }
-  
+
   const url = `/plaque/${plaqueId}${params.toString() ? `?${params.toString()}` : ''}`;
   navigate(url);
 };
@@ -67,30 +67,32 @@ export const generatePlaqueUrlWithContext = (
   context?: NavigationContext
 ): string => {
   const baseUrl = `${window.location.origin}/plaque/${plaqueId}`;
-  
+
   if (!context) return baseUrl;
-  
+
   const params = new URLSearchParams();
-  
+
   if (context.from) {
     params.set('from', context.from);
   }
-  
+
   if (context.collectionId) {
     params.set('collection', context.collectionId);
   }
-  
+
   if (context.searchQuery) {
     params.set('search', context.searchQuery);
   }
-  
+
   return `${baseUrl}${params.toString() ? `?${params.toString()}` : ''}`;
 };
 
 /**
  * Hook to extract current navigation context from URL
  */
-export const useNavigationContext = (searchParams: URLSearchParams): NavigationContext => {
+export const useNavigationContext = (
+  searchParams: URLSearchParams
+): NavigationContext => {
   return {
     from: searchParams.get('from') as NavigationContext['from'] | undefined,
     collectionId: searchParams.get('collection') || undefined,

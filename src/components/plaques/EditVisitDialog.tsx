@@ -5,7 +5,11 @@ import { MobileButton } from '@/components/ui/mobile-button';
 import { MobileTextarea } from '@/components/ui/mobile-textarea';
 import { Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { Plaque } from '@/types/plaque';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
@@ -49,9 +53,7 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
         if (visitData.visited_at) {
           const raw = visitData.visited_at as any;
           const date =
-            typeof raw.toDate === 'function'
-              ? raw.toDate()
-              : new Date(raw);
+            typeof raw.toDate === 'function' ? raw.toDate() : new Date(raw);
           setVisitDate(date);
         }
         setNotes(visitData.notes || '');
@@ -143,16 +145,16 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
             </MobileButton>
 
             <div className="flex flex-col sm:flex-row gap-3 flex-1">
-              <MobileButton 
-                variant="outline" 
-                onClick={onClose} 
+              <MobileButton
+                variant="outline"
+                onClick={onClose}
                 disabled={isLoading}
                 className="flex-1"
               >
                 Cancel
               </MobileButton>
-              <MobileButton 
-                onClick={handleSave} 
+              <MobileButton
+                onClick={handleSave}
                 disabled={isLoading}
                 className="flex-1"
               >
@@ -178,8 +180,8 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
                 </MobileButton>
               </PopoverTrigger>
               {/* CRITICAL: Calendar needs highest z-index to appear above everything */}
-              <PopoverContent 
-                className="w-auto p-0 z-[10002]" 
+              <PopoverContent
+                className="w-auto p-0 z-[10002]"
                 align="start"
                 side="bottom"
                 sideOffset={8}
@@ -247,7 +249,8 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
       >
         <div className="py-4">
           <p className="text-base text-gray-700 leading-relaxed">
-            Are you sure you want to delete this visit record? This action cannot be undone.
+            Are you sure you want to delete this visit record? This action
+            cannot be undone.
           </p>
           <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
             <p className="text-sm text-red-800">
@@ -255,7 +258,8 @@ const EditVisitDialog: React.FC<EditVisitDialogProps> = ({
             </p>
             {notes && (
               <p className="text-sm text-red-800 mt-1">
-                <strong>Notes:</strong> {notes.substring(0, 100)}{notes.length > 100 ? '...' : ''}
+                <strong>Notes:</strong> {notes.substring(0, 100)}
+                {notes.length > 100 ? '...' : ''}
               </p>
             )}
           </div>

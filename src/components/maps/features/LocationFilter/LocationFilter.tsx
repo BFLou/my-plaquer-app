@@ -26,15 +26,15 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
   onSetLocation,
   onRadiusChange,
   onClear,
-  locationName
+  locationName,
 }) => {
   const [showControls, setShowControls] = useState(false);
   const [searchAddress, setSearchAddress] = useState('');
   const { isLocating, findMyLocation, setManualLocation } = useLocationFilter();
-  
+
   // Quick distance presets
   const quickDistances = [0.5, 1, 2, 5];
-  
+
   // Handle finding user location
   const handleFindLocation = async () => {
     const coords = await findMyLocation();
@@ -43,11 +43,11 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
       setShowControls(false);
     }
   };
-  
+
   // Handle address search
   const handleAddressSearch = async () => {
     if (!searchAddress.trim()) return;
-    
+
     const coords = await setManualLocation(searchAddress);
     if (coords) {
       onSetLocation(coords);
@@ -86,7 +86,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
         </div>
       );
     }
-    
+
     return (
       <div className="flex items-center gap-2">
         <MapPin size={16} />
@@ -117,9 +117,9 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                 <Ruler size={16} className="text-blue-500" />
                 Distance Filter Setup
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowControls(false)}
                 className="h-6 w-6 p-0 hover:bg-gray-100"
               >
@@ -127,7 +127,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
               </Button>
             </div>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             {/* Current Status */}
             {enabled && center && locationName && (
@@ -159,7 +159,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                 <Label className="text-sm font-medium text-gray-700">
                   Set Center Location
                 </Label>
-                
+
                 {/* My Location Button */}
                 <Button
                   variant="outline"
@@ -179,7 +179,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                     </>
                   )}
                 </Button>
-                
+
                 {/* Address Search */}
                 <div className="flex gap-2">
                   <Input
@@ -189,7 +189,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                     onKeyPress={handleKeyPress}
                     className="flex-1"
                   />
-                  <Button 
+                  <Button
                     onClick={handleAddressSearch}
                     disabled={!searchAddress.trim()}
                     size="sm"
@@ -197,7 +197,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                     Go
                   </Button>
                 </div>
-                
+
                 <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
                   💡 Try: "NW1 2DB", "Camden", "Westminster Bridge"
                 </div>
@@ -210,13 +210,17 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                 <Label className="text-sm font-medium text-gray-700">
                   Search Radius
                 </Label>
-                
+
                 {/* Quick Distance Buttons */}
                 <div className="grid grid-cols-4 gap-2">
                   {quickDistances.map((distance) => (
                     <Button
                       key={distance}
-                      variant={Math.abs(radius - distance) < 0.01 ? "default" : "outline"}
+                      variant={
+                        Math.abs(radius - distance) < 0.01
+                          ? 'default'
+                          : 'outline'
+                      }
                       size="sm"
                       className="h-8 text-xs font-medium"
                       onClick={() => onRadiusChange(distance)}
@@ -225,7 +229,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                     </Button>
                   ))}
                 </div>
-                
+
                 {/* Custom Slider */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -234,7 +238,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                       {formatRadius(radius)}
                     </Badge>
                   </div>
-                  
+
                   <Slider
                     value={[radius]}
                     onValueChange={(values) => onRadiusChange(values[0])}
@@ -243,7 +247,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                     step={0.1}
                     className="w-full"
                   />
-                  
+
                   <div className="flex justify-between text-xs text-gray-400">
                     <span>100m</span>
                     <span>1km</span>
@@ -251,12 +255,14 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                     <span>10km</span>
                   </div>
                 </div>
-                
+
                 {/* Distance Info */}
                 <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
                   <div className="flex justify-between">
                     <span>Walking time:</span>
-                    <span className="font-medium">~{Math.round(radius * 12)} min</span>
+                    <span className="font-medium">
+                      ~{Math.round(radius * 12)} min
+                    </span>
                   </div>
                 </div>
               </div>
@@ -277,7 +283,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({
                   Clear Filter
                 </Button>
               )}
-              
+
               <Button
                 variant="ghost"
                 size="sm"

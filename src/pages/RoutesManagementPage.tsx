@@ -1,36 +1,36 @@
 // src/pages/RoutesManagementPage.tsx - Fixed TypeScript errors
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Route as RouteIcon, 
-  Plus, 
-  Search, 
+import {
+  Route as RouteIcon,
+  Plus,
+  Search,
   Grid,
   List,
   ArrowLeft,
   X,
   Star,
-  Trash2
+  Trash2,
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import RouteCard from '@/components/routes/RouteCard';
 import RouteListItem from '@/components/routes/RouteListItem';
 import EditRouteForm from '@/components/routes/EditRouteForm';
-import { PageContainer } from "@/components";
-import { ActionBar } from "@/components/common/ActionBar";
+import { PageContainer } from '@/components';
+import { ActionBar } from '@/components/common/ActionBar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,25 +40,34 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 // Import the RouteData interface from the service instead of defining locally
 import { RouteData } from '@/services/RouteService';
 
 type ViewMode = 'grid' | 'list';
-type SortOption = 'recent' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc' | 'most_waypoints' | 'least_waypoints';
+type SortOption =
+  | 'recent'
+  | 'oldest'
+  | 'name_asc'
+  | 'name_desc'
+  | 'distance_asc'
+  | 'distance_desc'
+  | 'most_waypoints'
+  | 'least_waypoints';
 
 const RoutesManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { routes, loading, updateRoute, deleteRoute, duplicateRoute } = useRoutes();
-  
+  const { routes, loading, updateRoute, deleteRoute, duplicateRoute } =
+    useRoutes();
+
   // UI State
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('recent');
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [selectedRoutes, setSelectedRoutes] = useState<string[]>([]);
-  
+
   // Edit/Delete state
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [routeToEdit, setRouteToEdit] = useState<RouteData | null>(null);
@@ -69,26 +78,36 @@ const RoutesManagementPage: React.FC = () => {
 
   // Filter and sort routes
   const filteredAndSortedRoutes = routes
-    .filter(route => {
+    .filter((route) => {
       // Search filter
-      const matchesSearch = !searchQuery || 
+      const matchesSearch =
+        !searchQuery ||
         route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (route.description && route.description.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+        (route.description &&
+          route.description.toLowerCase().includes(searchQuery.toLowerCase()));
+
       // Favorites filter - handle optional is_favorite property
-      const matchesFavorites = !showOnlyFavorites || (route.is_favorite === true);
-      
+      const matchesFavorites = !showOnlyFavorites || route.is_favorite === true;
+
       return matchesSearch && matchesFavorites;
     })
     .sort((a, b) => {
       switch (sortOption) {
         case 'recent':
-          const dateA = a.updated_at?.toDate ? a.updated_at.toDate() : new Date(a.updated_at);
-          const dateB = b.updated_at?.toDate ? b.updated_at.toDate() : new Date(b.updated_at);
+          const dateA = a.updated_at?.toDate
+            ? a.updated_at.toDate()
+            : new Date(a.updated_at);
+          const dateB = b.updated_at?.toDate
+            ? b.updated_at.toDate()
+            : new Date(b.updated_at);
           return dateB.getTime() - dateA.getTime();
         case 'oldest':
-          const dateC = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at);
-          const dateD = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at);
+          const dateC = a.created_at?.toDate
+            ? a.created_at.toDate()
+            : new Date(a.created_at);
+          const dateD = b.created_at?.toDate
+            ? b.created_at.toDate()
+            : new Date(b.created_at);
           return dateC.getTime() - dateD.getTime();
         case 'name_asc':
           return a.name.localeCompare(b.name);
@@ -109,9 +128,9 @@ const RoutesManagementPage: React.FC = () => {
 
   // Handle toggle route selection
   const handleToggleSelect = (routeId: string) => {
-    setSelectedRoutes(prev => 
-      prev.includes(routeId) 
-        ? prev.filter(id => id !== routeId)
+    setSelectedRoutes((prev) =>
+      prev.includes(routeId)
+        ? prev.filter((id) => id !== routeId)
         : [...prev, routeId]
     );
   };
@@ -141,12 +160,12 @@ const RoutesManagementPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      
+
       await updateRoute(routeToEdit.id, {
         name: data.name,
-        description: data.description
+        description: data.description,
       });
-      
+
       setEditFormOpen(false);
       setRouteToEdit(null);
       toast.success('Route updated successfully');
@@ -161,9 +180,12 @@ const RoutesManagementPage: React.FC = () => {
   const handleDuplicateRoute = async (route: RouteData) => {
     try {
       setIsLoading(true);
-      
-      const duplicatedRoute = await duplicateRoute(route, `${route.name} (Copy)`);
-      
+
+      const duplicatedRoute = await duplicateRoute(
+        route,
+        `${route.name} (Copy)`
+      );
+
       if (duplicatedRoute) {
         toast.success('Route duplicated successfully');
         navigate(`/library/routes/${duplicatedRoute.id}`);
@@ -186,9 +208,9 @@ const RoutesManagementPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      
+
       await deleteRoute(routeToDelete.id);
-      
+
       setDeleteDialogOpen(false);
       setRouteToDelete(null);
       toast.success('Route deleted successfully');
@@ -206,12 +228,14 @@ const RoutesManagementPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      
+
       await updateRoute(route.id, {
-        is_favorite: !route.is_favorite
+        is_favorite: !route.is_favorite,
       });
-      
-      toast.success(route.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+
+      toast.success(
+        route.is_favorite ? 'Removed from favorites' : 'Added to favorites'
+      );
     } catch (error) {
       console.error('Error toggling favorite:', error);
       toast.error('Failed to update favorite status');
@@ -224,19 +248,19 @@ const RoutesManagementPage: React.FC = () => {
   const handleBatchFavorite = async () => {
     try {
       setIsLoading(true);
-      
-      const promises = selectedRoutes.map(routeId => {
-        const route = routes.find(r => r.id === routeId);
+
+      const promises = selectedRoutes.map((routeId) => {
+        const route = routes.find((r) => r.id === routeId);
         if (route && route.id) {
           return updateRoute(route.id, {
-            is_favorite: true
+            is_favorite: true,
           });
         }
         return Promise.resolve();
       });
-      
+
       await Promise.all(promises);
-      
+
       setSelectedRoutes([]);
       toast.success(`${selectedRoutes.length} routes added to favorites`);
     } catch (error) {
@@ -254,16 +278,16 @@ const RoutesManagementPage: React.FC = () => {
   const confirmBatchDelete = async () => {
     try {
       setIsLoading(true);
-      
+
       const promises = selectedRoutes
-        .map(routeId => {
-          const route = routes.find(r => r.id === routeId);
+        .map((routeId) => {
+          const route = routes.find((r) => r.id === routeId);
           return route?.id ? deleteRoute(route.id) : Promise.resolve();
         })
-        .filter(promise => promise !== Promise.resolve());
-      
+        .filter((promise) => promise !== Promise.resolve());
+
       await Promise.all(promises);
-      
+
       setBatchDeleteDialogOpen(false);
       setSelectedRoutes([]);
       toast.success(`${selectedRoutes.length} routes deleted successfully`);
@@ -276,7 +300,8 @@ const RoutesManagementPage: React.FC = () => {
   };
 
   // Get active filters count
-  const activeFiltersCount = (searchQuery ? 1 : 0) + (showOnlyFavorites ? 1 : 0);
+  const activeFiltersCount =
+    (searchQuery ? 1 : 0) + (showOnlyFavorites ? 1 : 0);
 
   // Clear all filters
   const handleClearFilters = () => {
@@ -291,7 +316,9 @@ const RoutesManagementPage: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
             <RouteIcon className="mx-auto text-gray-300 mb-4" size={48} />
             <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-            <p className="text-gray-600 mb-6">You need to sign in to manage your routes.</p>
+            <p className="text-gray-600 mb-6">
+              You need to sign in to manage your routes.
+            </p>
             <Button onClick={() => navigate('/')}>Back to Home</Button>
           </div>
         </div>
@@ -308,20 +335,20 @@ const RoutesManagementPage: React.FC = () => {
           <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
           <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
         </div>
-        
+
         <div className="container mx-auto max-w-6xl relative z-10">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 mb-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/library')} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/library')}
               className="text-white hover:bg-white/20 h-8 w-8 p-0"
             >
               <ArrowLeft size={18} />
             </Button>
-            <a 
-              className="text-white/80 hover:text-white text-sm cursor-pointer" 
+            <a
+              className="text-white/80 hover:text-white text-sm cursor-pointer"
               onClick={() => navigate('/library')}
             >
               My Library
@@ -336,12 +363,13 @@ const RoutesManagementPage: React.FC = () => {
               <div>
                 <h1 className="text-2xl font-bold">My Routes</h1>
                 <p className="opacity-90 text-sm">
-                  Plan and manage your walking routes through London's historic plaques.
+                  Plan and manage your walking routes through London's historic
+                  plaques.
                 </p>
               </div>
             </div>
-            
-            <Button 
+
+            <Button
               onClick={() => navigate('/discover?view=map')}
               className="bg-white text-green-600 hover:bg-green-50 hover:text-green-700"
             >
@@ -356,20 +384,25 @@ const RoutesManagementPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-4 flex justify-between items-center -mt-5 mb-6 relative z-10">
           <div className="flex gap-6 items-center">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{routes.length}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {routes.length}
+              </div>
               <div className="text-sm text-gray-500">Total Routes</div>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {routes.reduce((sum, r) => sum + r.total_distance, 0).toFixed(1)} km
+                {routes
+                  .reduce((sum, r) => sum + r.total_distance, 0)
+                  .toFixed(1)}{' '}
+                km
               </div>
               <div className="text-sm text-gray-500">Total Distance</div>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center">
               <div className="text-2xl font-bold text-amber-600">
-                {routes.filter(r => r.is_favorite === true).length}
+                {routes.filter((r) => r.is_favorite === true).length}
               </div>
               <div className="text-sm text-gray-500">Favorite Routes</div>
             </div>
@@ -382,7 +415,10 @@ const RoutesManagementPage: React.FC = () => {
             {/* Search and Filters */}
             <div className="flex flex-col sm:flex-row gap-3 flex-1">
               <div className="relative flex-1 sm:max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={16}
+                />
                 <Input
                   type="text"
                   placeholder="Search routes..."
@@ -399,8 +435,11 @@ const RoutesManagementPage: React.FC = () => {
                   </button>
                 )}
               </div>
-              
-              <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+
+              <Select
+                value={sortOption}
+                onValueChange={(value) => setSortOption(value as SortOption)}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -412,20 +451,28 @@ const RoutesManagementPage: React.FC = () => {
                   <SelectItem value="distance_asc">Shortest First</SelectItem>
                   <SelectItem value="distance_desc">Longest First</SelectItem>
                   <SelectItem value="most_waypoints">Most Waypoints</SelectItem>
-                  <SelectItem value="least_waypoints">Least Waypoints</SelectItem>
+                  <SelectItem value="least_waypoints">
+                    Least Waypoints
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
               <Button
-                variant={showOnlyFavorites ? "default" : "outline"}
+                variant={showOnlyFavorites ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setShowOnlyFavorites(!showOnlyFavorites)}
                 className="gap-1"
               >
-                <Star size={16} className={showOnlyFavorites ? "fill-current" : ""} />
+                <Star
+                  size={16}
+                  className={showOnlyFavorites ? 'fill-current' : ''}
+                />
                 Favorites Only
                 {activeFiltersCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center">
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 h-5 w-5 p-0 flex items-center justify-center"
+                  >
                     {activeFiltersCount}
                   </Badge>
                 )}
@@ -446,10 +493,17 @@ const RoutesManagementPage: React.FC = () => {
 
             {/* View Controls */}
             <div className="flex items-center gap-2">
-              <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+              <Tabs
+                value={viewMode}
+                onValueChange={(value) => setViewMode(value as ViewMode)}
+              >
                 <TabsList>
-                  <TabsTrigger value="grid"><Grid size={16} /></TabsTrigger>
-                  <TabsTrigger value="list"><List size={16} /></TabsTrigger>
+                  <TabsTrigger value="grid">
+                    <Grid size={16} />
+                  </TabsTrigger>
+                  <TabsTrigger value="list">
+                    <List size={16} />
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -471,30 +525,29 @@ const RoutesManagementPage: React.FC = () => {
               {routes.length === 0 ? 'No routes yet' : 'No matching routes'}
             </h3>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              {routes.length === 0 
+              {routes.length === 0
                 ? 'Create walking routes to explore multiple plaques in one trip'
-                : 'Try adjusting your search or filters'
-              }
+                : 'Try adjusting your search or filters'}
             </p>
             {routes.length === 0 ? (
               <Button onClick={() => navigate('/discover?view=map')}>
                 Create Your First Route
               </Button>
             ) : (
-              <Button 
-                variant="outline" 
-                onClick={handleClearFilters}
-              >
+              <Button variant="outline" onClick={handleClearFilters}>
                 Clear Filters
               </Button>
             )}
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' 
-            : 'space-y-3'
-          }>
-            {filteredAndSortedRoutes.map(route => (
+          <div
+            className={
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                : 'space-y-3'
+            }
+          >
+            {filteredAndSortedRoutes.map((route) =>
               viewMode === 'grid' ? (
                 <RouteCard
                   key={route.id}
@@ -519,7 +572,7 @@ const RoutesManagementPage: React.FC = () => {
                   showSelection={true}
                 />
               )
-            ))}
+            )}
           </div>
         )}
       </div>
@@ -527,20 +580,22 @@ const RoutesManagementPage: React.FC = () => {
       {/* Action bar for selected routes */}
       {selectedRoutes.length > 0 && (
         <ActionBar
-          title={selectedRoutes.length === 1 ? "route selected" : "routes selected"}
+          title={
+            selectedRoutes.length === 1 ? 'route selected' : 'routes selected'
+          }
           count={selectedRoutes.length}
           buttons={[
             {
-              label: "Add to Favorites",
+              label: 'Add to Favorites',
               icon: <Star size={16} />,
-              onClick: handleBatchFavorite
+              onClick: handleBatchFavorite,
             },
             {
-              label: "Delete",
-              variant: "destructive" as const,
+              label: 'Delete',
+              variant: 'destructive' as const,
               icon: <Trash2 size={16} />,
-              onClick: handleBatchDelete
-            }
+              onClick: handleBatchDelete,
+            },
           ]}
           onClearSelection={handleClearSelections}
         />
@@ -564,12 +619,14 @@ const RoutesManagementPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Route</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{routeToDelete?.name || 'this route'}"? This action cannot be undone.
+              Are you sure you want to delete "
+              {routeToDelete?.name || 'this route'}"? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDeleteRoute}
               disabled={isLoading}
               className="bg-red-600 hover:bg-red-700"
@@ -581,22 +638,30 @@ const RoutesManagementPage: React.FC = () => {
       </AlertDialog>
 
       {/* Batch Delete Confirmation Dialog */}
-      <AlertDialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+      <AlertDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedRoutes.length} Routes</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete {selectedRoutes.length} Routes
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete these {selectedRoutes.length} routes? This action cannot be undone.
+              Are you sure you want to delete these {selectedRoutes.length}{' '}
+              routes? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmBatchDelete}
               disabled={isLoading}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isLoading ? 'Deleting...' : `Delete ${selectedRoutes.length} Routes`}
+              {isLoading
+                ? 'Deleting...'
+                : `Delete ${selectedRoutes.length} Routes`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

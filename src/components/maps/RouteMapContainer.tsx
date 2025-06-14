@@ -3,18 +3,18 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Plaque } from '@/types/plaque';
 import { RouteData } from '@/hooks/useRoutes';
 import { calculateMultiWaypointRoute } from '@/services/WalkingDistanceService';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { 
-  Navigation, 
-  Clock, 
-  MapPin, 
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Navigation,
+  Clock,
+  MapPin,
   Maximize2,
   Minimize2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Loader
+  Loader,
 } from 'lucide-react';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import L from 'leaflet';
@@ -50,13 +50,15 @@ const getValidCoordinates = (plaque: Plaque): [number, number] => {
   return [lat, lng];
 };
 
-const getValidPlaques = (plaques: Plaque[]): Array<Plaque & { validCoords: [number, number] }> => {
+const getValidPlaques = (
+  plaques: Plaque[]
+): Array<Plaque & { validCoords: [number, number] }> => {
   return plaques
-    .map(plaque => {
+    .map((plaque) => {
       const validCoords = getValidCoordinates(plaque);
       return { ...plaque, validCoords };
     })
-    .filter(plaque => {
+    .filter((plaque) => {
       const [lat, lng] = plaque.validCoords;
       return lat !== 0 || lng !== 0;
     });
@@ -72,15 +74,17 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   useWalkingRoutes = false,
   onError,
   showStats = true,
-  allowFullscreen = false
+  allowFullscreen = false,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const initializingRef = useRef(false);
   const mobile = isMobile();
-  
+
   // Enhanced state management
-  const [walkingRouteGeometry, setWalkingRouteGeometry] = useState<[number, number][][]>([]);
+  const [walkingRouteGeometry, setWalkingRouteGeometry] = useState<
+    [number, number][][]
+  >([]);
   const [isLoadingWalkingRoute, setIsLoadingWalkingRoute] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -90,7 +94,9 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   const validPlaques = useMemo(() => getValidPlaques(plaques), [plaques]);
 
   // Enhanced walking route loading
-  const loadWalkingRoute = async (validPlaques: Array<Plaque & { validCoords: [number, number] }>) => {
+  const loadWalkingRoute = async (
+    validPlaques: Array<Plaque & { validCoords: [number, number] }>
+  ) => {
     if (!useWalkingRoutes || validPlaques.length < 2) {
       setIsLoadingWalkingRoute(false);
       return;
@@ -99,9 +105,11 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     try {
       setIsLoadingWalkingRoute(true);
       const routeData = await calculateMultiWaypointRoute(validPlaques);
-      
+
       if (routeData.segments && routeData.segments.length > 0) {
-        const geometry = routeData.segments.map(segment => segment.route.geometry);
+        const geometry = routeData.segments.map(
+          (segment) => segment.route.geometry
+        );
         setWalkingRouteGeometry(geometry);
       } else {
         setWalkingRouteGeometry([]);
@@ -117,10 +125,11 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   // Enhanced map initialization
   useEffect(() => {
     let mounted = true;
-    
+
     const initializeMap = async () => {
-      if (initializingRef.current || !mapRef.current || !validPlaques.length) return;
-      
+      if (initializingRef.current || !mapRef.current || !validPlaques.length)
+        return;
+
       initializingRef.current = true;
 
       try {
@@ -131,19 +140,22 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         }
 
         const L = (await import('leaflet')).default;
-        
+
         // Fix marker icons
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconRetinaUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+          iconUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         });
 
         if (!mounted || !mapRef.current) return;
 
         // Calculate center from valid coordinates
-        const coords = validPlaques.map(p => p.validCoords);
+        const coords = validPlaques.map((p) => p.validCoords);
         const lats = coords.map(([lat]) => lat);
         const lngs = coords.map(([, lng]) => lng);
         const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
@@ -154,14 +166,15 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           zoomControl: false, // We'll add custom controls
           attributionControl: true,
           preferCanvas: true,
-          renderer: L.canvas({ padding: 0.5 })
+          renderer: L.canvas({ padding: 0.5 }),
         }).setView([centerLat, centerLng], 13);
 
         // Add modern tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           maxZoom: 19,
-          className: 'map-tiles'
+          className: 'map-tiles',
         }).addTo(map);
 
         mapInstanceRef.current = map;
@@ -171,7 +184,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         const markers: any[] = [];
         validPlaques.forEach((plaque, index) => {
           const [lat, lng] = plaque.validCoords;
-          
+
           let backgroundColor = '#3b82f6';
           let borderColor = '#1d4ed8';
           let label = (index + 1).toString();
@@ -211,11 +224,11 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
             className: 'custom-route-marker',
             html: iconHtml,
             iconSize: [32, 32],
-            iconAnchor: [16, 16]
+            iconAnchor: [16, 16],
           });
 
           const marker = L.marker([lat, lng], { icon }).addTo(map);
-          
+
           // Enhanced click handler
           if (onPlaqueClick) {
             marker.on('click', () => {
@@ -223,7 +236,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
               onPlaqueClick(plaque);
             });
           }
-          
+
           // Enhanced popup
           const popupContent = `
             <div class="route-popup" style="padding: 8px; min-width: 200px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -236,7 +249,9 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
               <div style="font-size: 11px; color: #6b7280; line-height: 1.4;">
                 ${plaque.location || plaque.address || 'Location not specified'}
               </div>
-              ${plaque.profession ? `
+              ${
+                plaque.profession
+                  ? `
                 <div style="margin-top: 6px;">
                   <span style="
                     background: #ddd6fe; 
@@ -249,16 +264,18 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
                     ${plaque.profession}
                   </span>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           `;
-          
+
           marker.bindPopup(popupContent, {
             className: 'route-marker-popup',
             maxWidth: 250,
-            offset: [0, -10]
+            offset: [0, -10],
           });
-          
+
           markers.push(marker);
         });
 
@@ -271,14 +288,15 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
         // Fit bounds with proper padding
         if (validPlaques.length > 0) {
-          const coords: [number, number][] = validPlaques.map(p => p.validCoords);
+          const coords: [number, number][] = validPlaques.map(
+            (p) => p.validCoords
+          );
           const bounds = L.latLngBounds(coords);
-          map.fitBounds(bounds, { 
+          map.fitBounds(bounds, {
             padding: mobile ? [20, 20] : [40, 40],
-            maxZoom: 16
+            maxZoom: 16,
           });
         }
-
       } catch (error) {
         console.error('Error initializing map:', error);
         if (onError) onError();
@@ -304,11 +322,13 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     if (!mapInstanceRef.current || !mapReady) return;
 
     const L = (window as any).L;
-    
+
     // Remove existing route lines
     mapInstanceRef.current.eachLayer((layer: any) => {
-      if (layer.options?.className === 'walking-route-line' || 
-          layer.options?.className === 'fallback-route-line') {
+      if (
+        layer.options?.className === 'walking-route-line' ||
+        layer.options?.className === 'fallback-route-line'
+      ) {
         mapInstanceRef.current.removeLayer(layer);
       }
     });
@@ -325,14 +345,14 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
               smoothFactor: 1,
               lineCap: 'round',
               lineJoin: 'round',
-              className: 'walking-route-line'
+              className: 'walking-route-line',
             });
 
-            routeLine.on('mouseover', function(this: L.Polyline) {
+            routeLine.on('mouseover', function (this: L.Polyline) {
               this.setStyle({ weight: 6, opacity: 1 });
             });
 
-            routeLine.on('mouseout', function(this: L.Polyline) {
+            routeLine.on('mouseout', function (this: L.Polyline) {
               this.setStyle({ weight: 4, opacity: 0.8 });
             });
 
@@ -350,8 +370,10 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         });
       } else {
         // Fallback straight-line route
-        const routeCoords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
-        
+        const routeCoords: [number, number][] = validPlaques.map(
+          (plaque) => plaque.validCoords
+        );
+
         if (routeCoords.length > 1) {
           const fallbackLine = L.polyline(routeCoords, {
             color: '#f59e0b',
@@ -359,7 +381,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
             opacity: 0.7,
             dashArray: '10, 5',
             lineCap: 'round',
-            className: 'fallback-route-line'
+            className: 'fallback-route-line',
           });
 
           fallbackLine.bindPopup(`
@@ -375,7 +397,14 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         }
       }
     }
-  }, [walkingRouteGeometry, routeColor, isLoadingWalkingRoute, showRoute, useWalkingRoutes, mapReady]);
+  }, [
+    walkingRouteGeometry,
+    routeColor,
+    isLoadingWalkingRoute,
+    showRoute,
+    useWalkingRoutes,
+    mapReady,
+  ]);
 
   // Map control handlers
   const handleZoomIn = () => {
@@ -394,11 +423,11 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
   const handleResetView = () => {
     if (mapInstanceRef.current && validPlaques.length > 0) {
-      const coords: [number, number][] = validPlaques.map(p => p.validCoords);
+      const coords: [number, number][] = validPlaques.map((p) => p.validCoords);
       const bounds = L.latLngBounds(coords);
-      mapInstanceRef.current.fitBounds(bounds, { 
+      mapInstanceRef.current.fitBounds(bounds, {
         padding: mobile ? [20, 20] : [40, 40],
-        maxZoom: 16
+        maxZoom: 16,
       });
       if (mobile) triggerHapticFeedback('medium');
     }
@@ -407,7 +436,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   const handleToggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
     if (mobile) triggerHapticFeedback('medium');
-    
+
     // Invalidate map size after fullscreen toggle
     setTimeout(() => {
       if (mapInstanceRef.current) {
@@ -433,8 +462,8 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     );
   }
 
-  const containerClasses = isFullscreen 
-    ? "fixed inset-0 z-50 bg-white" 
+  const containerClasses = isFullscreen
+    ? 'fixed inset-0 z-50 bg-white'
     : `relative ${className}`;
 
   return (
@@ -442,51 +471,73 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
       <div className="relative h-full w-full bg-gray-100 rounded-lg overflow-hidden">
         {/* Enhanced Stats Overlay */}
         {showStats && (
-          <Card className={`absolute top-4 left-4 z-[1000] shadow-lg border-0 ${
-            statsCollapsed ? 'w-auto' : mobile ? 'max-w-[calc(100vw-120px)]' : 'w-80'
-          }`}>
+          <Card
+            className={`absolute top-4 left-4 z-[1000] shadow-lg border-0 ${
+              statsCollapsed
+                ? 'w-auto'
+                : mobile
+                  ? 'max-w-[calc(100vw-120px)]'
+                  : 'w-80'
+            }`}
+          >
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
-                <div className={statsCollapsed ? 'flex items-center gap-2' : ''}>
+                <div
+                  className={statsCollapsed ? 'flex items-center gap-2' : ''}
+                >
                   <div className="flex items-center gap-2 mb-2">
-                    <Navigation size={16} className="text-green-600 flex-shrink-0" />
+                    <Navigation
+                      size={16}
+                      className="text-green-600 flex-shrink-0"
+                    />
                     <h3 className="font-semibold text-sm text-gray-900 truncate">
                       {route.name}
                     </h3>
                   </div>
-                  
+
                   {!statsCollapsed && (
                     <div className="grid grid-cols-3 gap-3 text-xs">
                       <div className="text-center">
                         <div className="flex items-center justify-center gap-1 text-blue-600 mb-1">
                           <MapPin size={12} />
                         </div>
-                        <div className="font-semibold text-gray-900">{validPlaques.length}</div>
+                        <div className="font-semibold text-gray-900">
+                          {validPlaques.length}
+                        </div>
                         <div className="text-gray-500">stops</div>
                       </div>
                       <div className="text-center">
                         <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
                           <Navigation size={12} />
                         </div>
-                        <div className="font-semibold text-gray-900">{route.total_distance.toFixed(1)} km</div>
+                        <div className="font-semibold text-gray-900">
+                          {route.total_distance.toFixed(1)} km
+                        </div>
                         <div className="text-gray-500">distance</div>
                       </div>
                       <div className="text-center">
                         <div className="flex items-center justify-center gap-1 text-orange-600 mb-1">
                           <Clock size={12} />
                         </div>
-                        <div className="font-semibold text-gray-900">~{Math.ceil(route.total_distance * 12)} min</div>
+                        <div className="font-semibold text-gray-900">
+                          ~{Math.ceil(route.total_distance * 12)} min
+                        </div>
                         <div className="text-gray-500">walk</div>
                       </div>
                     </div>
                   )}
-                  
+
                   {!statsCollapsed && useWalkingRoutes && (
                     <div className="mt-3 pt-2 border-t border-gray-100">
-                      <div className={`text-xs flex items-center gap-1 ${
-                        isLoadingWalkingRoute ? "text-blue-600" : 
-                        walkingRouteGeometry.length > 0 ? "text-green-600" : "text-amber-600"
-                      }`}>
+                      <div
+                        className={`text-xs flex items-center gap-1 ${
+                          isLoadingWalkingRoute
+                            ? 'text-blue-600'
+                            : walkingRouteGeometry.length > 0
+                              ? 'text-green-600'
+                              : 'text-amber-600'
+                        }`}
+                      >
                         {isLoadingWalkingRoute ? (
                           <>
                             <Loader size={10} className="animate-spin" />
@@ -501,21 +552,26 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
                     </div>
                   )}
                 </div>
-                
+
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setStatsCollapsed(!statsCollapsed)}
                   className="h-6 w-6 p-0 ml-2 flex-shrink-0"
                 >
-                  {statsCollapsed ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
+                  {statsCollapsed ? (
+                    <Maximize2 size={12} />
+                  ) : (
+                    <Minimize2 size={12} />
+                  )}
                 </Button>
               </div>
-              
+
               {plaques.length !== validPlaques.length && (
                 <div className="mt-2 pt-2 border-t border-amber-100">
                   <div className="text-xs text-amber-600 flex items-center gap-1">
-                    ⚠️ {plaques.length - validPlaques.length} stops missing coordinates
+                    ⚠️ {plaques.length - validPlaques.length} stops missing
+                    coordinates
                   </div>
                 </div>
               )}
@@ -524,9 +580,11 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         )}
 
         {/* Enhanced Map Controls */}
-        <div className={`absolute z-[1000] flex flex-col gap-2 ${
-          mobile ? 'top-4 right-4' : 'bottom-4 right-4'
-        }`}>
+        <div
+          className={`absolute z-[1000] flex flex-col gap-2 ${
+            mobile ? 'top-4 right-4' : 'bottom-4 right-4'
+          }`}
+        >
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <Button
               variant="ghost"
@@ -545,7 +603,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
               <ZoomOut size={16} />
             </Button>
           </div>
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -555,14 +613,14 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           >
             <RotateCcw size={16} />
           </Button>
-          
+
           {allowFullscreen && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleToggleFullscreen}
               className="w-10 h-10 p-0 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50"
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </Button>
@@ -570,8 +628,8 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         </div>
 
         {/* Map Container */}
-        <div 
-          ref={mapRef} 
+        <div
+          ref={mapRef}
           className="h-full w-full"
           style={{ minHeight: isFullscreen ? '100vh' : '400px' }}
         />

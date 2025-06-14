@@ -1,6 +1,6 @@
 // src/components/maps/dialogs/AlertDialog.tsx
 import React from 'react';
-import { 
+import {
   AlertDialog as UiAlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -9,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 
 interface AlertDialogProps {
   open: boolean;
@@ -18,7 +18,7 @@ interface AlertDialogProps {
   description: string;
   cancelText?: string;
   confirmText?: string;
-  confirmVariant?: "default" | "destructive" | "outline";
+  confirmVariant?: 'default' | 'destructive' | 'outline';
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -28,28 +28,28 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
   onOpenChange,
   title,
   description,
-  cancelText = "Cancel",
-  confirmText = "Confirm",
-  confirmVariant = "default",
+  cancelText = 'Cancel',
+  confirmText = 'Confirm',
+  confirmVariant = 'default',
   onConfirm,
-  onCancel
+  onCancel,
 }) => {
   return (
     <UiAlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {description}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>
-            {cancelText}
-          </AlertDialogCancel>
-          <AlertDialogAction 
+          <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
+          <AlertDialogAction
             onClick={onConfirm}
-            className={confirmVariant === "destructive" ? "bg-red-500 hover:bg-red-600" : ""}
+            className={
+              confirmVariant === 'destructive'
+                ? 'bg-red-500 hover:bg-red-600'
+                : ''
+            }
           >
             {confirmText}
           </AlertDialogAction>

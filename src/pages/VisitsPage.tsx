@@ -1,20 +1,26 @@
 // src/pages/VisitsPage.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  CheckCircle, 
-  Calendar, 
+import {
+  ArrowLeft,
+  CheckCircle,
+  Calendar,
   Search,
   Grid,
   List,
-  X
+  X,
 } from 'lucide-react';
-import { PageContainer } from "@/components";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageContainer } from '@/components';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { usePlaques } from '@/hooks/usePlaques';
@@ -26,7 +32,7 @@ const VisitsPage = () => {
   const { user } = useAuth();
   const { visits, loading } = useVisitedPlaques();
   const { plaques } = usePlaques();
-  
+
   const [viewMode, setViewMode] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState('recent');
@@ -35,36 +41,40 @@ const VisitsPage = () => {
   // Helper function to safely convert visit timestamp to Date
   const getVisitDate = (visitedAt: any): Date => {
     if (!visitedAt) return new Date();
-    
+
     // If it's a Firestore Timestamp, use toDate()
     if (visitedAt.toDate && typeof visitedAt.toDate === 'function') {
       return visitedAt.toDate();
     }
-    
+
     // If it's already a Date object, return it
     if (visitedAt instanceof Date) {
       return visitedAt;
     }
-    
+
     // If it's a string or number, try to create a Date
     return new Date(visitedAt);
   };
 
   // Calculate stats
   const totalVisits = visits.length;
-  const uniquePlaquesVisited = new Set(visits.map(v => v.plaque_id)).size;
-  
+  const uniquePlaquesVisited = new Set(visits.map((v) => v.plaque_id)).size;
+
   // Calculate this month's visits
   const thisMonth = new Date();
-  const firstDayOfMonth = new Date(thisMonth.getFullYear(), thisMonth.getMonth(), 1);
-  const thisMonthVisits = visits.filter(visit => {
+  const firstDayOfMonth = new Date(
+    thisMonth.getFullYear(),
+    thisMonth.getMonth(),
+    1
+  );
+  const thisMonthVisits = visits.filter((visit) => {
     const visitDate = getVisitDate(visit.visited_at);
     return visitDate >= firstDayOfMonth;
   }).length;
 
   // Get plaque details for visits
   const getPlaqueData = (plaqueId: number) => {
-    return plaques.find(p => p.id === plaqueId) || null;
+    return plaques.find((p) => p.id === plaqueId) || null;
   };
 
   if (!user) {
@@ -74,7 +84,9 @@ const VisitsPage = () => {
           <div className="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
             <CheckCircle className="mx-auto text-gray-300 mb-4" size={48} />
             <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-            <p className="text-gray-600 mb-6">You need to sign in to view your visits.</p>
+            <p className="text-gray-600 mb-6">
+              You need to sign in to view your visits.
+            </p>
             <Button onClick={() => navigate('/')}>Back to Home</Button>
           </div>
         </div>
@@ -91,20 +103,20 @@ const VisitsPage = () => {
           <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
           <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
         </div>
-        
+
         <div className="container mx-auto max-w-6xl relative z-10">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 mb-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/library')} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/library')}
               className="text-white hover:bg-white/20 h-8 w-8 p-0"
             >
               <ArrowLeft size={18} />
             </Button>
-            <a 
-              className="text-white/80 hover:text-white text-sm cursor-pointer" 
+            <a
+              className="text-white/80 hover:text-white text-sm cursor-pointer"
               onClick={() => navigate('/library')}
             >
               My Library
@@ -119,7 +131,8 @@ const VisitsPage = () => {
               <div>
                 <h1 className="text-2xl font-bold">My Visits</h1>
                 <p className="opacity-90 text-sm">
-                  {totalVisits} visits • {uniquePlaquesVisited} unique plaques • {thisMonthVisits} this month
+                  {totalVisits} visits • {uniquePlaquesVisited} unique plaques •{' '}
+                  {thisMonthVisits} this month
                 </p>
               </div>
             </div>
@@ -132,21 +145,27 @@ const VisitsPage = () => {
         <div className="bg-white rounded-lg shadow-sm p-4 flex justify-between items-center -mt-5 mb-6 relative z-10">
           <div className="flex gap-6 items-center">
             <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">{totalVisits}</div>
+              <div className="text-lg font-bold text-blue-600">
+                {totalVisits}
+              </div>
               <div className="text-xs text-gray-500">Total Visits</div>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center">
-              <div className="text-lg font-bold text-green-600">{uniquePlaquesVisited}</div>
+              <div className="text-lg font-bold text-green-600">
+                {uniquePlaquesVisited}
+              </div>
               <div className="text-xs text-gray-500">Unique Plaques</div>
             </div>
             <div className="h-8 w-px bg-gray-200"></div>
             <div className="text-center">
-              <div className="text-lg font-bold text-purple-600">{thisMonthVisits}</div>
+              <div className="text-lg font-bold text-purple-600">
+                {thisMonthVisits}
+              </div>
               <div className="text-xs text-gray-500">This Month</div>
             </div>
           </div>
-          
+
           <Button onClick={() => navigate('/discover')}>
             Discover More Plaques
           </Button>
@@ -177,7 +196,10 @@ const VisitsPage = () => {
           {/* Search and Filters */}
           <div className="p-4 flex flex-col sm:flex-row gap-3">
             <div className="relative flex-grow">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <Input
                 type="text"
                 placeholder="Search visits..."
@@ -194,7 +216,7 @@ const VisitsPage = () => {
                 </button>
               )}
             </div>
-            
+
             <Select value={sortOrder} onValueChange={setSortOrder}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Sort by" />
@@ -206,7 +228,7 @@ const VisitsPage = () => {
                 <SelectItem value="z-a">Z to A</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={ratingFilter} onValueChange={setRatingFilter}>
               <SelectTrigger className="w-[120px]">
                 <SelectValue placeholder="Rating" />
@@ -227,16 +249,10 @@ const VisitsPage = () => {
         {/* Content */}
         {viewMode === 'calendar' ? (
           <div className="bg-white rounded-lg shadow-sm">
-            <VisitCalendar 
-              visits={visits} 
-              getPlaqueData={getPlaqueData}
-            />
+            <VisitCalendar visits={visits} getPlaqueData={getPlaqueData} />
           </div>
         ) : (
-          <VisitedPlaquesPage 
-            visits={visits} 
-            loading={loading}
-          />
+          <VisitedPlaquesPage visits={visits} loading={loading} />
         )}
       </div>
     </PageContainer>

@@ -1,7 +1,7 @@
 // src/components/collections/AddPlaquesButton.tsx
 import React from 'react';
 import { Plus } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 
 interface AddPlaquesButtonProps extends React.ComponentProps<typeof Button> {
   onAddPlaques: () => void;
@@ -11,8 +11,8 @@ interface AddPlaquesButtonProps extends React.ComponentProps<typeof Button> {
 const AddPlaquesButton: React.FC<AddPlaquesButtonProps> = ({
   onAddPlaques,
   isLoading = false,
-  variant = "default",
-  size = "default",
+  variant = 'default',
+  size = 'default',
   className,
   ...props
 }) => {

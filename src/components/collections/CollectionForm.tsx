@@ -1,10 +1,10 @@
 // src/components/collections/CollectionForm.tsx - MOBILE OPTIMIZED
 import React, { useState, useEffect } from 'react';
-import { MobileInput } from "@/components/ui/mobile-input";
-import { MobileTextarea } from "@/components/ui/mobile-textarea";
-import { MobileButton } from "@/components/ui/mobile-button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { MobileInput } from '@/components/ui/mobile-input';
+import { MobileTextarea } from '@/components/ui/mobile-textarea';
+import { MobileButton } from '@/components/ui/mobile-button';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
 import { useKeyboardDetection } from '@/hooks/useKeyboardDetection';
@@ -30,36 +30,73 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
   initialValues = {},
   onSubmit,
   onCancel,
-  submitLabel = "Create Collection",
+  submitLabel = 'Create Collection',
   className = '',
-  isLoading = false
+  isLoading = false,
 }) => {
   // Mobile detection and responsive hooks
   const mobile = isMobile();
   const safeArea = useSafeArea();
   const { isKeyboardOpen } = useKeyboardDetection();
-  
+
   // Form state - FIXED: Always initialize tags as empty array
   const [formState, setFormState] = useState<CollectionFormData>({
     name: initialValues.name || '',
     description: initialValues.description || '',
     icon: initialValues.icon || '🎭',
     color: initialValues.color || 'bg-blue-500',
-    tags: initialValues.tags || [] // FIXED: Always ensure tags is an array
+    tags: initialValues.tags || [], // FIXED: Always ensure tags is an array
   });
-  
+
   // Form validation state
-  const [errors, setErrors] = useState<Partial<Record<keyof CollectionFormData, string>>>({});
-  const [touched, setTouched] = useState<Partial<Record<keyof CollectionFormData, boolean>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof CollectionFormData, string>>
+  >({});
+  const [touched, setTouched] = useState<
+    Partial<Record<keyof CollectionFormData, boolean>>
+  >({});
   const [tagInput, setTagInput] = useState('');
-  
+
   // Available icons and colors with improved selection
   const icons = [
-    '🎭', '🎶', '📚', '🏛️', '🏙️', '🌟', '🧠', '🏆', '🧪', '🎨', '🌍', '🎓', 
-    '🏺', '⚔️', '🎬', '🚀', '🦄', '🌈', '🪷', '🌵', '🍦', '🧁', '🎠', '🦋', 
-    '🐳', '🍭', '🎡', '🌻', '🌮', '🧸', '🪩', '🎁', '💡', '🔍', '📷', '📱'
+    '🎭',
+    '🎶',
+    '📚',
+    '🏛️',
+    '🏙️',
+    '🌟',
+    '🧠',
+    '🏆',
+    '🧪',
+    '🎨',
+    '🌍',
+    '🎓',
+    '🏺',
+    '⚔️',
+    '🎬',
+    '🚀',
+    '🦄',
+    '🌈',
+    '🪷',
+    '🌵',
+    '🍦',
+    '🧁',
+    '🎠',
+    '🦋',
+    '🐳',
+    '🍭',
+    '🎡',
+    '🌻',
+    '🌮',
+    '🧸',
+    '🪩',
+    '🎁',
+    '💡',
+    '🔍',
+    '📷',
+    '📱',
   ];
-  
+
   const colors = [
     { name: 'Blue', value: 'bg-blue-500', textColor: 'text-white' },
     { name: 'Green', value: 'bg-green-500', textColor: 'text-white' },
@@ -74,103 +111,106 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
     { name: 'Lime', value: 'bg-lime-500', textColor: 'text-black' },
     { name: 'Emerald', value: 'bg-emerald-500', textColor: 'text-white' },
   ];
-  
+
   // Update form state when initialValues change - FIXED: Ensure tags is always an array
   useEffect(() => {
     if (initialValues) {
-      setFormState(prev => ({
+      setFormState((prev) => ({
         ...prev,
         ...initialValues,
-        tags: initialValues.tags || [] // FIXED: Always ensure tags is an array
+        tags: initialValues.tags || [], // FIXED: Always ensure tags is an array
       }));
     }
   }, [initialValues]);
-  
+
   // Update a single field
   const handleChange = (field: keyof CollectionFormData, value: any) => {
     // Add haptic feedback for mobile
     if (mobile) {
       triggerHapticFeedback('selection');
     }
-    
-    setFormState(prev => ({
+
+    setFormState((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
-    
+
     // Mark field as touched
-    setTouched(prev => ({
+    setTouched((prev) => ({
       ...prev,
-      [field]: true
+      [field]: true,
     }));
-    
+
     // Clear error when value changes
     if (errors[field]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [field]: undefined
+        [field]: undefined,
       }));
     }
   };
-  
+
   // Handle tag input - FIXED: No null check needed since tags is always array
   const handleAddTag = () => {
     if (tagInput.trim() && !formState.tags.includes(tagInput.trim())) {
       if (mobile) {
         triggerHapticFeedback('light');
       }
-      setFormState(prev => ({
+      setFormState((prev) => ({
         ...prev,
-        tags: [...prev.tags, tagInput.trim()]
+        tags: [...prev.tags, tagInput.trim()],
       }));
       setTagInput('');
     }
   };
-  
+
   const handleRemoveTag = (tag: string) => {
     if (mobile) {
       triggerHapticFeedback('light');
     }
-    setFormState(prev => ({
+    setFormState((prev) => ({
       ...prev,
-      tags: prev.tags.filter(t => t !== tag)
+      tags: prev.tags.filter((t) => t !== tag),
     }));
   };
-  
+
   // Validate the form
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof CollectionFormData, string>> = {};
-    
+
     // Name is required
     if (!formState.name.trim()) {
       newErrors.name = 'Collection name is required';
     } else if (formState.name.length > 50) {
       newErrors.name = 'Name must be less than 50 characters';
     }
-    
+
     // Description has max length
     if (formState.description.length > 500) {
       newErrors.description = 'Description must be less than 500 characters';
     }
-    
+
     setErrors(newErrors);
-    
+
     // Form is valid if there are no errors
     return Object.keys(newErrors).length === 0;
   };
-  
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Mark all fields as touched
-    const allTouched = Object.keys(formState).reduce((acc, key) => {
-      acc[key as keyof CollectionFormData] = true;
-      return acc;
-    }, {} as Record<keyof CollectionFormData, boolean>);
-    
+    const allTouched = Object.keys(formState).reduce(
+      (acc, key) => {
+        acc[key as keyof CollectionFormData] = true;
+        return acc;
+      },
+      {} as Record<keyof CollectionFormData, boolean>
+    );
+
     setTouched(allTouched);
-    
+
     // Validate form
     if (validateForm()) {
       if (mobile) {
@@ -179,17 +219,20 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
       onSubmit(formState);
     }
   };
-  
+
   return (
-    <div 
+    <div
       className={`${className}`}
       style={{
-        paddingBottom: mobile ? Math.max(safeArea.bottom, 20) : undefined
+        paddingBottom: mobile ? Math.max(safeArea.bottom, 20) : undefined,
       }}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="name" className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+          <Label
+            htmlFor="name"
+            className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}
+          >
             Collection Name <span className="text-red-500">*</span>
           </Label>
           <MobileInput
@@ -209,9 +252,12 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             {formState.name.length}/50 characters
           </p>
         </div>
-        
+
         <div className="space-y-2">
-          <Label htmlFor="description" className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
+          <Label
+            htmlFor="description"
+            className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}
+          >
             Description (optional)
           </Label>
           <MobileTextarea
@@ -231,19 +277,23 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             {formState.description.length}/500 characters
           </p>
         </div>
-        
+
         <div className="space-y-3">
           <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
             Choose an Icon
           </Label>
-          <div className={`grid ${mobile ? 'grid-cols-6 gap-4' : 'grid-cols-8 sm:grid-cols-9 gap-3'}`}>
+          <div
+            className={`grid ${mobile ? 'grid-cols-6 gap-4' : 'grid-cols-8 sm:grid-cols-9 gap-3'}`}
+          >
             {icons.map((icon) => (
               <button
                 key={icon}
                 type="button"
                 onClick={() => !isLoading && handleChange('icon', icon)}
                 className={`${mobile ? 'h-14 w-14' : 'h-10 w-10'} rounded-full ${formState.color} flex items-center justify-center text-white ${mobile ? 'text-2xl' : 'text-xl'} cursor-pointer ${
-                  formState.icon === icon ? 'ring-2 ring-offset-2 ring-blue-400' : ''
+                  formState.icon === icon
+                    ? 'ring-2 ring-offset-2 ring-blue-400'
+                    : ''
                 } hover:scale-110 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${
                   mobile ? 'active:scale-95' : ''
                 }`}
@@ -254,12 +304,14 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             ))}
           </div>
         </div>
-        
+
         <div className="space-y-3">
           <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
             Choose a Color
           </Label>
-          <div className={`grid ${mobile ? 'grid-cols-2 gap-4' : 'grid-cols-3 sm:grid-cols-6 gap-3'}`}>
+          <div
+            className={`grid ${mobile ? 'grid-cols-2 gap-4' : 'grid-cols-3 sm:grid-cols-6 gap-3'}`}
+          >
             {colors.map((color) => (
               <button
                 key={color.value}
@@ -268,20 +320,25 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 className="relative"
                 disabled={isLoading}
               >
-                <div className={`w-full ${mobile ? 'h-16' : 'h-12'} rounded-lg ${color.value} cursor-pointer ${
-                  formState.color === color.value ? 'ring-2 ring-offset-2 ring-blue-400' : ''
-                } hover:scale-105 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${
-                  mobile ? 'active:scale-95' : ''
-                }`}>
-                </div>
-                <span className={`absolute inset-0 flex items-center justify-center ${mobile ? 'text-base' : 'text-sm'} font-medium ${color.textColor}`}>
+                <div
+                  className={`w-full ${mobile ? 'h-16' : 'h-12'} rounded-lg ${color.value} cursor-pointer ${
+                    formState.color === color.value
+                      ? 'ring-2 ring-offset-2 ring-blue-400'
+                      : ''
+                  } hover:scale-105 transition-transform ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${
+                    mobile ? 'active:scale-95' : ''
+                  }`}
+                ></div>
+                <span
+                  className={`absolute inset-0 flex items-center justify-center ${mobile ? 'text-base' : 'text-sm'} font-medium ${color.textColor}`}
+                >
                   {color.name}
                 </span>
               </button>
             ))}
           </div>
         </div>
-        
+
         {/* Tags - FIXED: No null checks needed since tags is always array */}
         <div className="space-y-3">
           <Label className={`${mobile ? 'text-lg' : 'text-base'} font-medium`}>
@@ -289,10 +346,14 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
           </Label>
           <div className="flex flex-wrap gap-2 mb-2">
             {formState.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="flex items-center gap-1"
+              >
                 {tag}
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="ml-1 hover:text-red-500"
                   onClick={() => handleRemoveTag(tag)}
                   disabled={isLoading}
@@ -306,17 +367,19 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             )}
           </div>
           <div className={`flex gap-2 ${mobile ? 'flex-col' : ''}`}>
-            <MobileInput 
+            <MobileInput
               placeholder="Add a tag..."
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+              onKeyDown={(e) =>
+                e.key === 'Enter' && (e.preventDefault(), handleAddTag())
+              }
               disabled={isLoading}
               className={mobile ? 'mb-2' : 'flex-1'}
               preventZoom={true}
             />
-            <MobileButton 
-              type="button" 
+            <MobileButton
+              type="button"
               onClick={handleAddTag}
               disabled={!tagInput.trim() || isLoading}
               className={mobile ? 'w-full' : ''}
@@ -325,29 +388,40 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             </MobileButton>
           </div>
         </div>
-        
+
         {/* Preview */}
         <div className="pt-2 pb-4">
-          <h3 className={`${mobile ? 'text-base' : 'text-sm'} font-medium text-gray-500 mb-3`}>
+          <h3
+            className={`${mobile ? 'text-base' : 'text-sm'} font-medium text-gray-500 mb-3`}
+          >
             Preview
           </h3>
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex items-start gap-4">
-              <div className={`${mobile ? 'w-20 h-20' : 'w-16 h-16'} rounded-lg ${formState.color} flex items-center justify-center text-white ${mobile ? 'text-4xl' : 'text-3xl'} shadow-sm`}>
+              <div
+                className={`${mobile ? 'w-20 h-20' : 'w-16 h-16'} rounded-lg ${formState.color} flex items-center justify-center text-white ${mobile ? 'text-4xl' : 'text-3xl'} shadow-sm`}
+              >
                 {formState.icon}
               </div>
               <div className="flex-1">
-                <h3 className={`font-semibold ${mobile ? 'text-xl' : 'text-lg'}`}>
-                  {formState.name || "Your Collection Name"}
+                <h3
+                  className={`font-semibold ${mobile ? 'text-xl' : 'text-lg'}`}
+                >
+                  {formState.name || 'Your Collection Name'}
                 </h3>
-                <p className={`${mobile ? 'text-base' : 'text-sm'} text-gray-600 line-clamp-2`}>
-                  {formState.description || "Collection description will appear here"}
+                <p
+                  className={`${mobile ? 'text-base' : 'text-sm'} text-gray-600 line-clamp-2`}
+                >
+                  {formState.description ||
+                    'Collection description will appear here'}
                 </p>
-                
+
                 {formState.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {formState.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+                    {formState.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
                     ))}
                   </div>
                 )}
@@ -355,17 +429,17 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
             </div>
           </div>
         </div>
-        
-        <div 
+
+        <div
           className={`flex ${mobile ? 'flex-col gap-4' : 'justify-end gap-3'} pt-4 border-t`}
           style={{
-            paddingBottom: isKeyboardOpen && mobile ? '20px' : undefined
+            paddingBottom: isKeyboardOpen && mobile ? '20px' : undefined,
           }}
         >
           {onCancel && (
-            <MobileButton 
-              type="button" 
-              variant="outline" 
+            <MobileButton
+              type="button"
+              variant="outline"
               onClick={onCancel}
               disabled={isLoading}
               className={mobile ? 'w-full' : ''}
@@ -373,7 +447,7 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
               Cancel
             </MobileButton>
           )}
-          <MobileButton 
+          <MobileButton
             type="submit"
             disabled={!formState.name.trim() || isLoading}
             className={mobile ? 'w-full' : ''}
@@ -383,7 +457,9 @@ export const CollectionForm: React.FC<CollectionFormProps> = ({
                 <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></span>
                 Saving...
               </>
-            ) : submitLabel}
+            ) : (
+              submitLabel
+            )}
           </MobileButton>
         </div>
       </form>

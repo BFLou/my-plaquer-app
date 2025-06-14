@@ -17,14 +17,14 @@ export const parsePlaqueUrl = (url: string) => {
   try {
     const urlObj = new URL(url);
     const pathMatch = urlObj.pathname.match(/^\/plaque\/(\d+)$/);
-    
+
     if (!pathMatch) return null;
-    
+
     return {
       plaqueId: parseInt(pathMatch[1], 10),
       source: urlObj.searchParams.get('source'),
       route: urlObj.searchParams.get('route'),
-      collection: urlObj.searchParams.get('collection')
+      collection: urlObj.searchParams.get('collection'),
     };
   } catch {
     return null;

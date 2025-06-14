@@ -1,7 +1,16 @@
 // src/components/maps/features/Filters/CompactDistanceFilter.tsx
 import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, MapPin, Target, Loader, X, Minus, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Target,
+  Loader,
+  X,
+  Minus,
+  Plus,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DistanceFilter {
@@ -26,7 +35,7 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
   onRadiusChange,
   onClear,
   isExpanded,
-  onToggleExpanded
+  onToggleExpanded,
 }) => {
   const [isLocating, setIsLocating] = useState(false);
 
@@ -39,7 +48,10 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords: [number, number] = [position.coords.latitude, position.coords.longitude];
+        const coords: [number, number] = [
+          position.coords.latitude,
+          position.coords.longitude,
+        ];
         onSetLocation(coords);
         setIsLocating(false);
         toast.success('Location found');
@@ -52,7 +64,6 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
     );
   };
 
-
   return (
     <div className="bg-white rounded-md border p-3">
       <div
@@ -63,7 +74,11 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
           <MapPin size={16} className="text-green-500" />
           Distance Filter
         </h4>
-        {isExpanded ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+        {isExpanded ? (
+          <ChevronUp size={16} className="text-gray-500" />
+        ) : (
+          <ChevronDown size={16} className="text-gray-500" />
+        )}
       </div>
 
       {isExpanded && (
@@ -97,9 +112,11 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
                       桃 {distanceFilter.locationName}
                     </div>
                     <div className="text-xs text-green-600">
-                      Within {distanceFilter.radius < 1
+                      Within{' '}
+                      {distanceFilter.radius < 1
                         ? `${Math.round(distanceFilter.radius * 1000)}m`
-                        : `${distanceFilter.radius}km`} radius
+                        : `${distanceFilter.radius}km`}{' '}
+                      radius
                     </div>
                   </div>
                   <Button
@@ -114,17 +131,25 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
               </div>
 
               <div>
-                <div className="text-xs font-medium text-gray-600 mb-2">Search Radius</div>
+                <div className="text-xs font-medium text-gray-600 mb-2">
+                  Search Radius
+                </div>
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {[0.5, 1, 2, 5].map((distance) => (
                     <Button
                       key={distance}
-                      variant={Math.abs(distanceFilter.radius - distance) < 0.01 ? "default" : "outline"}
+                      variant={
+                        Math.abs(distanceFilter.radius - distance) < 0.01
+                          ? 'default'
+                          : 'outline'
+                      }
                       size="sm"
                       onClick={() => onRadiusChange(distance)}
                       className="h-7 text-xs font-medium"
                     >
-                      {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance}km`}
+                      {distance < 1
+                        ? `${Math.round(distance * 1000)}m`
+                        : `${distance}km`}
                     </Button>
                   ))}
                 </div>
@@ -132,7 +157,9 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onRadiusChange(Math.max(0.1, distanceFilter.radius - 0.1))}
+                    onClick={() =>
+                      onRadiusChange(Math.max(0.1, distanceFilter.radius - 0.1))
+                    }
                     className="h-7 w-7 p-0"
                   >
                     <Minus size={12} />
@@ -145,7 +172,9 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onRadiusChange(Math.min(10, distanceFilter.radius + 0.1))}
+                    onClick={() =>
+                      onRadiusChange(Math.min(10, distanceFilter.radius + 0.1))
+                    }
                     className="h-7 w-7 p-0"
                   >
                     <Plus size={12} />

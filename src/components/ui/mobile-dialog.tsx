@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 interface MobileDialogProps {
@@ -29,22 +29,22 @@ export const MobileDialog: React.FC<MobileDialogProps> = ({
   children,
   footer,
   className,
-  size = 'md'
+  size = 'md',
 }) => {
   const sizeClasses = {
     sm: 'w-[95vw] max-w-[400px]',
     md: 'w-[95vw] max-w-[600px]',
     lg: 'w-[95vw] max-w-[800px]',
     xl: 'w-[95vw] max-w-[1000px]',
-    full: 'w-[95vw] max-w-[95vw]'
+    full: 'w-[95vw] max-w-[95vw]',
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className={cn(
           sizeClasses[size],
-          "max-h-[90vh] overflow-auto",
+          'max-h-[90vh] overflow-auto',
           className
         )}
       >
@@ -62,11 +62,9 @@ export const MobileDialog: React.FC<MobileDialogProps> = ({
             )}
           </DialogHeader>
         )}
-        
-        <div className="py-2">
-          {children}
-        </div>
-        
+
+        <div className="py-2">{children}</div>
+
         {footer && (
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-3">
             {footer}

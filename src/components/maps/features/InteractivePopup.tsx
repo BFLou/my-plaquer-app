@@ -1,14 +1,14 @@
 // src/components/maps/features/InteractivePopup.tsx
 import React from 'react';
-import { 
-  Eye, 
-  Heart, 
-  Clock, 
-  Plus, 
-  MapPin, 
+import {
+  Eye,
+  Heart,
+  Clock,
+  Plus,
+  MapPin,
   User,
   Building,
-  Share2
+  Share2,
 } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
@@ -42,11 +42,14 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
   isRoutingMode = false,
   distance,
   formatDistance,
-  showDistance = false
+  showDistance = false,
 }) => {
   const mobile = isMobile();
 
-  const handleAction = (action: () => void, hapticType: 'light' | 'medium' | 'heavy' = 'light') => {
+  const handleAction = (
+    action: () => void,
+    hapticType: 'light' | 'medium' | 'heavy' = 'light'
+  ) => {
     if (mobile) {
       triggerHapticFeedback(hapticType);
     }
@@ -54,143 +57,177 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
   };
 
   return (
-    <div className="interactive-popup" style={{
-      minWidth: mobile ? '280px' : '320px',
-      maxWidth: mobile ? '90vw' : '380px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
+    <div
+      className="interactive-popup"
+      style={{
+        minWidth: mobile ? '280px' : '320px',
+        maxWidth: mobile ? '90vw' : '380px',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }}
+    >
       {/* Header Section */}
-      <div className="popup-header" style={{
-        background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-        padding: mobile ? '12px' : '16px',
-        borderRadius: '8px 8px 0 0',
-        borderBottom: '1px solid #e2e8f0'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: '8px'
-        }}>
+      <div
+        className="popup-header"
+        style={{
+          background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+          padding: mobile ? '12px' : '16px',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '1px solid #e2e8f0',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: '8px',
+          }}
+        >
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{
-              fontSize: mobile ? '14px' : '16px',
-              fontWeight: '600',
-              color: '#1f2937',
-              lineHeight: '1.3',
-              margin: '0 0 4px 0',
-              wordBreak: 'break-word'
-            }}>
+            <h3
+              style={{
+                fontSize: mobile ? '14px' : '16px',
+                fontWeight: '600',
+                color: '#1f2937',
+                lineHeight: '1.3',
+                margin: '0 0 4px 0',
+                wordBreak: 'break-word',
+              }}
+            >
               {plaque.title || 'Unnamed Plaque'}
             </h3>
-            
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              marginBottom: '6px'
-            }}>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                marginBottom: '6px',
+              }}
+            >
               <MapPin size={12} style={{ color: '#6b7280', flexShrink: 0 }} />
-              <span style={{
-                fontSize: '11px',
-                color: '#6b7280',
-                lineHeight: '1.2'
-              }}>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: '#6b7280',
+                  lineHeight: '1.2',
+                }}
+              >
                 {plaque.location || plaque.address || 'Location not specified'}
               </span>
             </div>
 
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '4px',
-              marginTop: '6px'
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '4px',
+                marginTop: '6px',
+              }}
+            >
               {plaque.profession && plaque.profession !== 'Unknown' && (
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '2px',
-                  fontSize: '10px',
-                  padding: '2px 6px',
-                  backgroundColor: '#ddd6fe',
-                  color: '#6d28d9',
-                  borderRadius: '10px',
-                  fontWeight: '500'
-                }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    backgroundColor: '#ddd6fe',
+                    color: '#6d28d9',
+                    borderRadius: '10px',
+                    fontWeight: '500',
+                  }}
+                >
                   <User size={8} />
                   {plaque.profession}
                 </span>
               )}
-              
+
               {plaque.color && plaque.color !== 'unknown' && (
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '2px',
-                  fontSize: '10px',
-                  padding: '2px 6px',
-                  backgroundColor: '#bfdbfe',
-                  color: '#1d4ed8',
-                  borderRadius: '10px',
-                  fontWeight: '500'
-                }}>
-                  <div style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: getColorHex(plaque.color)
-                  }} />
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    backgroundColor: '#bfdbfe',
+                    color: '#1d4ed8',
+                    borderRadius: '10px',
+                    fontWeight: '500',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: getColorHex(plaque.color),
+                    }}
+                  />
                   {plaque.color.charAt(0).toUpperCase() + plaque.color.slice(1)}
                 </span>
               )}
 
               {showDistance && distance && distance < Infinity && (
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '2px',
-                  fontSize: '10px',
-                  padding: '2px 6px',
-                  backgroundColor: '#d1fae5',
-                  color: '#065f46',
-                  borderRadius: '10px',
-                  fontWeight: '500'
-                }}>
-                  📍 {formatDistance ? formatDistance(distance) : `${distance.toFixed(1)}km`}
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    backgroundColor: '#d1fae5',
+                    color: '#065f46',
+                    borderRadius: '10px',
+                    fontWeight: '500',
+                  }}
+                >
+                  📍{' '}
+                  {formatDistance
+                    ? formatDistance(distance)
+                    : `${distance.toFixed(1)}km`}
                 </span>
               )}
             </div>
           </div>
 
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
-            alignItems: 'flex-end'
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              alignItems: 'flex-end',
+            }}
+          >
             {isVisited && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                color: '#059669',
-                fontWeight: '600'
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  fontSize: '10px',
+                  color: '#059669',
+                  fontWeight: '600',
+                }}
+              >
                 <Clock size={10} />
                 Visited
               </div>
             )}
             {isFavorite && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px',
-                fontSize: '10px',
-                color: '#d97706',
-                fontWeight: '600'
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  fontSize: '10px',
+                  color: '#d97706',
+                  fontWeight: '600',
+                }}
+              >
                 <Heart size={10} fill="currentColor" />
                 Favorite
               </div>
@@ -200,16 +237,21 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="popup-actions" style={{
-        padding: mobile ? '12px' : '16px',
-        background: 'white'
-      }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isRoutingMode ? '1fr 1fr' : '1fr',
-          gap: '8px',
-          marginBottom: '8px'
-        }}>
+      <div
+        className="popup-actions"
+        style={{
+          padding: mobile ? '12px' : '16px',
+          background: 'white',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isRoutingMode ? '1fr 1fr' : '1fr',
+            gap: '8px',
+            marginBottom: '8px',
+          }}
+        >
           <button
             onClick={() => handleAction(() => onViewDetails(plaque), 'medium')}
             style={{
@@ -226,7 +268,7 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              minHeight: mobile ? '44px' : '40px'
+              minHeight: mobile ? '44px' : '40px',
             }}
           >
             <Eye size={mobile ? 16 : 14} />
@@ -250,7 +292,7 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
                 fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minHeight: mobile ? '44px' : '40px'
+                minHeight: mobile ? '44px' : '40px',
               }}
             >
               <Plus size={mobile ? 16 : 14} />
@@ -259,14 +301,18 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
           )}
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: mobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: '6px'
-        }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: mobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+            gap: '6px',
+          }}
+        >
           {onToggleFavorite && (
             <button
-              onClick={() => handleAction(() => onToggleFavorite(plaque), 'light')}
+              onClick={() =>
+                handleAction(() => onToggleFavorite(plaque), 'light')
+              }
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -281,7 +327,7 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minHeight: mobile ? '40px' : '36px'
+                minHeight: mobile ? '40px' : '36px',
               }}
               title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             >
@@ -307,7 +353,7 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minHeight: mobile ? '40px' : '36px'
+                minHeight: mobile ? '40px' : '36px',
               }}
               title="Mark as visited"
             >
@@ -318,7 +364,9 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
 
           {onAddToCollection && (
             <button
-              onClick={() => handleAction(() => onAddToCollection(plaque), 'light')}
+              onClick={() =>
+                handleAction(() => onAddToCollection(plaque), 'light')
+              }
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -333,7 +381,7 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minHeight: mobile ? '40px' : '36px'
+                minHeight: mobile ? '40px' : '36px',
               }}
               title="Add to collection"
             >
@@ -359,7 +407,7 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minHeight: mobile ? '40px' : '36px'
+                minHeight: mobile ? '40px' : '36px',
               }}
               title="Share plaque"
             >
@@ -371,25 +419,28 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
       </div>
 
       {plaque.inscription && (
-        <div style={{
-          padding: '12px 16px',
-          borderTop: '1px solid #f1f5f9',
-          backgroundColor: '#f8fafc'
-        }}>
-          <div style={{
-            fontSize: '11px',
-            color: '#64748b',
-            lineHeight: '1.4',
-            maxHeight: '60px',
-            overflow: 'hidden',
-            position: 'relative'
-          }}>
-            {plaque.inscription.length > 120 
-              ? `${plaque.inscription.substring(0, 120)}...` 
-              : plaque.inscription
-            }
+        <div
+          style={{
+            padding: '12px 16px',
+            borderTop: '1px solid #f1f5f9',
+            backgroundColor: '#f8fafc',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '11px',
+              color: '#64748b',
+              lineHeight: '1.4',
+              maxHeight: '60px',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            {plaque.inscription.length > 120
+              ? `${plaque.inscription.substring(0, 120)}...`
+              : plaque.inscription}
           </div>
-          
+
           <button
             onClick={() => handleAction(() => onViewDetails(plaque), 'light')}
             style={{
@@ -402,11 +453,18 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              fontWeight: '500'
+              fontWeight: '500',
             }}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m7 17 10-10M17 7H7v10"/>
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="m7 17 10-10M17 7H7v10" />
             </svg>
             Read full inscription
           </button>
@@ -419,25 +477,27 @@ export const InteractivePopup: React.FC<InteractivePopupProps> = ({
 // Helper function for color mapping
 function getColorHex(color: string): string {
   const colorMap: Record<string, string> = {
-    'blue': '#3b82f6',
-    'green': '#10b981',
-    'brown': '#b45309',
-    'black': '#1f2937',
-    'grey': '#4b5563',
-    'gray': '#4b5563',
-    'red': '#ef4444',
-    'yellow': '#eab308',
-    'purple': '#8b5cf6'
+    blue: '#3b82f6',
+    green: '#10b981',
+    brown: '#b45309',
+    black: '#1f2937',
+    grey: '#4b5563',
+    gray: '#4b5563',
+    red: '#ef4444',
+    yellow: '#eab308',
+    purple: '#8b5cf6',
   };
-  
+
   return colorMap[color.toLowerCase()] || '#3b82f6';
 }
 
 // Factory function to create popup DOM element for Leaflet
-export const createInteractivePopupElement = (props: InteractivePopupProps): HTMLDivElement => {
+export const createInteractivePopupElement = (
+  props: InteractivePopupProps
+): HTMLDivElement => {
   const container = document.createElement('div');
   const mobile = isMobile();
-  
+
   const popupHTML = `
     <div class="interactive-popup-leaflet" style="
       min-width: ${mobile ? '280px' : '320px'};
@@ -477,7 +537,9 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
             </div>
 
             <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
-              ${props.plaque.profession && props.plaque.profession !== 'Unknown' ? `
+              ${
+                props.plaque.profession && props.plaque.profession !== 'Unknown'
+                  ? `
                 <span style="
                   display: inline-flex;
                   align-items: center;
@@ -495,9 +557,13 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
                   </svg>
                   ${props.plaque.profession}
                 </span>
-              ` : ''}
+              `
+                  : ''
+              }
               
-              ${props.plaque.color && props.plaque.color !== 'unknown' ? `
+              ${
+                props.plaque.color && props.plaque.color !== 'unknown'
+                  ? `
                 <span style="
                   display: inline-flex;
                   align-items: center;
@@ -517,9 +583,15 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
                   "></div>
                   ${props.plaque.color.charAt(0).toUpperCase() + props.plaque.color.slice(1)}
                 </span>
-              ` : ''}
+              `
+                  : ''
+              }
 
-              ${props.showDistance && props.distance && props.distance < Infinity ? `
+              ${
+                props.showDistance &&
+                props.distance &&
+                props.distance < Infinity
+                  ? `
                 <span style="
                   display: inline-flex;
                   align-items: center;
@@ -533,12 +605,16 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
                 ">
                   📍 ${props.formatDistance ? props.formatDistance(props.distance) : `${props.distance.toFixed(1)}km`}
                 </span>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           </div>
 
           <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-end;">
-            ${props.isVisited ? `
+            ${
+              props.isVisited
+                ? `
               <div style="
                 display: flex;
                 align-items: center;
@@ -553,8 +629,12 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
                 </svg>
                 Visited
               </div>
-            ` : ''}
-            ${props.isFavorite ? `
+            `
+                : ''
+            }
+            ${
+              props.isFavorite
+                ? `
               <div style="
                 display: flex;
                 align-items: center;
@@ -568,7 +648,9 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
                 </svg>
                 Favorite
               </div>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
         </div>
       </div>
@@ -606,7 +688,9 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
             View Details
           </button>
 
-          ${props.isRoutingMode && props.onAddToRoute ? `
+          ${
+            props.isRoutingMode && props.onAddToRoute
+              ? `
             <button
               class="add-to-route-btn"
               style="
@@ -631,7 +715,9 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
               </svg>
               Add to Route
             </button>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
 
         <div style="
@@ -639,7 +725,9 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
           grid-template-columns: ${mobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)'};
           gap: 6px;
         ">
-          ${props.onToggleFavorite ? `
+          ${
+            props.onToggleFavorite
+              ? `
             <button
               class="favorite-btn"
               style="
@@ -665,9 +753,13 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
               </svg>
               ${!mobile ? (props.isFavorite ? 'Unfav' : 'Fav') : ''}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${props.onMarkVisited && !props.isVisited ? `
+          ${
+            props.onMarkVisited && !props.isVisited
+              ? `
             <button
               class="visited-btn"
               style="
@@ -694,9 +786,13 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
               </svg>
               ${!mobile ? 'Visit' : ''}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${props.onAddToCollection ? `
+          ${
+            props.onAddToCollection
+              ? `
             <button
               class="collection-btn"
               style="
@@ -722,9 +818,13 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
               </svg>
               ${!mobile ? 'Collect' : ''}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${props.onShare ? `
+          ${
+            props.onShare
+              ? `
             <button
               class="share-btn"
               style="
@@ -754,11 +854,15 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
               </svg>
               ${!mobile ? 'Share' : ''}
             </button>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
       </div>
 
-      ${props.plaque.inscription ? `
+      ${
+        props.plaque.inscription
+          ? `
         <div style="
           padding: 12px 16px;
           border-top: 1px solid #f1f5f9;
@@ -772,9 +876,10 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
            overflow: hidden;
            position: relative;
          ">
-           ${props.plaque.inscription.length > 120 
-             ? `${props.plaque.inscription.substring(0, 120)}...` 
-             : props.plaque.inscription
+           ${
+             props.plaque.inscription.length > 120
+               ? `${props.plaque.inscription.substring(0, 120)}...`
+               : props.plaque.inscription
            }
          </div>
          
@@ -799,128 +904,142 @@ export const createInteractivePopupElement = (props: InteractivePopupProps): HTM
            Read full inscription
          </button>
        </div>
-     ` : ''}
+     `
+          : ''
+      }
    </div>
  `;
 
- container.innerHTML = popupHTML;
- 
- // Add event listeners with proper error handling
- const addEventListeners = () => {
-   // View Details button (always present)
-   const viewDetailsBtn = container.querySelector('.view-details-btn') as HTMLButtonElement;
-   if (viewDetailsBtn) {
-     viewDetailsBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('medium');
-       
-       // Add visual feedback
-       viewDetailsBtn.style.transform = 'scale(0.95)';
-       setTimeout(() => {
-         viewDetailsBtn.style.transform = 'scale(1)';
-       }, 150);
-       
-       props.onViewDetails(props.plaque);
-     });
+  container.innerHTML = popupHTML;
 
-     // Hover effects for desktop
-     if (!mobile) {
-       viewDetailsBtn.addEventListener('mouseenter', () => {
-         viewDetailsBtn.style.backgroundColor = '#2563eb';
-         viewDetailsBtn.style.transform = 'translateY(-1px)';
-       });
-       
-       viewDetailsBtn.addEventListener('mouseleave', () => {
-         viewDetailsBtn.style.backgroundColor = '#3b82f6';
-         viewDetailsBtn.style.transform = 'translateY(0)';
-       });
-     }
-   }
+  // Add event listeners with proper error handling
+  const addEventListeners = () => {
+    // View Details button (always present)
+    const viewDetailsBtn = container.querySelector(
+      '.view-details-btn'
+    ) as HTMLButtonElement;
+    if (viewDetailsBtn) {
+      viewDetailsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('medium');
 
-   // Add to Route button
-   const addToRouteBtn = container.querySelector('.add-to-route-btn') as HTMLButtonElement;
-   if (addToRouteBtn && props.onAddToRoute) {
-     addToRouteBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('medium');
-       
-       // Visual feedback
-       addToRouteBtn.style.transform = 'scale(0.95)';
-       setTimeout(() => {
-         addToRouteBtn.style.transform = 'scale(1)';
-       }, 150);
-       
-       props.onAddToRoute!(props.plaque);
-     });
+        // Add visual feedback
+        viewDetailsBtn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          viewDetailsBtn.style.transform = 'scale(1)';
+        }, 150);
 
-     if (!mobile) {
-       addToRouteBtn.addEventListener('mouseenter', () => {
-         addToRouteBtn.style.backgroundColor = '#059669';
-         addToRouteBtn.style.transform = 'translateY(-1px)';
-       });
-       
-       addToRouteBtn.addEventListener('mouseleave', () => {
-         addToRouteBtn.style.backgroundColor = '#10b981';
-         addToRouteBtn.style.transform = 'translateY(0)';
-       });
-     }
-   }
+        props.onViewDetails(props.plaque);
+      });
 
-   // Favorite button
-   const favoriteBtn = container.querySelector('.favorite-btn') as HTMLButtonElement;
-   if (favoriteBtn && props.onToggleFavorite) {
-     favoriteBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('light');
-       props.onToggleFavorite!(props.plaque);
-     });
-   }
+      // Hover effects for desktop
+      if (!mobile) {
+        viewDetailsBtn.addEventListener('mouseenter', () => {
+          viewDetailsBtn.style.backgroundColor = '#2563eb';
+          viewDetailsBtn.style.transform = 'translateY(-1px)';
+        });
 
-   // Visited button
-   const visitedBtn = container.querySelector('.visited-btn') as HTMLButtonElement;
-   if (visitedBtn && props.onMarkVisited) {
-     visitedBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('light');
-       props.onMarkVisited!(props.plaque);
-     });
-   }
+        viewDetailsBtn.addEventListener('mouseleave', () => {
+          viewDetailsBtn.style.backgroundColor = '#3b82f6';
+          viewDetailsBtn.style.transform = 'translateY(0)';
+        });
+      }
+    }
 
-   // Collection button
-   const collectionBtn = container.querySelector('.collection-btn') as HTMLButtonElement;
-   if (collectionBtn && props.onAddToCollection) {
-     collectionBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('light');
-       props.onAddToCollection!(props.plaque);
-     });
-   }
+    // Add to Route button
+    const addToRouteBtn = container.querySelector(
+      '.add-to-route-btn'
+    ) as HTMLButtonElement;
+    if (addToRouteBtn && props.onAddToRoute) {
+      addToRouteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('medium');
 
-   // Share button
-   const shareBtn = container.querySelector('.share-btn') as HTMLButtonElement;
-   if (shareBtn && props.onShare) {
-     shareBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('light');
-       props.onShare!(props.plaque);
-     });
-   }
+        // Visual feedback
+        addToRouteBtn.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          addToRouteBtn.style.transform = 'scale(1)';
+        }, 150);
 
-   // Read more button
-   const readMoreBtn = container.querySelector('.read-more-btn') as HTMLButtonElement;
-   if (readMoreBtn) {
-     readMoreBtn.addEventListener('click', (e) => {
-       e.stopPropagation();
-       if (mobile) triggerHapticFeedback('light');
-       props.onViewDetails(props.plaque);
-     });
-   }
- };
+        props.onAddToRoute!(props.plaque);
+      });
 
- // Add event listeners after a short delay to ensure DOM is ready
- setTimeout(addEventListeners, 10);
- 
- return container;
+      if (!mobile) {
+        addToRouteBtn.addEventListener('mouseenter', () => {
+          addToRouteBtn.style.backgroundColor = '#059669';
+          addToRouteBtn.style.transform = 'translateY(-1px)';
+        });
+
+        addToRouteBtn.addEventListener('mouseleave', () => {
+          addToRouteBtn.style.backgroundColor = '#10b981';
+          addToRouteBtn.style.transform = 'translateY(0)';
+        });
+      }
+    }
+
+    // Favorite button
+    const favoriteBtn = container.querySelector(
+      '.favorite-btn'
+    ) as HTMLButtonElement;
+    if (favoriteBtn && props.onToggleFavorite) {
+      favoriteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('light');
+        props.onToggleFavorite!(props.plaque);
+      });
+    }
+
+    // Visited button
+    const visitedBtn = container.querySelector(
+      '.visited-btn'
+    ) as HTMLButtonElement;
+    if (visitedBtn && props.onMarkVisited) {
+      visitedBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('light');
+        props.onMarkVisited!(props.plaque);
+      });
+    }
+
+    // Collection button
+    const collectionBtn = container.querySelector(
+      '.collection-btn'
+    ) as HTMLButtonElement;
+    if (collectionBtn && props.onAddToCollection) {
+      collectionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('light');
+        props.onAddToCollection!(props.plaque);
+      });
+    }
+
+    // Share button
+    const shareBtn = container.querySelector('.share-btn') as HTMLButtonElement;
+    if (shareBtn && props.onShare) {
+      shareBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('light');
+        props.onShare!(props.plaque);
+      });
+    }
+
+    // Read more button
+    const readMoreBtn = container.querySelector(
+      '.read-more-btn'
+    ) as HTMLButtonElement;
+    if (readMoreBtn) {
+      readMoreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (mobile) triggerHapticFeedback('light');
+        props.onViewDetails(props.plaque);
+      });
+    }
+  };
+
+  // Add event listeners after a short delay to ensure DOM is ready
+  setTimeout(addEventListeners, 10);
+
+  return container;
 };
 
 export default InteractivePopup;

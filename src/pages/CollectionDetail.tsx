@@ -1,21 +1,40 @@
 // src/pages/CollectionDetail.tsx - Complete mobile-optimized collection detail page
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Check, Trash2, Star, Pencil, Edit, MapPin, X, Clock, 
-  ArrowLeft, Plus, Grid, List, Map as MapIcon, Share2, Download, Route as RouteIcon
+import {
+  Check,
+  Trash2,
+  Star,
+  Pencil,
+  Edit,
+  MapPin,
+  X,
+  Clock,
+  ArrowLeft,
+  Plus,
+  Grid,
+  List,
+  Map as MapIcon,
+  Share2,
+  Download,
+  Route as RouteIcon,
 } from 'lucide-react';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from 'react-router-dom';
 import { useCollectionDetail } from '../hooks/useCollectionDetail';
 
 // Mobile UI Components
-import { MobileButton } from "@/components/ui/mobile-button";
-import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { MobileInput } from "@/components/ui/mobile-input";
-import { Badge } from "@/components/ui/badge";
-import { MobileHeader } from "@/components/layout/MobileHeader";
-import { BottomActionBar } from "@/components/layout/BottomActionBar";
-import { FloatingActionButton } from "@/components/layout/FloatingActionButton";
-import { ActionBar } from "@/components/common/ActionBar";
+import { MobileButton } from '@/components/ui/mobile-button';
+import { MobileDialog } from '@/components/ui/mobile-dialog';
+import { MobileInput } from '@/components/ui/mobile-input';
+import { Badge } from '@/components/ui/badge';
+import { MobileHeader } from '@/components/layout/MobileHeader';
+import { BottomActionBar } from '@/components/layout/BottomActionBar';
+import { FloatingActionButton } from '@/components/layout/FloatingActionButton';
+import { ActionBar } from '@/components/common/ActionBar';
 import { toast } from 'sonner';
 
 // Collection Components
@@ -28,9 +47,9 @@ import CollectionCreateForm from '../components/collections/forms/CollectionCrea
 import AddPlaquesModal from '@/components/collections/AddPlaquesModal';
 import CollectionFilterView from '@/components/collections/CollectionFilterView';
 import { EmptyState } from '@/components/common/EmptyState';
-import { MapContainer } from "../components/maps/MapContainer";
+import { MapContainer } from '../components/maps/MapContainer';
 import { useRoutes } from '@/hooks/useRoutes';
-import { PageContainer } from "@/components";
+import { PageContainer } from '@/components';
 import { formatTimeAgo } from '../utils/timeUtils';
 import { generatePlaqueUrl } from '@/utils/urlUtils';
 import { navigateToPlaqueWithContext } from '@/utils/navigationUtils';
@@ -72,12 +91,16 @@ const CollectionDetailPage = () => {
   const collectionId = id || '';
   const { createRoute } = useRoutes();
   const { isKeyboardOpen } = useKeyboardDetection();
-  
+
   // Modal plaque from URL
-  const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
-  
+  const modalPlaqueId = searchParams.get('plaque')
+    ? parseInt(searchParams.get('plaque')!)
+    : null;
+
   // Mobile-specific state
-  const [mobileViewMode, setMobileViewMode] = useState<'overview' | 'plaques' | 'map'>('overview');
+  const [mobileViewMode, setMobileViewMode] = useState<
+    'overview' | 'plaques' | 'map'
+  >('overview');
   const [showShareOptions, setShowShareOptions] = useState(false);
   const [showRouteBuilder, setShowRouteBuilder] = useState(false);
   const [routePoints, setRoutePoints] = useState<Plaque[]>([]);
@@ -124,15 +147,18 @@ const CollectionDetailPage = () => {
     handleEditName,
     editFormOpen,
     setEditFormOpen,
-    handleUpdateCollection
+    handleUpdateCollection,
   } = useCollectionDetail(collectionId);
 
   // Add missing state for edit name value
-  const [localEditNameValue, setLocalEditNameValue] = useState(collection?.name || '');
+  const [localEditNameValue, setLocalEditNameValue] = useState(
+    collection?.name || ''
+  );
 
   // State for filtered plaques
-  const [filteredPlaques, setFilteredPlaques] = useState<Plaque[]>(collectionPlaques);
-  
+  const [filteredPlaques, setFilteredPlaques] =
+    useState<Plaque[]>(collectionPlaques);
+
   // Swipe gesture for mobile navigation
   const swipeGesture = useSwipeGesture({
     onSwipe: (direction: string) => {
@@ -141,18 +167,25 @@ const CollectionDetailPage = () => {
         handleMobileBack();
       }
     },
-    threshold: 50
+    threshold: 50,
   });
 
   // Helper function to get collection timestamp
   const getCollectionTimestamp = (collection: any) => {
-    return collection.updated_at || collection.created_at || collection.date_created || new Date().toISOString();
+    return (
+      collection.updated_at ||
+      collection.created_at ||
+      collection.date_created ||
+      new Date().toISOString()
+    );
   };
 
   // Handle modal plaque from URL
   useEffect(() => {
     if (modalPlaqueId && collectionPlaques.length > 0) {
-      const plaque = collectionPlaques.find((p: Plaque) => p.id === modalPlaqueId);
+      const plaque = collectionPlaques.find(
+        (p: Plaque) => p.id === modalPlaqueId
+      );
       if (plaque) {
         console.log('Opening modal for plaque from URL:', plaque.title);
         setSelectedPlaque(plaque);
@@ -164,7 +197,13 @@ const CollectionDetailPage = () => {
     } else if (!modalPlaqueId) {
       setSelectedPlaque(null);
     }
-  }, [modalPlaqueId, collectionPlaques, searchParams, setSearchParams, setSelectedPlaque]);
+  }, [
+    modalPlaqueId,
+    collectionPlaques,
+    searchParams,
+    setSearchParams,
+    setSelectedPlaque,
+  ]);
 
   // Update filtered plaques when collection plaques change
   useEffect(() => {
@@ -172,61 +211,72 @@ const CollectionDetailPage = () => {
   }, [collectionPlaques]);
 
   // ENHANCED: Plaque click handler with proper context
-  const handlePlaqueClick = useCallback((plaque: Plaque) => {
-    console.log('Plaque clicked in collection:', plaque.title);
-    triggerHapticFeedback('selection');
-    
-    if (!collection) {
-      console.warn('No collection available for context');
-      return;
-    }
-    
-    // Calculate progress information
-    const plaqueIndex = collectionPlaques.findIndex((p: Plaque) => p.id === plaque.id);
-    const progress = plaqueIndex >= 0 ? `${plaqueIndex + 1} of ${collectionPlaques.length}` : undefined;
-    
-    // Navigate with proper collection context
-    navigateToPlaqueWithContext(navigate, plaque.id, {
-      from: 'collection',
-      collectionId: collection.id,
-      collectionName: collection.name,
-      progress: progress
-    });
-  }, [navigate, collection, collectionPlaques]);
+  const handlePlaqueClick = useCallback(
+    (plaque: Plaque) => {
+      console.log('Plaque clicked in collection:', plaque.title);
+      triggerHapticFeedback('selection');
+
+      if (!collection) {
+        console.warn('No collection available for context');
+        return;
+      }
+
+      // Calculate progress information
+      const plaqueIndex = collectionPlaques.findIndex(
+        (p: Plaque) => p.id === plaque.id
+      );
+      const progress =
+        plaqueIndex >= 0
+          ? `${plaqueIndex + 1} of ${collectionPlaques.length}`
+          : undefined;
+
+      // Navigate with proper collection context
+      navigateToPlaqueWithContext(navigate, plaque.id, {
+        from: 'collection',
+        collectionId: collection.id,
+        collectionName: collection.name,
+        progress: progress,
+      });
+    },
+    [navigate, collection, collectionPlaques]
+  );
 
   // ENHANCED: Modal close handler with context preservation
   const handleCloseModal = useCallback(() => {
     console.log('Closing plaque modal in collection');
     setSelectedPlaque(null);
-    
+
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('plaque');
-    
+
     if (collection) {
       newParams.set('from', 'collection');
       newParams.set('collection', collection.id);
       newParams.set('collectionName', collection.name);
     }
-    
+
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams, collection, setSelectedPlaque]);
 
   // ENHANCED: Nearby plaque selection with context
-  const handleSelectNearbyPlaque = useCallback((nearbyPlaque: Plaque) => {
-    console.log('Selecting nearby plaque in collection:', nearbyPlaque.title);
-    triggerHapticFeedback('selection');
-    
-    if (!collection) {
-      console.warn('No collection available for nearby plaque context');
-      return;
-    }
-    
-    navigateToPlaqueWithContext(navigate, nearbyPlaque.id, {
-      from: 'collection',
-      collectionId: collection.id,
-      collectionName: collection.name
-    });
-  }, [navigate, collection]);
+  const handleSelectNearbyPlaque = useCallback(
+    (nearbyPlaque: Plaque) => {
+      console.log('Selecting nearby plaque in collection:', nearbyPlaque.title);
+      triggerHapticFeedback('selection');
+
+      if (!collection) {
+        console.warn('No collection available for nearby plaque context');
+        return;
+      }
+
+      navigateToPlaqueWithContext(navigate, nearbyPlaque.id, {
+        from: 'collection',
+        collectionId: collection.id,
+        collectionName: collection.name,
+      });
+    },
+    [navigate, collection]
+  );
 
   // Mobile-optimized handlers
   const handleMobileBack = () => {
@@ -241,17 +291,17 @@ const CollectionDetailPage = () => {
 
   const handleMobileShare = async () => {
     if (!collection) return;
-    
+
     triggerHapticFeedback('light');
     const shareUrl = `${window.location.origin}/library/collections/${collection.id}`;
     const shareText = `Check out my "${collection.name}" collection with ${collectionPlaques.length} historic plaques!`;
-    
+
     if (navigator.share && isMobile()) {
       try {
         await navigator.share({
           title: collection.name,
           text: shareText,
-          url: shareUrl
+          url: shareUrl,
         });
       } catch (error: any) {
         if (error.name !== 'AbortError') {
@@ -273,9 +323,9 @@ const CollectionDetailPage = () => {
 
   const handleExportCollection = () => {
     if (!collection) return;
-    
+
     triggerHapticFeedback('light');
-    
+
     if (collectionPlaques.length === 0) {
       toast.error('No plaques to export');
       return;
@@ -283,7 +333,16 @@ const CollectionDetailPage = () => {
 
     try {
       const csvData = [
-        ['Title', 'Location', 'Address', 'Postcode', 'Profession', 'Born', 'Died', 'Erected'],
+        [
+          'Title',
+          'Location',
+          'Address',
+          'Postcode',
+          'Profession',
+          'Born',
+          'Died',
+          'Erected',
+        ],
         ...collectionPlaques.map((plaque: Plaque) => [
           plaque.title || '',
           plaque.location || '',
@@ -292,9 +351,11 @@ const CollectionDetailPage = () => {
           plaque.profession || '',
           plaque.lead_subject_born_in || '',
           plaque.lead_subject_died_in || '',
-          plaque.erected || ''
-        ])
-      ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+          plaque.erected || '',
+        ]),
+      ]
+        .map((row) => row.map((cell) => `"${cell}"`).join(','))
+        .join('\n');
 
       const blob = new Blob([csvData], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -303,7 +364,7 @@ const CollectionDetailPage = () => {
       link.download = `${collection.name.replace(/\s+/g, '-').toLowerCase()}-plaques.csv`;
       link.click();
       URL.revokeObjectURL(url);
-      
+
       toast.success('Collection exported as CSV');
     } catch (error) {
       console.error('Error exporting collection:', error);
@@ -313,12 +374,12 @@ const CollectionDetailPage = () => {
 
   const handleCreateRoute = () => {
     if (!collection) return;
-    
+
     if (collectionPlaques.length < 2) {
       toast.error('Need at least 2 plaques to create a route');
       return;
     }
-    
+
     triggerHapticFeedback('light');
     setRoutePoints([]);
     setRouteName(`${collection.name} Route`);
@@ -330,15 +391,15 @@ const CollectionDetailPage = () => {
       toast.info('Plaque already in route');
       return;
     }
-    
+
     triggerHapticFeedback('light');
-    setRoutePoints(prev => [...prev, plaque]);
+    setRoutePoints((prev) => [...prev, plaque]);
     toast.success(`Added to route (${routePoints.length + 1} stops)`);
   };
 
   const handleRemoveFromRoute = (plaqueId: number) => {
     triggerHapticFeedback('light');
-    setRoutePoints(prev => prev.filter((p: Plaque) => p.id !== plaqueId));
+    setRoutePoints((prev) => prev.filter((p: Plaque) => p.id !== plaqueId));
   };
 
   const handleSaveRoute = async () => {
@@ -354,14 +415,14 @@ const CollectionDetailPage = () => {
 
     try {
       triggerHapticFeedback('success');
-      
+
       // Fix: Pass required arguments: name, description, plaques array
       await createRoute(
         routeName.trim(),
         `Route created from collection "${collection ? collection.name : ''}"`,
         routePoints
       );
-      
+
       setShowRouteBuilder(false);
       setRoutePoints([]);
       toast.success('Route created successfully!');
@@ -388,7 +449,7 @@ const CollectionDetailPage = () => {
       </PageContainer>
     );
   }
-  
+
   // Show error state
   if (error || !collection) {
     return (
@@ -400,10 +461,14 @@ const CollectionDetailPage = () => {
         <div className="min-h-screen bg-gray-50 pt-6">
           <div className="container mx-auto px-4">
             <div className="bg-red-50 p-6 rounded-lg text-center">
-              <h3 className="text-red-600 font-medium mb-2">Error Loading Collection</h3>
-              <p className="text-red-500 mb-4">{typeof error === 'string' ? error : 'Collection not found'}</p>
-              <MobileButton 
-                variant="outline" 
+              <h3 className="text-red-600 font-medium mb-2">
+                Error Loading Collection
+              </h3>
+              <p className="text-red-500 mb-4">
+                {typeof error === 'string' ? error : 'Collection not found'}
+              </p>
+              <MobileButton
+                variant="outline"
                 onClick={() => navigate('/library/collections')}
                 touchOptimized
               >
@@ -415,35 +480,42 @@ const CollectionDetailPage = () => {
       </PageContainer>
     );
   }
-  
+
   // Mobile actions for header
   const mobileHeaderActions = [
     {
-      label: collection.is_favorite ? 'Remove from Favorites' : 'Add to Favorites',
-      icon: <Star size={16} className={collection.is_favorite ? 'fill-current' : ''} />,
-      onClick: handleMobileToggleFavorite
+      label: collection.is_favorite
+        ? 'Remove from Favorites'
+        : 'Add to Favorites',
+      icon: (
+        <Star
+          size={16}
+          className={collection.is_favorite ? 'fill-current' : ''}
+        />
+      ),
+      onClick: handleMobileToggleFavorite,
     },
     {
       label: 'Share Collection',
       icon: <Share2 size={16} />,
-      onClick: () => setShowShareOptions(true)
+      onClick: () => setShowShareOptions(true),
     },
     {
       label: 'Export Collection',
       icon: <Download size={16} />,
-      onClick: handleExportCollection
+      onClick: handleExportCollection,
     },
     {
       label: 'Edit Collection',
       icon: <Edit size={16} />,
-      onClick: () => setEditFormOpen(true)
+      onClick: () => setEditFormOpen(true),
     },
     {
       label: 'Delete Collection',
       icon: <Trash2 size={16} />,
       onClick: () => setConfirmDeleteOpen(true),
-      variant: 'destructive' as const
-    }
+      variant: 'destructive' as const,
+    },
   ];
 
   // Desktop version (hidden on mobile)
@@ -454,42 +526,46 @@ const CollectionDetailPage = () => {
         <div className="absolute bottom-10 right-20 w-48 h-48 rounded-full bg-white"></div>
         <div className="absolute top-32 right-32 w-16 h-16 rounded-full bg-white"></div>
       </div>
-      
+
       <div className="container mx-auto max-w-5xl relative z-10">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-4">
-          <MobileButton 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/library')} 
+          <MobileButton
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/library')}
             className="text-white hover:bg-white/20 h-8 w-8 p-0"
             touchOptimized
           >
             <ArrowLeft size={18} />
           </MobileButton>
-          <a 
-            className="text-white/80 hover:text-white text-sm cursor-pointer" 
+          <a
+            className="text-white/80 hover:text-white text-sm cursor-pointer"
             onClick={() => navigate('/library')}
           >
             My Library
           </a>
           <span className="text-white/50">/</span>
-          <a 
-            className="text-white/80 hover:text-white text-sm cursor-pointer" 
+          <a
+            className="text-white/80 hover:text-white text-sm cursor-pointer"
             onClick={() => navigate('/library/collections')}
           >
             Collections
           </a>
           <span className="text-white/50">/</span>
-          <span className="text-white font-medium truncate max-w-xs">{collection.name}</span>
+          <span className="text-white font-medium truncate max-w-xs">
+            {collection.name}
+          </span>
         </div>
 
         <div className="flex justify-between items-start flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-white text-2xl ${collection.color}`}>
+            <div
+              className={`w-12 h-12 rounded-lg flex items-center justify-center text-white text-2xl ${collection.color}`}
+            >
               {collection.icon}
             </div>
-            
+
             {editNameMode ? (
               <div className="flex items-center gap-2">
                 <input
@@ -499,26 +575,26 @@ const CollectionDetailPage = () => {
                   disabled={isLoading}
                   autoFocus
                 />
-                <MobileButton 
-                  variant="ghost" 
-                  size="sm" 
+                <MobileButton
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     handleSaveName();
                     setLocalEditNameValue(collection?.name || '');
-                  }} 
+                  }}
                   className="h-8 w-8 p-0 text-green-400 hover:bg-white/20"
                   disabled={isLoading}
                   touchOptimized
                 >
                   <Check size={18} />
                 </MobileButton>
-                <MobileButton 
-                  variant="ghost" 
-                  size="sm" 
+                <MobileButton
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     handleCancelEdit();
                     setLocalEditNameValue(collection?.name || '');
-                  }} 
+                  }}
                   className="h-8 w-8 p-0 text-red-400 hover:bg-white/20"
                   disabled={isLoading}
                   touchOptimized
@@ -529,10 +605,10 @@ const CollectionDetailPage = () => {
             ) : (
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">{collection.name}</h1>
-                <MobileButton 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleEditName} 
+                <MobileButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditName}
                   className="h-8 w-8 p-0 text-white hover:bg-white/20"
                   touchOptimized
                 >
@@ -541,27 +617,28 @@ const CollectionDetailPage = () => {
               </div>
             )}
           </div>
-          
+
           <div className="flex gap-2">
-            <MobileButton 
-              variant={collection.is_favorite ? "default" : "outline"}
+            <MobileButton
+              variant={collection.is_favorite ? 'default' : 'outline'}
               size="sm"
               onClick={handleToggleFavorite}
-              className={collection.is_favorite ? 
-                "bg-white/20 text-white border-white/30 hover:bg-white/30" : 
-                "text-white hover:bg-white/20"
+              className={
+                collection.is_favorite
+                  ? 'bg-white/20 text-white border-white/30 hover:bg-white/30'
+                  : 'text-white hover:bg-white/20'
               }
               disabled={isLoading}
               touchOptimized
             >
-              <Star 
-                size={16} 
-                className={`mr-2 ${collection.is_favorite ? "fill-current" : ""}`} 
+              <Star
+                size={16}
+                className={`mr-2 ${collection.is_favorite ? 'fill-current' : ''}`}
               />
-              {collection.is_favorite ? "Favorited" : "Favorite"}
+              {collection.is_favorite ? 'Favorited' : 'Favorite'}
             </MobileButton>
-            
-            <MobileButton 
+
+            <MobileButton
               variant="outline"
               size="sm"
               onClick={handleMobileShare}
@@ -572,8 +649,8 @@ const CollectionDetailPage = () => {
               <Share2 size={16} className="mr-2" />
               Share
             </MobileButton>
-            
-            <MobileButton 
+
+            <MobileButton
               variant="outline"
               size="sm"
               onClick={() => setEditFormOpen(true)}
@@ -586,25 +663,41 @@ const CollectionDetailPage = () => {
             </MobileButton>
           </div>
         </div>
-        
+
         {collection.description && (
-          <p className="text-white/80 mt-3 max-w-3xl">{collection.description}</p>
+          <p className="text-white/80 mt-3 max-w-3xl">
+            {collection.description}
+          </p>
         )}
-        
+
         <div className="flex flex-wrap items-center gap-3 mt-3">
-          <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-            <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(getCollectionTimestamp(collection))}
+          <Badge
+            variant="outline"
+            className="bg-white/20 text-white border-white/30"
+          >
+            <Clock size={12} className="mr-1" /> Updated{' '}
+            {formatTimeAgo(getCollectionTimestamp(collection))}
           </Badge>
-          <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+          <Badge
+            variant="outline"
+            className="bg-white/20 text-white border-white/30"
+          >
             {collectionPlaques.length} plaques
           </Badge>
           {collection.is_favorite && (
-            <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+            <Badge
+              variant="outline"
+              className="bg-white/20 text-white border-white/30"
+            >
               <Star size={12} className="mr-1 fill-current" /> Favorite
             </Badge>
           )}
-          {collection.tags?.map(tag => (
-            <Badge key={tag} variant="outline" className="bg-white/20 text-white border-white/30">
+          {collection.tags?.map((tag) => (
+            <Badge
+              key={tag}
+              variant="outline"
+              className="bg-white/20 text-white border-white/30"
+            >
               {tag}
             </Badge>
           ))}
@@ -677,9 +770,9 @@ const CollectionDetailPage = () => {
   const renderMobileOverview = () => (
     <div className="p-4 space-y-4">
       {/* Collection Stats */}
-      <CollectionStats 
+      <CollectionStats
         collection={collection}
-        plaques={collectionPlaques} 
+        plaques={collectionPlaques}
         userVisits={[]}
         className="mb-4"
       />
@@ -697,7 +790,7 @@ const CollectionDetailPage = () => {
             <Plus size={16} className="mr-3" />
             Add Plaques to Collection
           </MobileButton>
-          
+
           <MobileButton
             onClick={handleCreateRoute}
             className="w-full justify-start bg-green-50 text-green-700 border-green-200"
@@ -708,7 +801,7 @@ const CollectionDetailPage = () => {
             <RouteIcon size={16} className="mr-3" />
             Create Walking Route
           </MobileButton>
-          
+
           <MobileButton
             onClick={() => setMobileViewMode('plaques')}
             className="w-full justify-start"
@@ -718,7 +811,7 @@ const CollectionDetailPage = () => {
             <Grid size={16} className="mr-3" />
             Browse All Plaques
           </MobileButton>
-          
+
           <MobileButton
             onClick={() => setMobileViewMode('map')}
             className="w-full justify-start"
@@ -734,8 +827,12 @@ const CollectionDetailPage = () => {
       {/* Collection Info */}
       {collection.description && (
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <h3 className="font-semibold text-gray-900 mb-2">About This Collection</h3>
-          <p className="text-gray-600 text-sm leading-relaxed">{collection.description}</p>
+          <h3 className="font-semibold text-gray-900 mb-2">
+            About This Collection
+          </h3>
+          <p className="text-gray-600 text-sm leading-relaxed">
+            {collection.description}
+          </p>
         </div>
       )}
 
@@ -764,8 +861,12 @@ const CollectionDetailPage = () => {
                   <MapPin size={16} className="text-blue-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">{plaque.title}</h4>
-                  <p className="text-sm text-gray-500 truncate">{plaque.location || plaque.address}</p>
+                  <h4 className="font-medium text-gray-900 truncate">
+                    {plaque.title}
+                  </h4>
+                  <p className="text-sm text-gray-500 truncate">
+                    {plaque.location || plaque.address}
+                  </p>
                 </div>
               </div>
             ))}
@@ -790,17 +891,21 @@ const CollectionDetailPage = () => {
         showMapView={false}
       >
         {collectionPlaques.length === 0 ? (
-<EmptyState
-  icon={<MapPin />}
-  title="No Plaques in this Collection"
-  description="Start building your collection by adding plaques"
-/>
+          <EmptyState
+            icon={<MapPin />}
+            title="No Plaques in this Collection"
+            description="Start building your collection by adding plaques"
+          />
         ) : filteredPlaques.length === 0 ? (
           <div className="text-center py-8 bg-white rounded-lg shadow-sm mx-4">
-            <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
-            <p className="text-gray-500 mb-4">Try adjusting your search criteria or clear filters</p>
-            <MobileButton 
-              variant="outline" 
+            <h3 className="text-lg font-medium text-gray-700 mb-2">
+              No Plaques Match Your Filters
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Try adjusting your search criteria or clear filters
+            </p>
+            <MobileButton
+              variant="outline"
               onClick={() => setSearchQuery('')}
               touchOptimized
             >
@@ -809,7 +914,7 @@ const CollectionDetailPage = () => {
           </div>
         ) : viewMode === 'grid' ? (
           <div className="px-4">
-            <CollectionPlaqueGrid 
+            <CollectionPlaqueGrid
               plaques={filteredPlaques}
               isLoading={isLoading}
               favorites={favorites}
@@ -881,7 +986,7 @@ const CollectionDetailPage = () => {
     >
       {/* Desktop Header */}
       {renderDesktopHeader()}
-      
+
       {/* Mobile Header */}
       {renderMobileHeader()}
 
@@ -891,13 +996,13 @@ const CollectionDetailPage = () => {
       {/* Desktop Content */}
       <div className="hidden md:block container mx-auto max-w-5xl px-4 sm:px-6 py-4 sm:py-6">
         {/* Collection Stats */}
-        <CollectionStats 
+        <CollectionStats
           collection={collection}
-          plaques={collectionPlaques} 
+          plaques={collectionPlaques}
           userVisits={[]}
-          className="mb-4 sm:mb-6 -mt-5 relative z-10" 
+          className="mb-4 sm:mb-6 -mt-5 relative z-10"
         />
-        
+
         {/* Collection Filter View */}
         <CollectionFilterView
           plaques={collectionPlaques}
@@ -911,17 +1016,21 @@ const CollectionDetailPage = () => {
           showMapView={true}
         >
           {collectionPlaques.length === 0 ? (
-           <EmptyState
-  icon={<MapPin />}
-  title="No Plaques in this Collection"
-  description="Start building your collection by adding plaques"
-/>
+            <EmptyState
+              icon={<MapPin />}
+              title="No Plaques in this Collection"
+              description="Start building your collection by adding plaques"
+            />
           ) : filteredPlaques.length === 0 ? (
             <div className="text-center py-8 sm:py-12 bg-white rounded-lg shadow-sm">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">No Plaques Match Your Filters</h3>
-              <p className="text-gray-500 mb-4">Try adjusting your search criteria or clear filters</p>
-              <MobileButton 
-                variant="outline" 
+              <h3 className="text-lg font-medium text-gray-700 mb-2">
+                No Plaques Match Your Filters
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Try adjusting your search criteria or clear filters
+              </p>
+              <MobileButton
+                variant="outline"
                 onClick={() => setSearchQuery('')}
                 touchOptimized
               >
@@ -939,7 +1048,7 @@ const CollectionDetailPage = () => {
               </div>
             </div>
           ) : viewMode === 'grid' ? (
-            <CollectionPlaqueGrid 
+            <CollectionPlaqueGrid
               plaques={filteredPlaques}
               isLoading={isLoading}
               favorites={favorites}
@@ -973,10 +1082,8 @@ const CollectionDetailPage = () => {
       </div>
 
       {/* Mobile Content */}
-      <div className="md:hidden">
-        {renderMobileContent()}
-      </div>
-      
+      <div className="md:hidden">{renderMobileContent()}</div>
+
       {/* Floating Action Button for mobile */}
       {isMobile() && mobileViewMode !== 'map' && (
         <FloatingActionButton
@@ -985,7 +1092,7 @@ const CollectionDetailPage = () => {
           variant="default"
         />
       )}
-      
+
       {/* Bottom Action Bar for mobile map view */}
       {isMobile() && mobileViewMode === 'map' && (
         <BottomActionBar background="white">
@@ -1008,40 +1115,46 @@ const CollectionDetailPage = () => {
           </MobileButton>
         </BottomActionBar>
       )}
-      
+
       {/* Action bar (visible when plaques are selected) */}
       {selectedPlaques.length > 0 && (
         <ActionBar
-          title={selectedPlaques.length === 1 ? "plaque selected" : "plaques selected"}
+          title={
+            selectedPlaques.length === 1
+              ? 'plaque selected'
+              : 'plaques selected'
+          }
           count={selectedPlaques.length}
-          buttons={[
-            {
-              label: "Mark Visited",
-              icon: <Check size={16} />,
-              onClick: () => {
-                triggerHapticFeedback('medium');
-                for (const id of selectedPlaques) {
-                  handleMarkVisited(id);
-                }
-                setSelectedPlaques([]);
+          buttons={
+            [
+              {
+                label: 'Mark Visited',
+                icon: <Check size={16} />,
+                onClick: () => {
+                  triggerHapticFeedback('medium');
+                  for (const id of selectedPlaques) {
+                    handleMarkVisited(id);
+                  }
+                  setSelectedPlaques([]);
+                },
+                disabled: isLoading,
               },
-              disabled: isLoading
-            },
-            {
-              label: "Remove",
-              variant: "destructive",
-              icon: <Trash2 size={16} />,
-              onClick: () => {
-                triggerHapticFeedback('medium');
-                handleRemovePlaques();
+              {
+                label: 'Remove',
+                variant: 'destructive',
+                icon: <Trash2 size={16} />,
+                onClick: () => {
+                  triggerHapticFeedback('medium');
+                  handleRemovePlaques();
+                },
+                disabled: isLoading,
               },
-              disabled: isLoading
-            }
-          ] as ActionBarButton[]}
+            ] as ActionBarButton[]
+          }
           onClearSelection={() => setSelectedPlaques([])}
         />
       )}
-      
+
       {/* Enhanced Plaque detail modal with URL state and context */}
       {selectedPlaque && (
         <PlaqueDetail
@@ -1052,7 +1165,9 @@ const CollectionDetailPage = () => {
             triggerHapticFeedback('light');
             selectedPlaque && handleTogglePlaqueFavorite(selectedPlaque.id);
           }}
-          isFavorite={selectedPlaque ? favorites.includes(selectedPlaque.id) : false}
+          isFavorite={
+            selectedPlaque ? favorites.includes(selectedPlaque.id) : false
+          }
           onMarkVisited={() => {
             triggerHapticFeedback('medium');
             selectedPlaque && handleMarkVisited(selectedPlaque.id);
@@ -1065,7 +1180,7 @@ const CollectionDetailPage = () => {
           currentPath={location.pathname}
         />
       )}
-      
+
       {/* Add plaques modal */}
       <AddPlaquesModal
         isOpen={addPlaquesModalOpen}
@@ -1073,9 +1188,9 @@ const CollectionDetailPage = () => {
         onAddPlaques={handleAddPlaques}
         availablePlaques={availablePlaques}
         isLoading={isLoading}
-        existingPlaqueIds={collectionPlaques.map(p => p.id)}
+        existingPlaqueIds={collectionPlaques.map((p) => p.id)}
       />
-      
+
       {/* Remove single plaque confirmation */}
       <DeleteCollectionDialog
         isOpen={confirmRemovePlaqueOpen}
@@ -1087,7 +1202,11 @@ const CollectionDetailPage = () => {
         isLoading={isLoading}
         collectionNames={[]}
         itemType="plaque"
-        plaqueTitle={plaqueToRemove ? collectionPlaques.find(p => p.id === plaqueToRemove)?.title : undefined}
+        plaqueTitle={
+          plaqueToRemove
+            ? collectionPlaques.find((p) => p.id === plaqueToRemove)?.title
+            : undefined
+        }
       />
 
       {/* Delete collection confirmation */}
@@ -1102,7 +1221,7 @@ const CollectionDetailPage = () => {
         collectionNames={[collection.name]}
         itemType="collection"
       />
-      
+
       {/* Edit collection form */}
       <CollectionCreateForm
         isOpen={editFormOpen}
@@ -1116,7 +1235,7 @@ const CollectionDetailPage = () => {
           name: collection.name || '',
           description: collection.description || '',
           icon: collection.icon || '🎭',
-          color: collection.color || 'bg-purple-500'
+          color: collection.color || 'bg-purple-500',
         }}
         submitLabel="Save Changes"
         title="Edit Collection"
@@ -1139,7 +1258,7 @@ const CollectionDetailPage = () => {
             <Share2 size={16} className="mr-3" />
             Share Link
           </MobileButton>
-          
+
           <MobileButton
             onClick={handleExportCollection}
             className="w-full justify-start"
@@ -1178,21 +1297,27 @@ const CollectionDetailPage = () => {
             </h4>
             <div className="max-h-64 overflow-y-auto space-y-2">
               {collectionPlaques.map((plaque) => {
-                const isInRoute = routePoints.some(p => p.id === plaque.id);
+                const isInRoute = routePoints.some((p) => p.id === plaque.id);
                 return (
                   <div
                     key={plaque.id}
                     className={`flex items-center justify-between p-3 rounded-lg border ${
-                      isInRoute ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                      isInRoute
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-gray-50 border-gray-200'
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <h5 className="font-medium text-gray-900 truncate">{plaque.title}</h5>
-                      <p className="text-sm text-gray-500 truncate">{plaque.location}</p>
+                      <h5 className="font-medium text-gray-900 truncate">
+                        {plaque.title}
+                      </h5>
+                      <p className="text-sm text-gray-500 truncate">
+                        {plaque.location}
+                      </p>
                     </div>
                     <MobileButton
                       size="sm"
-                      variant={isInRoute ? "default" : "outline"}
+                      variant={isInRoute ? 'default' : 'outline'}
                       onClick={() => {
                         if (isInRoute) {
                           handleRemoveFromRoute(plaque.id);
@@ -1232,18 +1357,20 @@ const CollectionDetailPage = () => {
       </MobileDialog>
 
       {/* Mobile Progress Banner */}
-      {isMobile() && mobileViewMode === 'plaques' && collectionPlaques.length > 0 && (
-        <div className="fixed top-16 left-0 right-0 z-20 bg-blue-50 border-b border-blue-200 px-4 py-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-blue-700 font-medium">
-              {collection.name}
-            </span>
-            <span className="text-blue-600">
-              {filteredPlaques.length} of {collectionPlaques.length} plaques
-            </span>
+      {isMobile() &&
+        mobileViewMode === 'plaques' &&
+        collectionPlaques.length > 0 && (
+          <div className="fixed top-16 left-0 right-0 z-20 bg-blue-50 border-b border-blue-200 px-4 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-blue-700 font-medium">
+                {collection.name}
+              </span>
+              <span className="text-blue-600">
+                {filteredPlaques.length} of {collectionPlaques.length} plaques
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </PageContainer>
   );
 };

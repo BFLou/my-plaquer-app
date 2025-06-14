@@ -1,16 +1,28 @@
 // src/components/settings/SecuritySettings.tsx - Updated with conditional UI
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, AlertTriangle, Download, Trash2, Shield, ExternalLink } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import {
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Download,
+  Trash2,
+  Shield,
+  ExternalLink,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import SettingsCard from './SettingsCard';
 import { useAuth } from '@/hooks/useAuth';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import {
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+} from 'firebase/auth';
 
 const SecuritySettings: React.FC = () => {
   const { user } = useAuth();
@@ -24,13 +36,14 @@ const SecuritySettings: React.FC = () => {
 
   // Detect authentication providers
   const getAuthProviders = () => {
-    if (!user?.providerData) return { hasPassword: false, hasGoogle: false, providers: [] };
-    
-    const providers = user.providerData.map(provider => provider.providerId);
+    if (!user?.providerData)
+      return { hasPassword: false, hasGoogle: false, providers: [] };
+
+    const providers = user.providerData.map((provider) => provider.providerId);
     return {
       hasPassword: providers.includes('password'),
       hasGoogle: providers.includes('google.com'),
-      providers: providers
+      providers: providers,
     };
   };
 
@@ -44,17 +57,17 @@ const SecuritySettings: React.FC = () => {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!currentPassword) {
       setPasswordError('Please enter your current password');
       return;
     }
-    
+
     if (newPassword.length < 8) {
       setPasswordError('New password must be at least 8 characters');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setPasswordError('New passwords do not match');
       return;
@@ -66,31 +79,36 @@ const SecuritySettings: React.FC = () => {
     }
 
     setIsLoading(true);
-    
+
     try {
       // First, reauthenticate the user
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword
+      );
       await reauthenticateWithCredential(user, credential);
-      
+
       // Then update the password
       await updatePassword(user, newPassword);
-      
+
       toast.success('Password updated successfully');
-      
+
       // Clear the form
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
       console.error('Password update error:', error);
-      
+
       // Handle specific Firebase errors
       if (error.code === 'auth/wrong-password') {
         setPasswordError('Current password is incorrect');
       } else if (error.code === 'auth/weak-password') {
         setPasswordError('New password is too weak');
       } else if (error.code === 'auth/requires-recent-login') {
-        setPasswordError('Please sign out and sign in again before changing your password');
+        setPasswordError(
+          'Please sign out and sign in again before changing your password'
+        );
       } else {
         setPasswordError(error.message || 'Failed to update password');
       }
@@ -100,19 +118,27 @@ const SecuritySettings: React.FC = () => {
   };
 
   const handleExportData = () => {
-    toast.success('Your data export has been initiated. You will receive an email with your data soon.');
+    toast.success(
+      'Your data export has been initiated. You will receive an email with your data soon.'
+    );
   };
 
   const handleDeleteAccount = () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      toast.success('Your account has been scheduled for deletion. You will receive a confirmation email.');
+    if (
+      window.confirm(
+        'Are you sure you want to delete your account? This action cannot be undone.'
+      )
+    ) {
+      toast.success(
+        'Your account has been scheduled for deletion. You will receive a confirmation email.'
+      );
     }
   };
 
   const renderPasswordSection = () => {
     if (authProviders.hasPassword) {
       return (
-        <SettingsCard 
+        <SettingsCard
           title="Change Password"
           description="Update your password to keep your account secure"
         >
@@ -124,15 +150,17 @@ const SecuritySettings: React.FC = () => {
                 <AlertDescription>{passwordError}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current Password</Label>
               <div className="relative">
                 <Input
                   id="currentPassword"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={currentPassword}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setCurrentPassword(e.target.value)
+                  }
                   className="pr-12 h-12"
                   disabled={isLoading}
                 />
@@ -145,14 +173,16 @@ const SecuritySettings: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
               <Input
                 id="newPassword"
                 type="password"
                 value={newPassword}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setNewPassword(e.target.value)
+                }
                 className="h-12"
                 disabled={isLoading}
               />
@@ -160,30 +190,31 @@ const SecuritySettings: React.FC = () => {
                 Must be at least 8 characters long
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm New Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setConfirmPassword(e.target.value)
+                }
                 className="h-12"
                 disabled={isLoading}
               />
             </div>
-            
+
             <Button type="submit" className="w-full h-12" disabled={isLoading}>
               {isLoading ? 'Updating Password...' : 'Update Password'}
             </Button>
           </form>
         </SettingsCard>
       );
-      
     } else {
       // Fallback for other authentication methods
       return (
-        <SettingsCard 
+        <SettingsCard
           title="Password Management"
           description="Password management not available for your authentication method"
         >
@@ -193,9 +224,12 @@ const SecuritySettings: React.FC = () => {
                 <AlertTriangle className="text-amber-600" size={20} />
               </div>
               <div>
-                <h4 className="font-medium text-amber-900 mb-2">Authentication Method</h4>
+                <h4 className="font-medium text-amber-900 mb-2">
+                  Authentication Method
+                </h4>
                 <p className="text-sm text-amber-700">
-                  Your account uses a different authentication method. Password changes are not available.
+                  Your account uses a different authentication method. Password
+                  changes are not available.
                 </p>
               </div>
             </div>
@@ -210,12 +244,13 @@ const SecuritySettings: React.FC = () => {
       <div className="p-6 border-b">
         <h2 className="text-xl font-bold mb-1">Security Settings</h2>
         <p className="text-gray-500">
-          Manage your account security settings, including password and two-factor authentication.
+          Manage your account security settings, including password and
+          two-factor authentication.
         </p>
       </div>
 
       {/* Account Info */}
-      <SettingsCard 
+      <SettingsCard
         title="Account Information"
         description="Your current authentication methods"
       >
@@ -230,7 +265,10 @@ const SecuritySettings: React.FC = () => {
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
             </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <Badge
+              variant="outline"
+              className="bg-green-50 text-green-700 border-green-200"
+            >
               Verified
             </Badge>
           </div>
@@ -246,7 +284,10 @@ const SecuritySettings: React.FC = () => {
                   <p className="text-xs text-gray-500">Connected</p>
                 </div>
               </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Badge
+                variant="outline"
+                className="bg-green-50 text-green-700 border-green-200"
+              >
                 Active
               </Badge>
             </div>
@@ -263,7 +304,10 @@ const SecuritySettings: React.FC = () => {
                   <p className="text-xs text-gray-500">Set up and active</p>
                 </div>
               </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Badge
+                variant="outline"
+                className="bg-green-50 text-green-700 border-green-200"
+              >
                 Active
               </Badge>
             </div>
@@ -274,7 +318,7 @@ const SecuritySettings: React.FC = () => {
       {/* Dynamic Password Section */}
       {renderPasswordSection()}
 
-      <SettingsCard 
+      <SettingsCard
         title="Two-Factor Authentication"
         description="Add an extra layer of security to your account"
       >
@@ -286,10 +330,9 @@ const SecuritySettings: React.FC = () => {
             <div>
               <h4 className="font-medium">Two-Factor Authentication</h4>
               <p className="text-sm text-gray-500">
-                {authProviders.hasGoogle ? 
-                  'Managed through your Google Account' : 
-                  'Require a verification code when signing in'
-                }
+                {authProviders.hasGoogle
+                  ? 'Managed through your Google Account'
+                  : 'Require a verification code when signing in'}
               </p>
             </div>
           </div>
@@ -298,7 +341,9 @@ const SecuritySettings: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open('https://myaccount.google.com/security', '_blank')}
+                onClick={() =>
+                  window.open('https://myaccount.google.com/security', '_blank')
+                }
                 className="gap-1"
               >
                 <ExternalLink size={14} />
@@ -306,11 +351,14 @@ const SecuritySettings: React.FC = () => {
               </Button>
             ) : (
               <>
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                <Badge
+                  variant="outline"
+                  className="bg-amber-50 text-amber-700 border-amber-200"
+                >
                   Coming Soon
                 </Badge>
-                <Switch 
-                  checked={twoFactorEnabled} 
+                <Switch
+                  checked={twoFactorEnabled}
                   onCheckedChange={setTwoFactorEnabled}
                   disabled={true}
                 />
@@ -320,7 +368,7 @@ const SecuritySettings: React.FC = () => {
         </div>
       </SettingsCard>
 
-      <SettingsCard 
+      <SettingsCard
         title="Account Actions"
         description="Export your data or delete your account"
       >
@@ -343,7 +391,7 @@ const SecuritySettings: React.FC = () => {
               </Button>
             </div>
           </div>
-          
+
           <div className="p-4 bg-red-50 rounded-lg border border-red-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

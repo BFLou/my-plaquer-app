@@ -1,15 +1,15 @@
 // src/hooks/useFavorites.tsx
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
+import {
+  collection,
+  query,
+  where,
   setDoc,
   deleteDoc,
   doc,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
@@ -40,11 +40,11 @@ export const useFavorites = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const favoritesData = snapshot.docs.map(doc => {
+        const favoritesData = snapshot.docs.map((doc) => {
           // Each doc has a plaque_id field
           return doc.data().plaque_id;
         });
-        
+
         setFavorites(favoritesData);
         setLoading(false);
       },
@@ -59,67 +59,79 @@ export const useFavorites = () => {
   }, [user]);
 
   // Check if a plaque is favorited
-  const isFavorite = useCallback((plaqueId: number): boolean => {
-    return favorites.includes(plaqueId);
-  }, [favorites]);
+  const isFavorite = useCallback(
+    (plaqueId: number): boolean => {
+      return favorites.includes(plaqueId);
+    },
+    [favorites]
+  );
 
   // Add a plaque to favorites
-  const addToFavorites = useCallback(async (plaqueId: number) => {
-    if (!user) {
-      toast.error("Please sign in to add favorites");
-      return false;
-    }
+  const addToFavorites = useCallback(
+    async (plaqueId: number) => {
+      if (!user) {
+        toast.error('Please sign in to add favorites');
+        return false;
+      }
 
-    try {
-      // Create a unique document ID for this favorite
-      const favoriteId = `${user.uid}_${plaqueId}`;
-      const docRef = doc(db, 'user_favorites', favoriteId);
-      
-      // Set the data
-      await setDoc(docRef, {
-        user_id: user.uid,
-        plaque_id: plaqueId,
-        created_at: serverTimestamp()
-      });
-      
-      toast.success("Added to favorites");
-      return true;
-    } catch (err) {
-      console.error('Error adding to favorites:', err);
-      toast.error("Failed to add to favorites");
-      return false;
-    }
-  }, [user]);
+      try {
+        // Create a unique document ID for this favorite
+        const favoriteId = `${user.uid}_${plaqueId}`;
+        const docRef = doc(db, 'user_favorites', favoriteId);
+
+        // Set the data
+        await setDoc(docRef, {
+          user_id: user.uid,
+          plaque_id: plaqueId,
+          created_at: serverTimestamp(),
+        });
+
+        toast.success('Added to favorites');
+        return true;
+      } catch (err) {
+        console.error('Error adding to favorites:', err);
+        toast.error('Failed to add to favorites');
+        return false;
+      }
+    },
+    [user]
+  );
 
   // Remove a plaque from favorites
-  const removeFromFavorites = useCallback(async (plaqueId: number) => {
-    if (!user) return false;
+  const removeFromFavorites = useCallback(
+    async (plaqueId: number) => {
+      if (!user) return false;
 
-    try {
-      // Create the same unique document ID
-      const favoriteId = `${user.uid}_${plaqueId}`;
-      const docRef = doc(db, 'user_favorites', favoriteId);
-      
-      // Delete the document
-      await deleteDoc(docRef);
-      
-      toast.success("Removed from favorites");
-      return true;
-    } catch (err) {
-      console.error('Error removing from favorites:', err);
-      toast.error("Failed to remove from favorites");
-      return false;
-    }
-  }, [user]);
+      try {
+        // Create the same unique document ID
+        const favoriteId = `${user.uid}_${plaqueId}`;
+        const docRef = doc(db, 'user_favorites', favoriteId);
+
+        // Delete the document
+        await deleteDoc(docRef);
+
+        toast.success('Removed from favorites');
+        return true;
+      } catch (err) {
+        console.error('Error removing from favorites:', err);
+        toast.error('Failed to remove from favorites');
+        return false;
+      }
+    },
+    [user]
+  );
 
   // Toggle favorite status
-  const toggleFavorite = useCallback(async (plaqueId: number) => {
-    if (isFavorite(plaqueId)) {
-      return removeFromFavorites(plaqueId);
-    } else {
-      return addToFavorites(plaqueId);
-    }
-  }, [isFavorite, addToFavorites, removeFromFavorites]);
+  const toggleFavorite = useCallback(
+    async (plaqueId: number) => {
+      if (isFavorite(plaqueId)) {
+        return removeFromFavorites(plaqueId);
+      } else {
+        return addToFavorites(plaqueId);
+      }
+    },
+    [isFavorite, addToFavorites, removeFromFavorites]
+  );
 
   return {
     favorites,
@@ -127,7 +139,7 @@ export const useFavorites = () => {
     isFavorite,
     addToFavorites,
     removeFromFavorites,
-    toggleFavorite
+    toggleFavorite,
   };
 };
 

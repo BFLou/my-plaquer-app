@@ -1,17 +1,17 @@
 // NEW: Replace useVisitedPlaques.tsx with this simplified version
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  query,
+  where,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   doc,
   getDocs,
   orderBy,
-  Timestamp
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
@@ -47,9 +47,9 @@ export const useVisitedPlaques = () => {
       );
 
       const snapshot = await getDocs(q);
-      const visitsData = snapshot.docs.map(doc => {
+      const visitsData = snapshot.docs.map((doc) => {
         const data = doc.data();
-        
+
         // Convert Firestore timestamp to Date immediately
         let visitDate: Date;
         if (data.visited_at?.toDate) {
@@ -65,10 +65,10 @@ export const useVisitedPlaques = () => {
           plaque_id: data.plaque_id,
           user_id: data.user_id,
           visited_at: visitDate, // Always Date object
-          notes: data.notes || ''
+          notes: data.notes || '',
         };
       });
-      
+
       setVisits(visitsData);
       setLoading(false);
     } catch (err) {
@@ -84,134 +84,161 @@ export const useVisitedPlaques = () => {
   }, [loadVisits]);
 
   // Check if plaque is visited
-  const isPlaqueVisited = useCallback((plaqueId: number): boolean => {
-    return visits.some(visit => visit.plaque_id === plaqueId);
-  }, [visits]);
+  const isPlaqueVisited = useCallback(
+    (plaqueId: number): boolean => {
+      return visits.some((visit) => visit.plaque_id === plaqueId);
+    },
+    [visits]
+  );
 
   // Get visit info
-  const getVisitInfo = useCallback((plaqueId: number): VisitData | null => {
-    return visits.find(visit => visit.plaque_id === plaqueId) || null;
-  }, [visits]);
+  const getVisitInfo = useCallback(
+    (plaqueId: number): VisitData | null => {
+      return visits.find((visit) => visit.plaque_id === plaqueId) || null;
+    },
+    [visits]
+  );
 
   // MAIN FUNCTION: Mark as visited with immediate state update
-  const markAsVisited = useCallback(async (
-    plaqueId: number, 
-    data: {
-      notes?: string;
-      visitedAt?: string; // ISO string
-    } = {}
-  ) => {
-    if (!user) throw new Error('You must be logged in to mark plaques as visited');
+  const markAsVisited = useCallback(
+    async (
+      plaqueId: number,
+      data: {
+        notes?: string;
+        visitedAt?: string; // ISO string
+      } = {}
+    ) => {
+      if (!user)
+        throw new Error('You must be logged in to mark plaques as visited');
 
-    // Check if already visited
-    if (isPlaqueVisited(plaqueId)) {
-      console.log('Plaque already visited');
-      return null;
-    }
+      // Check if already visited
+      if (isPlaqueVisited(plaqueId)) {
+        console.log('Plaque already visited');
+        return null;
+      }
 
-    try {
-      // Parse the visit date - DEFAULT TO TODAY if not provided
-      const visitDate = data.visitedAt ? new Date(data.visitedAt) : new Date();
-      
-      console.log('🎯 markAsVisited - Selected date:', {
-        input: data.visitedAt,
-        parsed: visitDate,
-        formatted: visitDate.toLocaleDateString('en-GB')
-      });
+      try {
+        // Parse the visit date - DEFAULT TO TODAY if not provided
+        const visitDate = data.visitedAt
+          ? new Date(data.visitedAt)
+          : new Date();
 
-      // Create visit data for Firestore
-      const firestoreData = {
-        plaque_id: plaqueId,
-        user_id: user.uid,
-        visited_at: Timestamp.fromDate(visitDate), // Convert to Firestore timestamp
-        notes: data.notes || ''
-      };
+        console.log('🎯 markAsVisited - Selected date:', {
+          input: data.visitedAt,
+          parsed: visitDate,
+          formatted: visitDate.toLocaleDateString('en-GB'),
+        });
 
-      // Save to Firestore
-      const docRef = await addDoc(collection(db, 'visited_plaques'), firestoreData);
-      
-      // Create local visit object with Date
-      const newVisit: VisitData = {
-        id: docRef.id,
-        plaque_id: plaqueId,
-        user_id: user.uid,
-        visited_at: visitDate, // Keep as Date object
-        notes: data.notes || ''
-      };
+        // Create visit data for Firestore
+        const firestoreData = {
+          plaque_id: plaqueId,
+          user_id: user.uid,
+          visited_at: Timestamp.fromDate(visitDate), // Convert to Firestore timestamp
+          notes: data.notes || '',
+        };
 
-      // IMMEDIATELY update local state - no waiting for listeners
-      setVisits(prev => [newVisit, ...prev]);
-      
-      console.log('✅ Visit saved and state updated:', {
-        plaqueId,
-        visitDate: visitDate.toLocaleDateString('en-GB'),
-        docId: docRef.id
-      });
+        // Save to Firestore
+        const docRef = await addDoc(
+          collection(db, 'visited_plaques'),
+          firestoreData
+        );
 
-      return newVisit;
-    } catch (err) {
-      console.error('❌ Error marking as visited:', err);
-      throw err;
-    }
-  }, [user, isPlaqueVisited]);
+        // Create local visit object with Date
+        const newVisit: VisitData = {
+          id: docRef.id,
+          plaque_id: plaqueId,
+          user_id: user.uid,
+          visited_at: visitDate, // Keep as Date object
+          notes: data.notes || '',
+        };
+
+        // IMMEDIATELY update local state - no waiting for listeners
+        setVisits((prev) => [newVisit, ...prev]);
+
+        console.log('✅ Visit saved and state updated:', {
+          plaqueId,
+          visitDate: visitDate.toLocaleDateString('en-GB'),
+          docId: docRef.id,
+        });
+
+        return newVisit;
+      } catch (err) {
+        console.error('❌ Error marking as visited:', err);
+        throw err;
+      }
+    },
+    [user, isPlaqueVisited]
+  );
 
   // Update visit
-  const updateVisit = useCallback(async (
-    visitId: string, 
-    data: {
-      notes?: string;
-      visitedAt?: string;
-    }
-  ) => {
-    if (!user) throw new Error('You must be logged in to update visits');
-
-    try {
-      const updateData: any = {};
-      
-      if (data.notes !== undefined) {
-        updateData.notes = data.notes;
+  const updateVisit = useCallback(
+    async (
+      visitId: string,
+      data: {
+        notes?: string;
+        visitedAt?: string;
       }
-      
-      if (data.visitedAt) {
-        const newDate = new Date(data.visitedAt);
-        updateData.visited_at = Timestamp.fromDate(newDate);
-        
-        // Update local state immediately
-        setVisits(prev => prev.map(visit => 
-          visit.id === visitId 
-            ? { ...visit, visited_at: newDate, notes: data.notes || visit.notes }
-            : visit
-        ));
-      }
+    ) => {
+      if (!user) throw new Error('You must be logged in to update visits');
 
-      // Update in Firestore
-      const docRef = doc(db, 'visited_plaques', visitId);
-      await updateDoc(docRef, updateData);
-      
-      return true;
-    } catch (err) {
-      console.error('Error updating visit:', err);
-      throw err;
-    }
-  }, [user]);
+      try {
+        const updateData: any = {};
+
+        if (data.notes !== undefined) {
+          updateData.notes = data.notes;
+        }
+
+        if (data.visitedAt) {
+          const newDate = new Date(data.visitedAt);
+          updateData.visited_at = Timestamp.fromDate(newDate);
+
+          // Update local state immediately
+          setVisits((prev) =>
+            prev.map((visit) =>
+              visit.id === visitId
+                ? {
+                    ...visit,
+                    visited_at: newDate,
+                    notes: data.notes || visit.notes,
+                  }
+                : visit
+            )
+          );
+        }
+
+        // Update in Firestore
+        const docRef = doc(db, 'visited_plaques', visitId);
+        await updateDoc(docRef, updateData);
+
+        return true;
+      } catch (err) {
+        console.error('Error updating visit:', err);
+        throw err;
+      }
+    },
+    [user]
+  );
 
   // Remove visit
-  const removeVisit = useCallback(async (visitId: string) => {
-    if (!user) throw new Error('You must be logged in to remove visits');
+  const removeVisit = useCallback(
+    async (visitId: string) => {
+      if (!user) throw new Error('You must be logged in to remove visits');
 
-    try {
-      // Remove from Firestore
-      await deleteDoc(doc(db, 'visited_plaques', visitId));
-      
-      // Update local state immediately
-      setVisits(prev => prev.filter(visit => visit.id !== visitId));
-      
-      return true;
-    } catch (err) {
-      console.error('Error removing visit:', err);
-      throw err;
-    }
-  }, [user]);
+      try {
+        // Remove from Firestore
+        await deleteDoc(doc(db, 'visited_plaques', visitId));
+
+        // Update local state immediately
+        setVisits((prev) => prev.filter((visit) => visit.id !== visitId));
+
+        return true;
+      } catch (err) {
+        console.error('Error removing visit:', err);
+        throw err;
+      }
+    },
+    [user]
+  );
 
   // Refresh visits manually if needed
   const refreshVisits = useCallback(() => {
@@ -227,7 +254,7 @@ export const useVisitedPlaques = () => {
     markAsVisited,
     updateVisit,
     removeVisit,
-    refreshVisits
+    refreshVisits,
   };
 };
 

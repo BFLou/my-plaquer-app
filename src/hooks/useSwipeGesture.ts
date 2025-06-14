@@ -19,7 +19,7 @@ export const useSwipeGesture = (options: SwipeGestureOptions = {}) => {
     onSwipeEnd,
     threshold = 50,
     timeThreshold = 300,
-    preventScroll = false
+    preventScroll = false,
   } = options;
 
   const [startCoords, setStartCoords] = useState({ x: 0, y: 0, time: 0 });
@@ -30,9 +30,9 @@ export const useSwipeGesture = (options: SwipeGestureOptions = {}) => {
     const coords = {
       x: touch.clientX,
       y: touch.clientY,
-      time: Date.now()
+      time: Date.now(),
     };
-    
+
     setStartCoords(coords);
     setIsTracking(true);
     onSwipeStart?.(coords.x, coords.y);
@@ -79,7 +79,7 @@ export const useSwipeGesture = (options: SwipeGestureOptions = {}) => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isTracking) return;
-    
+
     // Optionally prevent scrolling during swipe
     if (preventScroll) {
       e.preventDefault();
@@ -90,9 +90,9 @@ export const useSwipeGesture = (options: SwipeGestureOptions = {}) => {
     const coords = {
       x: e.clientX,
       y: e.clientY,
-      time: Date.now()
+      time: Date.now(),
     };
-    
+
     setStartCoords(coords);
     setIsTracking(true);
     onSwipeStart?.(coords.x, coords.y);
@@ -138,7 +138,7 @@ export const useSwipeGesture = (options: SwipeGestureOptions = {}) => {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isTracking) return;
-    
+
     // Optionally prevent default behavior during mouse drag
     if (preventScroll) {
       e.preventDefault();
@@ -150,13 +150,13 @@ export const useSwipeGesture = (options: SwipeGestureOptions = {}) => {
     handleTouchStart,
     handleTouchEnd,
     handleTouchMove,
-    
+
     // Mouse handlers for desktop support
     handleMouseDown,
     handleMouseUp,
     handleMouseMove,
-    
+
     // State
-    isTracking
+    isTracking,
   };
 };

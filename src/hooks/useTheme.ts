@@ -6,7 +6,7 @@ export const useTheme = () => {
     // Check localStorage or system preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) return savedTheme as 'light' | 'dark';
-    
+
     // Check system preference
     if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark';

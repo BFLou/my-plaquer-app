@@ -30,7 +30,7 @@ export const useMapState = () => {
 
   // Set map center and zoom
   const setMapView = useCallback((center: [number, number], zoom: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       center,
       zoom,
@@ -38,24 +38,23 @@ export const useMapState = () => {
   }, []);
 
   // Set distance filter
-  const setDistanceFilter = useCallback((
-    location: [number, number],
-    radius: number,
-    visible: boolean = true
-  ) => {
-    setState(prev => ({
-      ...prev,
-      distanceFilter: {
-        location,
-        radius,
-        visible,
-      },
-    }));
-  }, []);
+  const setDistanceFilter = useCallback(
+    (location: [number, number], radius: number, visible: boolean = true) => {
+      setState((prev) => ({
+        ...prev,
+        distanceFilter: {
+          location,
+          radius,
+          visible,
+        },
+      }));
+    },
+    []
+  );
 
   // Update just the radius of the distance filter
   const updateDistanceRadius = useCallback((radius: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       distanceFilter: {
         ...prev.distanceFilter,
@@ -66,7 +65,7 @@ export const useMapState = () => {
 
   // Toggle distance filter visibility
   const toggleDistanceFilterVisibility = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       distanceFilter: {
         ...prev.distanceFilter,
@@ -77,7 +76,7 @@ export const useMapState = () => {
 
   // Clear distance filter
   const clearDistanceFilter = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       distanceFilter: {
         location: null,
@@ -89,7 +88,7 @@ export const useMapState = () => {
 
   // Set search location (for location-based searches)
   const setSearchLocation = useCallback((location: [number, number]) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       searchLocation: location,
       center: location, // Update map center to the search location
@@ -99,7 +98,7 @@ export const useMapState = () => {
 
   // Clear search location
   const clearSearchLocation = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       searchLocation: null,
     }));
@@ -112,18 +111,20 @@ export const useMapState = () => {
 
   // Get distance filter status
   const isDistanceFilterActive = useCallback(() => {
-    return state.distanceFilter.location !== null && state.distanceFilter.visible;
+    return (
+      state.distanceFilter.location !== null && state.distanceFilter.visible
+    );
   }, [state.distanceFilter]);
 
   // Get current map bounds (approximate)
   const getMapBounds = useCallback(() => {
     const { center, zoom } = state;
-    
+
     // Approximate bounds calculation based on zoom level
     // This is a rough estimation - for precise bounds, you'd need the actual map instance
     const latDelta = 180 / Math.pow(2, zoom);
     const lngDelta = 360 / Math.pow(2, zoom);
-    
+
     return {
       north: center[0] + latDelta / 2,
       south: center[0] - latDelta / 2,
@@ -136,28 +137,36 @@ export const useMapState = () => {
   const mapStateManager = {
     // State
     state,
-    
+
     // Map view methods
     setMapView,
     resetMapState,
     getMapBounds,
-    
+
     // Distance filter methods
     setDistanceFilter,
     updateDistanceRadius,
     toggleDistanceFilterVisibility,
     clearDistanceFilter,
     isDistanceFilterActive,
-    
+
     // Search location methods
     setSearchLocation,
     clearSearchLocation,
-    
+
     // Computed properties
-    get center() { return state.center; },
-    get zoom() { return state.zoom; },
-    get distanceFilter() { return state.distanceFilter; },
-    get searchLocation() { return state.searchLocation; },
+    get center() {
+      return state.center;
+    },
+    get zoom() {
+      return state.zoom;
+    },
+    get distanceFilter() {
+      return state.distanceFilter;
+    },
+    get searchLocation() {
+      return state.searchLocation;
+    },
   };
 
   return mapStateManager;

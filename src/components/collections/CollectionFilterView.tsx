@@ -2,15 +2,11 @@
 import React, { useState } from 'react';
 import { Search, Grid, List, Map, X } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
-import { MobileInput } from "@/components/ui/mobile-input";
-import { MobileButton } from "@/components/ui/mobile-button";
-import { Badge } from "@/components/ui/badge";
+import { MobileInput } from '@/components/ui/mobile-input';
+import { MobileButton } from '@/components/ui/mobile-button';
+import { Badge } from '@/components/ui/badge';
 import { capitalizeWords } from '@/utils/stringUtils';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddPlaquesButton from './AddPlaquesButton';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
@@ -28,7 +24,7 @@ type CollectionFilterViewProps = {
   children: React.ReactNode;
   onFilterChange?: (filtered: Plaque[]) => void;
   className?: string;
-  showMapView?: boolean; 
+  showMapView?: boolean;
 };
 
 const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
@@ -47,20 +43,22 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   // Mobile detection and responsive setup
   const mobile = isMobile();
   const safeArea = useSafeArea();
-  
+
   // State management - FIXED: Removed unused activeFilters state
   const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
 
   // Generate profession statistics
   const professionStats = React.useMemo(() => {
     const professionCounts: Record<string, number> = {};
-    
-    plaques.forEach(plaque => {
+
+    plaques.forEach((plaque) => {
       // Get profession or use 'Unknown' default - with capitalization
-      const profession = plaque.profession ? capitalizeWords(plaque.profession) : 'Unknown';
+      const profession = plaque.profession
+        ? capitalizeWords(plaque.profession)
+        : 'Unknown';
       professionCounts[profession] = (professionCounts[profession] || 0) + 1;
     });
-    
+
     return Object.entries(professionCounts)
       .map(([profession, count]) => ({ profession, count }))
       .sort((a, b) => b.count - a.count);
@@ -68,13 +66,14 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
 
   // Filter plaques based on search query
   const filteredPlaques = React.useMemo(() => {
-    return plaques.filter(plaque => {
+    return plaques.filter((plaque) => {
       // Filter by search query
-      const matchesSearch = !searchQuery.trim() || 
-        (plaque.title?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (plaque.location?.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (plaque.description?.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+      const matchesSearch =
+        !searchQuery.trim() ||
+        plaque.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        plaque.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        plaque.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
       return matchesSearch;
     });
   }, [plaques, searchQuery]);
@@ -112,18 +111,21 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
   };
 
   return (
-    <div 
+    <div
       className={`space-y-4 ${className}`}
       style={{
         paddingLeft: mobile ? safeArea.left : undefined,
-        paddingRight: mobile ? safeArea.right : undefined
+        paddingRight: mobile ? safeArea.right : undefined,
       }}
     >
       {/* Main Filter Container - Mobile optimized */}
       <div className="bg-white rounded-lg shadow-sm p-3">
         {/* Search Input - Mobile optimized */}
         <div className="relative w-full mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={mobile ? 18 : 16} />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            size={mobile ? 18 : 16}
+          />
           <MobileInput
             placeholder="Search plaques..."
             value={searchQuery}
@@ -144,45 +146,53 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
         </div>
 
         {/* View Toggle and Add Button Container */}
-        <div className={`flex ${mobile ? 'flex-col space-y-3' : 'justify-between items-center'}`}>
+        <div
+          className={`flex ${mobile ? 'flex-col space-y-3' : 'justify-between items-center'}`}
+        >
           {/* View Mode Tabs - Mobile optimized */}
-          <Tabs 
-            value={viewMode} 
-            onValueChange={(v) => handleViewModeChange(v as ViewMode)} 
+          <Tabs
+            value={viewMode}
+            onValueChange={(v) => handleViewModeChange(v as ViewMode)}
             defaultValue="grid"
             className={mobile ? 'w-full' : ''}
           >
             <TabsList className={mobile ? 'w-full grid grid-cols-3' : ''}>
-              <TabsTrigger 
-                value="grid" 
+              <TabsTrigger
+                value="grid"
                 className={`flex items-center gap-1.5 ${mobile ? 'flex-1' : ''}`}
               >
                 <Grid size={mobile ? 16 : 14} />
-                <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>Grid</span>
+                <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>
+                  Grid
+                </span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="list" 
+              <TabsTrigger
+                value="list"
                 className={`flex items-center gap-1.5 ${mobile ? 'flex-1' : ''}`}
               >
                 <List size={mobile ? 16 : 14} />
-                <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>List</span>
+                <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>
+                  List
+                </span>
               </TabsTrigger>
               {showMapView && (
-                <TabsTrigger 
-                  value="map" 
+                <TabsTrigger
+                  value="map"
                   className={`flex items-center gap-1.5 ${mobile ? 'flex-1' : ''}`}
                 >
                   <Map size={mobile ? 16 : 14} />
-                  <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>Map</span>
+                  <span className={mobile ? 'text-sm' : 'hidden sm:inline'}>
+                    Map
+                  </span>
                 </TabsTrigger>
               )}
             </TabsList>
           </Tabs>
-          
+
           {/* Add Plaques Button - Mobile optimized */}
           <div className={mobile ? 'w-full' : ''}>
-            <AddPlaquesButton 
-              onAddPlaques={handleAddPlaques} 
+            <AddPlaquesButton
+              onAddPlaques={handleAddPlaques}
               isLoading={isLoading}
               className={`${mobile ? 'w-full h-12' : 'hidden sm:flex'}`}
             />
@@ -194,13 +204,15 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
       {searchQuery && (
         <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center justify-between">
           <div className="flex items-center">
-            <Badge className={`bg-blue-100 text-blue-700 border-none ${mobile ? 'text-sm px-3 py-1' : ''}`}>
+            <Badge
+              className={`bg-blue-100 text-blue-700 border-none ${mobile ? 'text-sm px-3 py-1' : ''}`}
+            >
               Search: {searchQuery}
             </Badge>
           </div>
-          <MobileButton 
-            variant="ghost" 
-            size="sm" 
+          <MobileButton
+            variant="ghost"
+            size="sm"
             onClick={clearSearch}
             className={`${mobile ? 'h-8 px-3' : 'h-7 px-2'} text-xs text-blue-600 hover:text-blue-800`}
           >
@@ -211,7 +223,9 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
 
       {/* Filter Status - Mobile optimized */}
       {searchQuery && filteredPlaques.length !== plaques.length && (
-        <div className={`${mobile ? 'text-base' : 'text-sm'} text-gray-500 px-1`}>
+        <div
+          className={`${mobile ? 'text-base' : 'text-sm'} text-gray-500 px-1`}
+        >
           Showing {filteredPlaques.length} of {plaques.length} plaques
         </div>
       )}
@@ -219,18 +233,24 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
       {/* Mobile-specific profession filter (if needed) */}
       {mobile && professionStats.length > 1 && (
         <div className="bg-white rounded-lg shadow-sm p-3">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Filter by Profession</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Filter by Profession
+          </h4>
           <div className="flex flex-wrap gap-2">
             {professionStats.slice(0, 5).map(({ profession, count }) => (
               <MobileButton
                 key={profession}
-                variant={selectedProfessions.includes(profession) ? "default" : "outline"}
+                variant={
+                  selectedProfessions.includes(profession)
+                    ? 'default'
+                    : 'outline'
+                }
                 size="sm"
                 onClick={() => {
                   triggerHapticFeedback('selection');
-                  setSelectedProfessions(prev => 
-                    prev.includes(profession) 
-                      ? prev.filter(p => p !== profession)
+                  setSelectedProfessions((prev) =>
+                    prev.includes(profession)
+                      ? prev.filter((p) => p !== profession)
                       : [...prev, profession]
                   );
                 }}
@@ -257,10 +277,10 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
       )}
 
       {/* Children (actual content) with mobile optimization */}
-      <div 
+      <div
         className="min-h-0 flex-1"
         style={{
-          marginBottom: mobile ? Math.max(safeArea.bottom, 20) : undefined
+          marginBottom: mobile ? Math.max(safeArea.bottom, 20) : undefined,
         }}
       >
         {children}
@@ -269,8 +289,8 @@ const CollectionFilterView: React.FC<CollectionFilterViewProps> = ({
       {/* Mobile-only floating add button (alternative position) */}
       {mobile && (
         <div className="fixed bottom-4 right-4 z-50">
-          <AddPlaquesButton 
-            onAddPlaques={handleAddPlaques} 
+          <AddPlaquesButton
+            onAddPlaques={handleAddPlaques}
             isLoading={isLoading}
             className="h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white p-0"
           />

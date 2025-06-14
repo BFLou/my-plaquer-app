@@ -11,16 +11,16 @@ interface ClusterPreviewOptions {
 
 // Extend Leaflet Marker interface to include your custom plaque data
 declare module 'leaflet' {
-    interface MarkerOptions {
-        plaque?: Plaque; // Allows attaching a Plaque object directly to a marker's options
-    }
+  interface MarkerOptions {
+    plaque?: Plaque; // Allows attaching a Plaque object directly to a marker's options
+  }
 }
 
 export class EnhancedClusterIcon {
   private static defaultOptions: ClusterPreviewOptions = {
     maxTitles: 5,
     showCategories: true,
-    enableHover: true
+    enableHover: true,
   };
 
   /**
@@ -30,7 +30,10 @@ export class EnhancedClusterIcon {
    * @param options Customization options for the icon and preview.
    * @returns A Leaflet DivIcon instance.
    */
-  static createClusterIcon(cluster: L.MarkerClusterGroup, options: Partial<ClusterPreviewOptions> = {}) {
+  static createClusterIcon(
+    cluster: L.MarkerClusterGroup,
+    options: Partial<ClusterPreviewOptions> = {}
+  ) {
     const opts = { ...this.defaultOptions, ...options }; // Keep opts for internal logic
     const count = cluster.getChildCount();
     const plaques = this.extractPlaquesFromCluster(cluster); // Extract plaques here
@@ -56,7 +59,8 @@ export class EnhancedClusterIcon {
     const clusterCircleHTML = this.createClusterHTML(count, size, fontSize);
 
     // Generate the preview HTML (hidden by default, shown on hover via CSS)
-    const previewHTML = opts.enableHover && plaques.length > 0
+    const previewHTML =
+      opts.enableHover && plaques.length > 0
         ? this.createClusterPreview(plaques, opts)
         : '';
 
@@ -73,7 +77,7 @@ export class EnhancedClusterIcon {
       html: fullHtml,
       className: 'enhanced-cluster-icon', // Main class for CSS targeting
       iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2]
+      iconAnchor: [size / 2, size / 2],
     });
 
     return iconElement;
@@ -86,7 +90,11 @@ export class EnhancedClusterIcon {
    * @param fontSize Font size for the count.
    * @returns HTML string for the cluster circle.
    */
-  private static createClusterHTML(count: number, size: number, fontSize: string): string {
+  private static createClusterHTML(
+    count: number,
+    size: number,
+    fontSize: string
+  ): string {
     const displayCount = count > 999 ? '999+' : count.toString();
 
     // Removed inline styles for cleaner CSS, now relies on enhanced-cluster-icon.css
@@ -99,10 +107,14 @@ export class EnhancedClusterIcon {
         ${displayCount}
       </div>
       <!-- Pulse rings for large clusters, also controlled by CSS -->
-      ${count > 50 ? `
+      ${
+        count > 50
+          ? `
         <div class="pulse-ring" style="width: ${size + 8}px; height: ${size + 8}px;"></div>
         <div class="pulse-ring-outer" style="width: ${size + 16}px; height: ${size + 16}px;"></div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
   }
 
@@ -113,7 +125,10 @@ export class EnhancedClusterIcon {
    * @param options Preview options (e.g., maxTitles, showCategories).
    * @returns HTML string for the preview.
    */
-  static createClusterPreview(plaques: Plaque[], options: Partial<ClusterPreviewOptions> = {}): string {
+  static createClusterPreview(
+    plaques: Plaque[],
+    options: Partial<ClusterPreviewOptions> = {}
+  ): string {
     const opts = { ...this.defaultOptions, ...options };
     const totalCount = plaques.length;
 
@@ -134,24 +149,36 @@ export class EnhancedClusterIcon {
         </div>
 
         <div style="max-height: 120px; overflow-y: auto;">
-          ${displayPlaques.map(plaque => `
+          ${displayPlaques
+            .map(
+              (plaque) => `
             <div class="preview-item">
               <div class="item-title">
                 ${this.truncateText(plaque.title || 'Unnamed Plaque', 35)}
               </div>
-              ${plaque.profession ? `
+              ${
+                plaque.profession
+                  ? `
                 <div class="item-subtitle">
                   ${this.truncateText(plaque.profession, 25)}
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
 
-          ${remaining > 0 ? `
+          ${
+            remaining > 0
+              ? `
             <div class="more-plaques">
               + ${remaining} more plaques
             </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
 
         <div class="click-to-explore">
@@ -180,7 +207,10 @@ export class EnhancedClusterIcon {
           <div class="category-header">
             Top Categories:
           </div>
-          ${categories.slice(0, 4).map(cat => `
+          ${categories
+            .slice(0, 4)
+            .map(
+              (cat) => `
             <div class="category-item">
               <span class="category-name">
                 ${this.truncateText(cat.name, 20)}
@@ -189,14 +219,20 @@ export class EnhancedClusterIcon {
                 ${cat.count}
               </span>
             </div>
-          `).join('')}
+          `
+            )
+            .join('')}
         </div>
 
-        ${categories.length > 4 ? `
+        ${
+          categories.length > 4
+            ? `
           <div class="more-categories">
             + ${categories.length - 4} more categories
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         <div class="explore-prompt">
           📍 Click to explore this area
@@ -210,10 +246,12 @@ export class EnhancedClusterIcon {
    * @param plaques Array of plaques.
    * @returns Sorted array of objects with category name and count.
    */
-  private static analyzePlaqueCategories(plaques: Plaque[]): Array<{name: string, count: number}> {
+  private static analyzePlaqueCategories(
+    plaques: Plaque[]
+  ): Array<{ name: string; count: number }> {
     const categories: Record<string, number> = {};
 
-    plaques.forEach(plaque => {
+    plaques.forEach((plaque) => {
       const category = plaque.profession || 'Other';
       categories[category] = (categories[category] || 0) + 1;
     });
@@ -230,10 +268,15 @@ export class EnhancedClusterIcon {
    * @param cluster The Leaflet cluster group.
    * @returns An array of Plaque objects.
    */
-  private static extractPlaquesFromCluster(cluster: L.MarkerClusterGroup): Plaque[] {
+  private static extractPlaquesFromCluster(
+    cluster: L.MarkerClusterGroup
+  ): Plaque[] {
     const childMarkers = cluster.getAllChildMarkers();
     return childMarkers
-      .map(marker => (marker.options as L.MarkerOptions & { plaque?: Plaque }).plaque) // Safely cast to access plaque
+      .map(
+        (marker) =>
+          (marker.options as L.MarkerOptions & { plaque?: Plaque }).plaque
+      ) // Safely cast to access plaque
       .filter((plaque): plaque is Plaque => !!plaque); // Filter out undefined/null and assert type
   }
 
@@ -253,7 +296,10 @@ export class EnhancedClusterIcon {
    * @param clusterGroup The Leaflet marker cluster group.
    * @param map The Leaflet map instance.
    */
-  static setupClusterInteractions(clusterGroup: L.MarkerClusterGroup, map: L.Map) {
+  static setupClusterInteractions(
+    clusterGroup: L.MarkerClusterGroup,
+    map: L.Map
+  ) {
     // Note: The preview HTML is now included in the DivIcon itself and styled with CSS for hover.
     // We only need to handle the click event.
 
@@ -266,7 +312,7 @@ export class EnhancedClusterIcon {
         padding: [20, 20],
         maxZoom: 16,
         animate: true,
-        duration: 0.8
+        duration: 0.8,
       });
     });
 

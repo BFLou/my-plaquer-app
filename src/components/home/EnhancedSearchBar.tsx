@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, MapPin, Users, Tag } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Plaque } from '@/types/plaque';
 import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 
@@ -21,9 +21,9 @@ type EnhancedSearchBarProps = {
   className?: string;
 };
 
-const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({ 
+const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   onSearch,
-  className
+  className,
 }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,22 +33,26 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
   const [loading, setLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  
+
   // Load plaque data from JSON
   useEffect(() => {
     const fetchPlaqueData = async () => {
       try {
         setLoading(true);
         const { default: rawData } = await import('@/data/plaque_data.json');
-        
-        const dataArray = Array.isArray(rawData) 
-          ? rawData.map(item => ({ 
-              ...item, 
+
+        const dataArray = Array.isArray(rawData)
+          ? rawData.map((item) => ({
+              ...item,
               erected: item.erected ? String(item.erected) : '',
               postcode: item.postcode || '',
-              lead_subject_born_in: item.lead_subject_born_in ? String(item.lead_subject_born_in) : '',
-              lead_subject_died_in: item.lead_subject_died_in ? String(item.lead_subject_died_in) : ''
-            })) 
+              lead_subject_born_in: item.lead_subject_born_in
+                ? String(item.lead_subject_born_in)
+                : '',
+              lead_subject_died_in: item.lead_subject_died_in
+                ? String(item.lead_subject_died_in)
+                : '',
+            }))
           : [];
         const adaptedData = adaptPlaquesData(dataArray);
         setPlaqueData(adaptedData);
@@ -59,44 +63,44 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         setLoading(false);
       }
     };
-    
+
     fetchPlaqueData();
   }, []);
-  
+
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        searchInputRef.current && 
+        searchInputRef.current &&
         !searchInputRef.current.contains(event.target as Node) &&
-        suggestionsRef.current && 
+        suggestionsRef.current &&
         !suggestionsRef.current.contains(event.target as Node)
       ) {
         setIsSearchFocused(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  
+
   // Generate search suggestions based on input query
   useEffect(() => {
     if (!searchQuery || searchQuery.length < 2 || !plaqueData.length) {
       setSuggestions([]);
       return;
     }
-    
+
     const query = searchQuery.toLowerCase();
     const newSuggestions: SearchSuggestion[] = [];
-    
+
     // Track unique items to avoid duplicates
     const addedItems = new Set<string>();
-    
+
     // First, look for person matches (lead subject name)
-    plaqueData.forEach(plaque => {
+    plaqueData.forEach((plaque) => {
       const name = (plaque.lead_subject_name || '').toLowerCase();
       if (name && name.includes(query)) {
         const key = `person-${name}`;
@@ -107,31 +111,37 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
             type: 'person',
             text: plaque.lead_subject_name || '',
             profession: plaque.profession || 'Historical Figure',
-            count: 1
+            count: 1,
           });
         }
       }
     });
-    
+
     // Next, look for location matches
-    plaqueData.forEach(plaque => {
+    plaqueData.forEach((plaque) => {
       const location = [
         (plaque.location || '').toLowerCase(),
         (plaque.address || '').toLowerCase(),
         (plaque.area || '').toLowerCase(),
-        (plaque.postcode || '').toLowerCase()
+        (plaque.postcode || '').toLowerCase(),
       ].join(' ');
-      
+
       if (location && location.includes(query)) {
         let matchText = '';
         if (plaque.area && plaque.area.toLowerCase().includes(query)) {
           matchText = plaque.area;
-        } else if (plaque.location && plaque.location.toLowerCase().includes(query)) {
+        } else if (
+          plaque.location &&
+          plaque.location.toLowerCase().includes(query)
+        ) {
           matchText = plaque.location;
-        } else if (plaque.address && plaque.address.toLowerCase().includes(query)) {
+        } else if (
+          plaque.address &&
+          plaque.address.toLowerCase().includes(query)
+        ) {
           matchText = plaque.address;
         }
-        
+
         if (matchText) {
           const key = `location-${matchText}`;
           if (!addedItems.has(key) && newSuggestions.length < 8) {
@@ -140,15 +150,15 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
               id: plaque.id as number,
               type: 'location',
               text: matchText,
-              count: 1
+              count: 1,
             });
           }
         }
       }
     });
-    
+
     // Finally, look for profession matches
-    plaqueData.forEach(plaque => {
+    plaqueData.forEach((plaque) => {
       const profession = (plaque.profession || '').toLowerCase();
       if (profession && profession.includes(query)) {
         const key = `profession-${profession}`;
@@ -158,16 +168,16 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
             id: plaque.id as number,
             type: 'profession',
             text: plaque.profession || '',
-            count: 1
+            count: 1,
           });
         }
       }
     });
-    
+
     // Consolidate counts for duplicate types + text
     const consolidatedSuggestions: Record<string, SearchSuggestion> = {};
-    
-    newSuggestions.forEach(suggestion => {
+
+    newSuggestions.forEach((suggestion) => {
       const key = `${suggestion.type}-${suggestion.text}`;
       if (consolidatedSuggestions[key]) {
         consolidatedSuggestions[key].count += suggestion.count;
@@ -175,15 +185,15 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         consolidatedSuggestions[key] = { ...suggestion };
       }
     });
-    
+
     // Convert back to array and sort by count
     const finalSuggestions = Object.values(consolidatedSuggestions)
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
-    
+
     setSuggestions(finalSuggestions);
   }, [searchQuery, plaqueData]);
-  
+
   // Handle search submission
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -195,20 +205,20 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       setIsSearchFocused(false);
     }
   };
-  
+
   // Handle enter key press
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
-  
+
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     setSearchQuery(suggestion.text);
-    
+
     const params = new URLSearchParams();
-    
+
     if (suggestion.type === 'person') {
       params.append('search', suggestion.text);
     } else if (suggestion.type === 'location') {
@@ -216,7 +226,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
     } else if (suggestion.type === 'profession') {
       params.append('professions', suggestion.text);
     }
-    
+
     if (onSearch) {
       onSearch(suggestion.text);
     } else {
@@ -224,7 +234,7 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
     }
     setIsSearchFocused(false);
   };
-  
+
   // Get popular suggestions when no search query
   const getPopularSuggestions = (): SearchSuggestion[] => {
     const popularNames = [
@@ -237,24 +247,23 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
       { text: 'Scientist', type: 'profession' },
       { text: 'Author', type: 'profession' },
     ];
-    
+
     return popularNames.map((item, index) => ({
       id: -1 * (index + 1),
       text: item.text,
       type: item.type as 'person' | 'location' | 'profession',
       profession: (item as any).profession,
-      count: 0
+      count: 0,
     }));
   };
-  
+
   // Determine which suggestions to show
-  const displaySuggestions = searchQuery.length >= 2 
-    ? suggestions 
-    : getPopularSuggestions();
-  
+  const displaySuggestions =
+    searchQuery.length >= 2 ? suggestions : getPopularSuggestions();
+
   // Function to get the appropriate background color for an icon based on type
   const getIconBackgroundColor = (type: string) => {
-    switch(type) {
+    switch (type) {
       case 'person':
         return 'bg-amber-100 text-amber-600';
       case 'location':
@@ -265,16 +274,16 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
         return 'bg-gray-100 text-gray-600';
     }
   };
-  
+
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn('relative', className)}>
       {/* Mobile-optimized Search Input */}
       <div className="relative">
         {/* Search icon */}
         <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
           <Search size={20} />
         </div>
-        
+
         {/* Search input - Mobile responsive padding */}
         <input
           type="text"
@@ -285,23 +294,23 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
           onFocus={() => setIsSearchFocused(true)}
           ref={searchInputRef}
           className={cn(
-            "w-full py-3 rounded-lg border border-gray-300 shadow-sm",
-            "focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition",
-            "text-base", // Prevents zoom on iOS
+            'w-full py-3 rounded-lg border border-gray-300 shadow-sm',
+            'focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+            'text-base', // Prevents zoom on iOS
             // Mobile: more padding-right for button, desktop: less
-            "pl-12 pr-20 sm:pr-24"
+            'pl-12 pr-20 sm:pr-24'
           )}
           disabled={loading}
         />
-        
+
         {/* Search button - Mobile responsive */}
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-          <Button 
+          <Button
             size="sm"
             className={cn(
-              "h-8 px-3 text-sm font-medium",
+              'h-8 px-3 text-sm font-medium',
               // Hide text on very small screens, show icon only
-              "sm:px-4"
+              'sm:px-4'
             )}
             onClick={handleSearch}
             disabled={loading}
@@ -313,10 +322,10 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
           </Button>
         </div>
       </div>
-      
+
       {/* Search suggestions dropdown - Mobile optimized */}
       {isSearchFocused && (
-        <div 
+        <div
           ref={suggestionsRef}
           className="absolute z-50 mt-1 w-full bg-white rounded-md shadow-lg border border-gray-100 divide-y overflow-hidden max-h-80 overflow-y-auto"
         >
@@ -327,15 +336,21 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
             </div>
           ) : displaySuggestions.length > 0 ? (
             displaySuggestions.map((suggestion, index) => (
-              <div 
+              <div
                 key={`${suggestion.type}-${suggestion.text}-${index}`}
                 className="p-3 flex items-center hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors"
                 onClick={() => handleSuggestionClick(suggestion)}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${getIconBackgroundColor(suggestion.type)}`}>
-                  {suggestion.type === 'person' ? <Users size={16} /> : 
-                   suggestion.type === 'location' ? <MapPin size={16} /> : 
-                   <Tag size={16} />}
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0 ${getIconBackgroundColor(suggestion.type)}`}
+                >
+                  {suggestion.type === 'person' ? (
+                    <Users size={16} />
+                  ) : suggestion.type === 'location' ? (
+                    <MapPin size={16} />
+                  ) : (
+                    <Tag size={16} />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{suggestion.text}</div>
@@ -348,22 +363,34 @@ const EnhancedSearchBar: React.FC<EnhancedSearchBarProps> = ({
                       <span>Profession</span>
                     )}
                     {suggestion.count > 0 && (
-                      <span className="ml-1">• {suggestion.count} {suggestion.count === 1 ? 'plaque' : 'plaques'}</span>
+                      <span className="ml-1">
+                        • {suggestion.count}{' '}
+                        {suggestion.count === 1 ? 'plaque' : 'plaques'}
+                      </span>
                     )}
                   </div>
                 </div>
-                <ChevronRight size={18} className="text-gray-400 flex-shrink-0 ml-2" />
+                <ChevronRight
+                  size={18}
+                  className="text-gray-400 flex-shrink-0 ml-2"
+                />
               </div>
             ))
           ) : searchQuery.length >= 2 ? (
             <div className="p-4 text-center">
               <p className="text-sm text-gray-500">No suggestions found</p>
-              <p className="text-xs text-gray-400">Try a different search term</p>
+              <p className="text-xs text-gray-400">
+                Try a different search term
+              </p>
             </div>
           ) : (
             <div className="p-3 text-center">
-              <p className="text-sm text-gray-500">Type to search for plaques</p>
-              <p className="text-xs text-gray-400">Popular: author, scientist, Westminster</p>
+              <p className="text-sm text-gray-500">
+                Type to search for plaques
+              </p>
+              <p className="text-xs text-gray-400">
+                Popular: author, scientist, Westminster
+              </p>
             </div>
           )}
         </div>

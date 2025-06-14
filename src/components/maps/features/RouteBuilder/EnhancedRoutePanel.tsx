@@ -1,25 +1,27 @@
 // src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - FIXED: Proper loading state management
 import React, { useState, useCallback, useMemo } from 'react';
-import { 
-  X, 
-  Download, 
-  Route, 
-  GripVertical, 
+import {
+  X,
+  Download,
+  Route,
+  GripVertical,
   Save,
   Navigation,
   Clock,
   Trash2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
 } from 'lucide-react';
-import { MobileButton } from "@/components/ui/mobile-button";
+import { MobileButton } from '@/components/ui/mobile-button';
 import { Badge } from '@/components/ui/badge';
 import { Plaque } from '@/types/plaque';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { toast } from 'sonner';
-import SaveRouteDialog, { SaveRouteData } from '@/components/routes/SaveRouteDialog';
+import SaveRouteDialog, {
+  SaveRouteData,
+} from '@/components/routes/SaveRouteDialog';
 
 interface EnhancedRoutePanelProps {
   points: Plaque[];
@@ -38,7 +40,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   onClear,
   onClose,
   className = '',
-  onRouteAction
+  onRouteAction,
 }) => {
   const mobile = isMobile();
   const safeArea = useSafeArea();
@@ -46,7 +48,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  
+
   // CRITICAL: Separate loading state for the panel itself
   const [isSaving, setIsSaving] = useState(false);
 
@@ -63,77 +65,103 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         }
       }
     },
-    threshold: 50
+    threshold: 50,
   });
 
   // Calculate simple route stats
   const routeStats = useMemo(() => {
     if (points.length < 2) return null;
-    
+
     let totalDistance = 0;
     for (let i = 0; i < points.length - 1; i++) {
       const start = points[i];
       const end = points[i + 1];
-      
+
       if (start.latitude && start.longitude && end.latitude && end.longitude) {
-        const startLat = typeof start.latitude === 'string' ? parseFloat(start.latitude) : start.latitude;
-        const startLng = typeof start.longitude === 'string' ? parseFloat(start.longitude) : start.longitude;
-        const endLat = typeof end.latitude === 'string' ? parseFloat(end.latitude) : end.latitude;
-        const endLng = typeof end.longitude === 'string' ? parseFloat(end.longitude) : end.longitude;
-        
+        const startLat =
+          typeof start.latitude === 'string'
+            ? parseFloat(start.latitude)
+            : start.latitude;
+        const startLng =
+          typeof start.longitude === 'string'
+            ? parseFloat(start.longitude)
+            : start.longitude;
+        const endLat =
+          typeof end.latitude === 'string'
+            ? parseFloat(end.latitude)
+            : end.latitude;
+        const endLng =
+          typeof end.longitude === 'string'
+            ? parseFloat(end.longitude)
+            : end.longitude;
+
         // Haversine distance
         const R = 6371000;
-        const dLat = (endLat - startLat) * Math.PI / 180;
-        const dLng = (endLng - startLng) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(startLat * Math.PI / 180) * Math.cos(endLat * Math.PI / 180) * 
-          Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const dLat = ((endLat - startLat) * Math.PI) / 180;
+        const dLng = ((endLng - startLng) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((startLat * Math.PI) / 180) *
+            Math.cos((endLat * Math.PI) / 180) *
+            Math.sin(dLng / 2) *
+            Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         totalDistance += R * c * 1.4; // Walking factor
       }
     }
-    
+
     const totalDuration = totalDistance / 1.39; // 5 km/h walking speed
     return { distance: totalDistance, duration: totalDuration };
   }, [points]);
 
   // Format display values
-  const formattedDistance = routeStats ? 
-    (routeStats.distance < 1000 ? 
-      `${Math.round(routeStats.distance)}m` : 
-      `${(routeStats.distance / 1000).toFixed(1)}km`) : '0m';
-      
-  const formattedDuration = routeStats ? 
-    (routeStats.duration < 3600 ? 
-      `${Math.round(routeStats.duration / 60)}min` : 
-      `${Math.floor(routeStats.duration / 3600)}h ${Math.round((routeStats.duration % 3600) / 60)}min`) : '0min';
+  const formattedDistance = routeStats
+    ? routeStats.distance < 1000
+      ? `${Math.round(routeStats.distance)}m`
+      : `${(routeStats.distance / 1000).toFixed(1)}km`
+    : '0m';
+
+  const formattedDuration = routeStats
+    ? routeStats.duration < 3600
+      ? `${Math.round(routeStats.duration / 60)}min`
+      : `${Math.floor(routeStats.duration / 3600)}h ${Math.round((routeStats.duration % 3600) / 60)}min`
+    : '0min';
 
   // Drag handlers
-  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
-    if (mobile) triggerHapticFeedback('medium');
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-  }, [mobile]);
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, index: number) => {
+      if (mobile) triggerHapticFeedback('medium');
+      setDraggedIndex(index);
+      e.dataTransfer.effectAllowed = 'move';
+    },
+    [mobile]
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     setDragOverIndex(index);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== dropIndex) {
-      if (mobile) triggerHapticFeedback('success');
-      onReorder(draggedIndex, dropIndex);
-    }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  }, [draggedIndex, mobile, onReorder]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent, dropIndex: number) => {
+      e.preventDefault();
+      if (draggedIndex !== null && draggedIndex !== dropIndex) {
+        if (mobile) triggerHapticFeedback('success');
+        onReorder(draggedIndex, dropIndex);
+      }
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+    },
+    [draggedIndex, mobile, onReorder]
+  );
 
-  const handleRemoveStop = useCallback((id: number) => {
-    if (mobile) triggerHapticFeedback('light');
-    onRemove(id);
-  }, [mobile, onRemove]);
+  const handleRemoveStop = useCallback(
+    (id: number) => {
+      if (mobile) triggerHapticFeedback('light');
+      onRemove(id);
+    },
+    [mobile, onRemove]
+  );
 
   const handleToggleCollapse = useCallback(() => {
     if (mobile) triggerHapticFeedback('selection');
@@ -142,18 +170,22 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
 
   const handleExport = useCallback(() => {
     if (points.length < 2) {
-      toast.error("Need at least 2 points to export");
+      toast.error('Need at least 2 points to export');
       return;
     }
-    
+
     if (mobile) triggerHapticFeedback('success');
-    
-    const waypoints = points.map((point, index) => `
+
+    const waypoints = points
+      .map(
+        (point, index) => `
     <wpt lat="${point.latitude}" lon="${point.longitude}">
       <name>${point.title || `Stop ${index + 1}`}</name>
       <desc>${point.description || point.inscription || ''}</desc>
-    </wpt>`).join('');
-    
+    </wpt>`
+      )
+      .join('');
+
     const gpxContent = `<?xml version="1.0"?>
 <gpx version="1.1" creator="Plaque-Explorer-App">
   <metadata>
@@ -162,7 +194,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   </metadata>
   ${waypoints}
 </gpx>`;
-    
+
     const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -170,8 +202,8 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     link.download = `plaque-route-${Date.now()}.gpx`;
     link.click();
     URL.revokeObjectURL(url);
-    
-    toast.success("Route exported as GPX file");
+
+    toast.success('Route exported as GPX file');
   }, [points, formattedDistance, formattedDuration, mobile]);
 
   // CRITICAL: Handle save route with proper loading state management
@@ -180,51 +212,58 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
       toast.error('Need at least 2 stops to save route');
       return;
     }
-    
+
     if (mobile) triggerHapticFeedback('medium');
     setShowSaveDialog(true);
   }, [points.length, mobile]);
 
   // CRITICAL: Handle save from dialog with proper state management
-  const handleSaveFromDialog = useCallback(async (data: SaveRouteData) => {
-    console.log('💾 EnhancedRoutePanel: Starting save process');
-    
-    // Set our local loading state
-    setIsSaving(true);
-    
-    try {
-      if (mobile) triggerHapticFeedback('success');
-      
-      const routeData = {
-        name: data.name,
-        description: data.description,
-        points,
-        distance: routeStats?.distance || 0,
-        duration: routeStats?.duration || 0,
-        total_distance: routeStats ? routeStats.distance / 1000 : 0 // Convert to km
-      };
-      
-      console.log('💾 EnhancedRoutePanel: Calling onRouteAction with:', routeData);
-      
-      // Call the route action handler (this will show its own loading toast)
-      if (onRouteAction) {
-        await onRouteAction(routeData);
+  const handleSaveFromDialog = useCallback(
+    async (data: SaveRouteData) => {
+      console.log('💾 EnhancedRoutePanel: Starting save process');
+
+      // Set our local loading state
+      setIsSaving(true);
+
+      try {
+        if (mobile) triggerHapticFeedback('success');
+
+        const routeData = {
+          name: data.name,
+          description: data.description,
+          points,
+          distance: routeStats?.distance || 0,
+          duration: routeStats?.duration || 0,
+          total_distance: routeStats ? routeStats.distance / 1000 : 0, // Convert to km
+        };
+
+        console.log(
+          '💾 EnhancedRoutePanel: Calling onRouteAction with:',
+          routeData
+        );
+
+        // Call the route action handler (this will show its own loading toast)
+        if (onRouteAction) {
+          await onRouteAction(routeData);
+        }
+
+        // CRITICAL: Close dialog and reset state only after successful save
+        setShowSaveDialog(false);
+        console.log(
+          '✅ EnhancedRoutePanel: Save process completed successfully'
+        );
+      } catch (error) {
+        console.error('❌ EnhancedRoutePanel: Error in save process:', error);
+        // Don't close dialog on error, let user try again
+        toast.error('Failed to save route. Please try again.');
+      } finally {
+        // CRITICAL: Always clear our loading state
+        setIsSaving(false);
+        console.log('🔄 EnhancedRoutePanel: Cleared loading state');
       }
-      
-      // CRITICAL: Close dialog and reset state only after successful save
-      setShowSaveDialog(false);
-      console.log('✅ EnhancedRoutePanel: Save process completed successfully');
-      
-    } catch (error) {
-      console.error('❌ EnhancedRoutePanel: Error in save process:', error);
-      // Don't close dialog on error, let user try again
-      toast.error('Failed to save route. Please try again.');
-    } finally {
-      // CRITICAL: Always clear our loading state
-      setIsSaving(false);
-      console.log('🔄 EnhancedRoutePanel: Cleared loading state');
-    }
-  }, [points, routeStats, onRouteAction, mobile]);
+    },
+    [points, routeStats, onRouteAction, mobile]
+  );
 
   // Panel positioning
   const panelStyle = useMemo(() => {
@@ -235,9 +274,11 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         left: 0,
         right: 0,
         zIndex: 1000,
-        transform: isCollapsed ? 'translateY(calc(100% - 60px))' : 'translateY(0)',
+        transform: isCollapsed
+          ? 'translateY(calc(100% - 60px))'
+          : 'translateY(0)',
         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        paddingBottom: safeArea.bottom
+        paddingBottom: safeArea.bottom,
       };
     } else {
       return {
@@ -247,7 +288,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         bottom: 80,
         width: '300px',
         maxWidth: 'calc(100vw - 32px)',
-        zIndex: 1000
+        zIndex: 1000,
       };
     }
   }, [mobile, isCollapsed, safeArea.bottom]);
@@ -284,13 +325,13 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   return (
     <>
       <div style={panelStyle} className={className}>
-        <div 
+        <div
           className="bg-white rounded-t-xl md:rounded-xl shadow-xl border border-gray-200 flex flex-col h-full max-h-[70vh] md:max-h-none"
           onTouchStart={mobile ? handleTouchStart : undefined}
           onTouchEnd={mobile ? handleTouchEnd : undefined}
         >
           {/* Header */}
-          <div 
+          <div
             className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl cursor-pointer"
             onClick={mobile ? handleToggleCollapse : undefined}
           >
@@ -299,13 +340,13 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                 <div className="w-8 h-1 bg-gray-300 rounded-full" />
               </div>
             )}
-            
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <Route size={16} className="text-green-600" />
                 </div>
-                
+
                 <div className="min-w-0">
                   <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                     Route
@@ -313,7 +354,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                       {points.length} stops
                     </Badge>
                   </h3>
-                  
+
                   <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
                     <span className="flex items-center gap-1">
                       <Navigation size={10} />
@@ -327,7 +368,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-1">
                 {mobile && (
                   <MobileButton
@@ -339,10 +380,14 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                     }}
                     className="h-8 w-8 p-0"
                   >
-                    {isCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    {isCollapsed ? (
+                      <ChevronUp size={16} />
+                    ) : (
+                      <ChevronDown size={16} />
+                    )}
                   </MobileButton>
                 )}
-                
+
                 <MobileButton
                   variant="ghost"
                   size="sm"
@@ -366,20 +411,24 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                     const isEnd = index === points.length - 1;
                     const isDragTarget = dragOverIndex === index;
                     const isBeingDragged = draggedIndex === index;
-                    
+
                     return (
                       <div key={point.id} className="relative">
                         {/* Route line connector */}
                         {index < points.length - 1 && (
                           <div className="absolute left-6 top-12 w-0.5 h-6 bg-gray-300 z-0" />
                         )}
-                        
+
                         {/* Stop card */}
                         <div
                           className={`flex items-center gap-3 p-3 bg-white border rounded-lg transition-all relative z-10 ${
-                            isDragTarget ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                            isDragTarget
+                              ? 'border-green-500 bg-green-50'
+                              : 'border-gray-200'
                           } ${
-                            isBeingDragged ? 'opacity-50 scale-95' : 'hover:border-gray-300'
+                            isBeingDragged
+                              ? 'opacity-50 scale-95'
+                              : 'hover:border-gray-300'
                           }`}
                           draggable
                           onDragStart={(e) => handleDragStart(e, index)}
@@ -387,17 +436,28 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                           onDrop={(e) => handleDrop(e, index)}
                         >
                           {/* Drag handle */}
-                          <GripVertical size={16} className="text-gray-400 cursor-move flex-shrink-0" />
-                          
+                          <GripVertical
+                            size={16}
+                            className="text-gray-400 cursor-move flex-shrink-0"
+                          />
+
                           {/* Route marker */}
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
-                            isStart ? 'bg-green-500' : 
-                            isEnd ? 'bg-red-500' : 
-                            'bg-blue-500'
-                          }`}>
-                            {isStart ? 'A' : isEnd ? 'B' : String.fromCharCode(65 + index)}
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
+                              isStart
+                                ? 'bg-green-500'
+                                : isEnd
+                                  ? 'bg-red-500'
+                                  : 'bg-blue-500'
+                            }`}
+                          >
+                            {isStart
+                              ? 'A'
+                              : isEnd
+                                ? 'B'
+                                : String.fromCharCode(65 + index)}
                           </div>
-                          
+
                           {/* Stop info */}
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">
@@ -407,7 +467,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                               {point.location || point.address}
                             </div>
                           </div>
-                          
+
                           {/* Remove button */}
                           <MobileButton
                             variant="ghost"
@@ -439,7 +499,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                     <Save size={14} className="mr-1" />
                     {isSaving ? 'Saving...' : 'Save Route'}
                   </MobileButton>
-                  
+
                   <MobileButton
                     variant="outline"
                     size="sm"
@@ -451,7 +511,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                     Export GPX
                   </MobileButton>
                 </div>
-                
+
                 <MobileButton
                   variant="outline"
                   onClick={onClear}

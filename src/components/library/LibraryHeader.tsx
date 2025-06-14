@@ -1,12 +1,7 @@
 // src/components/library/LibraryHeader.tsx
 import React from 'react';
-import { 
-  BookOpen, 
-  Settings, 
-  LogOut,
-  User
-} from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { BookOpen, Settings, LogOut, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -25,8 +20,8 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
   totalCollections,
   totalRoutes,
   totalVisits,
-  title = "My Library",
-  showStats = true
+  title = 'My Library',
+  showStats = true,
 }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -50,7 +45,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
         <div className="absolute bottom-10 right-20 w-60 h-60 rounded-full bg-white"></div>
         <div className="absolute top-40 right-40 w-20 h-20 rounded-full bg-white"></div>
       </div>
-      
+
       <div className="container mx-auto max-w-6xl relative z-10">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-4">
@@ -58,7 +53,11 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
             <div className="relative">
               {user.photoURL ? (
                 <div className="bg-white/20 backdrop-blur-sm w-16 h-16 rounded-full overflow-hidden">
-                  <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'User'}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               ) : (
                 <div className="bg-white/20 backdrop-blur-sm w-16 h-16 rounded-full flex items-center justify-center">
@@ -66,7 +65,7 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
                 </div>
               )}
             </div>
-            
+
             {/* Title and User Info */}
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -87,17 +86,17 @@ const LibraryHeader: React.FC<LibraryHeaderProps> = ({
               )}
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex gap-2">
-            <Button 
+            <Button
               variant="outline"
               className="bg-white/10 text-white border-white/20 hover:bg-white/20"
               onClick={() => navigate('/settings')}
             >
               <Settings size={16} className="mr-2" /> Settings
             </Button>
-            <Button 
+            <Button
               variant="outline"
               className="bg-white/10 text-white border-white/20 hover:bg-white/20"
               onClick={handleSignOut}

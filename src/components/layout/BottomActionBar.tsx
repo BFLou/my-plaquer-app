@@ -10,19 +10,19 @@ type BottomActionBarProps = {
 export const BottomActionBar: React.FC<BottomActionBarProps> = ({
   children,
   className = '',
-  background = 'white'
+  background = 'white',
 }) => {
   const bgClasses = {
     white: 'bg-white border-t border-gray-200',
     gray: 'bg-gray-50 border-t border-gray-200',
-    transparent: 'bg-transparent'
+    transparent: 'bg-transparent',
   };
 
   return (
-    <div className={`fixed bottom-16 left-0 right-0 z-30 ${bgClasses[background]} p-4 safe-area-pb md:hidden ${className}`}>
-      <div className="flex gap-3">
-        {children}
-      </div>
+    <div
+      className={`fixed bottom-16 left-0 right-0 z-30 ${bgClasses[background]} p-4 safe-area-pb md:hidden ${className}`}
+    >
+      <div className="flex gap-3">{children}</div>
     </div>
   );
 };

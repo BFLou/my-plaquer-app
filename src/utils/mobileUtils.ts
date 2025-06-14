@@ -6,10 +6,17 @@ export const isMobile = (): boolean => {
   if (typeof window === 'undefined') return false;
 
   const userAgent = navigator.userAgent.toLowerCase();
-  const mobileKeywords = ['mobile', 'android', 'iphone', 'ipad', 'tablet', 'phone'];
+  const mobileKeywords = [
+    'mobile',
+    'android',
+    'iphone',
+    'ipad',
+    'tablet',
+    'phone',
+  ];
 
   return (
-    mobileKeywords.some(keyword => userAgent.includes(keyword)) ||
+    mobileKeywords.some((keyword) => userAgent.includes(keyword)) ||
     window.innerWidth <= 768 ||
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0
@@ -19,8 +26,10 @@ export const isMobile = (): boolean => {
 export const isIOS = (): boolean => {
   if (typeof window === 'undefined') return false;
 
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
 };
 
 export const isAndroid = (): boolean => {
@@ -45,18 +54,22 @@ export const getScreenSize = (): { width: number; height: number } => {
 
   return {
     width: window.screen.width,
-    height: window.screen.height
+    height: window.screen.height,
   };
 };
 
 // Touch and interaction utilities
 export const preventZoom = (element: HTMLElement): void => {
   if (isIOS()) {
-    element.addEventListener('touchstart', (e) => {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
+    element.addEventListener(
+      'touchstart',
+      (e) => {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      },
+      { passive: false }
+    );
   }
 };
 
@@ -118,8 +131,14 @@ export const getOrientation = (): 'portrait' | 'landscape' => {
   return window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
 };
 
-export const lockOrientation = (orientation: 'portrait' | 'landscape'): void => {
-  if ('screen' in window && 'orientation' in window.screen && 'lock' in window.screen.orientation) {
+export const lockOrientation = (
+  orientation: 'portrait' | 'landscape'
+): void => {
+  if (
+    'screen' in window &&
+    'orientation' in window.screen &&
+    'lock' in window.screen.orientation
+  ) {
     (window.screen.orientation as any).lock(orientation).catch(() => {
       console.debug('Orientation lock not supported');
     });
@@ -152,26 +171,33 @@ export const initMobileOptimizations = (): void => {
 
   // Prevent zoom on double tap
   let lastTouchEnd = 0;
-  document.addEventListener('touchend', (event) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) {
-      event.preventDefault();
-    }
-    lastTouchEnd = now;
-  }, false);
+  document.addEventListener(
+    'touchend',
+    (event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    },
+    false
+  );
 
   // Optimize scrolling
   (document.body.style as any).webkitOverflowScrolling = 'touch';
 
   // Set viewport meta tag if not present
-  let viewportMeta = document.querySelector('meta[name="viewport"]') as HTMLMetaElement;
+  let viewportMeta = document.querySelector(
+    'meta[name="viewport"]'
+  ) as HTMLMetaElement;
   if (!viewportMeta) {
     viewportMeta = document.createElement('meta');
     viewportMeta.name = 'viewport';
     document.head.appendChild(viewportMeta);
   }
 
-  viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover';
+  viewportMeta.content =
+    'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover';
 
   // Add safe area CSS variables
   const style = document.createElement('style');
@@ -188,7 +214,7 @@ export const initMobileOptimizations = (): void => {
   // Initialize forms
   document.addEventListener('DOMContentLoaded', () => {
     const forms = document.querySelectorAll('form');
-    forms.forEach(form => optimizeFormForMobile(form));
+    forms.forEach((form) => optimizeFormForMobile(form));
   });
 };
 

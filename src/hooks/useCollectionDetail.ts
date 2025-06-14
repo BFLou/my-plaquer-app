@@ -22,9 +22,17 @@ interface CollectionData {
 
 export const useCollectionDetail = (collectionId: string) => {
   const navigate = useNavigate();
-  const { getCollection, updateCollection, deleteCollection, toggleFavorite, duplicateCollection, addPlaquesToCollection, removePlaquesFromCollection } = useCollections();
+  const {
+    getCollection,
+    updateCollection,
+    deleteCollection,
+    toggleFavorite,
+    duplicateCollection,
+    addPlaquesToCollection,
+    removePlaquesFromCollection,
+  } = useCollections();
   const { visits, isPlaqueVisited, markAsVisited } = useVisitedPlaques();
-  
+
   // State
   const [collection, setCollection] = useState<CollectionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,24 +58,24 @@ export const useCollectionDetail = (collectionId: string) => {
   // Fetch available plaques
   const fetchAvailablePlaques = async () => {
     if (!collection) return;
-    
+
     try {
       setIsLoading(true);
-      
+
       // In a real app, you'd fetch this from your API or Firebase
       // For now, let's simulate with a timeout
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Import the plaque data
       const { default: plaqueData } = await import('@/data/plaque_data.json');
       const adaptedData = adaptPlaquesData(plaqueData as any);
-      
+
       // Filter out plaques already in the collection
       const collectionPlaqueIds = collection.plaques || [];
       const available = adaptedData.filter(
-        plaque => !collectionPlaqueIds.includes(plaque.id)
+        (plaque) => !collectionPlaqueIds.includes(plaque.id)
       );
-      
+
       setAvailablePlaques(available);
     } catch (error) {
       console.error('Error fetching available plaques:', error);
@@ -85,39 +93,43 @@ export const useCollectionDetail = (collectionId: string) => {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         const collectionData = await getCollection(collectionId);
-        
+
         if (!collectionData) {
           throw new Error('Collection not found');
         }
-        
+
         setCollection(collectionData);
         setEditNameValue(collectionData.name);
-        
+
         // Fetch plaques data for this collection
         const plaqueIds = collectionData.plaques || [];
-        
+
         // Check if there are any plaques in this collection
         if (plaqueIds.length > 0) {
           try {
             // Import plaque data
-            const { default: plaqueData } = await import('@/data/plaque_data.json');
+            const { default: plaqueData } = await import(
+              '@/data/plaque_data.json'
+            );
             const adaptedData = adaptPlaquesData(plaqueData as any);
-            
+
             // Filter only the plaques that are in this collection
-            const collectionPlaques = adaptedData.filter(plaque => 
+            const collectionPlaques = adaptedData.filter((plaque) =>
               plaqueIds.includes(plaque.id)
             );
-            
+
             // Mark visited status for each plaque
-            const plaquesWithVisitedStatus = collectionPlaques.map(plaque => ({
-              ...plaque,
-              visited: isPlaqueVisited(plaque.id)
-            }));
-            
+            const plaquesWithVisitedStatus = collectionPlaques.map(
+              (plaque) => ({
+                ...plaque,
+                visited: isPlaqueVisited(plaque.id),
+              })
+            );
+
             // Update state with the matching plaques
             setCollectionPlaques(plaquesWithVisitedStatus);
           } catch (err) {
@@ -128,7 +140,7 @@ export const useCollectionDetail = (collectionId: string) => {
           // No plaques in this collection
           setCollectionPlaques([]);
         }
-        
+
         setLoading(false);
       } catch (err: any) {
         console.error('Error fetching collection:', err);
@@ -137,54 +149,62 @@ export const useCollectionDetail = (collectionId: string) => {
         toast.error('Failed to load collection');
       }
     };
-    
+
     fetchCollection();
   }, [collectionId, getCollection, isPlaqueVisited]);
-  
+
   // Add an additional effect to update visited status when visits change
   useEffect(() => {
     if (collectionPlaques.length > 0 && visits.length > 0) {
       // Update plaques with current visited status
-      const updatedPlaques = collectionPlaques.map(plaque => ({
+      const updatedPlaques = collectionPlaques.map((plaque) => ({
         ...plaque,
-        visited: isPlaqueVisited(plaque.id)
+        visited: isPlaqueVisited(plaque.id),
       }));
-      
+
       // Only update if there are changes to avoid infinite loops
-      const hasChanges = updatedPlaques.some((p, i) => 
-        p.visited !== collectionPlaques[i].visited
+      const hasChanges = updatedPlaques.some(
+        (p, i) => p.visited !== collectionPlaques[i].visited
       );
-      
+
       if (hasChanges) {
         setCollectionPlaques(updatedPlaques);
       }
     }
   }, [visits, collectionPlaques, isPlaqueVisited]);
-  
+
   // Get all unique tags from plaques
   const getAllTags = () => {
-    const tags = ['all', ...new Set(collectionPlaques
-      .filter(plaque => plaque.profession)
-      .map(plaque => plaque.profession as string)
-    )];
+    const tags = [
+      'all',
+      ...new Set(
+        collectionPlaques
+          .filter((plaque) => plaque.profession)
+          .map((plaque) => plaque.profession as string)
+      ),
+    ];
     return tags;
   };
-  
+
   const allTags = getAllTags();
-  
+
   // Filter plaques based on search query and active tag
   const filteredPlaques = collectionPlaques
-    .filter(plaque => {
+    .filter((plaque) => {
       // Match search query
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch =
+        searchQuery === '' ||
         plaque.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (plaque.location && plaque.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (plaque.inscription && plaque.inscription.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+        (plaque.location &&
+          plaque.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (plaque.inscription &&
+          plaque.inscription.toLowerCase().includes(searchQuery.toLowerCase()));
+
       // Match active tag
-      const matchesTag = activeTag === 'all' || 
+      const matchesTag =
+        activeTag === 'all' ||
         (plaque.profession && plaque.profession === activeTag);
-      
+
       return matchesSearch && matchesTag;
     })
     .sort((a, b) => {
@@ -195,28 +215,30 @@ export const useCollectionDetail = (collectionId: string) => {
       if (sortOption === 'z_to_a') return b.title.localeCompare(a.title);
       return 0;
     });
-  
+
   // Toggle select plaque
   const toggleSelectPlaque = (id: number) => {
-    setSelectedPlaques(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    setSelectedPlaques((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
-  
+
   // Handle removing a plaque
   const handleRemovePlaque = (plaqueId: number) => {
     setPlaqueToRemove(plaqueId);
     setConfirmRemovePlaqueOpen(true);
   };
-  
+
   // Confirm removing a plaque
   const confirmRemovePlaque = async () => {
     if (!collection || plaqueToRemove === null) return;
-    
+
     try {
       setIsLoading(true);
       await removePlaquesFromCollection(collection.id, [plaqueToRemove]);
-      setCollectionPlaques(prev => prev.filter(p => p.id !== plaqueToRemove));
+      setCollectionPlaques((prev) =>
+        prev.filter((p) => p.id !== plaqueToRemove)
+      );
       toast.success('Plaque removed from collection');
     } catch (err) {
       console.error('Error removing plaque from collection:', err);
@@ -227,55 +249,65 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // Toggle favorite for a plaque
   const handleTogglePlaqueFavorite = (plaqueId: number) => {
-    setFavorites(prev => 
-      prev.includes(plaqueId) 
-        ? prev.filter(id => id !== plaqueId) 
+    setFavorites((prev) =>
+      prev.includes(plaqueId)
+        ? prev.filter((id) => id !== plaqueId)
         : [...prev, plaqueId]
     );
   };
-  
+
   // Mark plaque as visited
   const handleMarkVisited = async (plaqueId: number) => {
     try {
       // Call the hook's markAsVisited function
       await markAsVisited(plaqueId, {});
-      
+
       // Update local state for immediate UI feedback
-      setCollectionPlaques(prev => prev.map(plaque => 
-        plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
-      ));
-      
+      setCollectionPlaques((prev) =>
+        prev.map((plaque) =>
+          plaque.id === plaqueId ? { ...plaque, visited: true } : plaque
+        )
+      );
+
       toast.success('Plaque marked as visited');
     } catch (err) {
       console.error('Error marking as visited:', err);
       toast.error('Failed to mark as visited');
     }
   };
-  
+
   // Edit collection name
   const handleEditName = () => {
     setEditNameMode(true);
   };
-  
+
   // Save edited name
   const handleSaveName = async () => {
-    if (!collection || !editNameValue.trim() || editNameValue === collection.name) {
+    if (
+      !collection ||
+      !editNameValue.trim() ||
+      editNameValue === collection.name
+    ) {
       setEditNameMode(false);
       return;
     }
-    
+
     try {
       setIsLoading(true);
       await updateCollection(collection.id, {
-        name: editNameValue
+        name: editNameValue,
       });
-      setCollection((prev: CollectionData | null) => prev ? ({
-        ...prev,
-        name: editNameValue
-      }) : null);
+      setCollection((prev: CollectionData | null) =>
+        prev
+          ? {
+              ...prev,
+              name: editNameValue,
+            }
+          : null
+      );
       setEditNameMode(false);
       toast.success('Collection name updated');
     } catch (err) {
@@ -285,25 +317,31 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // Cancel edit
   const handleCancelEdit = () => {
     setEditNameValue(collection?.name || '');
     setEditNameMode(false);
   };
-  
+
   // Toggle favorite
   const handleToggleFavorite = async () => {
     if (!collection) return;
-    
+
     try {
       setIsLoading(true);
       await toggleFavorite(collection.id);
-      setCollection((prev: CollectionData | null) => prev ? ({
-        ...prev,
-        is_favorite: !prev.is_favorite
-      }) : null);
-      toast.success(collection.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+      setCollection((prev: CollectionData | null) =>
+        prev
+          ? {
+              ...prev,
+              is_favorite: !prev.is_favorite,
+            }
+          : null
+      );
+      toast.success(
+        collection.is_favorite ? 'Removed from favorites' : 'Added to favorites'
+      );
     } catch (err) {
       console.error('Error toggling favorite:', err);
       toast.error('Failed to update favorite status');
@@ -311,24 +349,28 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // Add plaques to collection
   const handleAddPlaques = async (plaqueIds: number[]) => {
     if (!collection || plaqueIds.length === 0) return;
-    
+
     try {
       setIsLoading(true);
       await addPlaquesToCollection(collection.id, plaqueIds);
-      
+
       // Get plaques to add from available plaques
-      const plaquesToAdd = availablePlaques.filter(p => plaqueIds.includes(p.id));
-      
+      const plaquesToAdd = availablePlaques.filter((p) =>
+        plaqueIds.includes(p.id)
+      );
+
       // Update collection plaques in local state
-      setCollectionPlaques(prev => [...prev, ...plaquesToAdd]);
-      
+      setCollectionPlaques((prev) => [...prev, ...plaquesToAdd]);
+
       // Remove added plaques from available plaques
-      setAvailablePlaques(prev => prev.filter(p => !plaqueIds.includes(p.id)));
-      
+      setAvailablePlaques((prev) =>
+        prev.filter((p) => !plaqueIds.includes(p.id))
+      );
+
       toast.success(`Added ${plaqueIds.length} plaques to collection`);
       setAddPlaquesModalOpen(false);
     } catch (error) {
@@ -338,17 +380,21 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // Remove plaques from collection
   const handleRemovePlaques = async () => {
     if (!collection || selectedPlaques.length === 0) return;
-    
+
     try {
       setIsLoading(true);
       await removePlaquesFromCollection(collection.id, selectedPlaques);
-      setCollectionPlaques(prev => prev.filter(p => !selectedPlaques.includes(p.id)));
+      setCollectionPlaques((prev) =>
+        prev.filter((p) => !selectedPlaques.includes(p.id))
+      );
       setSelectedPlaques([]);
-      toast.success(`${selectedPlaques.length} plaques removed from collection`);
+      toast.success(
+        `${selectedPlaques.length} plaques removed from collection`
+      );
     } catch (err) {
       console.error('Error removing plaques from collection:', err);
       toast.error('Failed to remove plaques from collection');
@@ -356,11 +402,11 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // Delete collection
   const handleDeleteCollection = async () => {
     if (!collection) return;
-    
+
     try {
       setIsLoading(true);
       await deleteCollection(collection.id);
@@ -374,11 +420,11 @@ export const useCollectionDetail = (collectionId: string) => {
       setConfirmDeleteOpen(false);
     }
   };
-  
+
   // Duplicate collection
   const handleDuplicateCollection = async () => {
     if (!collection) return;
-    
+
     try {
       setIsLoading(true);
       const duplicated = await duplicateCollection(collection.id);
@@ -391,11 +437,11 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // Handle updating collection
   const handleUpdateCollection = async (data: any) => {
     if (!collection) return;
-    
+
     try {
       setIsLoading(true);
       await updateCollection(collection.id, {
@@ -403,19 +449,23 @@ export const useCollectionDetail = (collectionId: string) => {
         description: data.description || '',
         icon: data.icon,
         color: data.color,
-        tags: data.tags || []
+        tags: data.tags || [],
       });
-      
+
       // Update collection in state
-      setCollection((prev: CollectionData | null) => prev ? ({
-        ...prev,
-        name: data.name,
-        description: data.description || '',
-        icon: data.icon,
-        color: data.color,
-        tags: data.tags || []
-      }) : null);
-      
+      setCollection((prev: CollectionData | null) =>
+        prev
+          ? {
+              ...prev,
+              name: data.name,
+              description: data.description || '',
+              icon: data.icon,
+              color: data.color,
+              tags: data.tags || [],
+            }
+          : null
+      );
+
       setEditFormOpen(false);
       toast.success('Collection updated successfully');
     } catch (err) {
@@ -425,27 +475,32 @@ export const useCollectionDetail = (collectionId: string) => {
       setIsLoading(false);
     }
   };
-  
+
   // View plaque details
   const handleViewPlaque = (plaque: Plaque) => {
     setSelectedPlaque(plaque);
   };
-  
+
   // Clear search
   const handleClearSearch = () => {
     setSearchQuery('');
     setActiveTag('all');
   };
-  
+
   // Find nearby plaques for the detail view
   const getNearbyPlaques = (plaque: Plaque): Plaque[] => {
-    return collectionPlaques.filter(p => 
-      p.id !== plaque.id && 
-      ((p.profession && plaque.profession && p.profession === plaque.profession) || 
-       (p.color && plaque.color && p.color === plaque.color))
-    ).slice(0, 3);
+    return collectionPlaques
+      .filter(
+        (p) =>
+          p.id !== plaque.id &&
+          ((p.profession &&
+            plaque.profession &&
+            p.profession === plaque.profession) ||
+            (p.color && plaque.color && p.color === plaque.color))
+      )
+      .slice(0, 3);
   };
-  
+
   return {
     collection,
     loading,
@@ -497,7 +552,7 @@ export const useCollectionDetail = (collectionId: string) => {
     visits,
     editFormOpen,
     setEditFormOpen,
-    handleUpdateCollection
+    handleUpdateCollection,
   };
 };
 

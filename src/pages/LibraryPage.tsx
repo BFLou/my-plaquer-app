@@ -1,12 +1,8 @@
 // src/pages/LibraryPage.tsx
 import { useNavigate } from 'react-router-dom';
-import { 
-  BookOpen, 
-  Plus, 
-  TrendingUp
-} from 'lucide-react';
-import { PageContainer } from "@/components";
-import { Button } from "@/components/ui/button";
+import { BookOpen, Plus, TrendingUp } from 'lucide-react';
+import { PageContainer } from '@/components';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useCollections } from '@/hooks/useCollection';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
@@ -28,11 +24,15 @@ const LibraryPage = () => {
   const totalCollections = collections.length;
   const totalRoutes = routes.length;
   const totalVisits = visits.length;
-  const uniquePlaquesVisited = new Set(visits.map(v => v.plaque_id)).size;
-  const totalPlaquesInCollections = collections.reduce((sum, c) => 
-    sum + (Array.isArray(c.plaques) ? c.plaques.length : 0), 0
+  const uniquePlaquesVisited = new Set(visits.map((v) => v.plaque_id)).size;
+  const totalPlaquesInCollections = collections.reduce(
+    (sum, c) => sum + (Array.isArray(c.plaques) ? c.plaques.length : 0),
+    0
   );
-  const totalRouteDistance = routes.reduce((sum, r) => sum + r.total_distance, 0);
+  const totalRouteDistance = routes.reduce(
+    (sum, r) => sum + r.total_distance,
+    0
+  );
 
   if (!user) {
     return (
@@ -41,7 +41,9 @@ const LibraryPage = () => {
           <div className="bg-white rounded-xl shadow-sm p-8 max-w-md mx-auto">
             <BookOpen className="mx-auto text-gray-300 mb-4" size={48} />
             <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-            <p className="text-gray-600 mb-6">You need to sign in to access your library.</p>
+            <p className="text-gray-600 mb-6">
+              You need to sign in to access your library.
+            </p>
             <Button onClick={() => navigate('/')}>Back to Home</Button>
           </div>
         </div>
@@ -53,16 +55,16 @@ const LibraryPage = () => {
 
   return (
     <PageContainer activePage="library" simplifiedFooter={true}>
-      <LibraryHeader 
+      <LibraryHeader
         user={user}
         totalCollections={totalCollections}
         totalRoutes={totalRoutes}
         totalVisits={totalVisits}
       />
-      
+
       <div className="container mx-auto max-w-6xl px-4">
         {/* Stats Overview */}
-        <LibraryStats 
+        <LibraryStats
           totalCollections={totalCollections}
           totalRoutes={totalRoutes}
           totalVisits={totalVisits}
@@ -82,21 +84,21 @@ const LibraryPage = () => {
         ) : (
           <div className="space-y-8">
             {/* Collections Section */}
-            <CollectionsSection 
+            <CollectionsSection
               collections={collections}
               onViewAll={() => navigate('/library/collections')}
               onCreateNew={() => navigate('/library/collections')}
             />
 
             {/* Routes Section */}
-            <RoutesSection 
+            <RoutesSection
               routes={routes}
               onViewAll={() => navigate('/library/routes')}
               onCreateNew={() => navigate('/discover?view=map')}
             />
 
             {/* Visits Section */}
-            <VisitsSection 
+            <VisitsSection
               visits={visits}
               onViewAll={() => navigate('/library/visits')}
               onExploreMore={() => navigate('/discover')}
@@ -109,21 +111,21 @@ const LibraryPage = () => {
                 Quick Actions
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button 
+                <Button
                   onClick={() => navigate('/library/collections')}
                   className="h-16 bg-purple-600 hover:bg-purple-700 flex flex-col items-center justify-center"
                 >
                   <Plus size={20} className="mb-1" />
                   Create Collection
                 </Button>
-                <Button 
+                <Button
                   onClick={() => navigate('/discover?view=map')}
                   className="h-16 bg-green-600 hover:bg-green-700 flex flex-col items-center justify-center"
                 >
                   <Plus size={20} className="mb-1" />
                   Plan Route
                 </Button>
-                <Button 
+                <Button
                   onClick={() => navigate('/discover')}
                   className="h-16 bg-blue-600 hover:bg-blue-700 flex flex-col items-center justify-center"
                 >

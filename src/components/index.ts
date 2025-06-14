@@ -1,6 +1,6 @@
 /**
  * Main components index file
- * 
+ *
  * This file exports all components from their respective subfolders,
  * allowing for clean imports throughout the application.
  */
@@ -75,12 +75,12 @@ export * from './ui/tooltip';
 export { Toaster } from './ui/sonner';
 
 // Mobile utilities
-export { 
-  isMobile, 
-  isIOS, 
-  useMobileNavigation, 
-  triggerHapticFeedback, 
-  initMobileOptimizations 
+export {
+  isMobile,
+  isIOS,
+  useMobileNavigation,
+  triggerHapticFeedback,
+  initMobileOptimizations,
 } from '../utils/mobileUtils';
 
 // Hooks

@@ -125,7 +125,7 @@
     max-width: calc(100vw - 24px) !important;
     font-size: 13px !important;
   }
-  
+
   .mobile-onboarding-toast button[data-action] {
     font-size: 12px !important;
     padding: 5px 10px !important;
@@ -151,7 +151,7 @@
   .mobile-onboarding-toast {
     border: 2px solid white !important;
   }
-  
+
   .mobile-onboarding-toast button[data-action] {
     border: 2px solid white !important;
   }
@@ -162,11 +162,11 @@
   .mobile-onboarding-toast {
     animation: none !important;
   }
-  
+
   .mobile-onboarding-toast button[data-action] {
     transition: none !important;
   }
-  
+
   .mobile-onboarding-toast button[data-action]:hover,
   .mobile-onboarding-toast button[data-action]:active {
     transform: none !important;
@@ -179,9 +179,15 @@
 }
 
 /* Stacking context for multiple toasts */
-.mobile-onboarding-toast:nth-child(1) { z-index: 9999 !important; }
-.mobile-onboarding-toast:nth-child(2) { z-index: 9998 !important; }
-.mobile-onboarding-toast:nth-child(3) { z-index: 9997 !important; }
+.mobile-onboarding-toast:nth-child(1) {
+  z-index: 9999 !important;
+}
+.mobile-onboarding-toast:nth-child(2) {
+  z-index: 9998 !important;
+}
+.mobile-onboarding-toast:nth-child(3) {
+  z-index: 9997 !important;
+}
 
 /* Special positioning for different toast types */
 .nav-hint-toast.mobile-onboarding-toast {
@@ -197,15 +203,22 @@
 
 /* Pulsing effect for attention */
 .mobile-onboarding-toast.attention {
-  animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1), pulse-attention 2s ease-in-out 0.5s infinite !important;
+  animation:
+    slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    pulse-attention 2s ease-in-out 0.5s infinite !important;
 }
 
 @keyframes pulse-attention {
-  0%, 100% {
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(59, 130, 246, 0.4);
+  0%,
+  100% {
+    box-shadow:
+      0 10px 25px rgba(0, 0, 0, 0.15),
+      0 0 0 0 rgba(59, 130, 246, 0.4);
   }
   50% {
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 8px rgba(59, 130, 246, 0.1);
+    box-shadow:
+      0 10px 25px rgba(0, 0, 0, 0.15),
+      0 0 0 8px rgba(59, 130, 246, 0.1);
   }
 }
 
@@ -213,11 +226,14 @@
 .welcome-toast.mobile-onboarding-toast {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8, #1e40af) !important;
   background-size: 200% 200% !important;
-  animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1), gradient-shift 3s ease-in-out infinite !important;
+  animation:
+    slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    gradient-shift 3s ease-in-out infinite !important;
 }
 
 @keyframes gradient-shift {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {
@@ -246,6 +262,10 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

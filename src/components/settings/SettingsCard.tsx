@@ -17,10 +17,10 @@ const SettingsCard: React.FC<SettingsCardProps> = ({
   children,
   className,
   footer,
-  icon
+  icon,
 }) => {
   return (
-    <div className={cn("border-b last:border-b-0", className)}>
+    <div className={cn('border-b last:border-b-0', className)}>
       <div className="p-6">
         {/* Header with optional icon */}
         <div className="flex items-center gap-3 mb-4">
@@ -36,19 +36,15 @@ const SettingsCard: React.FC<SettingsCardProps> = ({
             )}
           </div>
         </div>
-        
+
         {/* Content with better spacing */}
-        <div className="space-y-6">
-          {children}
-        </div>
+        <div className="space-y-6">{children}</div>
       </div>
-      
+
       {/* Footer with consistent styling */}
       {footer && (
         <div className="px-6 pb-6 pt-0">
-          <div className="pt-4 border-t border-gray-100">
-            {footer}
-          </div>
+          <div className="pt-4 border-t border-gray-100">{footer}</div>
         </div>
       )}
     </div>

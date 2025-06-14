@@ -1,26 +1,26 @@
 // src/components/routes/RouteCard.tsx
 import React, { useState } from 'react';
-import { 
-  Route as RouteIcon, 
-  MoreVertical, 
-  Eye, 
-  Edit, 
-  Copy, 
-  Trash2, 
+import {
+  Route as RouteIcon,
+  MoreVertical,
+  Eye,
+  Edit,
+  Copy,
+  Trash2,
   Star,
   MapPin,
   Clock,
-  CheckCircle
+  CheckCircle,
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import { formatTimeAgo } from '@/utils/timeUtils';
 import { RouteData } from '@/hooks/useRoutes';
 
@@ -47,7 +47,7 @@ const RouteCard: React.FC<RouteCardProps> = ({
   onDelete,
   onToggleFavorite,
   showSelection = false,
-  className = ''
+  className = '',
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -65,15 +65,15 @@ const RouteCard: React.FC<RouteCardProps> = ({
       e.preventDefault();
       if (onToggleSelect) onToggleSelect();
     } else if (
-      !((e.target as Element)?.closest?.('button')) && 
-      !((e.target as Element)?.closest?.('[role="menuitem"]'))
+      !(e.target as Element)?.closest?.('button') &&
+      !(e.target as Element)?.closest?.('[role="menuitem"]')
     ) {
       onView(route);
     }
   };
 
   return (
-    <div 
+    <div
       className={`bg-white border rounded-lg overflow-hidden hover:shadow-md transition-all cursor-pointer group ${
         isSelected ? 'ring-2 ring-green-500 border-green-200' : ''
       } ${className}`}
@@ -81,40 +81,48 @@ const RouteCard: React.FC<RouteCardProps> = ({
     >
       {/* Top color bar */}
       <div className="h-2 w-full bg-green-500"></div>
-      
+
       <div className="p-3 sm:p-4">
         {/* Header - Mobile Optimized */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             {showSelection && onToggleSelect && (
-              <div 
+              <div
                 className="flex-shrink-0 mt-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleSelect();
                 }}
               >
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors min-w-[20px] min-h-[20px] ${
-                  isSelected 
-                    ? 'bg-green-500 border-green-500 text-white' 
-                    : 'border-gray-300 hover:border-green-400'
-                }`}>
+                <div
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors min-w-[20px] min-h-[20px] ${
+                    isSelected
+                      ? 'bg-green-500 border-green-500 text-white'
+                      : 'border-gray-300 hover:border-green-400'
+                  }`}
+                >
                   {isSelected && <CheckCircle size={12} />}
                 </div>
               </div>
             )}
-            
+
             <div className="bg-green-100 text-green-600 w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0">
               <RouteIcon size={16} className="sm:w-5 sm:h-5" />
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-2 mb-1">
-                <h3 className="font-semibold text-sm sm:text-lg group-hover:text-green-600 transition-colors line-clamp-2 flex-1" title={route.name}>
+                <h3
+                  className="font-semibold text-sm sm:text-lg group-hover:text-green-600 transition-colors line-clamp-2 flex-1"
+                  title={route.name}
+                >
                   {route.name}
                 </h3>
                 {route.is_favorite && (
-                  <Star size={14} className="fill-amber-400 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <Star
+                    size={14}
+                    className="fill-amber-400 text-amber-400 flex-shrink-0 mt-0.5"
+                  />
                 )}
               </div>
               <p className="text-xs text-gray-500">
@@ -125,9 +133,9 @@ const RouteCard: React.FC<RouteCardProps> = ({
 
           <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0 h-8 w-8 p-0 min-w-[32px] min-h-[32px]"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -135,41 +143,51 @@ const RouteCard: React.FC<RouteCardProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                handleMenuAction(() => onView(route));
-              }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMenuAction(() => onView(route));
+                }}
+              >
                 <Eye size={16} className="mr-2" />
                 View Route
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                handleMenuAction(() => onEdit(route));
-              }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMenuAction(() => onEdit(route));
+                }}
+              >
                 <Edit size={16} className="mr-2" />
                 Edit Route
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                handleMenuAction(() => onDuplicate(route));
-              }}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMenuAction(() => onDuplicate(route));
+                }}
+              >
                 <Copy size={16} className="mr-2" />
                 Duplicate
               </DropdownMenuItem>
               {onToggleFavorite && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuAction(() => onToggleFavorite(route));
-                  }}>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuAction(() => onToggleFavorite(route));
+                    }}
+                  >
                     <Star size={16} className="mr-2" />
-                    {route.is_favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                    {route.is_favorite
+                      ? 'Remove from Favorites'
+                      : 'Add to Favorites'}
                   </DropdownMenuItem>
                 </>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
                   handleMenuAction(() => onDelete(route));
@@ -182,12 +200,14 @@ const RouteCard: React.FC<RouteCardProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         {/* Description - Mobile Optimized */}
         {route.description && (
-          <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">{route.description}</p>
+          <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">
+            {route.description}
+          </p>
         )}
-        
+
         {/* Route Stats - Mobile Optimized */}
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 overflow-x-auto">
@@ -205,10 +225,13 @@ const RouteCard: React.FC<RouteCardProps> = ({
             </div>
           </div>
         </div>
-        
+
         {/* Footer with badges - Mobile Optimized */}
         <div className="flex items-center justify-between">
-          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-xs">
+          <Badge
+            variant="outline"
+            className="bg-gray-50 text-gray-700 border-gray-200 text-xs"
+          >
             Private
           </Badge>
         </div>

@@ -7,12 +7,15 @@ interface PlaquerLogoProps {
   size?: number;
 }
 
-const PlaquerLogo: React.FC<PlaquerLogoProps> = ({ className = '', size = 32 }) => {
+const PlaquerLogo: React.FC<PlaquerLogoProps> = ({
+  className = '',
+  size = 32,
+}) => {
   // Calculate the icon size based on the container size
   const iconSize = Math.floor(size * 0.6);
-  
+
   return (
-    <div 
+    <div
       className={`rounded-lg bg-blue-600 flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >

@@ -16,26 +16,26 @@ export const useMap = (
   const [map, setMap] = useState<L.Map | null>(null);
   const [isReady, setIsReady] = useState(false);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  
+
   useEffect(() => {
     if (!containerRef.current || mapInstanceRef.current) return;
-    
+
     // Create map
     const mapInstance = L.map(containerRef.current, {
       center: options.center,
       zoom: options.zoom,
-      zoomControl: false
+      zoomControl: false,
     });
-    
+
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      attribution: '© OpenStreetMap contributors',
     }).addTo(mapInstance);
-    
+
     mapInstanceRef.current = mapInstance;
     setMap(mapInstance);
     setIsReady(true);
-    
+
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -43,6 +43,6 @@ export const useMap = (
       }
     };
   }, []);
-  
+
   return { map, isReady };
 };

@@ -112,7 +112,12 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -136,7 +141,8 @@
 }
 
 @keyframes pulse-scale {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -154,7 +160,8 @@
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   }
   50% {
@@ -190,15 +197,15 @@
   .desktop-sidebar {
     display: none;
   }
-  
+
   .mobile-bottom-sheet {
     display: flex;
   }
-  
+
   .floating-tab {
     min-height: 44px; /* iOS touch target minimum */
   }
-  
+
   .control-panel-button {
     min-height: 44px;
     min-width: 44px;
@@ -210,7 +217,7 @@
   .desktop-sidebar {
     display: flex;
   }
-  
+
   .mobile-bottom-sheet,
   .floating-tab {
     display: none;
@@ -243,7 +250,7 @@
     -webkit-backdrop-filter: none;
     background: white;
   }
-  
+
   .floating-controls .control-button,
   .floating-tab {
     border: 2px solid;
@@ -263,7 +270,7 @@
     animation: none;
     transition: none;
   }
-  
+
   .control-panel-button::before {
     display: none;
   }
@@ -276,23 +283,23 @@
     background-color: rgba(31, 41, 55, 0.95);
     border-color: rgba(75, 85, 99, 0.8);
   }
-  
+
   .mobile-bottom-sheet {
     background-color: #1f2937;
     border-color: #374151;
   }
-  
+
   .floating-controls .control-button,
   .floating-tab {
     background-color: rgba(31, 41, 55, 0.95);
     border-color: rgba(75, 85, 99, 0.8);
     color: white;
   }
-  
+
   .control-panel-button {
     color: white;
   }
-  
+
   .control-panel-button:hover {
     background-color: rgba(55, 65, 81, 0.8);
   }
@@ -374,7 +381,12 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
   animation: loading-shimmer 1.5s infinite;
 }
 
@@ -441,7 +453,12 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -632,7 +649,12 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
   transition: left 0.5s ease;
 }
 
@@ -652,7 +674,8 @@
 }
 
 @keyframes pulse-badge {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -683,16 +706,16 @@
     left: 0.5rem;
     right: 0.5rem;
   }
-  
+
   .mobile-control-grid {
     gap: 8px;
   }
-  
+
   .mobile-control-button {
     min-height: 52px;
     padding: 6px;
   }
-  
+
   .mobile-floating-tab {
     left: 0.75rem;
     right: 0.75rem;
@@ -733,7 +756,7 @@
     -webkit-backdrop-filter: none;
     background: white;
   }
-  
+
   .desktop-floating-toggle,
   .mobile-floating-tab {
     border: 2px solid;
@@ -741,7 +764,7 @@
     -webkit-backdrop-filter: none;
     background: white;
   }
-  
+
   .control-badge {
     border: 1px solid;
   }
@@ -760,7 +783,7 @@
     animation: none;
     transition: none;
   }
-  
+
   .compact-section-header::before,
   .mobile-control-button::before {
     display: none;
@@ -775,26 +798,26 @@
     border-color: rgba(55, 65, 81, 0.8);
     color: white;
   }
-  
+
   .mobile-bottom-sheet {
     background-color: #111827;
     border-color: #374151;
     color: white;
   }
-  
+
   .desktop-floating-toggle,
   .mobile-floating-tab {
     background-color: rgba(17, 24, 39, 0.95);
     border-color: rgba(55, 65, 81, 0.8);
     color: white;
   }
-  
+
   .active-location-display {
     background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
     border-color: #047857;
     color: #a7f3d0;
   }
-  
+
   .badge-secondary {
     background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
     color: #d1d5db;
@@ -835,7 +858,12 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
   animation: loading-shimmer 1.5s infinite;
 }
 
@@ -854,8 +882,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ==================== TOUCH OPTIMIZATIONS ==================== */
@@ -867,11 +899,11 @@
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   .radius-quick-button {
     min-height: 32px;
   }
-  
+
   .radius-fine-button {
     min-height: 28px;
     min-width: 28px;
@@ -883,7 +915,7 @@
   .mobile-bottom-sheet {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
-  
+
   .mobile-floating-tab {
     bottom: max(0.75rem, env(safe-area-inset-bottom));
   }

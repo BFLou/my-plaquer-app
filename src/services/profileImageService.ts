@@ -1,19 +1,12 @@
 // src/services/profileImageService.ts
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
-  deleteObject 
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
 } from 'firebase/storage';
-import { 
-  updateProfile 
-} from 'firebase/auth';
-import { 
-  doc, 
-  updateDoc,
-  setDoc,
-  getDoc 
-} from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
+import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { storage, auth, db } from '@/lib/firebase';
 
 /**
@@ -43,8 +36,8 @@ export const profileImageService = {
         contentType: file.type,
         customMetadata: {
           uploadedBy: userId,
-          uploadedAt: new Date().toISOString()
-        }
+          uploadedAt: new Date().toISOString(),
+        },
       });
 
       // Get the download URL
@@ -53,7 +46,7 @@ export const profileImageService = {
       // Update the user's profile in Firebase Auth
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, {
-          photoURL: downloadURL
+          photoURL: downloadURL,
         });
 
         // Force auth state refresh
@@ -68,7 +61,7 @@ export const profileImageService = {
         // Update existing document
         await updateDoc(userDocRef, {
           photoURL: downloadURL,
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         });
       } else {
         // Create new document if it doesn't exist
@@ -76,7 +69,7 @@ export const profileImageService = {
           uid: userId,
           photoURL: downloadURL,
           lastUpdated: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         });
       }
 
@@ -101,14 +94,16 @@ export const profileImageService = {
       // Extract the path from the URL
       const baseUrl = 'https://firebasestorage.googleapis.com/v0/b/';
       const startIndex = photoURL.indexOf(baseUrl);
-      
+
       if (startIndex === -1) {
         console.warn('Invalid Firebase Storage URL');
         return;
       }
 
       // Parse the URL to get the file path
-      const urlParts = photoURL.substring(startIndex + baseUrl.length).split('/o/');
+      const urlParts = photoURL
+        .substring(startIndex + baseUrl.length)
+        .split('/o/');
       if (urlParts.length < 2) {
         console.warn('Could not parse storage path from URL');
         return;
@@ -121,7 +116,7 @@ export const profileImageService = {
       // Create a reference and delete the file
       const fileRef = ref(storage, filePath);
       await deleteObject(fileRef);
-      
+
       console.log('Successfully deleted old profile image');
     } catch (error: any) {
       // Don't throw error if deletion fails - it's not critical
@@ -151,28 +146,36 @@ export const profileImageService = {
     if (file.size > maxSize) {
       return {
         valid: false,
-        error: 'Image size must be less than 5MB'
+        error: 'Image size must be less than 5MB',
       };
     }
 
     // Check file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ];
     if (!allowedTypes.includes(file.type)) {
       return {
         valid: false,
-        error: 'Only JPEG, PNG, GIF, and WebP images are allowed'
+        error: 'Only JPEG, PNG, GIF, and WebP images are allowed',
       };
     }
 
     // Check file extension as additional validation
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const fileName = file.name.toLowerCase();
-    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
-    
+    const hasValidExtension = allowedExtensions.some((ext) =>
+      fileName.endsWith(ext)
+    );
+
     if (!hasValidExtension) {
       return {
         valid: false,
-        error: 'Invalid file extension'
+        error: 'Invalid file extension',
       };
     }
 
@@ -188,19 +191,19 @@ export const profileImageService = {
    * @returns Promise resolving to compressed file
    */
   async compressImage(
-    file: File, 
-    maxWidth: number = 800, 
-    maxHeight: number = 800, 
+    file: File,
+    maxWidth: number = 800,
+    maxHeight: number = 800,
     quality: number = 0.8
   ): Promise<File> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.readAsDataURL(file);
       reader.onload = (event) => {
         const img = new Image();
         img.src = event.target?.result as string;
-        
+
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
@@ -229,7 +232,7 @@ export const profileImageService = {
             reject(new Error('Could not get canvas context'));
             return;
           }
-          
+
           ctx.drawImage(img, 0, 0, width, height);
 
           // Convert canvas to blob
@@ -241,14 +244,10 @@ export const profileImageService = {
               }
 
               // Create new file from blob
-              const compressedFile = new File(
-                [blob], 
-                file.name, 
-                {
-                  type: file.type,
-                  lastModified: Date.now()
-                }
-              );
+              const compressedFile = new File([blob], file.name, {
+                type: file.type,
+                lastModified: Date.now(),
+              });
 
               // Only use compressed version if it's actually smaller
               if (compressedFile.size < file.size) {
@@ -271,7 +270,7 @@ export const profileImageService = {
         reject(new Error('Could not read file'));
       };
     });
-  }
+  },
 };
 
 // Export as default as well for convenience

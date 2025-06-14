@@ -11,11 +11,11 @@ export const useKeyboardDetection = () => {
       const currentHeight = window.innerHeight;
       const currentWidth = window.innerWidth;
       const screenHeight = window.screen.height;
-      
+
       // Threshold for keyboard detection (usually ~300px on mobile)
       const keyboardThreshold = 150;
       const heightDifference = screenHeight - currentHeight;
-      
+
       if (heightDifference > keyboardThreshold && currentWidth < 768) {
         setIsKeyboardOpen(true);
         setKeyboardHeight(heightDifference);
@@ -28,11 +28,11 @@ export const useKeyboardDetection = () => {
     // Listen for visual viewport changes (better for keyboard detection)
     if (window.visualViewport) {
       const visualViewport = window.visualViewport;
-      
+
       const handleViewportChange = () => {
         const heightDifference = window.innerHeight - visualViewport.height;
         const keyboardThreshold = 150;
-        
+
         if (heightDifference > keyboardThreshold) {
           setIsKeyboardOpen(true);
           setKeyboardHeight(heightDifference);

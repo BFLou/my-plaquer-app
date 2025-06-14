@@ -1,15 +1,15 @@
 // src/components/settings/LocationSettings.tsx
 import React, { useState } from 'react';
 import { MapPin, Ruler } from 'lucide-react';
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import SettingsCard from './SettingsCard';
 
@@ -31,7 +31,7 @@ const LocationSettings: React.FC = () => {
         </p>
       </div>
 
-      <SettingsCard 
+      <SettingsCard
         title="Location Permissions"
         description="Essential location settings for finding plaques"
       >
@@ -44,11 +44,13 @@ const LocationSettings: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-medium">Enable Location</h4>
-                <p className="text-sm text-gray-500">Find nearby plaques and get directions</p>
+                <p className="text-sm text-gray-500">
+                  Find nearby plaques and get directions
+                </p>
               </div>
             </div>
-            <Switch 
-              checked={locationAccess} 
+            <Switch
+              checked={locationAccess}
               onCheckedChange={setLocationAccess}
             />
           </div>
@@ -61,13 +63,12 @@ const LocationSettings: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-medium">Distance Unit</h4>
-                <p className="text-sm text-gray-500">Choose your preferred measurement</p>
+                <p className="text-sm text-gray-500">
+                  Choose your preferred measurement
+                </p>
               </div>
             </div>
-            <Select 
-              value={distanceUnit} 
-              onValueChange={setDistanceUnit}
-            >
+            <Select value={distanceUnit} onValueChange={setDistanceUnit}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="Select unit" />
               </SelectTrigger>

@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { X, MapPin, Filter, Clock, Star } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface FilterStatusBarProps {
   activeFilters: {
@@ -35,9 +35,9 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
   totalCount,
   onRemoveFilter,
   onClearAll,
-  className
+  className,
 }) => {
-  const hasActiveFilters = 
+  const hasActiveFilters =
     activeFilters.colors.length > 0 ||
     activeFilters.postcodes.length > 0 ||
     activeFilters.professions.length > 0 ||
@@ -58,9 +58,12 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
       organisation: 'bg-pink-100 text-pink-800 border-pink-200',
       visited: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       favorites: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      distance: 'bg-indigo-100 text-indigo-800 border-indigo-200'
+      distance: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     };
-    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return (
+      colors[type as keyof typeof colors] ||
+      'bg-gray-100 text-gray-800 border-gray-200'
+    );
   };
 
   const renderFilterBadge = (
@@ -73,12 +76,12 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
       key={`${type}-${value || 'toggle'}`}
       variant="secondary"
       className={cn(
-        "gap-1 pr-1 transition-all hover:scale-105 relative z-10",
+        'gap-1 pr-1 transition-all hover:scale-105 relative z-10',
         getFilterBadgeColor(type)
       )}
-      style={{ 
+      style={{
         position: 'relative',
-        zIndex: 1005
+        zIndex: 1005,
       }}
     >
       {icon && <span className="text-xs">{icon}</span>}
@@ -87,9 +90,9 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
         onClick={() => onRemoveFilter(type, value)}
         className="ml-1 hover:bg-black/10 rounded-full p-0.5 transition-colors relative z-10"
         aria-label={`Remove ${label} filter`}
-        style={{ 
+        style={{
           position: 'relative',
-          zIndex: 1006
+          zIndex: 1006,
         }}
       >
         <X size={12} />
@@ -98,21 +101,21 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
   );
 
   return (
-    <div 
+    <div
       className={cn(
-        "filter-status-bar bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 p-3 rounded-lg shadow-sm",
+        'filter-status-bar bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 p-3 rounded-lg shadow-sm',
         className
       )}
-      style={{ 
+      style={{
         position: 'relative',
         zIndex: 1003,
         isolation: 'isolate',
         transformStyle: 'preserve-3d',
-        transform: 'translateZ(0)'
+        transform: 'translateZ(0)',
       }}
     >
       {/* Results Summary */}
-      <div 
+      <div
         className="flex items-center justify-between mb-2"
         style={{ position: 'relative', zIndex: 1004 }}
       >
@@ -133,9 +136,9 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
             size="sm"
             onClick={onClearAll}
             className="text-xs h-7 px-2 text-red-600 hover:text-red-700 relative z-10"
-            style={{ 
+            style={{
               position: 'relative',
-              zIndex: 1005
+              zIndex: 1005,
             }}
           >
             Clear All
@@ -144,77 +147,98 @@ export const FilterStatusBar: React.FC<FilterStatusBarProps> = ({
       </div>
 
       {/* Active Filters */}
-      <div 
+      <div
         className="flex flex-wrap gap-1.5"
         style={{ position: 'relative', zIndex: 1004 }}
       >
         {/* Search Filter */}
-        {activeFilters.search && renderFilterBadge(
-          'search',
-          `"${activeFilters.search.length > 20 ? activeFilters.search.slice(0, 20) + '...' : activeFilters.search}"`,
-          'search'
-        )}
+        {activeFilters.search &&
+          renderFilterBadge(
+            'search',
+            `"${activeFilters.search.length > 20 ? activeFilters.search.slice(0, 20) + '...' : activeFilters.search}"`,
+            'search'
+          )}
 
         {/* Distance Filter */}
-        {activeFilters.distanceFilter?.enabled && renderFilterBadge(
-          'distance',
-          `${activeFilters.distanceFilter.locationName} (${activeFilters.distanceFilter.radius}km)`,
-          'distance',
-          <MapPin size={10} />
-        )}
+        {activeFilters.distanceFilter?.enabled &&
+          renderFilterBadge(
+            'distance',
+            `${activeFilters.distanceFilter.locationName} (${activeFilters.distanceFilter.radius}km)`,
+            'distance',
+            <MapPin size={10} />
+          )}
 
         {/* Color Filters */}
-        {activeFilters.colors.map(color => renderFilterBadge(
-          'color',
-          color.charAt(0).toUpperCase() + color.slice(1),
-          color,
-          <div className={cn(
-            "w-2 h-2 rounded-full",
-            color === 'blue' ? 'bg-blue-500' :
-            color === 'green' ? 'bg-green-500' :
-            color === 'brown' ? 'bg-amber-700' :
-            color === 'black' ? 'bg-gray-800' :
-            color === 'red' ? 'bg-red-500' :
-            'bg-gray-500'
-          )} />
-        ))}
+        {activeFilters.colors.map((color) =>
+          renderFilterBadge(
+            'color',
+            color.charAt(0).toUpperCase() + color.slice(1),
+            color,
+            <div
+              className={cn(
+                'w-2 h-2 rounded-full',
+                color === 'blue'
+                  ? 'bg-blue-500'
+                  : color === 'green'
+                    ? 'bg-green-500'
+                    : color === 'brown'
+                      ? 'bg-amber-700'
+                      : color === 'black'
+                        ? 'bg-gray-800'
+                        : color === 'red'
+                          ? 'bg-red-500'
+                          : 'bg-gray-500'
+              )}
+            />
+          )
+        )}
 
         {/* Postcode Filters */}
-        {activeFilters.postcodes.map(postcode => renderFilterBadge(
-          'postcode',
-          postcode,
-          postcode,
-          <MapPin size={10} />
-        ))}
+        {activeFilters.postcodes.map((postcode) =>
+          renderFilterBadge(
+            'postcode',
+            postcode,
+            postcode,
+            <MapPin size={10} />
+          )
+        )}
 
         {/* Profession Filters */}
-        {activeFilters.professions.map(profession => renderFilterBadge(
-          'profession',
-          profession.length > 15 ? profession.slice(0, 15) + '...' : profession,
-          profession
-        ))}
+        {activeFilters.professions.map((profession) =>
+          renderFilterBadge(
+            'profession',
+            profession.length > 15
+              ? profession.slice(0, 15) + '...'
+              : profession,
+            profession
+          )
+        )}
 
         {/* Organisation Filters */}
-        {activeFilters.organisations.map(org => renderFilterBadge(
-          'organisation',
-          org.length > 20 ? org.slice(0, 20) + '...' : org,
-          org
-        ))}
+        {activeFilters.organisations.map((org) =>
+          renderFilterBadge(
+            'organisation',
+            org.length > 20 ? org.slice(0, 20) + '...' : org,
+            org
+          )
+        )}
 
         {/* Toggle Filters */}
-        {activeFilters.onlyVisited && renderFilterBadge(
-          'visited',
-          'Visited Only',
-          'visited',
-          <Clock size={10} />
-        )}
+        {activeFilters.onlyVisited &&
+          renderFilterBadge(
+            'visited',
+            'Visited Only',
+            'visited',
+            <Clock size={10} />
+          )}
 
-        {activeFilters.onlyFavorites && renderFilterBadge(
-          'favorites',
-          'Favorites Only',
-          'favorites',
-          <Star size={10} />
-        )}
+        {activeFilters.onlyFavorites &&
+          renderFilterBadge(
+            'favorites',
+            'Favorites Only',
+            'favorites',
+            <Star size={10} />
+          )}
       </div>
     </div>
   );

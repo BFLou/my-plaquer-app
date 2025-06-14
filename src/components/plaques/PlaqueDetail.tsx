@@ -1,23 +1,43 @@
 // src/components/plaques/PlaqueDetail.tsx - ENHANCED WITH MODAL STATE MANAGEMENT
 import React, { useState, useMemo, useCallback } from 'react';
-import { 
-  MapPin, Star, CheckCircle, X, ExternalLink, Calendar, User, Building, 
-  Navigation, Plus, Eye, FileText, FolderOpen, Share2, MoreHorizontal, Copy,
-  Edit, Trash2, ArrowLeft
+import {
+  MapPin,
+  Star,
+  CheckCircle,
+  X,
+  ExternalLink,
+  Calendar,
+  User,
+  Building,
+  Navigation,
+  Plus,
+  Eye,
+  FileText,
+  FolderOpen,
+  Share2,
+  MoreHorizontal,
+  Copy,
+  Edit,
+  Trash2,
+  ArrowLeft,
 } from 'lucide-react';
-import { 
+import {
   Dialog as MainDialog,
   DialogContent as MainDialogContent,
   DialogHeader as MainDialogHeader,
   DialogTitle as MainDialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 // Removed unused Dialog imports - we're using MainDialog for the container
-import { Button } from "@/components/ui/button";
-import { MobileButton } from "@/components/ui/mobile-button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Button } from '@/components/ui/button';
+import { MobileButton } from '@/components/ui/mobile-button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Plaque } from '@/types/plaque';
 import PlaqueImage from './PlaqueImage';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
@@ -51,7 +71,12 @@ type PlaqueDetailProps = {
 };
 
 // Modal States
-type ModalState = 'detail' | 'editVisit' | 'deleteConfirm' | 'addToCollection' | 'markVisited';
+type ModalState =
+  | 'detail'
+  | 'editVisit'
+  | 'deleteConfirm'
+  | 'addToCollection'
+  | 'markVisited';
 
 export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   plaque,
@@ -69,32 +94,33 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   formatDistance = (d) => `${d.toFixed(1)} km`,
   showDistance = false,
   isFullPage = false,
-  generateShareUrl
+  generateShareUrl,
 }) => {
   // Hooks
   const navigate = useNavigate();
-  const { isPlaqueVisited, getVisitInfo, markAsVisited, removeVisit } = useVisitedPlaques();
+  const { isPlaqueVisited, getVisitInfo, markAsVisited, removeVisit } =
+    useVisitedPlaques();
   const { isFavorite: isInFavorites, toggleFavorite } = useFavorites();
   const { collections } = useCollections();
-  
+
   // Auth gate integration
-  const { 
-    requireAuthForVisit, 
-    requireAuthForFavorite, 
+  const {
+    requireAuthForVisit,
+    requireAuthForFavorite,
     requireAuthForCollection,
-    isAuthenticated 
+    isAuthenticated,
   } = useAuthGate();
-  
+
   // ENHANCED: Modal State Management
   const [modalState, setModalState] = useState<ModalState>('detail');
-  
+
   // State for visit actions
   const [isMarkingVisited, setIsMarkingVisited] = useState(false);
   const [showFullInscription, setShowFullInscription] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
   const [showAllCollections, setShowAllCollections] = useState(false);
   const [showSimpleMenu, setShowSimpleMenu] = useState(false);
-  
+
   // Visit form state
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [visitNotes, setVisitNotes] = useState('');
@@ -111,21 +137,24 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // Find collections containing this plaque
   const plaqueCollections = useMemo(() => {
     if (!collections || !plaque) return [];
-    
-    return collections.filter(collection => {
-      const collectionPlaques = Array.isArray(collection.plaques) 
-        ? collection.plaques 
+
+    return collections.filter((collection) => {
+      const collectionPlaques = Array.isArray(collection.plaques)
+        ? collection.plaques
         : [];
-      
+
       return collectionPlaques.includes(plaque.id);
     });
   }, [collections, plaque]);
 
   // ENHANCED: Modal Navigation Functions
-  const navigateToModalState = useCallback((newState: ModalState) => {
-    console.log(`Navigating from ${modalState} to ${newState}`);
-    setModalState(newState);
-  }, [modalState]);
+  const navigateToModalState = useCallback(
+    (newState: ModalState) => {
+      console.log(`Navigating from ${modalState} to ${newState}`);
+      setModalState(newState);
+    },
+    [modalState]
+  );
 
   const returnToDetail = useCallback(() => {
     console.log('Returning to detail view');
@@ -156,9 +185,10 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const formatVisitDate = () => {
     if (!visitInfo?.visited_at) return '';
     try {
-      const date = visitInfo.visited_at instanceof Date
-        ? visitInfo.visited_at
-        : new Date(visitInfo.visited_at);
+      const date =
+        visitInfo.visited_at instanceof Date
+          ? visitInfo.visited_at
+          : new Date(visitInfo.visited_at);
       return format(date, 'MMM d, yyyy');
     } catch (error) {
       return 'Unknown date';
@@ -179,7 +209,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const getLifeYears = () => {
     const bornIn = safeTrim(plaque.lead_subject_born_in);
     const diedIn = safeTrim(plaque.lead_subject_died_in);
-    
+
     if (isValidValue(bornIn) && isValidValue(diedIn)) {
       return `(${bornIn} - ${diedIn})`;
     }
@@ -202,17 +232,23 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       } else {
         toggleFavorite(plaque.id);
       }
-      
+
       const newState = !isPlaqueFavorite;
       toast.success(newState ? 'Added to favorites' : 'Removed from favorites');
     };
 
     requireAuthForFavorite(plaque.id, favoriteAction);
-  }, [plaque.id, onFavoriteToggle, toggleFavorite, isPlaqueFavorite, requireAuthForFavorite]);
+  }, [
+    plaque.id,
+    onFavoriteToggle,
+    toggleFavorite,
+    isPlaqueFavorite,
+    requireAuthForFavorite,
+  ]);
 
   const handleMarkVisitedClick = useCallback(() => {
     if (isVisited) return;
-    
+
     const visitAction = () => {
       setVisitDate(new Date());
       setVisitNotes('');
@@ -234,16 +270,18 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const handleGetDirections = useCallback(() => {
     triggerHapticFeedback('light');
     setShowSimpleMenu(false);
-    
+
     try {
       if (plaque.latitude && plaque.longitude) {
-        const lat = typeof plaque.latitude === 'string' 
-          ? parseFloat(plaque.latitude) 
-          : plaque.latitude;
-        const lng = typeof plaque.longitude === 'string' 
-          ? parseFloat(plaque.longitude) 
-          : plaque.longitude;
-        
+        const lat =
+          typeof plaque.latitude === 'string'
+            ? parseFloat(plaque.latitude)
+            : plaque.latitude;
+        const lng =
+          typeof plaque.longitude === 'string'
+            ? parseFloat(plaque.longitude)
+            : plaque.longitude;
+
         if (!isNaN(lat) && !isNaN(lng)) {
           const url = `https://maps.google.com/maps?daddr=${lat},${lng}&dirflg=w`;
           window.open(url, '_blank');
@@ -251,7 +289,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           return;
         }
       }
-      
+
       if (plaque.address || plaque.location) {
         const location = safeTrim(plaque.address || plaque.location);
         const encodedLocation = encodeURIComponent(`${location}, London, UK`);
@@ -260,15 +298,17 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         toast.success('Opening directions');
         return;
       }
-      
+
       if (plaque.title) {
-        const encodedTitle = encodeURIComponent(`${plaque.title} plaque London`);
+        const encodedTitle = encodeURIComponent(
+          `${plaque.title} plaque London`
+        );
         const url = `https://maps.google.com/maps?q=${encodedTitle}`;
         window.open(url, '_blank');
         toast.info('Searching for plaque location');
         return;
       }
-      
+
       toast.error('Location information not available');
     } catch (error) {
       console.error('Error opening directions:', error);
@@ -286,23 +326,23 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // Enhanced copy link functionality
   const handleCopyLink = useCallback(async () => {
     setShowSimpleMenu(false);
-    
+
     try {
-      const plaqueUrl = generateShareUrl 
+      const plaqueUrl = generateShareUrl
         ? generateShareUrl(plaque.id)
         : `${window.location.origin}/plaque/${plaque.id}`;
-      
+
       await navigator.clipboard.writeText(plaqueUrl);
       triggerHapticFeedback('success');
       toast.success('Link copied to clipboard!');
     } catch (error) {
       console.error('Error copying link:', error);
       triggerHapticFeedback('error');
-      
+
       // Fallback for older browsers
       try {
         const textArea = document.createElement('textarea');
-        textArea.value = generateShareUrl 
+        textArea.value = generateShareUrl
           ? generateShareUrl(plaque.id)
           : `${window.location.origin}/plaque/${plaque.id}`;
         document.body.appendChild(textArea);
@@ -320,25 +360,33 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // Share functionality
   const handleShare = useCallback(async () => {
     setShowSimpleMenu(false);
-    
-    const shareUrl = generateShareUrl 
+
+    const shareUrl = generateShareUrl
       ? generateShareUrl(plaque.id)
       : `${window.location.origin}/plaque/${plaque.id}`;
-    
+
     const shareData = {
       title: plaque.title,
       text: `Check out this historic plaque: ${plaque.title}`,
       url: shareUrl,
     };
 
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare(shareData)
+    ) {
       try {
         triggerHapticFeedback('light');
         await navigator.share(shareData);
         triggerHapticFeedback('success');
       } catch (error) {
-        if (typeof error === 'object' && error !== null && 'name' in error && 
-            (error as { name?: string }).name !== 'AbortError') {
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'name' in error &&
+          (error as { name?: string }).name !== 'AbortError'
+        ) {
           handleCopyLink();
         }
       }
@@ -364,16 +412,16 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
 
   const handleConfirmDeleteVisit = useCallback(async () => {
     if (!visitInfo) return;
-    
+
     try {
       await removeVisit(visitInfo.id);
       triggerHapticFeedback('success');
       toast.success('Visit deleted');
-      
+
       if (onMarkVisited) {
         onMarkVisited(plaque.id);
       }
-      
+
       // Return to detail view after successful deletion
       returnToDetail();
     } catch (error) {
@@ -397,43 +445,49 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   const handleVisitSubmit = useCallback(async () => {
     setIsMarkingVisited(true);
     triggerHapticFeedback('light');
-    
+
     try {
       console.log('🎯 PlaqueDetail submitting visit:', {
         plaqueId: plaque.id,
         selectedDate: visitDate,
         isoString: visitDate.toISOString(),
-        formatted: format(visitDate, 'PPP')
+        formatted: format(visitDate, 'PPP'),
       });
 
       await markAsVisited(plaque.id, {
         visitedAt: visitDate.toISOString(),
         notes: visitNotes,
       });
-      
+
       triggerHapticFeedback('success');
       toast.success(`Marked as visited on ${format(visitDate, 'PPP')}`);
-      
+
       if (onMarkVisited) {
         onMarkVisited(plaque.id);
       }
-      
+
       // Return to detail view after successful visit marking
       returnToDetail();
-      
     } catch (error) {
-      console.error("Error marking as visited:", error);
+      console.error('Error marking as visited:', error);
       triggerHapticFeedback('error');
-      toast.error("Failed to mark as visited");
+      toast.error('Failed to mark as visited');
     } finally {
       setIsMarkingVisited(false);
     }
-  }, [plaque.id, visitDate, visitNotes, markAsVisited, onMarkVisited, returnToDetail]);
+  }, [
+    plaque.id,
+    visitDate,
+    visitNotes,
+    markAsVisited,
+    onMarkVisited,
+    returnToDetail,
+  ]);
 
   // Enhanced z-index management for map view
   const dialogZIndex = isMapView ? 9999 : 1000;
-  const sheetClassName = isMapView 
-    ? `${className} z-[9999] [&>div]:z-[9999]` 
+  const sheetClassName = isMapView
+    ? `${className} z-[9999] [&>div]:z-[9999]`
     : className;
 
   // SIMPLE MOBILE ACTION STRIP WITH WORKING THREE-DOT MENU
@@ -442,39 +496,46 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
       <div className="flex items-center justify-between gap-2">
         {/* Primary Actions - Left Side */}
         <div className="flex items-center gap-2 flex-1">
-          <MobileButton 
+          <MobileButton
             onClick={handleMarkVisitedClick}
             disabled={isVisited || isMarkingVisited}
             size="sm"
             className={`h-9 text-xs flex-1 max-w-[120px] ${
-              isVisited 
-                ? 'bg-green-100 text-green-700 cursor-default' 
+              isVisited
+                ? 'bg-green-100 text-green-700 cursor-default'
                 : 'bg-green-600 text-white hover:bg-green-700'
             }`}
             touchOptimized={true}
           >
             <CheckCircle size={14} className="mr-1.5" />
-            {isVisited ? 'Visited' : isMarkingVisited ? 'Saving...' : 'Mark Visited'}
+            {isVisited
+              ? 'Visited'
+              : isMarkingVisited
+                ? 'Saving...'
+                : 'Mark Visited'}
           </MobileButton>
-          
-          <MobileButton 
+
+          <MobileButton
             onClick={handleFavoriteToggle}
             size="sm"
             className={`h-9 text-xs flex-1 max-w-[100px] ${
-              isPlaqueFavorite 
-                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' 
+              isPlaqueFavorite
+                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             touchOptimized={true}
           >
-            <Star size={14} className={`mr-1.5 ${isPlaqueFavorite ? 'fill-current' : ''}`} />
+            <Star
+              size={14}
+              className={`mr-1.5 ${isPlaqueFavorite ? 'fill-current' : ''}`}
+            />
             {isPlaqueFavorite ? 'Favorited' : 'Favorite'}
           </MobileButton>
         </div>
-        
+
         {/* Secondary Actions - Center */}
         <div className="flex items-center gap-2">
-          <MobileButton 
+          <MobileButton
             onClick={handleGetDirections}
             variant="outline"
             size="sm"
@@ -483,8 +544,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           >
             <Navigation size={14} />
           </MobileButton>
-          
-          <MobileButton 
+
+          <MobileButton
             onClick={handleShare}
             variant="outline"
             size="sm"
@@ -494,28 +555,31 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
             <Share2 size={14} />
           </MobileButton>
         </div>
-        
+
         {/* More Actions - WORKING SIMPLE VERSION */}
         <div className="relative">
-          <MobileButton 
-            variant="outline" 
-            size="sm" 
+          <MobileButton
+            variant="outline"
+            size="sm"
             className="h-9 w-9 p-0"
             touchOptimized={true}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Three dots clicked - simple menu, current state:', showSimpleMenu);
+              console.log(
+                'Three dots clicked - simple menu, current state:',
+                showSimpleMenu
+              );
               triggerHapticFeedback('selection');
               setShowSimpleMenu(!showSimpleMenu);
             }}
           >
             <MoreHorizontal size={14} />
           </MobileButton>
-          
+
           {/* Simple dropdown menu - WORKING VERSION WITH FIXED Z-INDEX */}
           {showSimpleMenu && (
-            <div 
+            <div
               className="absolute right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 w-48 z-[10000]"
               onClick={(e) => e.stopPropagation()}
               style={{ zIndex: 10000 }}
@@ -530,7 +594,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 <Plus size={16} className="mr-3" />
                 Add to Collection
               </button>
-              
+
               {onAddToRoute && (
                 <button
                   className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
@@ -543,7 +607,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   Add to Route
                 </button>
               )}
-              
+
               {!isFullPage && (
                 <button
                   className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
@@ -556,9 +620,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   Full Details
                 </button>
               )}
-              
+
               <div className="border-t border-gray-200 my-1"></div>
-              
+
               <button
                 className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center text-sm font-medium transition-colors"
                 onClick={() => {
@@ -569,7 +633,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 <Copy size={16} className="mr-3" />
                 Copy Link
               </button>
-              
+
               {/* Visit management options for authenticated users */}
               {isAuthenticated && isVisited && visitInfo && (
                 <>
@@ -600,11 +664,11 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           )}
         </div>
       </div>
-      
+
       {/* Backdrop to close menu - FIXED Z-INDEX */}
       {showSimpleMenu && (
-        <div 
-          className="fixed inset-0 z-[9999]" 
+        <div
+          className="fixed inset-0 z-[9999]"
           onClick={() => {
             console.log('Backdrop clicked - closing menu');
             setShowSimpleMenu(false);
@@ -639,10 +703,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               </Button>
             )}
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
-            {(showAllCollections ? plaqueCollections : plaqueCollections.slice(0, 3)).map((collection) => (
-             <span 
+            {(showAllCollections
+              ? plaqueCollections
+              : plaqueCollections.slice(0, 3)
+            ).map((collection) => (
+              <span
                 key={collection.id}
                 className="bg-white text-purple-700 px-3 py-1 rounded-full text-sm border border-purple-200 flex items-center gap-2 cursor-pointer hover:bg-purple-50 transition-colors"
                 onClick={() => {
@@ -652,10 +719,12 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 title={`View ${collection.name} collection`}
               >
                 <span className="text-lg">{collection.icon}</span>
-                <span className="truncate max-w-[120px]">{collection.name}</span>
+                <span className="truncate max-w-[120px]">
+                  {collection.name}
+                </span>
               </span>
             ))}
-            
+
             {!showAllCollections && plaqueCollections.length > 3 && (
               <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm border border-gray-200 flex items-center gap-1">
                 <Plus size={12} />
@@ -677,10 +746,12 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
             {showFullInscription ? (
               <p className="italic">{safeString(plaque.inscription)}</p>
             ) : (
-              <p className="italic">{truncateText(safeString(plaque.inscription))}</p>
+              <p className="italic">
+                {truncateText(safeString(plaque.inscription))}
+              </p>
             )}
             {safeString(plaque.inscription).length > 150 && (
-              <button 
+              <button
                 onClick={() => setShowFullInscription(!showFullInscription)}
                 className="text-purple-600 hover:underline mt-2 text-sm font-medium"
               >
@@ -702,17 +773,17 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   {safeString(plaque.lead_subject_name)} {lifeYears}
                 </h3>
               </div>
-              
+
               {isValidValue(plaque.lead_subject_primary_role) && (
                 <p className="text-gray-700 mb-2 capitalize">
                   {safeString(plaque.lead_subject_primary_role)}
                 </p>
               )}
-              
+
               {isValidValue(plaque.lead_subject_wikipedia) && (
-                <a 
-                  href={safeString(plaque.lead_subject_wikipedia)} 
-                  target="_blank" 
+                <a
+                  href={safeString(plaque.lead_subject_wikipedia)}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-blue-600 hover:underline text-sm font-medium mt-3"
                 >
@@ -731,29 +802,41 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <div className="bg-white border rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <Calendar size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Erected</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Erected
+              </span>
             </div>
-            <div className="font-semibold text-gray-900">{safeString(plaque.erected)}</div>
+            <div className="font-semibold text-gray-900">
+              {safeString(plaque.erected)}
+            </div>
           </div>
         )}
-        
+
         {isValidValue(plaque.area) && (
           <div className="bg-white border rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <MapPin size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Borough</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Borough
+              </span>
             </div>
-            <div className="font-semibold text-gray-900">{safeString(plaque.area)}</div>
+            <div className="font-semibold text-gray-900">
+              {safeString(plaque.area)}
+            </div>
           </div>
         )}
-        
-        {plaqueColor && plaqueColor !== "unknown" && (
+
+        {plaqueColor && plaqueColor !== 'unknown' && (
           <div className="bg-white border rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <Building size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Material</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Material
+              </span>
             </div>
-            <div className="font-semibold text-gray-900 capitalize">{plaqueColor}</div>
+            <div className="font-semibold text-gray-900 capitalize">
+              {plaqueColor}
+            </div>
           </div>
         )}
 
@@ -761,9 +844,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <div className="bg-white border rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <MapPin size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Postcode</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Postcode
+              </span>
             </div>
-            <div className="font-semibold text-gray-900">{safeString(plaque.postcode)}</div>
+            <div className="font-semibold text-gray-900">
+              {safeString(plaque.postcode)}
+            </div>
           </div>
         )}
 
@@ -771,9 +858,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <div className="bg-white border rounded-lg p-3 col-span-full">
             <div className="flex items-center gap-2 mb-1">
               <Building size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Organisations</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Organisations
+              </span>
             </div>
-            <div className="font-semibold text-gray-900">{organisations.join(', ')}</div>
+            <div className="font-semibold text-gray-900">
+              {organisations.join(', ')}
+            </div>
           </div>
         )}
 
@@ -781,9 +872,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <div className="bg-white border rounded-lg p-3 col-span-full">
             <div className="flex items-center gap-2 mb-1">
               <User size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Profession</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Profession
+              </span>
             </div>
-            <div className="font-semibold text-gray-900">{safeString(plaque.profession)}</div>
+            <div className="font-semibold text-gray-900">
+              {safeString(plaque.profession)}
+            </div>
           </div>
         )}
 
@@ -791,15 +886,18 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <div className="bg-white border rounded-lg p-3 col-span-full">
             <div className="flex items-center gap-2 mb-1">
               <Navigation size={14} className="text-gray-400" />
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Coordinates</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Coordinates
+              </span>
             </div>
             <div className="font-semibold text-gray-900 text-sm">
-              {Number(plaque.latitude).toFixed(6)}, {Number(plaque.longitude).toFixed(6)}
+              {Number(plaque.latitude).toFixed(6)},{' '}
+              {Number(plaque.longitude).toFixed(6)}
             </div>
           </div>
         )}
       </div>
-      
+
       {/* Nearby Plaques */}
       {nearbyPlaques.length > 0 && (
         <div>
@@ -808,53 +906,66 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               <Eye size={16} className="text-gray-600" />
               Nearby Plaques ({nearbyPlaques.length})
             </h3>
-            <button 
+            <button
               onClick={() => setShowNearby(!showNearby)}
               className="text-purple-600 text-sm hover:underline font-medium"
             >
               {showNearby ? 'Show less' : 'View all'}
             </button>
           </div>
-          
+
           <div className="space-y-3">
-            {nearbyPlaques.slice(0, showNearby ? nearbyPlaques.length : 2).map((nearby) => {
-              const nearbyImageUrl = nearby.image || nearby.main_photo;
-              const nearbyPlaqueColor = nearby.color || nearby.colour || 'unknown';
-              
-              return (
-                <div 
-                  key={nearby.id} 
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                  onClick={() => onSelectNearbyPlaque?.(nearby)}
-                >
-                  <div className="w-16 h-12 bg-gray-200 rounded object-cover flex-shrink-0 overflow-hidden">
-                    <PlaqueImage 
-                      src={nearbyImageUrl}
-                      alt={safeString(nearby.title)}
-                      className="w-full h-full object-cover"
-                      plaqueColor={nearbyPlaqueColor}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">{safeString(nearby.title)}</div>
-                    <div className="text-xs text-gray-500 flex items-center gap-3">
-                      <span>{safeTrim(nearby.address || nearby.location)}</span>
-                      {isValidValue(nearby.profession) && (
-                        <>
-                          <span>•</span>
-                          <span>{safeString(nearby.profession)}</span>
-                        </>
-                      )}
+            {nearbyPlaques
+              .slice(0, showNearby ? nearbyPlaques.length : 2)
+              .map((nearby) => {
+                const nearbyImageUrl = nearby.image || nearby.main_photo;
+                const nearbyPlaqueColor =
+                  nearby.color || nearby.colour || 'unknown';
+
+                return (
+                  <div
+                    key={nearby.id}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => onSelectNearbyPlaque?.(nearby)}
+                  >
+                    <div className="w-16 h-12 bg-gray-200 rounded object-cover flex-shrink-0 overflow-hidden">
+                      <PlaqueImage
+                        src={nearbyImageUrl}
+                        alt={safeString(nearby.title)}
+                        className="w-full h-full object-cover"
+                        plaqueColor={nearbyPlaqueColor}
+                      />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">
+                        {safeString(nearby.title)}
+                      </div>
+                      <div className="text-xs text-gray-500 flex items-center gap-3">
+                        <span>
+                          {safeTrim(nearby.address || nearby.location)}
+                        </span>
+                        {isValidValue(nearby.profession) && (
+                          <>
+                            <span>•</span>
+                            <span>{safeString(nearby.profession)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                        nearbyPlaqueColor === 'blue'
+                          ? 'bg-blue-500'
+                          : nearbyPlaqueColor === 'green'
+                            ? 'bg-green-500'
+                            : nearbyPlaqueColor === 'brown'
+                              ? 'bg-amber-500'
+                              : 'bg-gray-500'
+                      }`}
+                    ></div>
                   </div>
-                  <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                    nearbyPlaqueColor === 'blue' ? 'bg-blue-500' :
-                    nearbyPlaqueColor === 'green' ? 'bg-green-500' :
-                    nearbyPlaqueColor === 'brown' ? 'bg-amber-500' : 'bg-gray-500'
-                  }`}></div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </div>
       )}
@@ -864,30 +975,34 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // ENHANCED: Modal State Renderer - handles different states within single modal
   const renderModalContent = () => {
     console.log('Rendering modal content for state:', modalState);
-    
+
     switch (modalState) {
       case 'editVisit':
         return (
           <div className="h-full max-h-[90vh] overflow-hidden">
             <div className="flex items-center gap-3 p-4 border-b border-gray-200">
-              <MobileButton 
-                variant="ghost" 
-                size="sm" 
+              <MobileButton
+                variant="ghost"
+                size="sm"
                 onClick={returnToDetail}
                 className="p-2"
                 touchOptimized={true}
               >
                 <ArrowLeft size={20} />
               </MobileButton>
-              <h2 className="text-lg font-semibold">Edit Visit - {plaque.title}</h2>
+              <h2 className="text-lg font-semibold">
+                Edit Visit - {plaque.title}
+              </h2>
             </div>
-            
+
             {/* Render EditVisitDialog content directly without dialog wrapper */}
             <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-6">
                 {/* Date Selection */}
                 <div className="space-y-3">
-                  <label className="text-base font-medium block">Visit Date:</label>
+                  <label className="text-base font-medium block">
+                    Visit Date:
+                  </label>
                   <Popover open={showCalendar} onOpenChange={setShowCalendar}>
                     <PopoverTrigger asChild>
                       <MobileButton
@@ -897,19 +1012,25 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                       >
                         <Calendar className="mr-3 h-5 w-5" />
                         <span className="text-base">
-                          {visitInfo?.visited_at ? format(new Date(visitInfo.visited_at), 'PPP') : 'Select date'}
+                          {visitInfo?.visited_at
+                            ? format(new Date(visitInfo.visited_at), 'PPP')
+                            : 'Select date'}
                         </span>
                       </MobileButton>
                     </PopoverTrigger>
-                    <PopoverContent 
-                      className="w-auto p-0 z-[10002]" 
+                    <PopoverContent
+                      className="w-auto p-0 z-[10002]"
                       align="start"
                       side="bottom"
                       sideOffset={8}
                     >
                       <CalendarComponent
                         mode="single"
-                        selected={visitInfo?.visited_at ? new Date(visitInfo.visited_at) : new Date()}
+                        selected={
+                          visitInfo?.visited_at
+                            ? new Date(visitInfo.visited_at)
+                            : new Date()
+                        }
                         onSelect={(date) => {
                           if (date) {
                             triggerHapticFeedback('selection');
@@ -935,13 +1056,11 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                     rows={4}
                     className="resize-none text-base"
                   />
-                  <div className="text-sm text-gray-500">
-                    0/500 characters
-                  </div>
+                  <div className="text-sm text-gray-500">0/500 characters</div>
                 </div>
               </div>
             </div>
-            
+
             {/* Footer with actions */}
             <div className="border-t border-gray-200 p-4">
               <div className="flex flex-col sm:flex-row justify-between gap-3 w-full">
@@ -956,15 +1075,15 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 </MobileButton>
 
                 <div className="flex flex-col sm:flex-row gap-3 flex-1">
-                  <MobileButton 
-                    variant="outline" 
+                  <MobileButton
+                    variant="outline"
                     onClick={returnToDetail}
                     className="flex-1"
                     touchOptimized={true}
                   >
                     Cancel
                   </MobileButton>
-                  <MobileButton 
+                  <MobileButton
                     onClick={() => {
                       // Handle save logic here
                       triggerHapticFeedback('success');
@@ -986,20 +1105,23 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         return (
           <div className="h-full max-h-[90vh] overflow-hidden">
             <div className="flex items-center gap-3 p-4 border-b border-gray-200">
-              <MobileButton 
-                variant="ghost" 
-                size="sm" 
+              <MobileButton
+                variant="ghost"
+                size="sm"
                 onClick={returnToDetail}
                 className="p-2"
                 touchOptimized={true}
               >
                 <ArrowLeft size={20} />
               </MobileButton>
-              <h2 className="text-lg font-semibold text-red-600">Delete Visit</h2>
+              <h2 className="text-lg font-semibold text-red-600">
+                Delete Visit
+              </h2>
             </div>
             <div className="flex-1 p-4">
               <p className="text-gray-600 mb-4 text-base leading-relaxed">
-                Are you sure you want to delete your visit record for this plaque? This action cannot be undone.
+                Are you sure you want to delete your visit record for this
+                plaque? This action cannot be undone.
               </p>
               {visitInfo && (
                 <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-6">
@@ -1008,7 +1130,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                   </p>
                   {visitInfo.notes && (
                     <p className="text-sm text-red-800 mt-1">
-                      <strong>Notes:</strong> {visitInfo.notes.substring(0, 100)}{visitInfo.notes.length > 100 ? '...' : ''}
+                      <strong>Notes:</strong>{' '}
+                      {visitInfo.notes.substring(0, 100)}
+                      {visitInfo.notes.length > 100 ? '...' : ''}
                     </p>
                   )}
                 </div>
@@ -1041,9 +1165,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         return (
           <div className="h-full max-h-[90vh] overflow-hidden">
             <div className="flex items-center gap-3 p-4 border-b border-gray-200">
-              <MobileButton 
-                variant="ghost" 
-                size="sm" 
+              <MobileButton
+                variant="ghost"
+                size="sm"
                 onClick={returnToDetail}
                 className="p-2"
                 touchOptimized={true}
@@ -1052,7 +1176,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               </MobileButton>
               <h2 className="text-lg font-semibold">Add to Collection</h2>
             </div>
-            
+
             {/* Use AddToCollectionDialog but override its modal behavior */}
             <div className="flex-1 overflow-hidden">
               <AddToCollectionDialog
@@ -1068,9 +1192,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
         return (
           <div className="h-full max-h-[90vh] overflow-hidden">
             <div className="flex items-center gap-3 p-4 border-b border-gray-200">
-              <MobileButton 
-                variant="ghost" 
-                size="sm" 
+              <MobileButton
+                variant="ghost"
+                size="sm"
                 onClick={returnToDetail}
                 className="p-2"
                 touchOptimized={true}
@@ -1082,7 +1206,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
             <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <Label htmlFor="visit-date" className="text-base font-medium">Visit Date</Label>
+                  <Label htmlFor="visit-date" className="text-base font-medium">
+                    Visit Date
+                  </Label>
                   <Popover open={showCalendar} onOpenChange={setShowCalendar}>
                     <PopoverTrigger asChild>
                       <MobileButton
@@ -1095,7 +1221,11 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                         {format(visitDate, 'PPP')}
                       </MobileButton>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 z-[10002]" align="start" style={{ zIndex: 10002 }}>
+                    <PopoverContent
+                      className="w-auto p-0 z-[10002]"
+                      align="start"
+                      style={{ zIndex: 10002 }}
+                    >
                       <CalendarComponent
                         mode="single"
                         selected={visitDate}
@@ -1105,15 +1235,22 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                             setShowCalendar(false);
                           }
                         }}
-                        disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date('1900-01-01')
+                        }
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
-                
+
                 <div className="space-y-3">
-                  <Label htmlFor="visit-notes" className="text-base font-medium">Notes (Optional)</Label>
+                  <Label
+                    htmlFor="visit-notes"
+                    className="text-base font-medium"
+                  >
+                    Notes (Optional)
+                  </Label>
                   <Textarea
                     id="visit-notes"
                     placeholder="Add any notes about your visit..."
@@ -1126,8 +1263,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
             </div>
             <div className="border-t border-gray-200 p-4">
               <div className="flex flex-col sm:flex-row gap-3 w-full">
-                <MobileButton 
-                  variant="outline" 
+                <MobileButton
+                  variant="outline"
                   onClick={returnToDetail}
                   disabled={isMarkingVisited}
                   className="flex-1"
@@ -1135,8 +1272,8 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
                 >
                   Cancel
                 </MobileButton>
-                <MobileButton 
-                  onClick={handleVisitSubmit} 
+                <MobileButton
+                  onClick={handleVisitSubmit}
                   disabled={isMarkingVisited}
                   className="flex-1"
                   touchOptimized={true}
@@ -1154,26 +1291,33 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
           <>
             {/* Hero Image */}
             <div className="relative h-48 bg-blue-50">
-              <PlaqueImage 
+              <PlaqueImage
                 src={imageUrl}
-                alt={safeString(plaque.title)} 
+                alt={safeString(plaque.title)}
                 className="w-full h-full object-cover"
                 placeholderClassName="bg-blue-50"
                 plaqueColor={plaqueColor}
               />
-              
+
               {/* Status Badges - Top Left */}
               <div className="absolute top-3 left-3 flex flex-col gap-1">
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  plaqueColor === 'blue' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                  plaqueColor === 'green' ? 'bg-green-100 text-green-800 border border-green-200' :
-                  plaqueColor === 'brown' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                  plaqueColor === 'black' ? 'bg-gray-100 text-gray-800 border border-gray-300' :
-                  'bg-gray-100 text-gray-800 border border-gray-200'
-                }`}>
-                  {plaqueColor?.charAt(0).toUpperCase() + plaqueColor?.slice(1)} Plaque
+                <div
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    plaqueColor === 'blue'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : plaqueColor === 'green'
+                        ? 'bg-green-100 text-green-800 border border-green-200'
+                        : plaqueColor === 'brown'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : plaqueColor === 'black'
+                            ? 'bg-gray-100 text-gray-800 border border-gray-300'
+                            : 'bg-gray-100 text-gray-800 border border-gray-200'
+                  }`}
+                >
+                  {plaqueColor?.charAt(0).toUpperCase() + plaqueColor?.slice(1)}{' '}
+                  Plaque
                 </div>
-                
+
                 {isValidValue(plaque.erected) && (
                   <div className="bg-white/90 text-gray-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
                     <Calendar size={10} />
@@ -1217,8 +1361,13 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
               </MainDialogTitle>
               {locationDisplay && (
                 <div className="flex items-start gap-2">
-                  <MapPin size={14} className="text-gray-400 mt-1 flex-shrink-0" />
-                  <p className="text-gray-600 text-sm leading-relaxed">{locationDisplay}</p>
+                  <MapPin
+                    size={14}
+                    className="text-gray-400 mt-1 flex-shrink-0"
+                  />
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    {locationDisplay}
+                  </p>
                 </div>
               )}
             </MainDialogHeader>
@@ -1238,7 +1387,9 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // If full page mode, render without Dialog wrapper
   if (isFullPage) {
     return (
-      <div className={`fixed inset-0 bg-white z-50 overflow-hidden ${className}`}>
+      <div
+        className={`fixed inset-0 bg-white z-50 overflow-hidden ${className}`}
+      >
         <div className="h-full flex flex-col overflow-hidden">
           {renderModalContent()}
         </div>
@@ -1249,7 +1400,7 @@ export const PlaqueDetail: React.FC<PlaqueDetailProps> = ({
   // ENHANCED: Regular dialog mode with state-based content
   return (
     <MainDialog open={isOpen} onOpenChange={onClose}>
-      <MainDialogContent 
+      <MainDialogContent
         className={`max-w-2xl max-h-[90vh] overflow-hidden p-0 ${sheetClassName}`}
         style={{ zIndex: dialogZIndex }}
       >

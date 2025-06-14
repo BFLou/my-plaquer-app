@@ -7,23 +7,31 @@
 export function formatTimeAgo(dateValue: any): string {
   // If no date value is provided, return 'recently'
   if (!dateValue) return 'recently';
-  
+
   try {
     let date: Date;
-    
+
     // Case 1: Firebase Timestamp object with toDate method
-    if (dateValue && typeof dateValue === 'object' && typeof dateValue.toDate === 'function') {
+    if (
+      dateValue &&
+      typeof dateValue === 'object' &&
+      typeof dateValue.toDate === 'function'
+    ) {
       date = dateValue.toDate();
     }
     // Case 2: Firebase server timestamp object with seconds & nanoseconds
-    else if (dateValue && typeof dateValue === 'object' && 'seconds' in dateValue) {
+    else if (
+      dateValue &&
+      typeof dateValue === 'object' &&
+      'seconds' in dateValue
+    ) {
       date = new Date(dateValue.seconds * 1000);
     }
     // Case 3: JavaScript Date object
     else if (dateValue instanceof Date) {
       date = dateValue;
     }
-    // Case 4: String date 
+    // Case 4: String date
     else if (typeof dateValue === 'string') {
       date = new Date(dateValue);
     }
@@ -35,17 +43,17 @@ export function formatTimeAgo(dateValue: any): string {
     else {
       return 'recently';
     }
-    
+
     // Verify the date is valid
     if (!date || isNaN(date.getTime())) {
       return 'recently';
     }
-    
+
     // Calculate the time difference
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
     const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-    
+
     // Format the output based on the difference
     if (diffInDays === 0) return 'today';
     if (diffInDays === 1) return 'yesterday';
@@ -54,10 +62,9 @@ export function formatTimeAgo(dateValue: any): string {
       const weeks = Math.floor(diffInDays / 7);
       return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
     }
-    
+
     const diffInMonths = Math.floor(diffInDays / 30);
     return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
-    
   } catch (error) {
     // If any error occurs during processing, return 'recently'
     return 'recently';

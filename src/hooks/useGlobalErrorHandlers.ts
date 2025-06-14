@@ -6,14 +6,16 @@ export const useGlobalErrorHandlers = () => {
     // Set up global error handlers for better debugging
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error('Unhandled promise rejection:', event.reason);
-      
+
       // Handle specific map-related errors
-      if (event.reason?.message?.includes('Leaflet') || 
-          event.reason?.message?.includes('map')) {
+      if (
+        event.reason?.message?.includes('Leaflet') ||
+        event.reason?.message?.includes('map')
+      ) {
         console.warn('Map-related promise rejection caught:', event.reason);
         event.preventDefault(); // Prevent the default browser behavior
       }
-      
+
       // Handle render loop errors
       if (event.reason?.message?.includes('Too many re-renders')) {
         console.warn('Render loop promise rejection caught:', event.reason);
@@ -28,14 +30,16 @@ export const useGlobalErrorHandlers = () => {
 
     const handleError = (event: ErrorEvent) => {
       console.error('Global error caught:', event.error);
-      
+
       // Handle specific map-related errors
-      if (event.error?.message?.includes('Leaflet') || 
-          event.error?.message?.includes('map')) {
+      if (
+        event.error?.message?.includes('Leaflet') ||
+        event.error?.message?.includes('map')
+      ) {
         console.warn('Map-related error caught:', event.error);
         event.preventDefault(); // Prevent the default browser behavior
       }
-      
+
       // Handle render loop errors
       if (event.error?.message?.includes('Too many re-renders')) {
         console.warn('Render loop error caught:', event.error);
@@ -74,7 +78,10 @@ export const useGlobalErrorHandlers = () => {
 
     // Cleanup
     return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener(
+        'unhandledrejection',
+        handleUnhandledRejection
+      );
       window.removeEventListener('error', handleError);
     };
   }, []);

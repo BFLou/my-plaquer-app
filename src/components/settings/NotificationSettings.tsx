@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Mail, Info, Smartphone, Globe } from 'lucide-react';
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import SettingsCard from './SettingsCard';
 
@@ -19,7 +19,7 @@ const NotificationSettings: React.FC = () => {
     if ('Notification' in window) {
       const permission = await Notification.requestPermission();
       setBrowserNotifications(permission === 'granted');
-      
+
       if (permission === 'granted') {
         toast.success('Browser notifications enabled');
       } else {
@@ -36,16 +36,17 @@ const NotificationSettings: React.FC = () => {
       description: 'Receive app updates and important announcements via email',
       value: emailUpdates,
       onChange: setEmailUpdates,
-      color: 'blue'
+      color: 'blue',
     },
     {
       id: 'push',
       icon: Smartphone,
       title: 'Mobile Push Notifications',
-      description: 'Get notifications on your mobile device about updates and new features',
+      description:
+        'Get notifications on your mobile device about updates and new features',
       value: pushUpdates,
       onChange: setPushUpdates,
-      color: 'green'
+      color: 'green',
     },
     {
       id: 'browser',
@@ -55,20 +56,22 @@ const NotificationSettings: React.FC = () => {
       value: browserNotifications,
       onChange: setBrowserNotifications,
       color: 'purple',
-      requiresPermission: true
-    }
+      requiresPermission: true,
+    },
   ];
 
   return (
     <div>
       <div className="p-4 sm:p-6 border-b">
-        <h2 className="text-lg sm:text-xl font-bold mb-1">Notification Settings</h2>
+        <h2 className="text-lg sm:text-xl font-bold mb-1">
+          Notification Settings
+        </h2>
         <p className="text-sm text-gray-500">
           Stay informed about app updates and important changes.
         </p>
       </div>
 
-      <SettingsCard 
+      <SettingsCard
         title="App Updates & Announcements"
         description="Choose how you want to receive information about Plaquer updates"
         footer={
@@ -84,35 +87,46 @@ const NotificationSettings: React.FC = () => {
               <div key={option.id} className="p-3 sm:p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-10 h-10 bg-${option.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <div
+                      className={`w-10 h-10 bg-${option.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}
+                    >
                       <Icon className={`text-${option.color}-600`} size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-medium text-sm sm:text-base">{option.title}</h4>
-                      <p className="text-xs sm:text-sm text-gray-500 mt-1">{option.description}</p>
-                      {option.requiresPermission && !('Notification' in window) && (
-                        <Badge variant="outline" className="mt-2 text-xs">
-                          Not supported in this browser
-                        </Badge>
-                      )}
+                      <h4 className="font-medium text-sm sm:text-base">
+                        {option.title}
+                      </h4>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                        {option.description}
+                      </p>
+                      {option.requiresPermission &&
+                        !('Notification' in window) && (
+                          <Badge variant="outline" className="mt-2 text-xs">
+                            Not supported in this browser
+                          </Badge>
+                        )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {option.requiresPermission && 'Notification' in window && !option.value && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={requestBrowserPermission}
-                        className="text-xs h-8"
-                      >
-                        Enable
-                      </Button>
-                    )}
-                    <Switch 
-                      checked={option.value} 
+                    {option.requiresPermission &&
+                      'Notification' in window &&
+                      !option.value && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={requestBrowserPermission}
+                          className="text-xs h-8"
+                        >
+                          Enable
+                        </Button>
+                      )}
+                    <Switch
+                      checked={option.value}
                       onCheckedChange={option.onChange}
-                      disabled={option.requiresPermission && !('Notification' in window)}
+                      disabled={
+                        option.requiresPermission && !('Notification' in window)
+                      }
                     />
                   </div>
                 </div>

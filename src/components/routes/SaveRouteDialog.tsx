@@ -6,12 +6,12 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { MobileInput } from "@/components/ui/mobile-input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { MobileInput } from '@/components/ui/mobile-input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Route } from 'lucide-react';
 import { Plaque } from '@/types/plaque';
 
@@ -37,7 +37,7 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
   routePoints,
   routeDistance,
   useImperial = false,
-  isSaving = false
+  isSaving = false,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -53,19 +53,23 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
   // Generate default name based on route
   React.useEffect(() => {
     if (isOpen && routePoints.length > 0 && !name) {
-      const startLocation = routePoints[0]?.address || routePoints[0]?.location || 'Start';
-      const endLocation = routePoints[routePoints.length - 1]?.address || routePoints[routePoints.length - 1]?.location || 'End';
-      
+      const startLocation =
+        routePoints[0]?.address || routePoints[0]?.location || 'Start';
+      const endLocation =
+        routePoints[routePoints.length - 1]?.address ||
+        routePoints[routePoints.length - 1]?.location ||
+        'End';
+
       // Extract area names for cleaner default names
       const getAreaName = (location: string) => {
         if (!location) return '';
         const parts = location.split(',');
         return parts[0].trim();
       };
-      
+
       const startArea = getAreaName(startLocation);
       const endArea = getAreaName(endLocation);
-      
+
       if (routePoints.length === 2) {
         setName(`${startArea} to ${endArea}`);
       } else {
@@ -83,10 +87,10 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
   };
 
   const formatWalkingTime = (km: number) => {
-    const minutes = useImperial 
+    const minutes = useImperial
       ? Math.round(km * 0.621371 * 20) // 20 minutes per mile
       : Math.round(km * 12); // 12 minutes per km
-    
+
     if (minutes < 60) {
       return `${minutes} min`;
     }
@@ -102,7 +106,7 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
 
     onSave({
       name: name.trim(),
-      description: description.trim()
+      description: description.trim(),
     });
   };
 
@@ -125,26 +129,37 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
           {/* Route Summary - Mobile Optimized */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-green-900 text-base sm:text-lg">Route Summary</h3>
-              <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs sm:text-sm">
+              <h3 className="font-medium text-green-900 text-base sm:text-lg">
+                Route Summary
+              </h3>
+              <Badge
+                variant="secondary"
+                className="bg-green-100 text-green-800 text-xs sm:text-sm"
+              >
                 {routePoints.length} stops
               </Badge>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div className="flex items-center gap-2 text-green-700">
                 <MapPin size={16} className="flex-shrink-0" />
-                <span className="font-medium text-sm sm:text-base">{formatDistance(routeDistance)}</span>
+                <span className="font-medium text-sm sm:text-base">
+                  {formatDistance(routeDistance)}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-green-700">
                 <Clock size={16} className="flex-shrink-0" />
-                <span className="font-medium text-sm sm:text-base">{formatWalkingTime(routeDistance)}</span>
+                <span className="font-medium text-sm sm:text-base">
+                  {formatWalkingTime(routeDistance)}
+                </span>
               </div>
             </div>
 
             {/* Route stops preview - Mobile Optimized */}
             <div className="mt-3 pt-3 border-t border-green-200">
-              <div className="text-sm text-green-600 mb-2 font-medium">Route stops:</div>
+              <div className="text-sm text-green-600 mb-2 font-medium">
+                Route stops:
+              </div>
               <div className="max-h-32 overflow-y-auto text-sm text-green-700 space-y-1">
                 {routePoints.map((point, index) => (
                   <div key={point.id} className="flex items-start gap-2">
@@ -181,7 +196,10 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="route-description" className="text-sm font-medium">
+              <Label
+                htmlFor="route-description"
+                className="text-sm font-medium"
+              >
                 Description (optional)
               </Label>
               <Textarea
@@ -212,8 +230,9 @@ const SaveRouteDialog: React.FC<SaveRouteDialogProps> = ({
                   Private Route
                 </div>
                 <div className="text-blue-700 text-xs sm:text-sm leading-relaxed">
-                  Your route will be saved privately to your account. Only you can access it.
-                  You can export it as GPX or share the details manually if needed.
+                  Your route will be saved privately to your account. Only you
+                  can access it. You can export it as GPX or share the details
+                  manually if needed.
                 </div>
               </div>
             </div>

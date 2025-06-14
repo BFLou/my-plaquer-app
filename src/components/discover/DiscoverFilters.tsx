@@ -2,9 +2,13 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, Sparkles } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import DiscoverFilterDialog from '../plaques/DiscoverFilterDialog';
 import { FilterStatusBar } from './FilterStatusBar';
 import { FilterSuggestions } from './FilterSuggestions';
@@ -64,7 +68,7 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   allPlaques = [],
   totalPlaqueCount = 0,
   filteredPlaqueCount = 0,
-  showSuggestions = true
+  showSuggestions = true,
 }) => {
   const [showFilterSuggestions, setShowFilterSuggestions] = useState(false);
 
@@ -72,16 +76,22 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   const removeFilterEnhanced = (filterType: string, value?: string) => {
     switch (filterType) {
       case 'color':
-        onRemoveFilter({ colors: urlState.colors.filter(c => c !== value) });
+        onRemoveFilter({ colors: urlState.colors.filter((c) => c !== value) });
         break;
       case 'postcode':
-        onRemoveFilter({ postcodes: urlState.postcodes.filter(p => p !== value) });
+        onRemoveFilter({
+          postcodes: urlState.postcodes.filter((p) => p !== value),
+        });
         break;
       case 'profession':
-        onRemoveFilter({ professions: urlState.professions.filter(p => p !== value) });
+        onRemoveFilter({
+          professions: urlState.professions.filter((p) => p !== value),
+        });
         break;
       case 'organisation':
-        onRemoveFilter({ organisations: urlState.organisations.filter(o => o !== value) });
+        onRemoveFilter({
+          organisations: urlState.organisations.filter((o) => o !== value),
+        });
         break;
       case 'visited':
         onRemoveFilter({ onlyVisited: false });
@@ -104,19 +114,25 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   const handleFilterSuggestion = (suggestion: any) => {
     switch (suggestion.type) {
       case 'add-profession':
-        onApplyFilters({ professions: [...urlState.professions, suggestion.value] });
+        onApplyFilters({
+          professions: [...urlState.professions, suggestion.value],
+        });
         break;
       case 'add-color':
         onApplyFilters({ colors: [...urlState.colors, suggestion.value] });
         break;
       case 'add-postcode-area':
         const areaPostcodes = filterOptions.postcodeOptions
-          .filter(p => p.value.startsWith(suggestion.value))
-          .map(p => p.value);
-        onApplyFilters({ postcodes: [...urlState.postcodes, ...areaPostcodes] });
+          .filter((p) => p.value.startsWith(suggestion.value))
+          .map((p) => p.value);
+        onApplyFilters({
+          postcodes: [...urlState.postcodes, ...areaPostcodes],
+        });
         break;
       case 'add-organisation':
-        onApplyFilters({ organisations: [...urlState.organisations, suggestion.value] });
+        onApplyFilters({
+          organisations: [...urlState.organisations, suggestion.value],
+        });
         break;
       default:
         console.warn('Unknown suggestion type:', suggestion.type);
@@ -125,13 +141,15 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
 
   // If no active filters, show suggestions instead of empty state
   if (activeFiltersCount === 0) {
-    return showSuggestions && allPlaques.length > 0 && filteredPlaqueCount > 50 ? (
-      <div 
+    return showSuggestions &&
+      allPlaques.length > 0 &&
+      filteredPlaqueCount > 50 ? (
+      <div
         className="discover-filters-container"
-        style={{ 
-          position: 'relative', 
+        style={{
+          position: 'relative',
           zIndex: 1002,
-          isolation: 'isolate'
+          isolation: 'isolate',
         }}
       >
         <div className="container mx-auto px-4 mt-3">
@@ -149,20 +167,20 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
   return (
     <>
       {/* FIXED: Enhanced Filter Status Bar with proper z-index */}
-      <div 
+      <div
         className="discover-filters-container"
-        style={{ 
-          position: 'relative', 
+        style={{
+          position: 'relative',
           zIndex: 1002,
           isolation: 'isolate',
-          background: 'transparent'
+          background: 'transparent',
         }}
       >
         <div className="container mx-auto px-4 mt-3">
-          <div 
-            style={{ 
+          <div
+            style={{
               position: 'relative',
-              zIndex: 1003
+              zIndex: 1003,
             }}
           >
             <FilterStatusBar
@@ -174,11 +192,14 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
                 organisations: urlState.organisations,
                 onlyVisited: urlState.onlyVisited,
                 onlyFavorites: urlState.onlyFavorites,
-                distanceFilter: distanceFilter.enabled ? {
-                  enabled: true,
-                  locationName: distanceFilter.locationName || 'Unknown Location',
-                  radius: distanceFilter.radius
-                } : undefined
+                distanceFilter: distanceFilter.enabled
+                  ? {
+                      enabled: true,
+                      locationName:
+                        distanceFilter.locationName || 'Unknown Location',
+                      radius: distanceFilter.radius,
+                    }
+                  : undefined,
               }}
               resultCount={filteredPlaqueCount}
               totalCount={totalPlaqueCount}
@@ -190,43 +211,53 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
           </div>
 
           {/* Filter Suggestions - Show when filters are not too restrictive */}
-          {showSuggestions && activeFiltersCount < 4 && filteredPlaqueCount > 20 && (
-            <Collapsible open={showFilterSuggestions} onOpenChange={setShowFilterSuggestions}>
-              <div className="mt-3" style={{ position: 'relative', zIndex: 1001 }}>
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="w-full justify-between p-2 text-left h-auto"
-                    style={{ position: 'relative', zIndex: 1001 }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium">Discover More</span>
-                      <Badge variant="outline" className="text-xs">
-                        Suggestions
-                      </Badge>
+          {showSuggestions &&
+            activeFiltersCount < 4 &&
+            filteredPlaqueCount > 20 && (
+              <Collapsible
+                open={showFilterSuggestions}
+                onOpenChange={setShowFilterSuggestions}
+              >
+                <div
+                  className="mt-3"
+                  style={{ position: 'relative', zIndex: 1001 }}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-between p-2 text-left h-auto"
+                      style={{ position: 'relative', zIndex: 1001 }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium">
+                          Discover More
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          Suggestions
+                        </Badge>
+                      </div>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform ${showFilterSuggestions ? 'rotate-180' : ''}`}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent className="mt-2">
+                    <div style={{ position: 'relative', zIndex: 1001 }}>
+                      <FilterSuggestions
+                        plaques={allPlaques}
+                        currentFilters={urlState}
+                        onApplySuggestion={handleFilterSuggestion}
+                        className="filter-suggestions-component"
+                      />
                     </div>
-                    <ChevronDown 
-                      size={14} 
-                      className={`transition-transform ${showFilterSuggestions ? 'rotate-180' : ''}`} 
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent className="mt-2">
-                  <div style={{ position: 'relative', zIndex: 1001 }}>
-                    <FilterSuggestions
-                      plaques={allPlaques}
-                      currentFilters={urlState}
-                      onApplySuggestion={handleFilterSuggestion}
-                      className="filter-suggestions-component"
-                    />
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          )}
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            )}
         </div>
       </div>
 
@@ -235,29 +266,28 @@ const DiscoverFilters: React.FC<DiscoverFiltersProps> = ({
         <DiscoverFilterDialog
           isOpen={filtersOpen}
           onClose={onCloseFilters}
-          
           postcodes={filterOptions.postcodeOptions}
           selectedPostcodes={urlState.postcodes}
           onPostcodesChange={(values) => onApplyFilters({ postcodes: values })}
-          
           colors={filterOptions.colorOptions}
           selectedColors={urlState.colors}
           onColorsChange={(values) => onApplyFilters({ colors: values })}
-          
           professions={filterOptions.professionOptions}
           selectedProfessions={urlState.professions}
-          onProfessionsChange={(values) => onApplyFilters({ professions: values })}
-
+          onProfessionsChange={(values) =>
+            onApplyFilters({ professions: values })
+          }
           organisations={filterOptions.organisationOptions}
           selectedOrganisations={urlState.organisations}
-          onOrganisationsChange={(values) => onApplyFilters({ organisations: values })}
-          
+          onOrganisationsChange={(values) =>
+            onApplyFilters({ organisations: values })
+          }
           onlyVisited={urlState.onlyVisited}
           onVisitedChange={(value) => onApplyFilters({ onlyVisited: value })}
-          
           onlyFavorites={urlState.onlyFavorites}
-          onFavoritesChange={(value) => onApplyFilters({ onlyFavorites: value })}
-          
+          onFavoritesChange={(value) =>
+            onApplyFilters({ onlyFavorites: value })
+          }
           onApply={onCloseFilters}
           onReset={onResetFilters}
         />

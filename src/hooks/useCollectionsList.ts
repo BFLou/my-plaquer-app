@@ -14,21 +14,25 @@ export const useCollectionsList = () => {
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('all');
-  const [filteredCollections, setFilteredCollections] = useState<CollectionData[]>([]);
-  
+  const [filteredCollections, setFilteredCollections] = useState<
+    CollectionData[]
+  >([]);
+
   // Firebase collections hook
   const { collections, loading, error } = useCollections();
-  
+
   // Handle filtering for the 'recent' tab
-  const getRecentCollections = (collections: CollectionData[]): CollectionData[] => {
+  const getRecentCollections = (
+    collections: CollectionData[]
+  ): CollectionData[] => {
     // Get collections from the last 7 days
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    
-    return collections.filter(collection => {
+
+    return collections.filter((collection) => {
       // Convert updated_at to Date object (handle different formats)
       let updatedAt: Date | null = null;
-      
+
       if (collection.updated_at) {
         if (typeof collection.updated_at === 'string') {
           // Handle string dates like "2 days ago" by using the formatTimeAgo logic in reverse
@@ -46,10 +50,10 @@ export const useCollectionsList = () => {
           updatedAt = collection.updated_at.toDate();
         }
       }
-      
+
       // If we couldn't parse the date, include it as recent
       if (!updatedAt) return true;
-      
+
       // Check if it's within the last week
       return updatedAt >= oneWeekAgo;
     });
@@ -59,25 +63,28 @@ export const useCollectionsList = () => {
   const parseDaysFromTimeAgo = (timeAgoString: string): number | null => {
     if (timeAgoString === 'today') return 0;
     if (timeAgoString === 'yesterday') return 1;
-    
+
     const match = timeAgoString.match(/^(\d+) days? ago$/);
     if (match) {
       return parseInt(match[1], 10);
     }
-    
+
     const weekMatch = timeAgoString.match(/^(\d+) weeks? ago$/);
     if (weekMatch) {
       return parseInt(weekMatch[1], 10) * 7;
     }
-    
+
     return null;
   };
 
   // Sort collections by updated time
-  const sortCollectionsByUpdated = (collections: CollectionData[], descending = true): CollectionData[] => {
+  const sortCollectionsByUpdated = (
+    collections: CollectionData[],
+    descending = true
+  ): CollectionData[] => {
     return [...collections].sort((a, b) => {
       let dateA: number, dateB: number;
-      
+
       try {
         if (typeof a.updated_at === 'string') {
           const daysAgoA = parseDaysFromTimeAgo(a.updated_at);
@@ -90,12 +97,16 @@ export const useCollectionsList = () => {
           }
         } else if (a.updated_at instanceof Date) {
           dateA = a.updated_at.getTime();
-        } else if (a.updated_at && typeof a.updated_at === 'object' && 'toDate' in a.updated_at) {
+        } else if (
+          a.updated_at &&
+          typeof a.updated_at === 'object' &&
+          'toDate' in a.updated_at
+        ) {
           dateA = (a.updated_at as any).toDate().getTime();
         } else {
           dateA = 0;
         }
-        
+
         if (typeof b.updated_at === 'string') {
           const daysAgoB = parseDaysFromTimeAgo(b.updated_at);
           if (daysAgoB !== null) {
@@ -107,7 +118,11 @@ export const useCollectionsList = () => {
           }
         } else if (b.updated_at instanceof Date) {
           dateB = b.updated_at.getTime();
-        } else if (b.updated_at && typeof b.updated_at === 'object' && 'toDate' in b.updated_at) {
+        } else if (
+          b.updated_at &&
+          typeof b.updated_at === 'object' &&
+          'toDate' in b.updated_at
+        ) {
           dateB = (b.updated_at as any).toDate().getTime();
         } else {
           dateB = 0;
@@ -116,7 +131,7 @@ export const useCollectionsList = () => {
         console.error('Error sorting by date:', e);
         return 0;
       }
-      
+
       return descending ? dateB - dateA : dateA - dateB;
     });
   };
@@ -125,28 +140,29 @@ export const useCollectionsList = () => {
   const filterAndSortCollections = useCallback(() => {
     // Start with all collections
     let filtered: CollectionData[] = [...collections];
-    
+
     // Apply favorites filter if active
     if (showOnlyFavorites) {
-      filtered = filtered.filter(c => c.is_favorite);
+      filtered = filtered.filter((c) => c.is_favorite);
     }
-    
+
     // Apply active tab filter
     if (activeTab === 'favorites') {
-      filtered = filtered.filter(c => c.is_favorite);
+      filtered = filtered.filter((c) => c.is_favorite);
     } else if (activeTab === 'recent') {
       filtered = getRecentCollections(filtered);
     }
-    
+
     // Apply search query filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.name.toLowerCase().includes(query) || 
-        (c.description && c.description.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          (c.description && c.description.toLowerCase().includes(query))
       );
     }
-    
+
     // Apply sorting
     if (sortOption === 'recently_updated') {
       // Sort by updated_at (most recent first)
@@ -167,15 +183,15 @@ export const useCollectionsList = () => {
       // Sort by plaque count (least first)
       filtered = filtered.sort((a, b) => getPlaqueCount(a) - getPlaqueCount(b));
     }
-    
+
     setFilteredCollections(filtered);
   }, [collections, searchQuery, sortOption, showOnlyFavorites, activeTab]);
-  
+
   // Apply filtering and sorting whenever dependencies change
   useEffect(() => {
     filterAndSortCollections();
   }, [filterAndSortCollections]);
-  
+
   // Handle tab change
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -184,18 +200,18 @@ export const useCollectionsList = () => {
     } else {
       setShowOnlyFavorites(false);
     }
-    
+
     // If we select 'recent' tab, we need to set sort to 'recently_updated'
     if (tab === 'recent') {
       setSortOption('recently_updated');
     }
   };
-  
+
   // Active filters for display
   const activeFilters: string[] = [];
   if (showOnlyFavorites) activeFilters.push('Favorites');
   if (searchQuery) activeFilters.push('Search');
-  
+
   // Reset all selections and filters
   const resetFilters = () => {
     setSearchQuery('');
@@ -203,14 +219,14 @@ export const useCollectionsList = () => {
     setSelectedCollections([]);
     setActiveTab('all');
   };
-  
+
   // Toggle selection of collection
   const toggleSelect = (id: string) => {
-    setSelectedCollections(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    setSelectedCollections((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
-  
+
   return {
     collections,
     loading,
@@ -231,7 +247,7 @@ export const useCollectionsList = () => {
     toggleSelect,
     activeTab,
     setActiveTab,
-    handleTabChange
+    handleTabChange,
   };
 };
 

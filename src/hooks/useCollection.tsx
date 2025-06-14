@@ -1,12 +1,12 @@
 // src/hooks/useCollections.tsx - Simplified version
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  query,
+  where,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   doc,
   getDoc,
   orderBy,
@@ -15,7 +15,7 @@ import {
   onSnapshot,
   arrayUnion,
   arrayRemove,
-  writeBatch
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
@@ -63,11 +63,11 @@ export const useCollections = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const collectionsData = snapshot.docs.map(doc => ({
+        const collectionsData = snapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         })) as CollectionData[];
-        
+
         setCollections(collectionsData);
         setLoading(false);
       },
@@ -84,454 +84,519 @@ export const useCollections = () => {
   }, [user]);
 
   // Get a single collection
-  const getCollection = useCallback(async (collectionId: string) => {
-    if (!user) return null;
+  const getCollection = useCallback(
+    async (collectionId: string) => {
+      if (!user) return null;
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        const collectionData = { id: docSnap.id, ...docSnap.data() } as CollectionData;
-        
-        // Verify ownership
-        if (collectionData.user_id === user.uid) {
-          return collectionData;
+        if (docSnap.exists()) {
+          const collectionData = {
+            id: docSnap.id,
+            ...docSnap.data(),
+          } as CollectionData;
+
+          // Verify ownership
+          if (collectionData.user_id === user.uid) {
+            return collectionData;
+          } else {
+            throw new Error('Collection not found or access denied');
+          }
         } else {
-          throw new Error('Collection not found or access denied');
+          throw new Error('Collection not found');
         }
-      } else {
-        throw new Error('Collection not found');
+      } catch (err) {
+        console.error('Error fetching collection:', err);
+        toast.error('Error loading collection');
+        throw err;
       }
-    } catch (err) {
-      console.error('Error fetching collection:', err);
-      toast.error('Error loading collection');
-      throw err;
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   // Create a new collection
-  const createCollection = useCallback(async (
-    name: string,
-    icon: string,
-    color: string,
-    description: string = '',
-    initialPlaques: number[] = [],
-    tags: string[] = []
-  ) => {
-    if (!user) throw new Error('You must be logged in to create a collection');
+  const createCollection = useCallback(
+    async (
+      name: string,
+      icon: string,
+      color: string,
+      description: string = '',
+      initialPlaques: number[] = [],
+      tags: string[] = []
+    ) => {
+      if (!user)
+        throw new Error('You must be logged in to create a collection');
 
-    try {
-      const collectionData = {
-        name,
-        description,
-        icon,
-        color,
-        is_favorite: false,
-        plaques: initialPlaques,
-        user_id: user.uid,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        tags
-      };
+      try {
+        const collectionData = {
+          name,
+          description,
+          icon,
+          color,
+          is_favorite: false,
+          plaques: initialPlaques,
+          user_id: user.uid,
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          tags,
+        };
 
-      const docRef = await addDoc(collection(db, 'collections'), collectionData);
-      
-      toast.success('Collection created successfully');
-      
-      // Return the new collection with ID
-      return {
-        id: docRef.id,
-        ...collectionData,
-        created_at: new Date(),
-        updated_at: new Date()
-      } as unknown as CollectionData;
-    } catch (err) {
-      console.error('Error creating collection:', err);
-      toast.error('Failed to create collection');
-      throw err;
-    }
-  }, [user]);
+        const docRef = await addDoc(
+          collection(db, 'collections'),
+          collectionData
+        );
+
+        toast.success('Collection created successfully');
+
+        // Return the new collection with ID
+        return {
+          id: docRef.id,
+          ...collectionData,
+          created_at: new Date(),
+          updated_at: new Date(),
+        } as unknown as CollectionData;
+      } catch (err) {
+        console.error('Error creating collection:', err);
+        toast.error('Failed to create collection');
+        throw err;
+      }
+    },
+    [user]
+  );
 
   // Update a collection
-  const updateCollection = useCallback(async (
-    collectionId: string, 
-    updates: {
-      name?: string;
-      description?: string;
-      icon?: string;
-      color?: string;
-      tags?: string[];
-    }
-  ) => {
-    if (!user) throw new Error('You must be logged in to update a collection');
-
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
-
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
+  const updateCollection = useCallback(
+    async (
+      collectionId: string,
+      updates: {
+        name?: string;
+        description?: string;
+        icon?: string;
+        color?: string;
+        tags?: string[];
       }
+    ) => {
+      if (!user)
+        throw new Error('You must be logged in to update a collection');
 
-      const updateData: Record<string, any> = {
-        updated_at: serverTimestamp()
-      };
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-      // Add fields to update
-      if (updates.name !== undefined) updateData.name = updates.name;
-      if (updates.description !== undefined) updateData.description = updates.description;
-      if (updates.icon !== undefined) updateData.icon = updates.icon;
-      if (updates.color !== undefined) updateData.color = updates.color;
-      if (updates.tags !== undefined) updateData.tags = updates.tags;
+        // Verify ownership
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          throw new Error('Collection not found or access denied');
+        }
 
-      await updateDoc(docRef, updateData);
-      
-      toast.success('Collection updated successfully');
-      
-      // Return updated collection
-      const currentData = docSnap.data();
-      return {
-        id: collectionId,
-        ...currentData,
-        ...updateData,
-        updated_at: new Date()
-      } as unknown as CollectionData;
-    } catch (err) {
-      console.error('Error updating collection:', err);
-      toast.error('Failed to update collection');
-      throw err;
-    }
-  }, [user]);
+        const updateData: Record<string, any> = {
+          updated_at: serverTimestamp(),
+        };
+
+        // Add fields to update
+        if (updates.name !== undefined) updateData.name = updates.name;
+        if (updates.description !== undefined)
+          updateData.description = updates.description;
+        if (updates.icon !== undefined) updateData.icon = updates.icon;
+        if (updates.color !== undefined) updateData.color = updates.color;
+        if (updates.tags !== undefined) updateData.tags = updates.tags;
+
+        await updateDoc(docRef, updateData);
+
+        toast.success('Collection updated successfully');
+
+        // Return updated collection
+        const currentData = docSnap.data();
+        return {
+          id: collectionId,
+          ...currentData,
+          ...updateData,
+          updated_at: new Date(),
+        } as unknown as CollectionData;
+      } catch (err) {
+        console.error('Error updating collection:', err);
+        toast.error('Failed to update collection');
+        throw err;
+      }
+    },
+    [user]
+  );
 
   // Delete a collection
-  const deleteCollection = useCallback(async (collectionId: string) => {
-    if (!user) throw new Error('You must be logged in to delete a collection');
+  const deleteCollection = useCallback(
+    async (collectionId: string) => {
+      if (!user)
+        throw new Error('You must be logged in to delete a collection');
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
+        // Verify ownership
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          throw new Error('Collection not found or access denied');
+        }
+
+        await deleteDoc(docRef);
+        toast.success('Collection deleted successfully');
+        return true;
+      } catch (err) {
+        console.error('Error deleting collection:', err);
+        toast.error('Failed to delete collection');
+        throw err;
       }
-
-      await deleteDoc(docRef);
-      toast.success('Collection deleted successfully');
-      return true;
-    } catch (err) {
-      console.error('Error deleting collection:', err);
-      toast.error('Failed to delete collection');
-      throw err;
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   // Batch delete multiple collections
-  const batchDeleteCollections = useCallback(async (collectionIds: string[]) => {
-    if (!user) throw new Error('You must be logged in to delete collections');
-    if (collectionIds.length === 0) return true;
+  const batchDeleteCollections = useCallback(
+    async (collectionIds: string[]) => {
+      if (!user) throw new Error('You must be logged in to delete collections');
+      if (collectionIds.length === 0) return true;
 
-    try {
-      const batch = writeBatch(db);
-      let unauthorized = false;
+      try {
+        const batch = writeBatch(db);
+        let unauthorized = false;
 
-      // First verify ownership of all collections
-      for (const id of collectionIds) {
-        const docRef = doc(db, 'collections', id);
-        const docSnap = await getDoc(docRef);
+        // First verify ownership of all collections
+        for (const id of collectionIds) {
+          const docRef = doc(db, 'collections', id);
+          const docSnap = await getDoc(docRef);
 
-        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-          unauthorized = true;
-          break;
+          if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+            unauthorized = true;
+            break;
+          }
+
+          batch.delete(docRef);
         }
 
-        batch.delete(docRef);
-      }
+        if (unauthorized) {
+          throw new Error('One or more collections not found or access denied');
+        }
 
-      if (unauthorized) {
-        throw new Error('One or more collections not found or access denied');
+        await batch.commit();
+        toast.success(
+          `${collectionIds.length} collections deleted successfully`
+        );
+        return true;
+      } catch (err) {
+        console.error('Error batch deleting collections:', err);
+        toast.error('Failed to delete collections');
+        throw err;
       }
-
-      await batch.commit();
-      toast.success(`${collectionIds.length} collections deleted successfully`);
-      return true;
-    } catch (err) {
-      console.error('Error batch deleting collections:', err);
-      toast.error('Failed to delete collections');
-      throw err;
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   // Toggle favorite status
-  const toggleFavorite = useCallback(async (collectionId: string) => {
-    if (!user) throw new Error('You must be logged in to update a collection');
+  const toggleFavorite = useCallback(
+    async (collectionId: string) => {
+      if (!user)
+        throw new Error('You must be logged in to update a collection');
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
-
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
-      }
-
-      const currentData = docSnap.data();
-      const newStatus = !currentData.is_favorite;
-      
-      await updateDoc(docRef, {
-        is_favorite: newStatus,
-        updated_at: serverTimestamp()
-      });
-
-      toast.success(newStatus ? 'Added to favorites' : 'Removed from favorites');
-      
-      return {
-        id: collectionId,
-        ...currentData,
-        is_favorite: newStatus,
-        updated_at: new Date()
-      } as unknown as CollectionData;
-    } catch (err) {
-      console.error('Error toggling favorite status:', err);
-      toast.error('Failed to update favorite status');
-      throw err;
-    }
-  }, [user]);
-
-  // Batch toggle favorite for multiple collections
-  const batchToggleFavorite = useCallback(async (collectionIds: string[], status: boolean) => {
-    if (!user) throw new Error('You must be logged in to update collections');
-    if (collectionIds.length === 0) return true;
-
-    try {
-      const batch = writeBatch(db);
-      let unauthorized = false;
-
-      // First verify ownership of all collections
-      for (const id of collectionIds) {
-        const docRef = doc(db, 'collections', id);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
         const docSnap = await getDoc(docRef);
 
+        // Verify ownership
         if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-          unauthorized = true;
-          break;
+          throw new Error('Collection not found or access denied');
         }
 
-        batch.update(docRef, {
-          is_favorite: status,
-          updated_at: serverTimestamp()
+        const currentData = docSnap.data();
+        const newStatus = !currentData.is_favorite;
+
+        await updateDoc(docRef, {
+          is_favorite: newStatus,
+          updated_at: serverTimestamp(),
         });
-      }
 
-      if (unauthorized) {
-        throw new Error('One or more collections not found or access denied');
-      }
+        toast.success(
+          newStatus ? 'Added to favorites' : 'Removed from favorites'
+        );
 
-      await batch.commit();
-      toast.success(`${collectionIds.length} collections ${status ? 'added to' : 'removed from'} favorites`);
-      return true;
-    } catch (err) {
-      console.error('Error batch updating favorites:', err);
-      toast.error('Failed to update collections');
-      throw err;
-    }
-  }, [user]);
+        return {
+          id: collectionId,
+          ...currentData,
+          is_favorite: newStatus,
+          updated_at: new Date(),
+        } as unknown as CollectionData;
+      } catch (err) {
+        console.error('Error toggling favorite status:', err);
+        toast.error('Failed to update favorite status');
+        throw err;
+      }
+    },
+    [user]
+  );
+
+  // Batch toggle favorite for multiple collections
+  const batchToggleFavorite = useCallback(
+    async (collectionIds: string[], status: boolean) => {
+      if (!user) throw new Error('You must be logged in to update collections');
+      if (collectionIds.length === 0) return true;
+
+      try {
+        const batch = writeBatch(db);
+        let unauthorized = false;
+
+        // First verify ownership of all collections
+        for (const id of collectionIds) {
+          const docRef = doc(db, 'collections', id);
+          const docSnap = await getDoc(docRef);
+
+          if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+            unauthorized = true;
+            break;
+          }
+
+          batch.update(docRef, {
+            is_favorite: status,
+            updated_at: serverTimestamp(),
+          });
+        }
+
+        if (unauthorized) {
+          throw new Error('One or more collections not found or access denied');
+        }
+
+        await batch.commit();
+        toast.success(
+          `${collectionIds.length} collections ${status ? 'added to' : 'removed from'} favorites`
+        );
+        return true;
+      } catch (err) {
+        console.error('Error batch updating favorites:', err);
+        toast.error('Failed to update collections');
+        throw err;
+      }
+    },
+    [user]
+  );
 
   // Add a plaque to a collection
-  const addPlaqueToCollection = useCallback(async (collectionId: string, plaqueId: number) => {
-    if (!user) throw new Error('You must be logged in to update a collection');
+  const addPlaqueToCollection = useCallback(
+    async (collectionId: string, plaqueId: number) => {
+      if (!user)
+        throw new Error('You must be logged in to update a collection');
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
+        // Verify ownership
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          throw new Error('Collection not found or access denied');
+        }
+
+        // Get current plaques array
+        const currentData = docSnap.data();
+        const currentPlaques = currentData.plaques || [];
+
+        // Only add if not already in collection
+        if (!currentPlaques.includes(plaqueId)) {
+          await updateDoc(docRef, {
+            plaques: arrayUnion(plaqueId),
+            updated_at: serverTimestamp(),
+          });
+
+          toast.success('Plaque added to collection');
+        } else {
+          toast.info('Plaque is already in this collection');
+        }
+
+        return getCollection(collectionId);
+      } catch (err) {
+        console.error('Error adding plaque to collection:', err);
+        toast.error('Failed to add plaque to collection');
+        throw err;
       }
-
-      // Get current plaques array
-      const currentData = docSnap.data();
-      const currentPlaques = currentData.plaques || [];
-
-      // Only add if not already in collection
-      if (!currentPlaques.includes(plaqueId)) {
-        await updateDoc(docRef, {
-          plaques: arrayUnion(plaqueId),
-          updated_at: serverTimestamp()
-        });
-
-        toast.success('Plaque added to collection');
-      } else {
-        toast.info('Plaque is already in this collection');
-      }
-      
-      return getCollection(collectionId);
-    } catch (err) {
-      console.error('Error adding plaque to collection:', err);
-      toast.error('Failed to add plaque to collection');
-      throw err;
-    }
-  }, [user, getCollection]);
+    },
+    [user, getCollection]
+  );
 
   // Add multiple plaques to a collection
-  const addPlaquesToCollection = useCallback(async (collectionId: string, plaqueIds: number[]) => {
-    if (!user) throw new Error('You must be logged in to update a collection');
-    if (plaqueIds.length === 0) return getCollection(collectionId);
+  const addPlaquesToCollection = useCallback(
+    async (collectionId: string, plaqueIds: number[]) => {
+      if (!user)
+        throw new Error('You must be logged in to update a collection');
+      if (plaqueIds.length === 0) return getCollection(collectionId);
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
+        // Verify ownership
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          throw new Error('Collection not found or access denied');
+        }
+
+        // Get current plaques array
+        const currentData = docSnap.data();
+        const currentPlaques = currentData.plaques || [];
+
+        // Filter out already included plaques
+        const newPlaques = plaqueIds.filter(
+          (id) => !currentPlaques.includes(id)
+        );
+
+        if (newPlaques.length > 0) {
+          // Add all new plaques at once
+          await updateDoc(docRef, {
+            plaques: [...currentPlaques, ...newPlaques],
+            updated_at: serverTimestamp(),
+          });
+
+          toast.success(`${newPlaques.length} plaques added to collection`);
+        } else {
+          toast.info('All selected plaques are already in this collection');
+        }
+
+        return getCollection(collectionId);
+      } catch (err) {
+        console.error('Error adding plaques to collection:', err);
+        toast.error('Failed to add plaques to collection');
+        throw err;
       }
-
-      // Get current plaques array
-      const currentData = docSnap.data();
-      const currentPlaques = currentData.plaques || [];
-
-      // Filter out already included plaques
-      const newPlaques = plaqueIds.filter(id => !currentPlaques.includes(id));
-      
-      if (newPlaques.length > 0) {
-        // Add all new plaques at once
-        await updateDoc(docRef, {
-          plaques: [...currentPlaques, ...newPlaques],
-          updated_at: serverTimestamp()
-        });
-
-        toast.success(`${newPlaques.length} plaques added to collection`);
-      } else {
-        toast.info('All selected plaques are already in this collection');
-      }
-      
-      return getCollection(collectionId);
-    } catch (err) {
-      console.error('Error adding plaques to collection:', err);
-      toast.error('Failed to add plaques to collection');
-      throw err;
-    }
-  }, [user, getCollection]);
+    },
+    [user, getCollection]
+  );
 
   // Remove a plaque from a collection
-  const removePlaqueFromCollection = useCallback(async (collectionId: string, plaqueId: number) => {
-    if (!user) throw new Error('You must be logged in to update a collection');
+  const removePlaqueFromCollection = useCallback(
+    async (collectionId: string, plaqueId: number) => {
+      if (!user)
+        throw new Error('You must be logged in to update a collection');
 
-    try {
-      const docRef = doc(db, 'collections', collectionId);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-      // Verify ownership
-      if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-        throw new Error('Collection not found or access denied');
+        // Verify ownership
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          throw new Error('Collection not found or access denied');
+        }
+
+        await updateDoc(docRef, {
+          plaques: arrayRemove(plaqueId),
+          updated_at: serverTimestamp(),
+        });
+
+        toast.success('Plaque removed from collection');
+
+        return getCollection(collectionId);
+      } catch (err) {
+        console.error('Error removing plaque from collection:', err);
+        toast.error('Failed to remove plaque from collection');
+        throw err;
       }
+    },
+    [user, getCollection]
+  );
 
-      await updateDoc(docRef, {
-        plaques: arrayRemove(plaqueId),
-        updated_at: serverTimestamp()
-      });
+  // Remove multiple plaques from a collection
+  const removePlaquesFromCollection = useCallback(
+    async (collectionId: string, plaqueIds: number[]) => {
+      if (!user)
+        throw new Error('You must be logged in to update a collection');
+      if (plaqueIds.length === 0) return getCollection(collectionId);
 
-      toast.success('Plaque removed from collection');
-      
-      return getCollection(collectionId);
-    } catch (err) {
-      console.error('Error removing plaque from collection:', err);
-      toast.error('Failed to remove plaque from collection');
-      throw err;
-    }
-  }, [user, getCollection]);
+      try {
+        const docRef = doc(db, 'collections', collectionId);
+        const docSnap = await getDoc(docRef);
 
-// Remove multiple plaques from a collection
-const removePlaquesFromCollection = useCallback(async (collectionId: string, plaqueIds: number[]) => {
-  if (!user) throw new Error('You must be logged in to update a collection');
-  if (plaqueIds.length === 0) return getCollection(collectionId);
+        // Verify ownership
+        if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
+          throw new Error('Collection not found or access denied');
+        }
 
-  try {
-    const docRef = doc(db, 'collections', collectionId);
-    const docSnap = await getDoc(docRef);
+        // Get current plaques array
+        const currentData = docSnap.data();
+        const currentPlaques = currentData.plaques || [];
 
-    // Verify ownership
-    if (!docSnap.exists() || docSnap.data().user_id !== user.uid) {
-      throw new Error('Collection not found or access denied');
-    }
+        // Filter out plaques to remove
+        const updatedPlaques = currentPlaques.filter(
+          (id: number) => !plaqueIds.includes(id)
+        );
 
-    // Get current plaques array
-    const currentData = docSnap.data();
-    const currentPlaques = currentData.plaques || [];
+        await updateDoc(docRef, {
+          plaques: updatedPlaques,
+          updated_at: serverTimestamp(),
+        });
 
-    // Filter out plaques to remove
-    const updatedPlaques = currentPlaques.filter((id: number) => !plaqueIds.includes(id));
-    
-    await updateDoc(docRef, {
-      plaques: updatedPlaques,
-      updated_at: serverTimestamp()
-    });
+        toast.success(`${plaqueIds.length} plaques removed from collection`);
 
-    toast.success(`${plaqueIds.length} plaques removed from collection`);
-    
-    return getCollection(collectionId);
-  } catch (err) {
-    console.error('Error removing plaques from collection:', err);
-    toast.error('Failed to remove plaques from collection');
-    throw err;
-  }
-}, [user, getCollection]);
+        return getCollection(collectionId);
+      } catch (err) {
+        console.error('Error removing plaques from collection:', err);
+        toast.error('Failed to remove plaques from collection');
+        throw err;
+      }
+    },
+    [user, getCollection]
+  );
 
   // Duplicate a collection
-  const duplicateCollection = useCallback(async (collectionId: string, newName?: string) => {
-    if (!user) throw new Error('You must be logged in to duplicate a collection');
+  const duplicateCollection = useCallback(
+    async (collectionId: string, newName?: string) => {
+      if (!user)
+        throw new Error('You must be logged in to duplicate a collection');
 
-    try {
-      const sourceRef = doc(db, 'collections', collectionId);
-      const sourceSnap = await getDoc(sourceRef);
+      try {
+        const sourceRef = doc(db, 'collections', collectionId);
+        const sourceSnap = await getDoc(sourceRef);
 
-      // Check if collection exists and user has access
-      if (!sourceSnap.exists()) {
-        throw new Error('Collection not found');
+        // Check if collection exists and user has access
+        if (!sourceSnap.exists()) {
+          throw new Error('Collection not found');
+        }
+
+        const sourceData = sourceSnap.data();
+
+        // Verify ownership
+        if (sourceData.user_id !== user.uid) {
+          throw new Error('Access denied to this collection');
+        }
+
+        // Create a new collection with the same data
+        const duplicateData = {
+          name: newName || `${sourceData.name} (Copy)`,
+          description: sourceData.description || '',
+          icon: sourceData.icon,
+          color: sourceData.color,
+          is_favorite: false, // Reset favorite status
+          plaques: [...sourceData.plaques], // Copy plaques array
+          user_id: user.uid, // Set new owner
+          created_at: serverTimestamp(),
+          updated_at: serverTimestamp(),
+          tags: sourceData.tags || [],
+        };
+
+        const docRef = await addDoc(
+          collection(db, 'collections'),
+          duplicateData
+        );
+
+        toast.success('Collection duplicated successfully');
+
+        // Return the new collection
+        return {
+          id: docRef.id,
+          ...duplicateData,
+          created_at: new Date(),
+          updated_at: new Date(),
+        } as unknown as CollectionData;
+      } catch (err) {
+        console.error('Error duplicating collection:', err);
+        toast.error('Failed to duplicate collection');
+        throw err;
       }
-      
-      const sourceData = sourceSnap.data();
-      
-      // Verify ownership
-      if (sourceData.user_id !== user.uid) {
-        throw new Error('Access denied to this collection');
-      }
-
-      // Create a new collection with the same data
-      const duplicateData = {
-        name: newName || `${sourceData.name} (Copy)`,
-        description: sourceData.description || '',
-        icon: sourceData.icon,
-        color: sourceData.color,
-        is_favorite: false, // Reset favorite status
-        plaques: [...sourceData.plaques], // Copy plaques array
-        user_id: user.uid, // Set new owner
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        tags: sourceData.tags || []
-      };
-
-      const docRef = await addDoc(collection(db, 'collections'), duplicateData);
-      
-      toast.success('Collection duplicated successfully');
-      
-      // Return the new collection
-      return {
-        id: docRef.id,
-        ...duplicateData,
-        created_at: new Date(),
-        updated_at: new Date()
-      } as unknown as CollectionData;
-    } catch (err) {
-      console.error('Error duplicating collection:', err);
-      toast.error('Failed to duplicate collection');
-      throw err;
-    }
-  }, [user]);
+    },
+    [user]
+  );
 
   return {
     collections,
@@ -548,7 +613,7 @@ const removePlaquesFromCollection = useCallback(async (collectionId: string, pla
     addPlaquesToCollection,
     removePlaqueFromCollection,
     removePlaquesFromCollection,
-    duplicateCollection
+    duplicateCollection,
   };
 };
 

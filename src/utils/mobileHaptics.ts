@@ -1,4 +1,11 @@
-export type HapticType = 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error';
+export type HapticType =
+  | 'light'
+  | 'medium'
+  | 'heavy'
+  | 'selection'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 export const triggerHapticFeedback = (type: HapticType = 'light') => {
   // Check if device supports haptic feedback
@@ -10,7 +17,7 @@ export const triggerHapticFeedback = (type: HapticType = 'light') => {
       selection: [5],
       success: [10, 50, 10],
       warning: [20, 100, 20],
-      error: [50, 100, 50]
+      error: [50, 100, 50],
     };
 
     try {
@@ -21,7 +28,10 @@ export const triggerHapticFeedback = (type: HapticType = 'light') => {
   }
 
   // For iOS devices with haptic feedback API
-  if ('DeviceMotionEvent' in window && 'requestPermission' in (DeviceMotionEvent as any)) {
+  if (
+    'DeviceMotionEvent' in window &&
+    'requestPermission' in (DeviceMotionEvent as any)
+  ) {
     try {
       // This would require iOS specific implementation
       // For now, we'll use the vibration API fallback

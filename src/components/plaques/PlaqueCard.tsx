@@ -1,22 +1,46 @@
 // src/components/plaques/PlaqueCard.tsx - Mobile optimized with touch enhancements
 import React, { useState } from 'react';
-import { MapPin, Star, CheckCircle, MoreVertical, Trash2, Plus, Calendar, Edit, X, Navigation, ExternalLink, Share2, Copy } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MobileButton } from "@/components/ui/mobile-button";
-import { MobileDialog } from "@/components/ui/mobile-dialog";
-import { MobileTextarea } from "@/components/ui/mobile-textarea";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  MapPin,
+  Star,
+  CheckCircle,
+  MoreVertical,
+  Trash2,
+  Plus,
+  Calendar,
+  Edit,
+  X,
+  Navigation,
+  ExternalLink,
+  Share2,
+  Copy,
+} from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { MobileButton } from '@/components/ui/mobile-button';
+import { MobileDialog } from '@/components/ui/mobile-dialog';
+import { MobileTextarea } from '@/components/ui/mobile-textarea';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import { Plaque } from '@/types/plaque';
-import PlaqueImage from './PlaqueImage'; 
+import PlaqueImage from './PlaqueImage';
 import { useVisitedPlaques } from '@/hooks/useVisitedPlaques';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuthGate } from '@/hooks/useAuthGate';
@@ -67,7 +91,7 @@ export const PlaqueCard = ({
   showDistance = false,
   distance,
   formatDistance = (d) => `${d.toFixed(1)} km`,
-  onFavoriteToggle
+  onFavoriteToggle,
 }: PlaqueCardProps) => {
   // State for various dialogs and actions
   const [showDropdown, setShowDropdown] = useState(false);
@@ -75,26 +99,27 @@ export const PlaqueCard = ({
   const [showQuickVisitDialog, setShowQuickVisitDialog] = useState(false);
   const [showEditVisitDialog, setShowEditVisitDialog] = useState(false);
   const [showDeleteVisitConfirm, setShowDeleteVisitConfirm] = useState(false);
-  
+
   // Quick visit form state
   const [visitDate, setVisitDate] = useState<Date>(new Date());
   const [visitNotes, setVisitNotes] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   // Use hooks for consistent state management
-  const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo } = useVisitedPlaques();
+  const { isPlaqueVisited, markAsVisited, removeVisit, getVisitInfo } =
+    useVisitedPlaques();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { isKeyboardOpen, keyboardHeight } = useKeyboardDetection();
-  
+
   // Auth gate integration
-  const { 
-    requireAuthForVisit, 
-    requireAuthForFavorite, 
+  const {
+    requireAuthForVisit,
+    requireAuthForFavorite,
     requireAuthForCollection,
-    isAuthenticated 
+    isAuthenticated,
   } = useAuthGate();
-  
+
   // Determine if the plaque is visited and get visit info
   const isVisited = plaque.visited || isPlaqueVisited(plaque.id);
   const isFav = isFavorite(plaque.id);
@@ -104,7 +129,7 @@ export const PlaqueCard = ({
   const navigateToPlaque = (plaque: Plaque, mode: NavigationMode) => {
     triggerHapticFeedback('selection');
     console.log(`Navigating to plaque ${plaque.id} with mode: ${mode}`);
-    
+
     switch (mode) {
       case 'url':
         window.location.href = `/plaque/${plaque.id}`;
@@ -126,17 +151,18 @@ export const PlaqueCard = ({
 
   // Event handlers with haptic feedback
   const handleCardClick = (e: React.MouseEvent) => {
-    if (e.target instanceof Element && (
-      e.target.closest('button') ||
-      e.target.closest('[role="menuitem"]') ||
-      e.target.closest('.dropdown-menu') ||
-      e.target.closest('[data-radix-portal]') ||
-      e.target.closest('[data-state]')
-    )) {
+    if (
+      e.target instanceof Element &&
+      (e.target.closest('button') ||
+        e.target.closest('[role="menuitem"]') ||
+        e.target.closest('.dropdown-menu') ||
+        e.target.closest('[data-radix-portal]') ||
+        e.target.closest('[data-state]'))
+    ) {
       console.log('Click blocked - interacting with UI element');
       return;
     }
-    
+
     console.log(`Card clicked for plaque: ${plaque.title}`);
     navigateToPlaque(plaque, navigationMode);
   };
@@ -146,7 +172,7 @@ export const PlaqueCard = ({
     e.stopPropagation();
     triggerHapticFeedback('selection');
     console.log(`Toggling favorite for plaque: ${plaque.id}`);
-    
+
     const favoriteAction = () => {
       if (onFavoriteToggle) {
         onFavoriteToggle(plaque.id);
@@ -158,8 +184,6 @@ export const PlaqueCard = ({
 
     requireAuthForFavorite(plaque.id, favoriteAction);
   };
-
-
 
   const handleQuickMarkVisited = () => {
     const visitAction = () => {
@@ -233,14 +257,18 @@ export const PlaqueCard = ({
 
   const handleShare = async () => {
     const shareUrl = generatePlaqueUrl(plaque.id);
-    
+
     const shareData = {
       title: plaque.title,
       text: `Check out this historic plaque: ${plaque.title}`,
       url: shareUrl,
     };
 
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare(shareData)
+    ) {
       try {
         await navigator.share(shareData);
         triggerHapticFeedback('success');
@@ -259,22 +287,22 @@ export const PlaqueCard = ({
   const handleQuickVisitSubmit = async () => {
     setIsProcessing(true);
     triggerHapticFeedback('light');
-    
+
     try {
       await markAsVisited(plaque.id, {
         visitedAt: visitDate.toISOString(),
         notes: visitNotes,
       });
-      
+
       triggerHapticFeedback('success');
-      toast.success("Marked as visited");
+      toast.success('Marked as visited');
       setShowQuickVisitDialog(false);
       setVisitNotes('');
       setVisitDate(new Date());
     } catch (error) {
-      console.error("Error marking as visited:", error);
+      console.error('Error marking as visited:', error);
       triggerHapticFeedback('error');
-      toast.error("Failed to mark as visited");
+      toast.error('Failed to mark as visited');
     } finally {
       setIsProcessing(false);
     }
@@ -282,19 +310,19 @@ export const PlaqueCard = ({
 
   const handleConfirmDeleteVisit = async () => {
     if (!visitInfo) return;
-    
+
     setIsProcessing(true);
     triggerHapticFeedback('light');
-    
+
     try {
       await removeVisit(visitInfo.id);
       triggerHapticFeedback('success');
-      toast.success("Visit deleted");
+      toast.success('Visit deleted');
       setShowDeleteVisitConfirm(false);
     } catch (error) {
-      console.error("Error deleting visit:", error);
+      console.error('Error deleting visit:', error);
       triggerHapticFeedback('error');
-      toast.error("Failed to delete visit");
+      toast.error('Failed to delete visit');
     } finally {
       setIsProcessing(false);
     }
@@ -327,33 +355,37 @@ export const PlaqueCard = ({
     }
   };
 
-const handleCheckboxChange = () => {
-  if (onSelect) {
-    onSelect(plaque.id);
-  }
-};
+  const handleCheckboxChange = () => {
+    if (onSelect) {
+      onSelect(plaque.id);
+    }
+  };
 
   return (
     <>
-      <Card 
+      <Card
         className={`overflow-hidden transition-all duration-200 cursor-pointer group relative h-full touch-manipulation ${
           isSelected ? 'ring-2 ring-blue-500' : ''
         } ${getHoverClasses()} ${className}`}
         onClick={handleCardClick}
-        title={navigationMode === 'new-tab' ? 'Click to open in new tab' : 
-              navigationMode === 'url' ? 'Click to view details' : 
-              'Click to view details'}
+        title={
+          navigationMode === 'new-tab'
+            ? 'Click to open in new tab'
+            : navigationMode === 'url'
+              ? 'Click to view details'
+              : 'Click to view details'
+        }
       >
         {/* Image container - Mobile optimized */}
         <div className="relative h-40 sm:h-44 bg-blue-50">
-          <PlaqueImage 
+          <PlaqueImage
             src={getImageUrl()}
-            alt={plaque.title} 
+            alt={plaque.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             placeholderClassName="bg-blue-50"
             plaqueColor={getPlaqueColor()}
           />
-          
+
           {/* Navigation mode indicator */}
           {navigationMode === 'new-tab' && (
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -362,12 +394,12 @@ const handleCheckboxChange = () => {
               </div>
             </div>
           )}
-          
+
           {/* Actions menu - Mobile optimized */}
           <div className="absolute top-3 right-3 z-20">
             <DropdownMenu open={showDropdown} onOpenChange={setShowDropdown}>
               <DropdownMenuTrigger asChild>
-                <MobileButton 
+                <MobileButton
                   variant="ghost"
                   size="sm"
                   className="rounded-full bg-black/30 hover:bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity p-0 w-10 h-10"
@@ -381,14 +413,14 @@ const handleCheckboxChange = () => {
                   <MoreVertical size={18} />
                 </MobileButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                align="end" 
-                className="w-52" 
+              <DropdownMenuContent
+                align="end"
+                className="w-52"
                 onClick={(e) => e.stopPropagation()}
                 sideOffset={8}
               >
                 {/* View Full Details option */}
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
                     handleViewFullDetails(e as unknown as React.MouseEvent);
@@ -398,11 +430,11 @@ const handleCheckboxChange = () => {
                   <ExternalLink size={16} className="mr-3 text-blue-600" />
                   <span className="text-base">View Full Details</span>
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuSeparator />
-                
+
                 {/* Share options */}
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
                     handleShare();
@@ -412,8 +444,8 @@ const handleCheckboxChange = () => {
                   <Share2 size={16} className="mr-3 text-purple-600" />
                   <span className="text-base">Share Plaque</span>
                 </DropdownMenuItem>
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
                     handleCopyLink();
@@ -423,12 +455,12 @@ const handleCheckboxChange = () => {
                   <Copy size={16} className="mr-3 text-gray-600" />
                   <span className="text-base">Copy Link</span>
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuSeparator />
-                
+
                 {/* Visit actions */}
                 {!isVisited ? (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       handleQuickMarkVisited();
@@ -439,9 +471,10 @@ const handleCheckboxChange = () => {
                     <span className="text-base">Mark as visited</span>
                   </DropdownMenuItem>
                 ) : (
-                  isAuthenticated && visitInfo && (
+                  isAuthenticated &&
+                  visitInfo && (
                     <>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onSelect={(e) => {
                           e.preventDefault();
                           handleEditVisit();
@@ -451,7 +484,7 @@ const handleCheckboxChange = () => {
                         <Edit size={16} className="mr-3 text-blue-600" />
                         <span className="text-base">Edit visit</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onSelect={(e) => {
                           e.preventDefault();
                           handleDeleteVisit();
@@ -464,22 +497,27 @@ const handleCheckboxChange = () => {
                     </>
                   )
                 )}
-                
+
                 {/* Favorite action */}
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
                     handleFavoriteToggle(e as unknown as React.MouseEvent);
                   }}
                   className="cursor-pointer py-3"
                 >
-                  <Star size={16} className={`mr-3 ${isFav ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
-                  <span className="text-base">{isFav ? 'Remove from favorites' : 'Add to favorites'}</span>
+                  <Star
+                    size={16}
+                    className={`mr-3 ${isFav ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`}
+                  />
+                  <span className="text-base">
+                    {isFav ? 'Remove from favorites' : 'Add to favorites'}
+                  </span>
                 </DropdownMenuItem>
 
                 {/* Collection action */}
                 {variant === 'discover' && (
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       handleAddToCollection();
@@ -490,105 +528,135 @@ const handleCheckboxChange = () => {
                     <span className="text-base">Add to collection</span>
                   </DropdownMenuItem>
                 )}
-                
+
                 {/* Remove from collection */}
-                {variant === 'collection' && onRemovePlaque && isAuthenticated && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        handleRemove();
-                      }}
-                      className="cursor-pointer py-3"
-                    >
-                      <Trash2 size={16} className="mr-3 text-red-600" />
-                      <span className="text-base">Remove from collection</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
+                {variant === 'collection' &&
+                  onRemovePlaque &&
+                  isAuthenticated && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          handleRemove();
+                        }}
+                        className="cursor-pointer py-3"
+                      >
+                        <Trash2 size={16} className="mr-3 text-red-600" />
+                        <span className="text-base">
+                          Remove from collection
+                        </span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          
+
           {/* Status badges - Mobile optimized */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             {/* Distance badge */}
-            {showDistance && distance !== undefined && distance !== Infinity && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800 text-sm py-1 px-2">
-                <Navigation size={12} className="mr-1" />
-                {formatDistance(distance)}
-              </Badge>
-            )}
-            
+            {showDistance &&
+              distance !== undefined &&
+              distance !== Infinity && (
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800 text-sm py-1 px-2"
+                >
+                  <Navigation size={12} className="mr-1" />
+                  {formatDistance(distance)}
+                </Badge>
+              )}
+
             {isVisited && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800 text-sm py-1 px-2">
-                <CheckCircle size={12} className="mr-1" /> 
+              <Badge
+                variant="secondary"
+                className="bg-green-100 text-green-800 text-sm py-1 px-2"
+              >
+                <CheckCircle size={12} className="mr-1" />
                 {formatVisitDate()}
               </Badge>
             )}
             {isFav && (
-              <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-sm py-1 px-2">
+              <Badge
+                variant="secondary"
+                className="bg-amber-100 text-amber-800 text-sm py-1 px-2"
+              >
                 <Star size={12} className="mr-1 fill-amber-600" /> Favorite
               </Badge>
             )}
           </div>
         </div>
-        
+
         {/* Content - Mobile optimized */}
         <CardHeader className="pb-3 px-4 sm:px-6">
           <CardTitle className="text-lg sm:text-xl font-bold group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
             {plaque.title}
           </CardTitle>
           <CardDescription className="flex items-start text-gray-500 text-base mt-2">
-            <MapPin size={14} className="mr-2 mt-0.5 shrink-0" /> 
+            <MapPin size={14} className="mr-2 mt-0.5 shrink-0" />
             <span className="line-clamp-2">{getLocationDisplay()}</span>
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="pt-0 px-4 sm:px-6 pb-4">
           {/* Badges - Mobile optimized */}
           <div className="flex flex-wrap gap-2 mb-3">
-            {getPlaqueColor() && getPlaqueColor() !== "Unknown" && (
-              <Badge 
-                variant="outline" 
+            {getPlaqueColor() && getPlaqueColor() !== 'Unknown' && (
+              <Badge
+                variant="outline"
                 className={`text-sm py-1 px-2 ${
-                  getPlaqueColor() === 'blue' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                  getPlaqueColor() === 'green' ? 'bg-green-50 text-green-700 border-green-200' :
-                  getPlaqueColor() === 'brown' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                  getPlaqueColor() === 'black' ? 'bg-gray-100 text-gray-700 border-gray-300' :
-                  'bg-gray-100 text-gray-700 border-gray-300'
+                  getPlaqueColor() === 'blue'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : getPlaqueColor() === 'green'
+                      ? 'bg-green-50 text-green-700 border-green-200'
+                      : getPlaqueColor() === 'brown'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : getPlaqueColor() === 'black'
+                          ? 'bg-gray-100 text-gray-700 border-gray-300'
+                          : 'bg-gray-100 text-gray-700 border-gray-300'
                 }`}
               >
-                {getPlaqueColor().charAt(0).toUpperCase() + getPlaqueColor().slice(1)} Plaque
+                {getPlaqueColor().charAt(0).toUpperCase() +
+                  getPlaqueColor().slice(1)}{' '}
+                Plaque
               </Badge>
             )}
-            
-            {plaque.lead_subject_primary_role && plaque.lead_subject_primary_role !== "Unknown" && (
-              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 text-sm py-1 px-2">
-                {(plaque.lead_subject_primary_role as string).charAt(0).toUpperCase() + 
-                 (plaque.lead_subject_primary_role as string).slice(1)}
-              </Badge>
-            )}
+
+            {plaque.lead_subject_primary_role &&
+              plaque.lead_subject_primary_role !== 'Unknown' && (
+                <Badge
+                  variant="outline"
+                  className="bg-gray-50 text-gray-700 border-gray-200 text-sm py-1 px-2"
+                >
+                  {(plaque.lead_subject_primary_role as string)
+                    .charAt(0)
+                    .toUpperCase() +
+                    (plaque.lead_subject_primary_role as string).slice(1)}
+                </Badge>
+              )}
           </div>
-          
+
           {/* Description preview */}
           {plaque.inscription && (
             <p className="mt-3 text-sm sm:text-base text-gray-600 line-clamp-2 leading-relaxed">
               {plaque.inscription}
             </p>
           )}
-          
+
           {/* Navigation mode hint */}
           {navigationMode === 'new-tab' && (
             <div className="mt-3">
-              <Badge variant="outline" className="text-sm bg-blue-50 text-blue-600 border-blue-200 py-1 px-2">
+              <Badge
+                variant="outline"
+                className="text-sm bg-blue-50 text-blue-600 border-blue-200 py-1 px-2"
+              >
                 <ExternalLink size={12} className="mr-1" />
                 Opens in new tab
               </Badge>
             </div>
           )}
-          
+
           {/* Route button - Mobile optimized */}
           {showRouteButton && onAddToRoute && (
             <div className="mt-4">
@@ -604,7 +672,7 @@ const handleCheckboxChange = () => {
               </MobileButton>
             </div>
           )}
-          
+
           {/* Selection checkbox - Mobile optimized */}
           {showSelection && onSelect && (
             <div className="mt-4 flex items-center">
@@ -641,7 +709,7 @@ const handleCheckboxChange = () => {
               >
                 Cancel
               </MobileButton>
-              <MobileButton 
+              <MobileButton
                 onClick={handleQuickVisitSubmit}
                 disabled={isProcessing}
                 className="flex-1"
@@ -663,7 +731,9 @@ const handleCheckboxChange = () => {
                     touchOptimized={true}
                   >
                     <Calendar className="mr-3 h-5 w-5" />
-                    <span className="text-base">{format(visitDate, "PPP")}</span>
+                    <span className="text-base">
+                      {format(visitDate, 'PPP')}
+                    </span>
                   </MobileButton>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -677,7 +747,9 @@ const handleCheckboxChange = () => {
                         setShowCalendar(false);
                       }
                     }}
-                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                    disabled={(date) =>
+                      date > new Date() || date < new Date('1900-01-01')
+                    }
                     initialFocus
                   />
                 </PopoverContent>
@@ -727,7 +799,7 @@ const handleCheckboxChange = () => {
               >
                 Cancel
               </MobileButton>
-              <MobileButton 
+              <MobileButton
                 variant="destructive"
                 onClick={handleConfirmDeleteVisit}
                 disabled={isProcessing}
@@ -740,7 +812,8 @@ const handleCheckboxChange = () => {
         >
           <div className="py-4">
             <p className="text-base text-gray-600 leading-relaxed">
-              Are you sure you want to delete your visit to this plaque? This action cannot be undone.
+              Are you sure you want to delete your visit to this plaque? This
+              action cannot be undone.
             </p>
           </div>
         </MobileDialog>

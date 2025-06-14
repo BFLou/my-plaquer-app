@@ -1,8 +1,16 @@
 // src/components/settings/SettingsTabs.tsx
 import React, { useRef, useEffect } from 'react';
-import { User, Lock, BellRing, Shield, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  User,
+  Lock,
+  BellRing,
+  Shield,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 
 interface SettingsTabsProps {
   currentTab: string;
@@ -17,7 +25,10 @@ const tabs = [
   { value: 'location', icon: MapPin, label: 'Location' },
 ];
 
-const SettingsTabs: React.FC<SettingsTabsProps> = ({ currentTab, onTabChange }) => {
+const SettingsTabs: React.FC<SettingsTabsProps> = ({
+  currentTab,
+  onTabChange,
+}) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = React.useState(false);
   const [showRightScroll, setShowRightScroll] = React.useState(false);
@@ -50,12 +61,17 @@ const SettingsTabs: React.FC<SettingsTabsProps> = ({ currentTab, onTabChange }) 
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const activeTab = container.querySelector(`[data-value="${currentTab}"]`) as HTMLElement;
+    const activeTab = container.querySelector(
+      `[data-value="${currentTab}"]`
+    ) as HTMLElement;
     if (activeTab) {
       const containerRect = container.getBoundingClientRect();
       const tabRect = activeTab.getBoundingClientRect();
-      
-      if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+
+      if (
+        tabRect.left < containerRect.left ||
+        tabRect.right > containerRect.right
+      ) {
         activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center' });
       }
     }
@@ -91,7 +107,7 @@ const SettingsTabs: React.FC<SettingsTabsProps> = ({ currentTab, onTabChange }) 
         )}
 
         {/* Tabs container */}
-        <div 
+        <div
           ref={scrollContainerRef}
           className="flex overflow-x-auto scrollbar-hide border-b scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -99,16 +115,16 @@ const SettingsTabs: React.FC<SettingsTabsProps> = ({ currentTab, onTabChange }) 
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = currentTab === tab.value;
-            
+
             return (
               <button
                 key={tab.value}
                 data-value={tab.value}
                 className={cn(
-                  "flex-shrink-0 px-4 py-3 font-medium text-sm whitespace-nowrap transition-all flex items-center gap-2 min-w-[120px] justify-center min-h-[52px]",
-                  isActive 
-                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50" 
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                  'flex-shrink-0 px-4 py-3 font-medium text-sm whitespace-nowrap transition-all flex items-center gap-2 min-w-[120px] justify-center min-h-[52px]',
+                  isActive
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                 )}
                 onClick={() => onTabChange(tab.value)}
               >

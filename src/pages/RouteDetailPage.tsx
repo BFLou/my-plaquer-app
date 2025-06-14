@@ -35,13 +35,15 @@ const getValidCoordinates = (plaque: Plaque): [number, number] => {
 };
 
 // FIXED: Filter out invalid plaques
-const getValidPlaques = (plaques: Plaque[]): Array<Plaque & { validCoords: [number, number] }> => {
+const getValidPlaques = (
+  plaques: Plaque[]
+): Array<Plaque & { validCoords: [number, number] }> => {
   return plaques
-    .map(plaque => {
+    .map((plaque) => {
       const validCoords = getValidCoordinates(plaque);
       return { ...plaque, validCoords };
     })
-    .filter(plaque => {
+    .filter((plaque) => {
       const [lat, lng] = plaque.validCoords;
       return lat !== 0 || lng !== 0; // Filter out 0,0 coordinates
     });
@@ -55,20 +57,24 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   showRoute = true,
   routeColor = '#22c55e',
   useWalkingRoutes = false,
-  onError
+  onError,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const initializingRef = useRef(false);
-  const [walkingRouteGeometry, setWalkingRouteGeometry] = useState<[number, number][][]>([]);
+  const [walkingRouteGeometry, setWalkingRouteGeometry] = useState<
+    [number, number][][]
+  >([]);
   const [isLoadingWalkingRoute, setIsLoadingWalkingRoute] = useState(false);
 
   // Load walking route data
-  const loadWalkingRoute = async (validPlaques: Array<Plaque & { validCoords: [number, number] }>) => {
+  const loadWalkingRoute = async (
+    validPlaques: Array<Plaque & { validCoords: [number, number] }>
+  ) => {
     if (!useWalkingRoutes || validPlaques.length < 2) {
-      console.log('🚶 Walking routes disabled or insufficient plaques:', { 
-        useWalkingRoutes, 
-        plaqueCount: validPlaques.length 
+      console.log('🚶 Walking routes disabled or insufficient plaques:', {
+        useWalkingRoutes,
+        plaqueCount: validPlaques.length,
       });
       setIsLoadingWalkingRoute(false);
       return;
@@ -76,27 +82,40 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
     try {
       setIsLoadingWalkingRoute(true);
-      console.log('🚶 Loading walking route for', validPlaques.length, 'plaques');
-      
+      console.log(
+        '🚶 Loading walking route for',
+        validPlaques.length,
+        'plaques'
+      );
+
       const routeData = await calculateMultiWaypointRoute(validPlaques);
-      
+
       console.log('🚶 Walking route result:', {
         totalDistance: routeData.totalDistance,
         totalDuration: routeData.totalDuration,
         segmentCount: routeData.segments?.length || 0,
-        hasError: !!routeData.error
+        hasError: !!routeData.error,
       });
-      
+
       if (routeData.segments && routeData.segments.length > 0) {
-        const geometry = routeData.segments.map(segment => segment.route.geometry);
+        const geometry = routeData.segments.map(
+          (segment) => segment.route.geometry
+        );
         setWalkingRouteGeometry(geometry);
-        console.log('✅ Walking route loaded successfully - should show GREEN lines');
+        console.log(
+          '✅ Walking route loaded successfully - should show GREEN lines'
+        );
       } else {
-        console.log('⚠️ No walking route geometry available - will show YELLOW fallback');
+        console.log(
+          '⚠️ No walking route geometry available - will show YELLOW fallback'
+        );
         setWalkingRouteGeometry([]);
       }
     } catch (error) {
-      console.error('❌ Error loading walking route - will show YELLOW fallback:', error);
+      console.error(
+        '❌ Error loading walking route - will show YELLOW fallback:',
+        error
+      );
       setWalkingRouteGeometry([]);
     } finally {
       setIsLoadingWalkingRoute(false);
@@ -105,11 +124,11 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
   useEffect(() => {
     let mounted = true;
-    
+
     const initializeMap = async () => {
       // Prevent multiple initializations
       if (initializingRef.current || !mapRef.current) return;
-      
+
       // FIXED: Get valid plaques first
       const validPlaques = getValidPlaques(plaques);
       if (!validPlaques.length) {
@@ -117,7 +136,7 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         if (onError) onError();
         return;
       }
-      
+
       initializingRef.current = true;
 
       try {
@@ -129,19 +148,22 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
         // Import Leaflet
         const L = (await import('leaflet')).default;
-        
+
         // Fix marker icons
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconRetinaUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+          iconUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         });
 
         if (!mounted || !mapRef.current) return;
 
         // FIXED: Calculate center from valid coordinates
-        const coords = validPlaques.map(p => p.validCoords);
+        const coords = validPlaques.map((p) => p.validCoords);
         const lats = coords.map(([lat]) => lat);
         const lngs = coords.map(([, lng]) => lng);
         const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
@@ -150,12 +172,13 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         // Create map
         const map = L.map(mapRef.current, {
           zoomControl: true,
-          attributionControl: true
+          attributionControl: true,
         }).setView([centerLat, centerLng], 13);
 
         // Add tile layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         }).addTo(map);
 
         mapInstanceRef.current = map;
@@ -209,14 +232,14 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
             className: 'custom-route-marker',
             html: iconHtml,
             iconSize: [28, 28],
-            iconAnchor: [14, 14]
+            iconAnchor: [14, 14],
           });
 
           const marker = L.marker([lat, lng], { icon }).addTo(map);
-          
+
           // Add click handler
           marker.on('click', createClickHandler(plaque));
-          
+
           // Add popup
           const popupContent = `
             <div style="padding: 4px; min-width: 150px;">
@@ -228,13 +251,15 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
               </div>
             </div>
           `;
-          
+
           marker.bindPopup(popupContent);
           markers.push(marker);
         });
 
         // FIXED: DON'T add any routes here - wait for walking routes to load
-        console.log('🗺️ Map initialized, deferring route rendering until walking route calculation completes');
+        console.log(
+          '🗺️ Map initialized, deferring route rendering until walking route calculation completes'
+        );
 
         // Load walking route if enabled
         if (useWalkingRoutes) {
@@ -246,11 +271,12 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
         // FIXED: Calculate bounds directly from coordinates
         if (validPlaques.length > 0) {
-          const coords: [number, number][] = validPlaques.map(p => p.validCoords);
+          const coords: [number, number][] = validPlaques.map(
+            (p) => p.validCoords
+          );
           const bounds = L.latLngBounds(coords);
           map.fitBounds(bounds.pad(0.05));
         }
-
       } catch (error) {
         console.error('Error initializing map:', error);
         if (onError) onError();
@@ -277,11 +303,13 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
 
     const L = (window as any).L;
     const validPlaques = getValidPlaques(plaques);
-    
+
     // Remove ALL existing route lines
     mapInstanceRef.current.eachLayer((layer: any) => {
-      if (layer.options?.className === 'walking-route-line' || 
-          layer.options?.className === 'fallback-route-line') {
+      if (
+        layer.options?.className === 'walking-route-line' ||
+        layer.options?.className === 'fallback-route-line'
+      ) {
         mapInstanceRef.current.removeLayer(layer);
       }
     });
@@ -298,20 +326,20 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
               weight: 4,
               opacity: 0.8,
               smoothFactor: 1,
-              className: 'walking-route-line'
+              className: 'walking-route-line',
             });
 
-            routeLine.on('mouseover', function(this: L.Polyline) {
+            routeLine.on('mouseover', function (this: L.Polyline) {
               this.setStyle({
                 weight: 6,
-                opacity: 1
+                opacity: 1,
               });
             });
 
-            routeLine.on('mouseout', function(this: L.Polyline) {
+            routeLine.on('mouseout', function (this: L.Polyline) {
               this.setStyle({
                 weight: 4,
-                opacity: 0.8
+                opacity: 0.8,
               });
             });
 
@@ -330,15 +358,17 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
       } else {
         // Only add fallback if walking routes failed or disabled (YELLOW, DASHED)
         console.log('⚠️ Adding fallback straight-line route (YELLOW/ORANGE)');
-        const routeCoords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
-        
+        const routeCoords: [number, number][] = validPlaques.map(
+          (plaque) => plaque.validCoords
+        );
+
         if (routeCoords.length > 1) {
           const fallbackLine = L.polyline(routeCoords, {
             color: '#f59e0b', // Amber for fallback
             weight: 3,
             opacity: 0.7,
             dashArray: '8, 4',
-            className: 'fallback-route-line'
+            className: 'fallback-route-line',
           });
 
           fallbackLine.bindPopup(`
@@ -354,14 +384,23 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
         }
       }
     }
-  }, [walkingRouteGeometry, routeColor, isLoadingWalkingRoute, showRoute, useWalkingRoutes, plaques.map(p => p.id).join(',')]);
+  }, [
+    walkingRouteGeometry,
+    routeColor,
+    isLoadingWalkingRoute,
+    showRoute,
+    useWalkingRoutes,
+    plaques.map((p) => p.id).join(','),
+  ]);
 
   // FIXED: Get valid plaques for display
   const validPlaques = getValidPlaques(plaques);
 
   if (!validPlaques.length) {
     return (
-      <div className={`relative ${className} flex items-center justify-center bg-gray-100`}>
+      <div
+        className={`relative ${className} flex items-center justify-center bg-gray-100`}
+      >
         <div className="text-center p-8">
           <div className="text-gray-500 mb-2">No valid coordinates found</div>
           <div className="text-sm text-gray-400">
@@ -376,15 +415,28 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     <div className={`relative ${className}`}>
       {/* Route info overlay */}
       <div className="absolute top-4 left-4 z-[1000] bg-white rounded-lg shadow-md p-3">
-        <div className="text-sm font-medium text-gray-900 mb-1">{route.name}</div>
+        <div className="text-sm font-medium text-gray-900 mb-1">
+          {route.name}
+        </div>
         <div className="text-xs text-gray-600 space-y-1">
           <div>📍 {validPlaques.length} stops</div>
           <div>📏 {route.total_distance.toFixed(1)} km</div>
           <div>⏱️ ~{Math.ceil(route.total_distance * 12)} min walk</div>
           {useWalkingRoutes && (
-            <div className={isLoadingWalkingRoute ? "text-blue-600" : walkingRouteGeometry.length > 0 ? "text-green-600" : "text-amber-600"}>
-              {isLoadingWalkingRoute ? '🔄 Loading walking route...' : 
-               walkingRouteGeometry.length > 0 ? '✅ Real walking paths' : '⚠️ Estimated paths'}
+            <div
+              className={
+                isLoadingWalkingRoute
+                  ? 'text-blue-600'
+                  : walkingRouteGeometry.length > 0
+                    ? 'text-green-600'
+                    : 'text-amber-600'
+              }
+            >
+              {isLoadingWalkingRoute
+                ? '🔄 Loading walking route...'
+                : walkingRouteGeometry.length > 0
+                  ? '✅ Real walking paths'
+                  : '⚠️ Estimated paths'}
             </div>
           )}
         </div>
@@ -396,8 +448,8 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
       </div>
 
       {/* Map container */}
-      <div 
-        ref={mapRef} 
+      <div
+        ref={mapRef}
         className="h-full w-full"
         style={{ minHeight: '400px' }}
       />

@@ -19,7 +19,7 @@ interface UnifiedControlPanelProps {
   onSetLocation: (coords: [number, number]) => void;
   onRadiusChange: (radius: number) => void;
   onClearDistanceFilter: () => void;
-  
+
   // Standard filter props
   plaques: Plaque[];
   visiblePlaques: Plaque[];
@@ -34,19 +34,19 @@ interface UnifiedControlPanelProps {
   onVisitedChange: (value: boolean) => void;
   onFavoritesChange: (value: boolean) => void;
   onResetStandardFilters: () => void;
-  
+
   // Route props
   routeMode: boolean;
   onToggleRoute: () => void;
   routePointsCount: number;
-  
+
   // Reset props
   onResetView: () => void;
-  
+
   // External functions
   isPlaqueVisited?: (id: number) => boolean;
   isFavorite?: (id: number) => boolean;
-  
+
   className?: string;
 
   // Organisation filter props
@@ -55,7 +55,9 @@ interface UnifiedControlPanelProps {
 }
 
 // Main Unified Control Panel Component
-export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = (props) => {
+export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = (
+  props
+) => {
   const mobile = isMobile();
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(true); // Start collapsed by default
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -65,9 +67,10 @@ export const UnifiedControlPanel: React.FC<UnifiedControlPanelProps> = (props) =
     if (!mobile) {
       const handleClickOutside = (event: MouseEvent) => {
         const target = event.target as Element;
-        const isControlPanel = target.closest('.desktop-compact-sidebar') || 
-                              target.closest('.desktop-floating-toggle');
-        
+        const isControlPanel =
+          target.closest('.desktop-compact-sidebar') ||
+          target.closest('.desktop-floating-toggle');
+
         if (!isControlPanel && !isDesktopCollapsed) {
           // Auto-collapse after 10 seconds of no interaction
           const timeout = setTimeout(() => {

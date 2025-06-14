@@ -15,11 +15,12 @@ interface PendingActionHandlerProps {
 
 export const PendingActionHandler: React.FC<PendingActionHandlerProps> = ({
   onCollectionAction,
-  onRouteAction
+  onRouteAction,
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { retrievePendingAction, restoreNavigation, clearStoredData } = useAuthGate();
+  const { retrievePendingAction, restoreNavigation, clearStoredData } =
+    useAuthGate();
   const { markAsVisited } = useVisitedPlaques();
   const { toggleFavorite } = useFavorites();
   const { createRoute } = useRoutes ? useRoutes() : { createRoute: null };
@@ -29,11 +30,13 @@ export const PendingActionHandler: React.FC<PendingActionHandlerProps> = ({
     if (!user) return;
 
     const handlePostAuthFlow = async () => {
-      console.log('🎯 PendingActionHandler: User authenticated, checking for pending actions...');
-      
+      console.log(
+        '🎯 PendingActionHandler: User authenticated, checking for pending actions...'
+      );
+
       // First, check for pending actions
       const pendingAction = retrievePendingAction();
-      
+
       if (pendingAction) {
         console.log('🎯 Executing pending action:', pendingAction);
 
@@ -41,7 +44,10 @@ export const PendingActionHandler: React.FC<PendingActionHandlerProps> = ({
           switch (pendingAction.type) {
             case 'mark-visited':
               if (pendingAction.plaqueId) {
-                await markAsVisited(pendingAction.plaqueId, pendingAction.data || {});
+                await markAsVisited(
+                  pendingAction.plaqueId,
+                  pendingAction.data || {}
+                );
                 toast.success('Plaque marked as visited!');
               }
               break;
@@ -66,11 +72,15 @@ export const PendingActionHandler: React.FC<PendingActionHandlerProps> = ({
                   // Delegate to parent component (e.g., MapContainer)
                   onRouteAction(pendingAction.routeData);
                   toast.success('Ready to save route!');
-                } else if (createRoute && pendingAction.routeData.points?.length >= 2) {
+                } else if (
+                  createRoute &&
+                  pendingAction.routeData.points?.length >= 2
+                ) {
                   // Handle route creation directly if possible
                   try {
                     await createRoute(
-                      pendingAction.routeData.name || `Route ${new Date().toLocaleDateString()}`,
+                      pendingAction.routeData.name ||
+                        `Route ${new Date().toLocaleDateString()}`,
                       pendingAction.routeData.description || '',
                       pendingAction.routeData.points,
                       pendingAction.routeData.distance || 0
@@ -97,7 +107,7 @@ export const PendingActionHandler: React.FC<PendingActionHandlerProps> = ({
       const restoredUrl = restoreNavigation();
       if (restoredUrl) {
         console.log('🔄 Restoring navigation to:', restoredUrl);
-        
+
         // Small delay to ensure the action completed and DOM is ready
         setTimeout(() => {
           navigate(restoredUrl, { replace: true });
@@ -117,7 +127,18 @@ export const PendingActionHandler: React.FC<PendingActionHandlerProps> = ({
     // Small delay to ensure all auth-dependent hooks are ready
     const timer = setTimeout(handlePostAuthFlow, 100);
     return () => clearTimeout(timer);
-  }, [user, retrievePendingAction, restoreNavigation, clearStoredData, markAsVisited, toggleFavorite, onCollectionAction, onRouteAction, createRoute, navigate]);
+  }, [
+    user,
+    retrievePendingAction,
+    restoreNavigation,
+    clearStoredData,
+    markAsVisited,
+    toggleFavorite,
+    onCollectionAction,
+    onRouteAction,
+    createRoute,
+    navigate,
+  ]);
 
   return null; // This is a logic-only component
 };

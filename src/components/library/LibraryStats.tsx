@@ -1,12 +1,12 @@
 // src/components/library/LibraryStats.tsx
 import React from 'react';
-import { 
-  FolderOpen, 
-  Route as RouteIcon, 
-  MapPin, 
-  TrendingUp, 
+import {
+  FolderOpen,
+  Route as RouteIcon,
+  MapPin,
+  TrendingUp,
   Clock,
-  Target
+  Target,
 } from 'lucide-react';
 
 interface LibraryStatsProps {
@@ -26,45 +26,45 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({
   uniquePlaquesVisited,
   totalPlaquesInCollections,
   totalRouteDistance,
-  className = ''
+  className = '',
 }) => {
   const stats = [
     {
       icon: FolderOpen,
       value: totalCollections,
       label: 'Collections',
-      color: 'purple'
+      color: 'purple',
     },
     {
       icon: Target,
       value: totalPlaquesInCollections,
       label: 'Collected',
-      color: 'blue'
+      color: 'blue',
     },
     {
       icon: RouteIcon,
       value: totalRoutes,
       label: 'Routes',
-      color: 'green'
+      color: 'green',
     },
     {
       icon: TrendingUp,
       value: `${totalRouteDistance.toFixed(1)}km`,
       label: 'Planned',
-      color: 'amber'
+      color: 'amber',
     },
     {
       icon: Clock,
       value: totalVisits,
       label: 'Visits',
-      color: 'red'
+      color: 'red',
     },
     {
       icon: MapPin,
       value: uniquePlaquesVisited,
       label: 'Unique',
-      color: 'indigo'
-    }
+      color: 'indigo',
+    },
   ];
 
   return (
@@ -75,10 +75,14 @@ const LibraryStats: React.FC<LibraryStatsProps> = ({
           const Icon = stat.icon;
           return (
             <div key={index} className="text-center">
-              <div className={`bg-${stat.color}-100 text-${stat.color}-600 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mx-auto mb-2`}>
+              <div
+                className={`bg-${stat.color}-100 text-${stat.color}-600 w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mx-auto mb-2`}
+              >
                 <Icon size={16} className="sm:w-5 sm:h-5" />
               </div>
-              <div className={`text-base sm:text-lg font-bold text-${stat.color}-600`}>
+              <div
+                className={`text-base sm:text-lg font-bold text-${stat.color}-600`}
+              >
                 {typeof stat.value === 'string' ? stat.value : stat.value}
               </div>
               <div className="text-xs text-gray-500 leading-tight">

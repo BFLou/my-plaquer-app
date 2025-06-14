@@ -1,17 +1,17 @@
 // src/components/maps/features/Desktop/DesktopCompactSidebar.tsx - UPDATED
 import React, { useState } from 'react';
-import { 
-  Filter, 
-  Route, 
+import {
+  Filter,
+  Route,
   RotateCcw,
   ChevronLeft,
   ChevronRight,
   Layers,
-  Navigation2
+  Navigation2,
 } from 'lucide-react';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Plaque } from '@/types/plaque';
 import DiscoverFilterDialog from '../../../plaques/DiscoverFilterDialog';
 import { CompactDistanceFilter } from '../Filters/CompactDistanceFilter';
@@ -30,7 +30,7 @@ interface DesktopCompactSidebarProps {
   onSetLocation: (coords: [number, number]) => void;
   onRadiusChange: (radius: number) => void;
   onClearDistanceFilter: () => void;
-  
+
   // Standard filter props
   plaques: Plaque[];
   selectedColors: string[];
@@ -46,25 +46,27 @@ interface DesktopCompactSidebarProps {
   onVisitedChange: (value: boolean) => void;
   onFavoritesChange: (value: boolean) => void;
   onResetStandardFilters: () => void;
-  
+
   // Route props
   routeMode: boolean;
   onToggleRoute: () => void;
   routePointsCount: number;
-  
+
   // Reset props
   onResetView: () => void;
-  
+
   // External functions
   isPlaqueVisited?: (id: number) => boolean;
   isFavorite?: (id: number) => boolean;
-  
+
   // Collapse state
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
 
-export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (props) => {
+export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
+  props
+) => {
   const {
     distanceFilter,
     onSetLocation,
@@ -91,62 +93,73 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
     isFavorite,
     isCollapsed,
     onToggleCollapse,
-    plaques
+    plaques,
   } = props;
 
   const [showStandardFilters, setShowStandardFilters] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
+  >({
     distance: false,
-    filters: false
+    filters: false,
   });
 
-  const activeStandardFilters = selectedColors.length + selectedPostcodes.length + 
-    selectedProfessions.length + selectedOrganisations.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
-  const totalActiveFilters = activeStandardFilters + (distanceFilter.enabled ? 1 : 0);
+  const activeStandardFilters =
+    selectedColors.length +
+    selectedPostcodes.length +
+    selectedProfessions.length +
+    selectedOrganisations.length +
+    (onlyVisited ? 1 : 0) +
+    (onlyFavorites ? 1 : 0);
+  const totalActiveFilters =
+    activeStandardFilters + (distanceFilter.enabled ? 1 : 0);
 
   const filterOptions = React.useMemo(() => {
     const postcodeCount: Record<string, number> = {};
     const colorCount: Record<string, number> = {};
     const professionCount: Record<string, number> = {};
     const organisationCount: Record<string, number> = {};
-    
-    plaques.forEach(plaque => {
-      if (plaque.postcode && plaque.postcode !== "Unknown") {
-        postcodeCount[plaque.postcode] = (postcodeCount[plaque.postcode] || 0) + 1;
-      }
-      
-      const color = plaque.color?.toLowerCase();
-      if (color && color !== "unknown") {
-        colorCount[color] = (colorCount[color] || 0) + 1;
-      }
-      
-      if (plaque.profession && plaque.profession !== "Unknown") {
-        professionCount[plaque.profession] = (professionCount[plaque.profession] || 0) + 1;
+
+    plaques.forEach((plaque) => {
+      if (plaque.postcode && plaque.postcode !== 'Unknown') {
+        postcodeCount[plaque.postcode] =
+          (postcodeCount[plaque.postcode] || 0) + 1;
       }
 
-      if (plaque.organisations && plaque.organisations !== "Unknown") {
-        organisationCount[plaque.organisations] = (organisationCount[plaque.organisations] || 0) + 1;
+      const color = plaque.color?.toLowerCase();
+      if (color && color !== 'unknown') {
+        colorCount[color] = (colorCount[color] || 0) + 1;
+      }
+
+      if (plaque.profession && plaque.profession !== 'Unknown') {
+        professionCount[plaque.profession] =
+          (professionCount[plaque.profession] || 0) + 1;
+      }
+
+      if (plaque.organisations && plaque.organisations !== 'Unknown') {
+        organisationCount[plaque.organisations] =
+          (organisationCount[plaque.organisations] || 0) + 1;
       }
     });
-    
+
     return {
       postcodeOptions: Object.entries(postcodeCount)
         .map(([value, count]) => ({ label: value, value, count }))
         .sort((a, b) => b.count - a.count),
-      
+
       colorOptions: Object.entries(colorCount)
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
-          count
+          count,
         }))
         .sort((a, b) => b.count - a.count),
-      
+
       professionOptions: Object.entries(professionCount)
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
-          count
+          count,
         }))
         .sort((a, b) => b.count - a.count),
 
@@ -154,16 +167,16 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
         .map(([value, count]) => ({
           label: capitalizeWords(value),
           value,
-          count
+          count,
         }))
-        .sort((a, b) => b.count - a.count)
+        .sort((a, b) => b.count - a.count),
     };
   }, [plaques]);
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
@@ -179,18 +192,18 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
         >
           <ChevronRight size={16} />
           {totalActiveFilters > 0 && (
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-1 -right-1 h-4 w-4 text-xs p-0 flex items-center justify-center min-w-[16px]"
             >
               {totalActiveFilters}
             </Badge>
           )}
         </Button>
-        
+
         {/* SINGLE Route toggle button */}
         <Button
-          variant={routeMode ? "default" : "outline"}
+          variant={routeMode ? 'default' : 'outline'}
           size="sm"
           className="h-8 w-8 rounded-full shadow-md bg-white/95 backdrop-blur-sm relative"
           onClick={onToggleRoute}
@@ -198,8 +211,8 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
         >
           <Route size={12} />
           {routePointsCount > 0 && (
-            <Badge 
-              variant="secondary" 
+            <Badge
+              variant="secondary"
               className="absolute -top-1 -right-1 h-3 w-3 text-xs p-0 flex items-center justify-center min-w-[12px]"
             >
               {routePointsCount}
@@ -220,7 +233,9 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Layers size={16} className="text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-800">Controls</h3>
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Controls
+                </h3>
                 {totalActiveFilters > 0 && (
                   <Badge variant="secondary" className="text-xs h-5 px-1.5">
                     {totalActiveFilters}
@@ -240,7 +255,6 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
 
           {/* Compact content */}
           <CardContent className="flex-1 p-3 space-y-2 overflow-y-auto">
-            
             {/* Distance Filter */}
             <CompactDistanceFilter
               distanceFilter={distanceFilter}
@@ -253,7 +267,7 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
 
             {/* Standard Filters */}
             <Button
-              variant={activeStandardFilters > 0 ? "default" : "outline"}
+              variant={activeStandardFilters > 0 ? 'default' : 'outline'}
               size="sm"
               className="w-full h-9 justify-between text-xs"
               onClick={() => setShowStandardFilters(true)}
@@ -276,7 +290,7 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
               <div className="text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                 Quick Actions
               </div>
-              
+
               <div className="space-y-1">
                 <Button
                   variant="outline"
@@ -287,7 +301,7 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
                   <Navigation2 size={12} className="mr-1.5" />
                   Reset View
                 </Button>
-                
+
                 {totalActiveFilters > 0 && (
                   <Button
                     variant="outline"
@@ -312,35 +326,27 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
       <DiscoverFilterDialog
         isOpen={showStandardFilters}
         onClose={() => setShowStandardFilters(false)}
-        
         postcodes={filterOptions.postcodeOptions}
         selectedPostcodes={selectedPostcodes}
         onPostcodesChange={onPostcodesChange}
-        
         colors={filterOptions.colorOptions}
         selectedColors={selectedColors}
         onColorsChange={onColorsChange}
-        
         professions={filterOptions.professionOptions}
         selectedProfessions={selectedProfessions}
         onProfessionsChange={onProfessionsChange}
-        
         organisations={filterOptions.organisationOptions}
         selectedOrganisations={selectedOrganisations}
         onOrganisationsChange={onOrganisationsChange}
-        
         onlyVisited={onlyVisited}
         onVisitedChange={onVisitedChange}
-        
         onlyFavorites={onlyFavorites}
         onFavoritesChange={onFavoritesChange}
-        
         onApply={() => setShowStandardFilters(false)}
         onReset={() => {
           onResetStandardFilters();
           setShowStandardFilters(false);
         }}
-        
         distanceFilter={distanceFilter}
         allPlaques={plaques}
         isPlaqueVisited={isPlaqueVisited}

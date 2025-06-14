@@ -1,9 +1,13 @@
 // src/components/auth/AuthErrorDisplay.tsx
 import React from 'react';
 import { AlertTriangle, RefreshCw, Key, UserPlus, LogIn } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { getAuthErrorMessage, getSuggestedActions, ErrorDisplayProps } from '@/utils/authErrorHandler';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  getAuthErrorMessage,
+  getSuggestedActions,
+  ErrorDisplayProps,
+} from '@/utils/authErrorHandler';
 
 const AuthErrorDisplay: React.FC<ErrorDisplayProps> = ({
   error,
@@ -11,7 +15,7 @@ const AuthErrorDisplay: React.FC<ErrorDisplayProps> = ({
   onRetry,
   onResetPassword,
   onSwitchToSignUp,
-  onSwitchToSignIn
+  onSwitchToSignIn,
 }) => {
   if (!error) return null;
 
@@ -20,11 +24,16 @@ const AuthErrorDisplay: React.FC<ErrorDisplayProps> = ({
 
   const getActionIcon = (type: string) => {
     switch (type) {
-      case 'retry': return <RefreshCw size={14} />;
-      case 'reset': return <Key size={14} />;
-      case 'signup': return <UserPlus size={14} />;
-      case 'signin': return <LogIn size={14} />;
-      default: return null;
+      case 'retry':
+        return <RefreshCw size={14} />;
+      case 'reset':
+        return <Key size={14} />;
+      case 'signup':
+        return <UserPlus size={14} />;
+      case 'signin':
+        return <LogIn size={14} />;
+      default:
+        return null;
     }
   };
 
@@ -57,7 +66,7 @@ const AuthErrorDisplay: React.FC<ErrorDisplayProps> = ({
             <p className="text-sm mt-1 opacity-90">{errorInfo.action}</p>
           )}
         </div>
-        
+
         {suggestedActions.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2">
             {suggestedActions.map((action) => (

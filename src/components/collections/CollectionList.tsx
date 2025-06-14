@@ -24,11 +24,11 @@ const CollectionList: React.FC<CollectionListProps> = ({
   onToggleFavorite,
   onDelete,
   onClick,
-  className = ''
+  className = '',
 }) => {
   return (
     <div className={`space-y-3 ${className}`}>
-      {collections.map(collection => (
+      {collections.map((collection) => (
         <CollectionListItem
           key={collection.id}
           collection={collection}

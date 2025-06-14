@@ -9,11 +9,12 @@ const ProfileSettings: React.FC = () => {
       <div className="p-6 border-b">
         <h2 className="text-xl font-bold mb-1">Profile Settings</h2>
         <p className="text-gray-500">
-          Update your personal information and how you appear to others on Plaquer.
+          Update your personal information and how you appear to others on
+          Plaquer.
         </p>
       </div>
-      
-      <SettingsCard 
+
+      <SettingsCard
         title="Personal Information"
         description="Update your profile details"
       >
