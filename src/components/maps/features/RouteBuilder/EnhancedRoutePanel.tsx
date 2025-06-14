@@ -1,4 +1,4 @@
-// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - REDESIGNED
+// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - FIXED: Using SaveRouteDialog
 import React, { useState, useCallback, useMemo } from 'react';
 import { 
   X, 
@@ -19,6 +19,7 @@ import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 import { useSafeArea } from '@/hooks/useSafeArea';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { toast } from 'sonner';
+import SaveRouteDialog, { SaveRouteData } from '@/components/routes/SaveRouteDialog';
 
 interface EnhancedRoutePanelProps {
   points: Plaque[];
@@ -44,6 +45,8 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Swipe gesture for mobile
   const { handleTouchStart, handleTouchEnd } = useSwipeGesture({
@@ -169,6 +172,49 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     toast.success("Route exported as GPX file");
   }, [points, formattedDistance, formattedDuration, mobile]);
 
+  // FIXED: Handle save route using SaveRouteDialog
+  const handleSaveRoute = useCallback(() => {
+    if (points.length < 2) {
+      toast.error('Need at least 2 stops to save route');
+      return;
+    }
+    
+    if (mobile) triggerHapticFeedback('medium');
+    setShowSaveDialog(true);
+  }, [points.length, mobile]);
+
+  // Handle save from dialog
+  const handleSaveFromDialog = useCallback(async (data: SaveRouteData) => {
+    setIsSaving(true);
+    
+    try {
+      if (mobile) triggerHapticFeedback('success');
+      
+      const routeData = {
+        name: data.name,
+        description: data.description,
+        points,
+        distance: routeStats?.distance || 0,
+        duration: routeStats?.duration || 0,
+        total_distance: routeStats ? routeStats.distance / 1000 : 0 // Convert to km
+      };
+      
+      // Call the route action handler
+      if (onRouteAction) {
+        onRouteAction(routeData);
+      }
+      
+      setShowSaveDialog(false);
+      toast.success('Route saved successfully!');
+      
+    } catch (error) {
+      console.error('Error saving route:', error);
+      toast.error('Failed to save route. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [points, routeStats, onRouteAction, mobile]);
+
   // Panel positioning
   const panelStyle = useMemo(() => {
     if (mobile) {
@@ -221,200 +267,202 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   }
 
   return (
-    <div style={panelStyle} className={className}>
-      <div 
-        className="bg-white rounded-t-xl md:rounded-xl shadow-xl border border-gray-200 flex flex-col h-full max-h-[70vh] md:max-h-none"
-        onTouchStart={mobile ? handleTouchStart : undefined}
-        onTouchEnd={mobile ? handleTouchEnd : undefined}
-      >
-        {/* Header */}
+    <>
+      <div style={panelStyle} className={className}>
         <div 
-          className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl cursor-pointer"
-          onClick={mobile ? handleToggleCollapse : undefined}
+          className="bg-white rounded-t-xl md:rounded-xl shadow-xl border border-gray-200 flex flex-col h-full max-h-[70vh] md:max-h-none"
+          onTouchStart={mobile ? handleTouchStart : undefined}
+          onTouchEnd={mobile ? handleTouchEnd : undefined}
         >
-          {mobile && (
-            <div className="flex justify-center mb-2">
-              <div className="w-8 h-1 bg-gray-300 rounded-full" />
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Route size={16} className="text-green-600" />
+          {/* Header */}
+          <div 
+            className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl cursor-pointer"
+            onClick={mobile ? handleToggleCollapse : undefined}
+          >
+            {mobile && (
+              <div className="flex justify-center mb-2">
+                <div className="w-8 h-1 bg-gray-300 rounded-full" />
               </div>
-              
-              <div className="min-w-0">
-                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                  Route
-                  <Badge variant="secondary" className="text-xs">
-                    {points.length} stops
-                  </Badge>
-                </h3>
+            )}
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Route size={16} className="text-green-600" />
+                </div>
                 
-                <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                  <span className="flex items-center gap-1">
-                    <Navigation size={10} />
-                    {formattedDistance}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={10} />
-                    {formattedDuration}
-                  </span>
-                  <span className="text-amber-600">~estimated</span>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    Route
+                    <Badge variant="secondary" className="text-xs">
+                      {points.length} stops
+                    </Badge>
+                  </h3>
+                  
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                    <span className="flex items-center gap-1">
+                      <Navigation size={10} />
+                      {formattedDistance}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock size={10} />
+                      {formattedDuration}
+                    </span>
+                    <span className="text-amber-600">~estimated</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              {mobile && (
+              
+              <div className="flex items-center gap-1">
+                {mobile && (
+                  <MobileButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleCollapse();
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    {isCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </MobileButton>
+                )}
+                
                 <MobileButton
                   variant="ghost"
                   size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleCollapse();
-                  }}
+                  onClick={onClose}
                   className="h-8 w-8 p-0"
-                >
-                  {isCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </MobileButton>
-              )}
-              
-              <MobileButton
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0"
-                touchOptimized={mobile}
-              >
-                <X size={16} />
-              </MobileButton>
-            </div>
-          </div>
-        </div>
-
-        {/* Route Stops - Only show when expanded */}
-        {!isCollapsed && (
-          <>
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <div className="p-4 space-y-2">
-                {points.map((point, index) => {
-                  const isStart = index === 0;
-                  const isEnd = index === points.length - 1;
-                  const isDragTarget = dragOverIndex === index;
-                  const isBeingDragged = draggedIndex === index;
-                  
-                  return (
-                    <div key={point.id} className="relative">
-                      {/* Route line connector */}
-                      {index < points.length - 1 && (
-                        <div className="absolute left-6 top-12 w-0.5 h-6 bg-gray-300 z-0" />
-                      )}
-                      
-                      {/* Stop card */}
-                      <div
-                        className={`flex items-center gap-3 p-3 bg-white border rounded-lg transition-all relative z-10 ${
-                          isDragTarget ? 'border-green-500 bg-green-50' : 'border-gray-200'
-                        } ${
-                          isBeingDragged ? 'opacity-50 scale-95' : 'hover:border-gray-300'
-                        }`}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDrop={(e) => handleDrop(e, index)}
-                      >
-                        {/* Drag handle */}
-                        <GripVertical size={16} className="text-gray-400 cursor-move flex-shrink-0" />
-                        
-                        {/* Route marker */}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
-                          isStart ? 'bg-green-500' : 
-                          isEnd ? 'bg-red-500' : 
-                          'bg-blue-500'
-                        }`}>
-                          {isStart ? 'A' : isEnd ? 'B' : String.fromCharCode(65 + index)}
-                        </div>
-                        
-                        {/* Stop info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">
-                            {point.title}
-                          </div>
-                          <div className="text-xs text-gray-500 truncate">
-                            {point.location || point.address}
-                          </div>
-                        </div>
-                        
-                        {/* Remove button */}
-                        <MobileButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveStop(point.id)}
-                          className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 flex-shrink-0"
-                          touchOptimized={mobile}
-                        >
-                          <Trash2 size={14} />
-                        </MobileButton>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <MobileButton
-                  variant="default"
-                  size="sm"
-                  onClick={() => {
-                    if (points.length < 2) {
-                      toast.error('Need at least 2 stops to save route');
-                      return;
-                    }
-                    const routeData = {
-                      name: `Route ${new Date().toLocaleDateString()}`,
-                      points,
-                      distance: routeStats?.distance || 0,
-                      duration: routeStats?.duration || 0
-                    };
-                    onRouteAction?.(routeData);
-                    toast.success('Route saved!');
-                  }}
-                  className="bg-green-600 hover:bg-green-700"
                   touchOptimized={mobile}
                 >
-                  <Save size={14} className="mr-1" />
-                  Save Route
+                  <X size={16} />
                 </MobileButton>
+              </div>
+            </div>
+          </div>
+
+          {/* Route Stops - Only show when expanded */}
+          {!isCollapsed && (
+            <>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="p-4 space-y-2">
+                  {points.map((point, index) => {
+                    const isStart = index === 0;
+                    const isEnd = index === points.length - 1;
+                    const isDragTarget = dragOverIndex === index;
+                    const isBeingDragged = draggedIndex === index;
+                    
+                    return (
+                      <div key={point.id} className="relative">
+                        {/* Route line connector */}
+                        {index < points.length - 1 && (
+                          <div className="absolute left-6 top-12 w-0.5 h-6 bg-gray-300 z-0" />
+                        )}
+                        
+                        {/* Stop card */}
+                        <div
+                          className={`flex items-center gap-3 p-3 bg-white border rounded-lg transition-all relative z-10 ${
+                            isDragTarget ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                          } ${
+                            isBeingDragged ? 'opacity-50 scale-95' : 'hover:border-gray-300'
+                          }`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, index)}
+                          onDragOver={(e) => handleDragOver(e, index)}
+                          onDrop={(e) => handleDrop(e, index)}
+                        >
+                          {/* Drag handle */}
+                          <GripVertical size={16} className="text-gray-400 cursor-move flex-shrink-0" />
+                          
+                          {/* Route marker */}
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
+                            isStart ? 'bg-green-500' : 
+                            isEnd ? 'bg-red-500' : 
+                            'bg-blue-500'
+                          }`}>
+                            {isStart ? 'A' : isEnd ? 'B' : String.fromCharCode(65 + index)}
+                          </div>
+                          
+                          {/* Stop info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {point.title}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {point.location || point.address}
+                            </div>
+                          </div>
+                          
+                          {/* Remove button */}
+                          <MobileButton
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveStop(point.id)}
+                            className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 flex-shrink-0"
+                            touchOptimized={mobile}
+                          >
+                            <Trash2 size={14} />
+                          </MobileButton>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <MobileButton
+                    variant="default"
+                    size="sm"
+                    onClick={handleSaveRoute}
+                    className="bg-green-600 hover:bg-green-700"
+                    touchOptimized={mobile}
+                    disabled={points.length < 2}
+                  >
+                    <Save size={14} className="mr-1" />
+                    Save Route
+                  </MobileButton>
+                  
+                  <MobileButton
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    touchOptimized={mobile}
+                    disabled={points.length < 2}
+                  >
+                    <Download size={14} className="mr-1" />
+                    Export GPX
+                  </MobileButton>
+                </div>
                 
                 <MobileButton
                   variant="outline"
-                  size="sm"
-                  onClick={handleExport}
+                  onClick={onClear}
+                  className="w-full text-red-600 hover:bg-red-50"
                   touchOptimized={mobile}
                 >
-                  <Download size={14} className="mr-1" />
-                  Export GPX
+                  <Trash2 size={14} className="mr-2" />
+                  Clear Route
                 </MobileButton>
               </div>
-              
-              <MobileButton
-                variant="outline"
-                onClick={onClear}
-                className="w-full text-red-600 hover:bg-red-50"
-                touchOptimized={mobile}
-              >
-                <Trash2 size={14} className="mr-2" />
-                Clear Route
-              </MobileButton>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Save Route Dialog */}
+      <SaveRouteDialog
+        isOpen={showSaveDialog}
+        onClose={() => setShowSaveDialog(false)}
+        onSave={handleSaveFromDialog}
+        routePoints={points}
+        routeDistance={routeStats ? routeStats.distance / 1000 : 0}
+        isSaving={isSaving}
+        useImperial={false}
+      />
+    </>
   );
 };
 

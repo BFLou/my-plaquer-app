@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - UPDATED FOR STREAMLINED ROUTE PLANNER
+// src/components/maps/MapContainer.tsx - FIXED: Proper route saving integration
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { EnhancedRoutePanel } from './features/RouteBuilder/EnhancedRoutePanel';
@@ -7,6 +7,8 @@ import { Plaque } from '@/types/plaque';
 import { calculateDistance } from './utils/routeUtils';
 import { toast } from 'sonner';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
+import { useRoutes } from '@/hooks/useRoutes'; // Import the useRoutes hook
+import { calculateMultiWaypointRoute } from '@/services/WalkingDistanceService';
 
 // Helper function for safe coordinate conversion
 function parseCoordinate(coord: string | number | undefined): number {
@@ -177,7 +179,7 @@ interface MapContainerProps {
   };
   isPlaqueVisited?: (id: number) => boolean;
   isFavorite?: (id: number) => boolean;
-  onRouteAction?: (routeData: any) => void;
+  onRouteAction?: (routeData: any) => void; // Keep for backward compatibility
 }
 
 export const MapContainer: React.FC<MapContainerProps> = (props) => {
@@ -189,8 +191,11 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     distanceFilter,
     isPlaqueVisited,
     isFavorite,
-    onRouteAction
+    onRouteAction // This is now optional and mainly for compatibility
   } = props;
+
+  // FIXED: Add useRoutes hook for actual route saving
+  const { createRouteWithWalkingData } = useRoutes();
 
   // Mobile detection and responsive setup
   const mobile = isMobile();
@@ -488,20 +493,90 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     }
   }, [state.routePoints.length, showToastOnce, mobile]);
 
-  // Enhanced route action handler
-  const handleRouteAction = useCallback((routeData: any) => {
+  // FIXED: Enhanced route action handler that actually saves to Firebase
+  const handleRouteAction = useCallback(async (routeData: any) => {
     console.log('🗺️ MapContainer: Route action triggered:', routeData);
     
     if (mobile) triggerHapticFeedback('success');
     
-    // Pass to external handler if provided
+    try {
+      // Show loading toast
+      const loadingToast = toast.loading('Saving route...');
+      
+      // Calculate real walking data first
+      let walkingData;
+      try {
+        walkingData = await calculateMultiWaypointRoute(state.routePoints);
+        console.log('Walking data calculated:', walkingData);
+      } catch (error) {
+        console.warn('Failed to calculate walking data, using fallback:', error);
+        // Use fallback distance calculation
+        let fallbackDistance = 0;
+        for (let i = 0; i < state.routePoints.length - 1; i++) {
+          const start = state.routePoints[i];
+          const end = state.routePoints[i + 1];
+          
+          if (start.latitude && start.longitude && end.latitude && end.longitude) {
+            const startLat = parseCoordinate(start.latitude);
+            const startLng = parseCoordinate(start.longitude);
+            const endLat = parseCoordinate(end.latitude);
+            const endLng = parseCoordinate(end.longitude);
+            
+            // Haversine distance * walking factor
+            const R = 6371000;
+            const dLat = (endLat - startLat) * Math.PI / 180;
+            const dLng = (endLng - startLng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(startLat * Math.PI / 180) * Math.cos(endLat * Math.PI / 180) * 
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            
+            fallbackDistance += distance * 1.4; // Walking factor
+          }
+        }
+        
+        walkingData = {
+          totalDistance: fallbackDistance,
+          totalDuration: fallbackDistance / 1.39, // 5 km/h walking speed
+          segments: []
+        };
+      }
+      
+      // Save route using the useRoutes hook
+      const savedRoute = await createRouteWithWalkingData(
+        routeData.name,
+        routeData.description || '',
+        state.routePoints,
+        walkingData
+      );
+      
+      toast.dismiss(loadingToast);
+      
+      if (savedRoute) {
+        showToastOnce('route-saved', 'Route saved successfully to your library!', 'success');
+        
+        // Clear the route after successful save
+        dispatch({ type: 'CLEAR_ROUTE' });
+        
+        // Exit route mode
+        dispatch({ type: 'TOGGLE_ROUTE_MODE' });
+        
+        console.log('Route saved successfully:', savedRoute);
+      } else {
+        throw new Error('Failed to save route');
+      }
+      
+    } catch (error) {
+      console.error('Error saving route:', error);
+      toast.error('Failed to save route. Please try again.');
+    }
+    
+    // Call the original handler for backward compatibility if provided
     if (onRouteAction) {
       onRouteAction(routeData);
     }
-    
-    // Show success feedback
-    showToastOnce('route-saved', 'Route saved successfully!', 'success');
-  }, [onRouteAction, showToastOnce, mobile]);
+  }, [state.routePoints, createRouteWithWalkingData, showToastOnce, mobile, onRouteAction]);
 
   // Sync with external distance filter changes
   useEffect(() => {
@@ -578,7 +653,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
           onReorder={handleReorderRoute}
           onClear={handleClearRoute}
           onClose={handleToggleRouteMode}
-          onRouteAction={handleRouteAction}
+          onRouteAction={handleRouteAction} // Now properly connected to Firebase saving
           className="enhanced-route-panel"
         />
       )}
