@@ -1,4 +1,4 @@
-// src/pages/RouteDetailPage.tsx - FIXED: All TypeScript errors resolved
+// src/pages/RouteDetailPage.tsx - FIXED: Working map view and cleaned up private route
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
@@ -30,7 +30,7 @@ import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import EditRouteForm from '../components/routes/EditRouteForm';
-// import RouteMapContainer from "../components/maps/RouteMapContainer"; // Temporarily disabled
+import RouteMapContainer from "../components/maps/RouteMapContainer"; // Re-enabled
 import { RouteStats } from '../components/routes/RouteStats';
 import { PlaqueDetail } from '@/components/plaques/PlaqueDetail';
 import { formatTimeAgo } from '@/utils/timeUtils';
@@ -50,11 +50,11 @@ import {
 import plaqueData from '../data/plaque_data.json';
 import { adaptPlaquesData } from '@/utils/plaqueAdapter';
 
-// FIXED: Import proper types and create proper interfaces
+// Import proper types
 import type { RouteData, RoutePoint as ServiceRoutePoint } from '@/services/RouteService';
 import type { Plaque } from '@/types/plaque';
 
-// Local interfaces that match your service expectations
+// Local interfaces
 interface LocalRoutePoint {
   plaque_id: number;
   order: number;
@@ -82,13 +82,12 @@ interface PlaqueWithOrder extends Plaque {
 
 // Helper function to convert local route data to service RouteData
 const toServiceRouteData = (localRoute: LocalRouteData): RouteData => {
-  // Convert local route points to service route points
   const servicePoints: ServiceRoutePoint[] = localRoute.points.map(point => ({
     plaque_id: point.plaque_id,
     order: point.order,
-    title: '', // Required by service interface
-    lat: point.latitude || 0, // Required by service interface  
-    lng: point.longitude || 0, // Required by service interface
+    title: '', // Will be filled from plaque data
+    lat: point.latitude || 0,
+    lng: point.longitude || 0,
   }));
 
   return {
@@ -113,13 +112,47 @@ const toPlaqueWithOrder = (adaptedPlaque: any): PlaqueWithOrder => ({
   latitude: adaptedPlaque.latitude,
   longitude: adaptedPlaque.longitude,
   address: adaptedPlaque.address,
-  erected: String(adaptedPlaque.erected), // Convert number to string
+  erected: String(adaptedPlaque.erected),
   main_photo: adaptedPlaque.main_photo,
   colour: adaptedPlaque.colour,
   location: adaptedPlaque.location || adaptedPlaque.address,
   description: adaptedPlaque.description || adaptedPlaque.inscription,
   order: adaptedPlaque.order,
+  // Add missing properties to match Plaque interface
+  profession: adaptedPlaque.profession,
+  postcode: adaptedPlaque.postcode,
+  area: adaptedPlaque.area,
+  organisations: adaptedPlaque.organisations,
+  color: adaptedPlaque.colour, // Map colour to color
+  visited: false // Default value
 });
+
+// Helper function to convert PlaqueWithOrder to regular Plaque for RouteMapContainer
+const convertToStandardPlaques = (plaquesWithOrder: PlaqueWithOrder[]): Plaque[] => {
+  return plaquesWithOrder.map(({ order, ...plaque }) => plaque as Plaque);
+};
+
+// Create a route object compatible with RouteMapContainer
+const createMapRoute = (localRoute: LocalRouteData, orderedPlaques: PlaqueWithOrder[]): RouteData => {
+  return {
+    id: localRoute.id,
+    name: localRoute.name,
+    description: localRoute.description || '',
+    points: orderedPlaques.map((plaque, index) => ({
+      plaque_id: plaque.id,
+      order: index + 1,
+      title: plaque.title,
+      lat: typeof plaque.latitude === 'string' ? parseFloat(plaque.latitude) : (plaque.latitude || 0),
+      lng: typeof plaque.longitude === 'string' ? parseFloat(plaque.longitude) : (plaque.longitude || 0),
+    })),
+    total_distance: localRoute.total_distance,
+    is_favorite: localRoute.is_favorite,
+    created_at: localRoute.created_at,
+    updated_at: localRoute.updated_at,
+    user_id: localRoute.user_id,
+    is_public: localRoute.is_public,
+  };
+};
 
 const RouteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -132,7 +165,7 @@ const RouteDetailPage: React.FC = () => {
   // Modal plaque from URL
   const modalPlaqueId = searchParams.get('plaque') ? parseInt(searchParams.get('plaque')!) : null;
   
-  // FIXED: Proper state type definitions using correct interfaces
+  // State definitions using correct interfaces
   const [route, setRoute] = useState<LocalRouteData | null>(null);
   const [routePlaques, setRoutePlaques] = useState<PlaqueWithOrder[]>([]);
   const [selectedPlaque, setSelectedPlaque] = useState<PlaqueWithOrder | null>(null);
@@ -144,9 +177,8 @@ const RouteDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
-  const [mapError, setMapError] = useState<boolean>(false);
 
-  // FIXED: Simplified route loading with proper types
+  // Load route data
   useEffect(() => {
     const loadRouteData = async (): Promise<void> => {
       if (!id || !user) {
@@ -161,14 +193,12 @@ const RouteDetailPage: React.FC = () => {
         
         console.log('Loading route with ID:', id);
         
-        // SIMPLIFIED: Just find in existing routes first
         const existingRoute = routes.find((r: any) => r.id === id);
         
         if (existingRoute) {
           console.log('Found route in existing data:', existingRoute);
-          // Convert to LocalRouteData with required fields
           const localRoute: LocalRouteData = {
-            id: existingRoute.id || '', // Ensure id is always a string
+            id: existingRoute.id || '',
             name: existingRoute.name,
             description: existingRoute.description,
             points: existingRoute.points || [],
@@ -182,16 +212,13 @@ const RouteDetailPage: React.FC = () => {
           setRoute(localRoute);
           setIsFavorite(existingRoute.is_favorite || false);
           
-          // Load plaque data
           await loadRoutePlaques(localRoute);
           setLoading(false);
         } else if (routes.length > 0) {
-          // Routes are loaded but route not found
           console.log('Route not found in loaded routes');
           setError('Route not found');
           setLoading(false);
         }
-        // If routes array is empty, the useRoutes hook is still loading
         
       } catch (err) {
         console.error('Error loading route:', err);
@@ -203,11 +230,11 @@ const RouteDetailPage: React.FC = () => {
     loadRouteData();
   }, [id, user, routes]);
 
-  // FIXED: Load route plaques with proper type handling
+  // Load route plaques with proper type handling
   const loadRoutePlaques = async (routeData: LocalRouteData): Promise<void> => {
     try {
       if (routeData.points && routeData.points.length > 0) {
-        const adaptedPlaques = adaptPlaquesData(plaqueData as any[]); // Use any to avoid type conflict
+        const adaptedPlaques = adaptPlaquesData(plaqueData as any[]);
         const plaqueIds = routeData.points.map((point: LocalRoutePoint) => point.plaque_id);
         
         const matchedPlaques: PlaqueWithOrder[] = adaptedPlaques
@@ -243,13 +270,13 @@ const RouteDetailPage: React.FC = () => {
     }
   }, [modalPlaqueId, routePlaques, searchParams, setSearchParams]);
 
-  // FIXED: Safer action handlers with error boundaries and proper types
+  // Action handlers
   const handleToggleFavorite = async (): Promise<void> => {
     if (!route) return;
 
     try {
       setIsLoading(true);
-      setDropdownOpen(false); // Close dropdown
+      setDropdownOpen(false);
       
       const updatedRoute = await updateRoute(route.id, {
         is_favorite: !isFavorite
@@ -284,7 +311,6 @@ const RouteDetailPage: React.FC = () => {
       setIsLoading(true);
       setDropdownOpen(false);
       
-      // Convert to service format for the duplicate function
       const serviceRoute = toServiceRouteData(route);
       const duplicatedRoute = await duplicateRoute(serviceRoute);
       
@@ -305,7 +331,6 @@ const RouteDetailPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      // Use the route ID directly since deleteRoute expects just the ID
       const success = await deleteRoute(route.id);
       
       if (success) {
@@ -321,7 +346,6 @@ const RouteDetailPage: React.FC = () => {
     }
   };
 
-  // FIXED: Proper type for update data
   const handleUpdateRoute = async (data: { name: string; description?: string }): Promise<void> => {
     if (!route) return;
 
@@ -386,25 +410,24 @@ const RouteDetailPage: React.FC = () => {
     }
   };
 
-  // FIXED: Proper types for GPX generation
   const generateGPX = (route: LocalRouteData, plaques: PlaqueWithOrder[]): string => {
     const waypoints = plaques.map((plaque: PlaqueWithOrder) => `
     <wpt lat="${plaque.latitude}" lon="${plaque.longitude}">
-      <n>${plaque.title}</n>
+      <name>${plaque.title}</name>
       <desc>${plaque.description || ''}</desc>
     </wpt>`).join('');
 
     return `<?xml version="1.0"?>
 <gpx version="1.1" creator="Plaquer App">
   <metadata>
-    <n>${route.name}</n>
+    <name>${route.name}</name>
     <desc>${route.description || ''}</desc>
   </metadata>
   ${waypoints}
 </gpx>`;
   };
 
-  // FIXED: Plaque handlers with proper types
+  // Plaque handlers
   const handlePlaqueClick = useCallback((plaque: PlaqueWithOrder): void => {
     if (!route) return;
     
@@ -561,7 +584,7 @@ const RouteDetailPage: React.FC = () => {
                 />
                 {isFavorite ? "Favorited" : "Favorite"}
               </Button>              
-              {/* FIXED: Better dropdown with error handling */}
+              
               <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -623,14 +646,10 @@ const RouteDetailPage: React.FC = () => {
             </p>
           )}
           
-          {/* Route metadata */}
+          {/* Route metadata - CLEANED UP: Removed view counts and public stats */}
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="outline" className="bg-white/20 text-white border-white/30">
               <Clock size={12} className="mr-1" /> Updated {formatTimeAgo(route.updated_at)}
-            </Badge>
-            
-            <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-              Private Route
             </Badge>
 
             {isFavorite && (
@@ -646,7 +665,7 @@ const RouteDetailPage: React.FC = () => {
         {/* Route Stats */}
         <RouteStats 
           route={toServiceRouteData(route)}
-          plaques={routePlaques.map(p => ({ ...p, order: undefined }))} // Remove order for component
+          plaques={convertToStandardPlaques(routePlaques)}
           className="mb-6 -mt-5 relative z-10"
         />
 
@@ -702,7 +721,7 @@ const RouteDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Route Information */}
+            {/* Route Information - CLEANED UP: Removed public visibility references */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold mb-4">Route Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -720,11 +739,11 @@ const RouteDetailPage: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Route Details</h4>
-                  <p className="text-sm text-gray-600 mb-1">
-                    Visibility: <span className="font-medium">Private</span>
-                  </p>
                   <p className="text-sm text-gray-600">
                     Created: <span className="font-medium">{new Date(route.created_at?.toDate ? route.created_at.toDate() : route.created_at).toLocaleDateString()}</span>
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Last Updated: <span className="font-medium">{new Date(route.updated_at?.toDate ? route.updated_at.toDate() : route.updated_at).toLocaleDateString()}</span>
                   </p>
                 </div>
               </div>
@@ -733,33 +752,22 @@ const RouteDetailPage: React.FC = () => {
 
           <TabsContent value="map">
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {mapError ? (
-                <div className="h-[600px] flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <MapPin className="mx-auto text-gray-300 mb-4" size={48} />
-                    <h3 className="text-lg font-medium text-gray-700 mb-2">Map Loading Error</h3>
-                    <p className="text-gray-500 mb-4">There was an issue loading the map. Please try again.</p>
-                    <Button onClick={() => setMapError(false)}>Retry</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-[600px]">
-                  {/* FIXED: Create wrapper component to handle type conversion */}
-                  <div className="h-full w-full">
-                    {/* For now, show a placeholder since RouteMapContainer expects different types */}
-                    <div className="h-full flex items-center justify-center bg-gray-100 rounded-lg">
-                      <div className="text-center">
-                        <MapPin className="mx-auto text-gray-400 mb-4" size={48} />
-                        <h3 className="text-lg font-medium text-gray-700 mb-2">Route Map</h3>
-                        <p className="text-gray-500 mb-4">Map component temporarily disabled for type fixes</p>
-                        <p className="text-sm text-gray-400">
-                          {routePlaques.length} plaques • {route.total_distance.toFixed(1)} km
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div className="h-[600px]">
+                {/* FIXED: Working RouteMapContainer with WALKING ROUTES */}
+                <RouteMapContainer
+                  route={createMapRoute(route, routePlaques)}
+                  plaques={convertToStandardPlaques(routePlaques)}
+                  onPlaqueClick={handlePlaqueClick}
+                  className="h-full w-full"
+                  showRoute={true}
+                  routeColor="#10b981"
+                  useWalkingRoutes={true}
+                  onError={() => {
+                    console.error('Map loading error');
+                    toast.error('Map failed to load. Please refresh the page.');
+                  }}
+                />
+              </div>
             </div>
           </TabsContent>
 
@@ -809,7 +817,7 @@ const RouteDetailPage: React.FC = () => {
       {/* Plaque detail modal */}
       {selectedPlaque && (
         <PlaqueDetail
-          plaque={selectedPlaque as Plaque} // Type assertion to remove order property
+          plaque={selectedPlaque as Plaque}
           isOpen={!!selectedPlaque}
           onClose={handleCloseModal}
           onFavoriteToggle={() => {

@@ -1,4 +1,4 @@
-// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - FIXED: Using SaveRouteDialog
+// src/components/maps/features/RouteBuilder/EnhancedRoutePanel.tsx - FIXED: Proper loading state management
 import React, { useState, useCallback, useMemo } from 'react';
 import { 
   X, 
@@ -46,6 +46,8 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  
+  // CRITICAL: Separate loading state for the panel itself
   const [isSaving, setIsSaving] = useState(false);
 
   // Swipe gesture for mobile
@@ -172,7 +174,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     toast.success("Route exported as GPX file");
   }, [points, formattedDistance, formattedDuration, mobile]);
 
-  // FIXED: Handle save route using SaveRouteDialog
+  // CRITICAL: Handle save route with proper loading state management
   const handleSaveRoute = useCallback(() => {
     if (points.length < 2) {
       toast.error('Need at least 2 stops to save route');
@@ -183,8 +185,11 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
     setShowSaveDialog(true);
   }, [points.length, mobile]);
 
-  // Handle save from dialog
+  // CRITICAL: Handle save from dialog with proper state management
   const handleSaveFromDialog = useCallback(async (data: SaveRouteData) => {
+    console.log('💾 EnhancedRoutePanel: Starting save process');
+    
+    // Set our local loading state
     setIsSaving(true);
     
     try {
@@ -199,19 +204,25 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         total_distance: routeStats ? routeStats.distance / 1000 : 0 // Convert to km
       };
       
-      // Call the route action handler
+      console.log('💾 EnhancedRoutePanel: Calling onRouteAction with:', routeData);
+      
+      // Call the route action handler (this will show its own loading toast)
       if (onRouteAction) {
-        onRouteAction(routeData);
+        await onRouteAction(routeData);
       }
       
+      // CRITICAL: Close dialog and reset state only after successful save
       setShowSaveDialog(false);
-      toast.success('Route saved successfully!');
+      console.log('✅ EnhancedRoutePanel: Save process completed successfully');
       
     } catch (error) {
-      console.error('Error saving route:', error);
+      console.error('❌ EnhancedRoutePanel: Error in save process:', error);
+      // Don't close dialog on error, let user try again
       toast.error('Failed to save route. Please try again.');
     } finally {
+      // CRITICAL: Always clear our loading state
       setIsSaving(false);
+      console.log('🔄 EnhancedRoutePanel: Cleared loading state');
     }
   }, [points, routeStats, onRouteAction, mobile]);
 
@@ -244,7 +255,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   // Empty state
   if (points.length === 0) {
     return (
- <div style={panelStyle} className={className}>
+      <div style={panelStyle} className={className}>
         <div className="bg-white rounded-t-xl md:rounded-xl shadow-xl border border-gray-200">
           <div className="p-6 text-center">
             <div className="mb-4">
@@ -423,10 +434,10 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                     onClick={handleSaveRoute}
                     className="bg-green-600 hover:bg-green-700"
                     touchOptimized={mobile}
-                    disabled={points.length < 2}
+                    disabled={points.length < 2 || isSaving}
                   >
                     <Save size={14} className="mr-1" />
-                    Save Route
+                    {isSaving ? 'Saving...' : 'Save Route'}
                   </MobileButton>
                   
                   <MobileButton
@@ -434,7 +445,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                     size="sm"
                     onClick={handleExport}
                     touchOptimized={mobile}
-                    disabled={points.length < 2}
+                    disabled={points.length < 2 || isSaving}
                   >
                     <Download size={14} className="mr-1" />
                     Export GPX
@@ -446,6 +457,7 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
                   onClick={onClear}
                   className="w-full text-red-600 hover:bg-red-50"
                   touchOptimized={mobile}
+                  disabled={isSaving}
                 >
                   <Trash2 size={14} className="mr-2" />
                   Clear Route
@@ -456,10 +468,15 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
         </div>
       </div>
 
-      {/* Save Route Dialog */}
+      {/* CRITICAL: Save Route Dialog with proper loading state */}
       <SaveRouteDialog
         isOpen={showSaveDialog}
-        onClose={() => setShowSaveDialog(false)}
+        onClose={() => {
+          // Only allow closing if not currently saving
+          if (!isSaving) {
+            setShowSaveDialog(false);
+          }
+        }}
         onSave={handleSaveFromDialog}
         routePoints={points}
         routeDistance={routeStats ? routeStats.distance / 1000 : 0}

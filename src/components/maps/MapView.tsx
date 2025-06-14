@@ -1,4 +1,4 @@
-// src/components/maps/MapView.tsx - Updated to support both handlers
+// src/components/maps/MapView.tsx - FIXED: Walking routes support
 import React, { useEffect, useRef } from 'react';
 import { Plaque } from '@/types/plaque';
 import { useMap } from '@/components/maps/core/useMap';
@@ -13,11 +13,12 @@ interface MapViewProps {
   routeMode: boolean;
   routePoints: Plaque[];
   onPlaqueClick: (plaque: Plaque) => void;
-  onAddToRoute?: (plaque: Plaque) => void; // NEW: Separate handler for route actions
+  onAddToRoute?: (plaque: Plaque) => void;
   filterCenter: [number, number] | null;
   filterRadius: number;
   filterEnabled: boolean;
   filterLocationName?: string;
+  useWalkingRoutes?: boolean; // NEW: Enable walking routes
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -27,11 +28,12 @@ export const MapView: React.FC<MapViewProps> = ({
   routeMode,
   routePoints,
   onPlaqueClick,
-  onAddToRoute, // NEW: Pass through the add to route handler
+  onAddToRoute,
   filterCenter,
   filterRadius,
   filterEnabled,
-  filterLocationName
+  filterLocationName,
+  useWalkingRoutes = false // NEW: Default to false for backward compatibility
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const { map, isReady } = useMap(mapRef as React.RefObject<HTMLDivElement>, { center, zoom });
@@ -39,12 +41,12 @@ export const MapView: React.FC<MapViewProps> = ({
   // Add markers with enhanced clustering and BOTH handlers
   useMarkers(map, plaques, {
     onMarkerClick: onPlaqueClick,
-    onAddToRoute: onAddToRoute, // Pass the separate route handler
+    onAddToRoute: onAddToRoute,
     routeMode
   });
   
-  // Add route line
-  useRoute(map, routePoints);
+  // FIXED: Add route line with walking routes support
+  useRoute(map, routePoints, useWalkingRoutes);
   
   // Add enhanced distance circle with location name
   useDistanceCircle(map, {

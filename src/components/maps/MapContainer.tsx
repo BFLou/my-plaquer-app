@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - FIXED: Proper route saving integration
+// src/components/maps/MapContainer.tsx - FIXED: Route saving completion and walking routes
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { EnhancedRoutePanel } from './features/RouteBuilder/EnhancedRoutePanel';
@@ -7,7 +7,7 @@ import { Plaque } from '@/types/plaque';
 import { calculateDistance } from './utils/routeUtils';
 import { toast } from 'sonner';
 import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
-import { useRoutes } from '@/hooks/useRoutes'; // Import the useRoutes hook
+import { useRoutes } from '@/hooks/useRoutes';
 import { calculateMultiWaypointRoute } from '@/services/WalkingDistanceService';
 
 // Helper function for safe coordinate conversion
@@ -179,7 +179,7 @@ interface MapContainerProps {
   };
   isPlaqueVisited?: (id: number) => boolean;
   isFavorite?: (id: number) => boolean;
-  onRouteAction?: (routeData: any) => void; // Keep for backward compatibility
+  onRouteAction?: (routeData: any) => void;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = (props) => {
@@ -191,10 +191,10 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     distanceFilter,
     isPlaqueVisited,
     isFavorite,
-    onRouteAction // This is now optional and mainly for compatibility
+    onRouteAction
   } = props;
 
-  // FIXED: Add useRoutes hook for actual route saving
+  // Route saving hook
   const { createRouteWithWalkingData } = useRoutes();
 
   // Mobile detection and responsive setup
@@ -493,21 +493,24 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     }
   }, [state.routePoints.length, showToastOnce, mobile]);
 
-  // FIXED: Enhanced route action handler that actually saves to Firebase
+  // FIXED: Enhanced route action handler that properly saves and dismisses loading state
   const handleRouteAction = useCallback(async (routeData: any) => {
     console.log('🗺️ MapContainer: Route action triggered:', routeData);
     
     if (mobile) triggerHapticFeedback('success');
     
+    // CRITICAL: Show specific loading toast that can be dismissed
+    const loadingToastId = toast.loading('Saving route...', {
+      duration: Infinity, // Keep it until we dismiss it
+    });
+    
     try {
-      // Show loading toast
-      const loadingToast = toast.loading('Saving route...');
-      
       // Calculate real walking data first
       let walkingData;
       try {
+        console.log('🚶 Calculating walking routes for', state.routePoints.length, 'points');
         walkingData = await calculateMultiWaypointRoute(state.routePoints);
-        console.log('Walking data calculated:', walkingData);
+        console.log('🚶 Walking data calculated:', walkingData);
       } catch (error) {
         console.warn('Failed to calculate walking data, using fallback:', error);
         // Use fallback distance calculation
@@ -544,6 +547,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       }
       
       // Save route using the useRoutes hook
+      console.log('💾 Saving route to Firebase...');
       const savedRoute = await createRouteWithWalkingData(
         routeData.name,
         routeData.description || '',
@@ -551,9 +555,11 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         walkingData
       );
       
-      toast.dismiss(loadingToast);
+      // CRITICAL: Dismiss the loading toast immediately
+      toast.dismiss(loadingToastId);
       
       if (savedRoute) {
+        // Show success message
         showToastOnce('route-saved', 'Route saved successfully to your library!', 'success');
         
         // Clear the route after successful save
@@ -562,13 +568,18 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         // Exit route mode
         dispatch({ type: 'TOGGLE_ROUTE_MODE' });
         
-        console.log('Route saved successfully:', savedRoute);
+        console.log('✅ Route saved successfully:', savedRoute);
       } else {
-        throw new Error('Failed to save route');
+        throw new Error('Failed to save route - no route returned');
       }
       
     } catch (error) {
-      console.error('Error saving route:', error);
+      console.error('❌ Error saving route:', error);
+      
+      // CRITICAL: Dismiss the loading toast on error too
+      toast.dismiss(loadingToastId);
+      
+      // Show error message
       toast.error('Failed to save route. Please try again.');
     }
     
@@ -653,7 +664,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
           onReorder={handleReorderRoute}
           onClear={handleClearRoute}
           onClose={handleToggleRouteMode}
-          onRouteAction={handleRouteAction} // Now properly connected to Firebase saving
+          onRouteAction={handleRouteAction} // Now properly handles toast dismissal
           className="enhanced-route-panel"
         />
       )}
@@ -686,7 +697,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* The Map - Full height and width with enhanced route mode */}
+      {/* The Map - Full height and width with PROPER WALKING ROUTES */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}
@@ -699,6 +710,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         filterRadius={state.filterRadius}
         filterEnabled={state.filterEnabled}
         filterLocationName={state.filterLocation || undefined}
+        // CRITICAL: Pass flag to enable walking routes
+        useWalkingRoutes={true}
       />
     </div>
   );

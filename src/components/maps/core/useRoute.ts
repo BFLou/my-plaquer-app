@@ -1,17 +1,15 @@
-// src/components/maps/core/useRoute.ts - FIXED: Rules of Hooks compliance
+// src/components/maps/core/useRoute.ts - FIXED: Walking routes with WalkingDistanceService
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { Plaque } from '@/types/plaque';
 import { calculateMultiWaypointRoute, RouteSegment } from '@/services/WalkingDistanceService';
 
-export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
-  // FIXED: All hooks must be at the top level and in consistent order
+export const useRoute = (map: L.Map | null, routePoints: Plaque[], useWalkingRoutes: boolean = false) => {
   const routeLayersRef = useRef<L.LayerGroup | null>(null);
   const routeMarkersRef = useRef<L.Marker[]>([]);
   
-  // FIXED: Single useEffect that handles all route logic
   useEffect(() => {
-    console.log('🗺️ useRoute: Processing route with', routePoints.length, 'points');
+    console.log('🗺️ useRoute: Processing route with', routePoints.length, 'points, walking routes:', useWalkingRoutes);
     
     if (!map) {
       console.log('🗺️ useRoute: No map available');
@@ -55,7 +53,6 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
           continue;
         }
         
-        // FIXED: Proper coordinate type conversion
         const startLat = typeof start.latitude === 'string' 
           ? parseFloat(start.latitude) 
           : start.latitude;
@@ -102,7 +99,6 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
       if (!routeLayersRef.current) return;
       
       routePoints.forEach((point, index) => {
-        // FIXED: Proper coordinate conversion with safety checks
         const lat = typeof point.latitude === 'string' 
           ? parseFloat(point.latitude) 
           : point.latitude;
@@ -157,10 +153,9 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
         
         const marker = L.marker([lat, lng], { 
           icon,
-          zIndexOffset: 1000 // Ensure markers appear above route lines
+          zIndexOffset: 1000
         });
         
-        // Add popup with point info
         marker.bindPopup(`
           <div class="text-sm">
             <div class="font-medium">
@@ -183,93 +178,101 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
       });
     };
     
-    // Calculate walking route
+    // Calculate walking route or use fallback
     const calculateRoute = async () => {
-      try {
-        const routeData = await calculateMultiWaypointRoute(routePoints);
-        console.log('🗺️ useRoute: Route calculation result:', routeData);
-        
-        // Check if the component is still mounted and layer group exists
-        if (!routeLayersRef.current || !map.hasLayer(routeLayersRef.current)) {
-          console.log('🗺️ useRoute: Route layer group no longer exists');
-          return;
-        }
-        
-        // Add route segments
-        if (routeData.segments && routeData.segments.length > 0) {
-          console.log('🗺️ useRoute: Creating walking route with', routeData.segments.length, 'segments');
+      // CRITICAL: Only use walking routes if specifically enabled
+      if (useWalkingRoutes) {
+        try {
+          console.log('🚶 Calculating REAL walking routes...');
+          const routeData = await calculateMultiWaypointRoute(routePoints);
+          console.log('🚶 Walking route calculation result:', routeData);
           
-          let totalCoordinates = 0;
+          // Check if the component is still mounted and layer group exists
+          if (!routeLayersRef.current || !map.hasLayer(routeLayersRef.current)) {
+            console.log('🗺️ useRoute: Route layer group no longer exists');
+            return;
+          }
           
-          routeData.segments.forEach((segment: RouteSegment, index: number) => {
-            console.log(`🗺️ useRoute: Processing segment ${index} with ${segment.route.geometry.length} geometry points`);
+          // Add REAL walking route segments
+          if (routeData.segments && routeData.segments.length > 0) {
+            console.log('🚶 Creating REAL walking route with', routeData.segments.length, 'segments');
             
-            if (segment.route.geometry && segment.route.geometry.length >= 2) {
-              // Create the walking route line
-              const routeLine = L.polyline(segment.route.geometry, {
-                color: '#10b981', // green-500
-                weight: 4,
-                opacity: 0.8,
-                smoothFactor: 1,
-                dashArray: '10, 5', // Dashed line to indicate walking
-                className: 'walking-route-line'
-              });
+            let totalCoordinates = 0;
+            
+            routeData.segments.forEach((segment: RouteSegment, index: number) => {
+              console.log(`🚶 Processing walking segment ${index} with ${segment.route.geometry.length} geometry points`);
               
-              // FIXED: Add hover effects with proper typing
-              routeLine.on('mouseover', function(this: L.Polyline) {
-                this.setStyle({
-                  weight: 6,
-                  opacity: 1,
-                  color: '#059669' // green-600
-                });
-              });
-              
-              routeLine.on('mouseout', function(this: L.Polyline) {
-                this.setStyle({
+              if (segment.route.geometry && segment.route.geometry.length >= 2) {
+                // Create the REAL walking route line
+                const routeLine = L.polyline(segment.route.geometry, {
+                  color: '#10b981', // green-500 - WALKING route color
                   weight: 4,
                   opacity: 0.8,
-                  color: '#10b981'
+                  smoothFactor: 1,
+                  // NO DASH - solid line for walking routes
+                  className: 'walking-route-line'
                 });
-              });
-              
-              // Add popup with route info
-              const distanceKm = (segment.route.distance / 1000).toFixed(1);
-              const durationMin = Math.round(segment.route.duration / 60);
-              routeLine.bindPopup(`
-                <div class="text-sm">
-                  <div class="font-medium">Walking Route</div>
-                  <div class="text-gray-600">
-                    ${segment.from.title} → ${segment.to.title}
+                
+                routeLine.on('mouseover', function(this: L.Polyline) {
+                  this.setStyle({
+                    weight: 6,
+                    opacity: 1,
+                    color: '#059669' // green-600
+                  });
+                });
+                
+                routeLine.on('mouseout', function(this: L.Polyline) {
+                  this.setStyle({
+                    weight: 4,
+                    opacity: 0.8,
+                    color: '#10b981'
+                  });
+                });
+                
+                // Add popup with REAL route info
+                const distanceKm = (segment.route.distance / 1000).toFixed(1);
+                const durationMin = Math.round(segment.route.duration / 60);
+                routeLine.bindPopup(`
+                  <div class="text-sm">
+                    <div class="font-medium">🚶 Walking Route</div>
+                    <div class="text-gray-600">
+                      ${segment.from.title} → ${segment.to.title}
+                    </div>
+                    <div class="mt-1">
+                      📍 ${distanceKm}km • ⏱️ ${durationMin} min
+                    </div>
+                    <div class="text-xs text-green-600 mt-1">
+                      ✅ Real walking path
+                    </div>
                   </div>
-                  <div class="mt-1">
-                    📍 ${distanceKm}km • ⏱️ ${durationMin} min
-                  </div>
-                </div>
-              `);
-              
-              routeLayerGroup.addLayer(routeLine);
-              totalCoordinates += segment.route.geometry.length;
-            }
-          });
+                `);
+                
+                routeLayerGroup.addLayer(routeLine);
+                totalCoordinates += segment.route.geometry.length;
+              }
+            });
+            
+            console.log('🚶 Total coordinates for REAL walking route:', totalCoordinates);
+            console.log('✅ Added REAL walking route to map');
+            
+          } else {
+            console.log('🚶 No detailed walking route data, using fallback');
+            createFallbackRoute();
+          }
           
-          console.log('🗺️ useRoute: Total coordinates for route:', totalCoordinates);
-          console.log('🗺️ useRoute: Added REAL walking route to map');
-          
-        } else {
-          // Fallback to straight lines if no detailed route available
-          console.log('🗺️ useRoute: No detailed route data, using fallback straight lines');
+        } catch (error) {
+          console.error('❌ Error calculating walking route:', error);
+          console.log('🚶 Falling back to straight lines');
           createFallbackRoute();
         }
-        
-        // Add route point markers
-        addRouteMarkers();
-        
-      } catch (error) {
-        console.error('🗺️ useRoute: Error calculating route:', error);
-        // Fallback to straight lines on error
+      } else {
+        // Use simple straight-line routes when walking routes disabled
+        console.log('🗺️ Using simple straight-line routes (walking routes disabled)');
         createFallbackRoute();
-        addRouteMarkers();
       }
+      
+      // Always add route point markers
+      addRouteMarkers();
     };
     
     // Start the route calculation
@@ -287,7 +290,5 @@ export const useRoute = (map: L.Map | null, routePoints: Plaque[]) => {
       });
     };
     
-  }, [map, routePoints]); // Dependencies: map and routePoints
-  
-  // No additional useEffect hooks - everything is in one effect to maintain Rules of Hooks
+  }, [map, routePoints, useWalkingRoutes]); // Added useWalkingRoutes to dependencies
 };
