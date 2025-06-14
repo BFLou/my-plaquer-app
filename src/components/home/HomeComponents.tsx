@@ -5,7 +5,7 @@ import { MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-// Category Card Component
+// Category Card Component - FIXED: Removed duplicate onClick prop
 export const CategoryCard = ({
   category,
 }: {
@@ -15,20 +15,18 @@ export const CategoryCard = ({
     count: number;
     onClick: () => void;
   };
-  onClick: () => void;
 }) => {
   return (
-    <Button
-      variant="outline"
-      className="whitespace-nowrap flex items-center justify-start h-10 gap-1.5 shadow-sm bg-white hover:bg-gray-50 border text-left"
+    <button
+      className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95"
       onClick={category.onClick}
     >
-      <span className="mr-1">{category.icon}</span>
-      <div className="flex flex-col items-start">
-        <span className="text-xs font-medium">{category.label}</span>
-        <span className="text-xs text-gray-500">{category.count}</span>
-      </div>
-    </Button>
+      <span className="text-base">{category.icon}</span>
+      <span className="whitespace-nowrap">{category.label}</span>
+      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full min-w-[20px] text-center">
+        {category.count}
+      </span>
+    </button>
   );
 };
 
@@ -170,7 +168,7 @@ export const OnboardingStepContent = ({
   );
 };
 
-// Categories Section
+// Categories Section - FIXED: Grid layout for mobile responsiveness
 export const CategoriesSection = ({
   categories,
 }: {
@@ -183,12 +181,12 @@ export const CategoriesSection = ({
 }) => {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pb-1">
+      {/* Flowing chip layout that wraps naturally */}
+      <div className="flex flex-wrap gap-2 justify-start">
         {categories.map((category, index) => (
           <CategoryCard
             key={index}
             category={category}
-            onClick={category.onClick}
           />
         ))}
       </div>
