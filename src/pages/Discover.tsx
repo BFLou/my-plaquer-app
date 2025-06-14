@@ -192,88 +192,138 @@ const Discover = () => {
   }, [urlState.modalPlaque, allPlaques]);
 
   // CRITICAL: Enhanced auto-location handling with immediate map centering
-  useEffect(() => {
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('lng');
-    const radius = searchParams.get('radius');
-    const locationName = searchParams.get('locationName');
-    const autoLocate = searchParams.get('autoLocate');
+useEffect(() => {
+  const lat = searchParams.get('lat');
+  const lng = searchParams.get('lng');
+  const radius = searchParams.get('radius');
+  const locationName = searchParams.get('locationName');
+  const autoLocate = searchParams.get('autoLocate');
+  
+  // Only process if this is an auto-location request
+  if (lat && lng && autoLocate === 'true') {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const searchRadius = radius ? parseFloat(radius) : 2;
     
-    // Only process if this is an auto-location request
-    if (lat && lng && autoLocate === 'true') {
-      const latitude = parseFloat(lat);
-      const longitude = parseFloat(lng);
-      const searchRadius = radius ? parseFloat(radius) : 2;
+    // Validate coordinates
+    if (!isNaN(latitude) && !isNaN(longitude) && 
+        latitude >= -90 && latitude <= 90 && 
+        longitude >= -180 && longitude <= 180) {
       
-      // Validate coordinates
-      if (!isNaN(latitude) && !isNaN(longitude) && 
-          latitude >= -90 && latitude <= 90 && 
-          longitude >= -180 && longitude <= 180) {
-        
-        console.log('🌍 Setting up location filter from URL:', {
-          latitude,
-          longitude,
-          radius: searchRadius,
-          locationName
-        });
-        
-        // Set distance filter immediately
-        const newDistanceFilter: DistanceFilter = {
-          enabled: true,
-          center: [latitude, longitude],
-          radius: searchRadius,
-          locationName: locationName || 'Your Location'
-        };
-        
-        setDistanceFilter(newDistanceFilter);
-        
-        // Force map view if not already selected
-        if (urlState.view !== 'map') {
-          updateUrlState({ view: 'map' });
-        }
-        
-        // Reset pagination when location filter is applied
-        setCurrentPage(1);
-        
-        // IMMEDIATE: Force map centering with custom event
-        setTimeout(() => {
-          console.log('🗺️ Discover: Force centering map on auto-location');
+      console.log('🌍 Setting up location filter from URL:', {
+        latitude,
+        longitude,
+        radius: searchRadius,
+        locationName,
+        isOutsideLondon: Math.abs(latitude - 51.5074) > 0.5 || Math.abs(longitude - (-0.1278)) > 0.5
+      });
+      
+      // Set distance filter immediately
+      const newDistanceFilter: DistanceFilter = {
+        enabled: true,
+        center: [latitude, longitude],
+        radius: searchRadius,
+        locationName: locationName || 'Your Location'
+      };
+      
+      setDistanceFilter(newDistanceFilter);
+      
+      // Force map view
+      updateUrlState({ view: 'map' });
+      setCurrentPage(1);
+      
+      // Enhanced map centering with multiple strategies
+      const centerStrategies = [
+        // Strategy 1: Immediate force center
+        () => {
+          console.log('🗺️ Strategy 1: Immediate force center');
           window.dispatchEvent(new CustomEvent('forceMapCenter', {
             detail: {
               center: [latitude, longitude],
               zoom: searchRadius <= 1 ? 15 : searchRadius <= 2 ? 14 : 13,
-              showMarker: true
+              showMarker: true,
+              markerText: locationName || 'Your Location'
             }
           }));
-        }, 200);
+        },
         
-        // Clean up URL to remove auto-location parameters
-        const newParams = new URLSearchParams(searchParams);
-        ['lat', 'lng', 'radius', 'locationName', 'autoLocate'].forEach(param => {
-          newParams.delete(param);
-        });
-        
-        // Ensure map view is set in URL
-        newParams.set('view', 'map');
-        
-        // Update URL without the auto-location parameters
-        const newUrl = newParams.toString() 
-          ? `${location.pathname}?${newParams.toString()}`
-          : `${location.pathname}?view=map`;
-        
-        // Use replace to avoid adding to browser history
-        window.history.replaceState({}, '', newUrl);
-        
-        console.log('🌍 Location filter applied, will show results message after filtering...');
-        
-      } else {
-        console.warn('🌍 Invalid coordinates from URL:', { lat, lng });
-        toast.error('Invalid location data', {
-          description: 'The location information was corrupted'
-        });
-      }
+        // Strategy 2: Fit bounds to include location and nearby plaques
+        () => {
+          console.log('🗺️ Strategy 2: Fit bounds with plaques');
+          
+          // Calculate nearby plaques
+          const nearbyPlaques = allPlaques.filter(plaque => {
+            if (!plaque.latitude || !plaque.longitude) return false;
+            
+            const distance = calculateDistance(
+              latitude,
+              longitude,
+              plaque.latitude,
+              plaque.longitude
+            );
+            
+            return distance <= searchRadius;
+          });
+          
+          console.log(`🗺️ Found ${nearbyPlaques.length} nearby plaques`);
+          
+          if (nearbyPlaques.length > 0) {
+            // Create bounds that include user location and all nearby plaques
+            window.dispatchEvent(new CustomEvent('fitMapBounds', {
+              detail: {
+                userLocation: [latitude, longitude],
+                plaques: nearbyPlaques,
+                padding: 0.1,
+                maxZoom: 15,
+                showUserMarker: true,
+                userLocationName: locationName || 'Your Location'
+              }
+            }));
+          } else {
+            // No nearby plaques, just center on user location with appropriate zoom
+            window.dispatchEvent(new CustomEvent('forceMapCenter', {
+              detail: {
+                center: [latitude, longitude],
+                zoom: 16, // Closer zoom if no plaques nearby
+                showMarker: true,
+                markerText: `${locationName || 'Your Location'} (No plaques nearby)`
+              }
+            }));
+          }
+        }
+      ];
+      
+      // Execute strategies with delays
+      setTimeout(centerStrategies[0], 100);
+      setTimeout(centerStrategies[1], 300);
+      
+      // Final fallback - ensure map is definitely centered
+      setTimeout(() => {
+        console.log('🗺️ Final fallback: Ensuring map is centered');
+        centerStrategies[0]();
+      }, 1000);
+      
+      // Clean up URL parameters
+      const newParams = new URLSearchParams(searchParams);
+      ['lat', 'lng', 'radius', 'locationName', 'autoLocate'].forEach(param => {
+        newParams.delete(param);
+      });
+      newParams.set('view', 'map');
+      
+      const newUrl = newParams.toString() 
+        ? `${location.pathname}?${newParams.toString()}`
+        : `${location.pathname}?view=map`;
+      
+      window.history.replaceState({}, '', newUrl);
+      
+      console.log('🌍 Location filter applied successfully');
+      
+    } else {
+      console.warn('🌍 Invalid coordinates from URL:', { lat, lng });
+      toast.error('Invalid location data');
     }
-  }, [searchParams, location.pathname, updateUrlState, urlState.view]);
+  }
+}, [searchParams, location.pathname, updateUrlState, allPlaques]);
 
   // ADDITIONAL: Force map center when distance filter changes and we're in map view
   useEffect(() => {

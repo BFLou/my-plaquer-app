@@ -736,6 +736,14 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         zoom: autoZoom
       });
       
+      // CRITICAL: Sync internal state with external distance filter
+      dispatch({
+        type: 'SET_LOCATION_FILTER',
+        center: distanceFilter.center,
+        radius: distanceFilter.radius,
+        location: distanceFilter.locationName || 'Unknown Location',
+      });
+      
       // Show brief feedback for user location
       if (distanceFilter.locationName === 'Your Location') {
         setTimeout(() => {
@@ -751,6 +759,9 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
           }));
         }, 300);
       }
+    } else if (!distanceFilter?.enabled) {
+      // Clear filter when disabled
+      dispatch({ type: 'CLEAR_FILTER' });
     }
   }, [distanceFilter?.enabled, distanceFilter?.center, distanceFilter?.locationName, distanceFilter?.radius]);
 
@@ -766,14 +777,33 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     }
   }, [forceCenter, initialCenter, initialZoom]);
 
-  // Sync with external distance filter changes
+  // Sync with external distance filter changes - ENHANCED
   useEffect(() => {
+    console.log('🗺️ MapContainer: Syncing with external distance filter:', {
+      external: distanceFilter,
+      internal: {
+        enabled: state.filterEnabled,
+        center: state.filterCenter,
+        radius: state.filterRadius,
+        location: state.filterLocation
+      }
+    });
+
     if (distanceFilter) {
-      if (
+      const centerChanged = !state.filterCenter || 
+        !distanceFilter.center ||
+        Math.abs(state.filterCenter[0] - distanceFilter.center[0]) > 0.0001 ||
+        Math.abs(state.filterCenter[1] - distanceFilter.center[1]) > 0.0001;
+
+      const anyFilterChanged = 
         distanceFilter.enabled !== state.filterEnabled ||
         distanceFilter.radius !== state.filterRadius ||
-        distanceFilter.locationName !== state.filterLocation
-      ) {
+        distanceFilter.locationName !== state.filterLocation ||
+        centerChanged;
+
+      if (anyFilterChanged) {
+        console.log('🗺️ MapContainer: Distance filter sync needed - updating internal state');
+        
         if (distanceFilter.enabled && distanceFilter.center) {
           dispatch({
             type: 'SET_LOCATION_FILTER',
@@ -781,6 +811,20 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
             radius: distanceFilter.radius,
             location: distanceFilter.locationName || 'Unknown Location',
           });
+          
+          // Also update the view if center changed significantly
+          if (centerChanged) {
+            console.log('🗺️ MapContainer: Center changed significantly, updating view');
+            const autoZoom = distanceFilter.radius <= 1 ? 15 : 
+                           distanceFilter.radius <= 2 ? 14 : 
+                           distanceFilter.radius <= 5 ? 13 : 12;
+            
+            dispatch({
+              type: 'SET_VIEW',
+              center: distanceFilter.center,
+              zoom: autoZoom,
+            });
+          }
         } else {
           dispatch({ type: 'CLEAR_FILTER' });
         }
@@ -791,6 +835,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     state.filterEnabled,
     state.filterRadius,
     state.filterLocation,
+    state.filterCenter,
   ]);
 
   // Cleanup timeouts on unmount
@@ -799,6 +844,70 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       toastTimeouts.current.forEach((timeout) => clearTimeout(timeout));
     };
   }, []);
+
+  useEffect(() => {
+  // Force sync external distance filter to internal state
+  if (distanceFilter?.enabled && distanceFilter.center) {
+    console.log('🔧 MapContainer: Force syncing external distance filter to internal state');
+    
+    // Check if internal state is out of sync
+    const needsSync = !state.filterEnabled || 
+                     !state.filterCenter ||
+                     Math.abs(state.filterCenter[0] - distanceFilter.center[0]) > 0.0001 ||
+                     Math.abs(state.filterCenter[1] - distanceFilter.center[1]) > 0.0001 ||
+                     state.filterRadius !== distanceFilter.radius ||
+                     state.filterLocation !== distanceFilter.locationName;
+    
+    if (needsSync) {
+      console.log('🔧 MapContainer: Internal state out of sync, forcing update');
+      
+      // Force internal state update
+      dispatch({
+        type: 'SET_LOCATION_FILTER',
+        center: distanceFilter.center,
+        radius: distanceFilter.radius,
+        location: distanceFilter.locationName || 'Current Location',
+      });
+      
+      // Also update the view
+      const autoZoom = distanceFilter.radius <= 1 ? 15 : 
+                      distanceFilter.radius <= 2 ? 14 : 
+                      distanceFilter.radius <= 5 ? 13 : 12;
+      
+      dispatch({
+        type: 'SET_VIEW',
+        center: distanceFilter.center,
+        zoom: autoZoom,
+      });
+      
+      // Add location marker after sync
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceMapCenter', {
+          detail: {
+            center: distanceFilter.center,
+            zoom: autoZoom,
+            showMarker: true,
+            markerText: distanceFilter.locationName || 'Current Location'
+          }
+        }));
+      }, 500);
+    }
+  } else if (!distanceFilter?.enabled && state.filterEnabled) {
+    // Clear filter if external filter is disabled
+    console.log('🔧 MapContainer: External filter disabled, clearing internal state');
+    dispatch({ type: 'CLEAR_FILTER' });
+  }
+}, [distanceFilter, state.filterEnabled, state.filterCenter, state.filterRadius, state.filterLocation]);
+
+useEffect(() => {
+  console.log('🎛️ MapContainer: UnifiedControlPanel will receive distanceFilter:', {
+    enabled: state.filterEnabled,
+    center: state.filterCenter,
+    radius: state.filterRadius,
+    locationName: state.filterLocation,
+    externalFilter: distanceFilter
+  });
+}, [state.filterEnabled, state.filterCenter, state.filterRadius, state.filterLocation, distanceFilter]);
 
   return (
     <div
