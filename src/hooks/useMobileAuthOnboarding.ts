@@ -70,69 +70,36 @@ export const useMobileAuthOnboarding = () => {
     return true;
   }, [user, onboardingState]);
 
-  // Show welcome toast on home page
+
+  // Show a single, consolidated welcome toast
   const showWelcomeToast = useCallback(() => {
     if (!shouldShowOnboarding() || onboardingState.hasShownWelcome) return;
 
     const toastId = toast.info(
-      "👋 Welcome to Plaquer! Discover London's historic blue plaques and create your personal collection.",
+      "Welcome to Plaquer! Tap the Profile or Library tabs to unlock all features.",
       {
-        duration: 6000,
+        duration: 8000,
         position: 'top-center',
         className: 'mobile-onboarding-toast welcome-toast',
         action: {
-          label: 'Get Started',
+          label: 'Sign In / Join',
           onClick: () => {
             triggerHapticFeedback('light');
             navigate('/join');
             toast.dismiss(toastId);
-          },
+          }
         },
         onDismiss: () => {
           saveOnboardingState({
             hasShownWelcome: true,
-            dismissedCount: onboardingState.dismissedCount + 1,
-            lastShown: new Date().toISOString(),
+            // We can also decide not to count this as a dismissal if it's the primary welcome
+            lastShown: new Date().toISOString()
           });
-        },
+        }
       }
     );
 
-    saveOnboardingState({ hasShownWelcome: true });
-  }, [shouldShowOnboarding, onboardingState, navigate, saveOnboardingState]);
-
-  // Show navigation hint
-  const showNavigationHint = useCallback(() => {
-    if (!shouldShowOnboarding() || onboardingState.hasShownNavHint) return;
-
-    const toastId = toast.info(
-      '💡 Tap the Profile or Library tabs below to sign in and unlock all features!',
-      {
-        duration: 8000,
-        position: 'bottom-center',
-        className: 'mobile-onboarding-toast nav-hint-toast',
-        style: {
-          marginBottom: '80px', // Above the navigation bar
-        },
-        action: {
-          label: 'Sign In',
-          onClick: () => {
-            triggerHapticFeedback('medium');
-            navigate('/signin');
-            toast.dismiss(toastId);
-          },
-        },
-        onDismiss: () => {
-          saveOnboardingState({
-            hasShownNavHint: true,
-            dismissedCount: onboardingState.dismissedCount + 1,
-            lastShown: new Date().toISOString(),
-          });
-        },
-      }
-    );
-
-    saveOnboardingState({ hasShownNavHint: true });
+    saveOnboardingState({ hasShownWelcome: true, hasShownNavHint: true }); // Also set hasShownNavHint to true
   }, [shouldShowOnboarding, onboardingState, navigate, saveOnboardingState]);
 
   // Show feature-specific hint when user tries to access locked features
@@ -181,77 +148,24 @@ export const useMobileAuthOnboarding = () => {
     ]
   );
 
-  // Show discovery hint on discover page
-  const showDiscoveryHint = useCallback(() => {
-    if (!shouldShowOnboarding()) return;
-
-    // Only show after user has been on discover page for a few seconds
-    const timer = setTimeout(() => {
-      const toastId = toast.info(
-        '🌟 Sign in to save your favorite plaques and track your visits!',
-        {
-          duration: 5000,
-          position: 'top-center',
-          className: 'mobile-onboarding-toast discovery-hint-toast',
-          action: {
-            label: 'Sign In',
-            onClick: () => {
-              triggerHapticFeedback('light');
-              navigate('/signin', {
-                state: {
-                  featureName: 'save favorites and track visits',
-                  redirectTo: '/discover',
-                },
-              });
-              toast.dismiss(toastId);
-            },
-          },
-        }
-      );
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [shouldShowOnboarding, navigate]);
-
+  
   // Main effect to trigger onboarding based on route
-  useEffect(() => {
+ useEffect(() => {
     if (!isMobile() || user) return;
 
     const path = location.pathname;
 
-    // Show different onboarding based on current page
-    switch (path) {
-      case '/':
-        if (!onboardingState.hasShownWelcome) {
-          setTimeout(showWelcomeToast, 2000);
-        } else if (!onboardingState.hasShownNavHint) {
-          setTimeout(showNavigationHint, 3000);
-        }
-        break;
-
-      case '/discover':
-        if (
-          onboardingState.hasShownWelcome &&
-          !onboardingState.hasShownNavHint
-        ) {
-          setTimeout(showNavigationHint, 4000);
-        } else {
-          // Show discovery-specific hint
-          return showDiscoveryHint();
-        }
-        break;
-
-      default:
-        // Don't show onboarding on other pages
-        break;
+    // Only show the consolidated welcome toast on the home page
+    if (path === '/') {
+      if (!onboardingState.hasShownWelcome) {
+        setTimeout(showWelcomeToast, 2000);
+      }
     }
   }, [
     user,
     location.pathname,
     onboardingState,
-    showWelcomeToast,
-    showNavigationHint,
-    showDiscoveryHint,
+    showWelcomeToast
   ]);
 
   // Clear onboarding when user signs in

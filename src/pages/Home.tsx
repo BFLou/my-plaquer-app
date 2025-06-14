@@ -281,21 +281,6 @@ const EnhancedMapPreview = ({
         onClick={() => !isMobile() && navigateToDiscover('/discover?view=map')}
       />
 
-      {/* Mobile-optimized bottom button */}
-      <div className="absolute bottom-3 left-3 right-3">
-        <MobileButton
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-sm py-3"
-          onClick={() => {
-            triggerHapticFeedback('light');
-            navigateToDiscover('/discover?view=map');
-          }}
-          touchOptimized
-        >
-          <Map size={18} className="mr-2" />
-          Explore Full Map
-        </MobileButton>
-      </div>
-
       {/* Loading state */}
       {!isMapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">

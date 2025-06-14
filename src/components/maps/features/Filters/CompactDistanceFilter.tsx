@@ -100,7 +100,7 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
               </Button>
 
               <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                庁 Try: "NW1 2DB", "Camden", "Westminster Bridge"
+                Try: "NW1 2DB", "Camden", "Westminster Bridge"
               </div>
             </div>
           ) : (
@@ -109,7 +109,7 @@ export const CompactDistanceFilter: React.FC<CompactDistanceFilterProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium text-green-800">
-                      桃 {distanceFilter.locationName}
+                      {distanceFilter.locationName}
                     </div>
                     <div className="text-xs text-green-600">
                       Within{' '}
