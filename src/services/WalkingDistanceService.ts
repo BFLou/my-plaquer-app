@@ -1,4 +1,4 @@
-// src/services/WalkingDistanceService.ts - FIXED: Clean syntax with proper function declarations
+// src/services/WalkingDistanceService.ts - WORKING MAPBOX IMPLEMENTATION
 import { Plaque } from '@/types/plaque';
 
 export interface WalkingStep {
@@ -6,6 +6,13 @@ export interface WalkingStep {
   distance: number;
   duration: number;
   coordinates: [number, number][];
+  maneuver?: {
+    type: string;
+    modifier?: string;
+    bearing_after?: number;
+    bearing_before?: number;
+  };
+  voiceInstruction?: string;
 }
 
 export interface WalkingRoute {
@@ -13,6 +20,8 @@ export interface WalkingRoute {
   duration: number; // in seconds
   steps: WalkingStep[];
   geometry: [number, number][];
+  confidence: 'high' | 'medium' | 'low';
+  source: 'mapbox' | 'estimated';
 }
 
 export interface RouteSegment {
@@ -34,8 +43,16 @@ function parseCoordinate(coord: string | number | undefined): number | null {
 }
 
 /**
- * Calculate walking distance and route between two points using multiple fallback methods
- * PRIORITIZED: OpenRouteService (since you have the API key)
+ * Validate coordinates are within valid ranges
+ */
+function isValidCoordinate(lat: number, lng: number): boolean {
+  return !isNaN(lat) && !isNaN(lng) && 
+         lat >= -90 && lat <= 90 && 
+         lng >= -180 && lng <= 180;
+}
+
+/**
+ * Calculate walking route using Mapbox Directions API
  */
 export const calculateWalkingRoute = async (
   fromLat: number,
@@ -43,149 +60,112 @@ export const calculateWalkingRoute = async (
   toLat: number,
   toLng: number
 ): Promise<WalkingRoute | null> => {
-  console.log(`🚶 Calculating walking route from [${fromLat}, ${fromLng}] to [${toLat}, ${toLng}]`);
+  console.log(`🚶 Calculating Mapbox walking route from [${fromLat}, ${fromLng}] to [${toLat}, ${toLng}]`);
   
-  // Try OpenRouteService FIRST (since you have the API key)
-  let route = await tryOpenRouteService(fromLat, fromLng, toLat, toLng);
+  // Check cache first
+  const cached = routeCache.get(fromLat, fromLng, toLat, toLng);
+  if (cached) {
+    return cached;
+  }
+  
+  // Try Mapbox first
+  const route = await tryMapboxRoute(fromLat, fromLng, toLat, toLng);
   if (route) {
-    console.log('🚶 ✅ Using OpenRouteService route');
+    console.log('🚶 ✅ Using Mapbox route');
+    // Cache successful routes
+    routeCache.set(fromLat, fromLng, toLat, toLng, route);
     return route;
   }
   
-  // Try OSRM as backup (free public API)
-  route = await tryOSRMRoute(fromLat, fromLng, toLat, toLng);
-  if (route) {
-    console.log('🚶 ✅ Using OSRM route (backup)');
-    return route;
-  }
-  
-  // Try GraphHopper as final API fallback
-  route = await tryGraphHopperRoute(fromLat, fromLng, toLat, toLng);
-  if (route) {
-    console.log('🚶 ✅ Using GraphHopper route (backup)');
-    return route;
-  }
-  
-  // Use estimated route if all APIs fail
-  console.log('🚶 ⚠️ Using estimated walking route (fallback)');
-  return calculateEstimatedWalkingRoute(fromLat, fromLng, toLat, toLng);
+  // Fallback to estimated route if Mapbox fails
+  console.log('🚶 ⚠️ Using estimated walking route (Mapbox unavailable)');
+  const estimatedRoute = calculateEstimatedWalkingRoute(fromLat, fromLng, toLat, toLng);
+  return estimatedRoute;
 };
 
 /**
- * Try GraphHopper routing API (free tier: 2500 requests/day)
+ * Mapbox Directions API - CORRECTED IMPLEMENTATION
  */
-async function tryGraphHopperRoute(
+async function tryMapboxRoute(
   fromLat: number,
   fromLng: number,
   toLat: number,
   toLng: number
 ): Promise<WalkingRoute | null> {
   try {
-    const API_KEY = import.meta.env.VITE_GRAPHHOPPER_API_KEY;
+    const API_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
     
-    // Skip if no API key
-    if (!API_KEY) {
+    if (!API_TOKEN) {
+      console.warn('🚶 ❌ Mapbox access token not found - add VITE_MAPBOX_ACCESS_TOKEN to .env');
       return null;
     }
     
-    const url = `https://graphhopper.com/api/1/route?` +
-      `point=${fromLat},${fromLng}&point=${toLat},${toLng}&` +
-      `vehicle=foot&locale=en&instructions=true&calc_points=true&` +
-      `key=${API_KEY}`;
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`GraphHopper API error: ${response.status}`);
-    
-    const data = await response.json();
-    
-    if (data.paths && data.paths.length > 0) {
-      const path = data.paths[0];
-      
-      // FIXED: Safe polyline decoding with proper type checking
-      let geometry: [number, number][] = [];
-      if (path.points && typeof path.points === 'string') {
-        try {
-          geometry = decodePolyline(path.points);
-        } catch (error) {
-          console.error('Error decoding polyline:', error);
-          geometry = [];
-        }
-      }
-      
-      return {
-        distance: Math.round(path.distance),
-        duration: Math.round(path.time / 1000), // Convert ms to seconds
-        geometry,
-        steps: path.instructions?.map((instruction: any) => ({
-          instruction: instruction.text || 'Continue',
-          distance: instruction.distance || 0,
-          duration: (instruction.time || 0) / 1000, // Convert ms to seconds
-          coordinates: geometry.slice(instruction.interval?.[0] || 0, instruction.interval?.[1] || geometry.length)
-        })) || []
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('GraphHopper routing error:', error);
-    return null;
-  }
-}
-
-
-/**
- * Try OpenRouteService API - FIXED: Use correct API key and improved error handling
- */
-async function tryOpenRouteService(
-  fromLat: number,
-  fromLng: number,
-  toLat: number,
-  toLng: number
-): Promise<WalkingRoute | null> {
-  try {
-    // Use Vite's environment variable syntax
-    const API_KEY = import.meta.env.VITE_ORS_API_KEY;
-    
-    if (!API_KEY) {
-      console.warn('OpenRouteService API key not found in environment variables');
-      console.log('Available env vars:', Object.keys(import.meta.env));
+    // Validate coordinates
+    if (!isValidCoordinate(fromLat, fromLng) || !isValidCoordinate(toLat, toLng)) {
+      console.error('🚶 ❌ Invalid coordinates provided');
       return null;
     }
     
-    console.log('🚶 Attempting OpenRouteService route calculation...');
+    console.log('🚶 🔄 Requesting Mapbox Directions API...');
     
-    const response = await fetch('https://api.openrouteservice.org/v2/directions/foot-walking', {
-      method: 'POST',
+    // CORRECT: Mapbox Directions API URL format
+    const coordinates = `${fromLng.toFixed(6)},${fromLat.toFixed(6)};${toLng.toFixed(6)},${toLat.toFixed(6)}`;
+    
+    // Build URL with proper parameters
+    const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates}` +
+      `?alternatives=false` +
+      `&geometries=geojson` +
+      `&overview=full` +
+      `&steps=true` +
+      `&access_token=${API_TOKEN}`;
+    
+    console.log('🚶 📡 Mapbox URL:', url.replace(API_TOKEN, 'pk.***'));
+    
+    const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'Accept': 'application/json, application/geo+json',
-        'Content-Type': 'application/json',
-        'Authorization': API_KEY
-      },
-      body: JSON.stringify({
-        coordinates: [[fromLng, fromLat], [toLng, toLat]],
-        format: 'geojson',
-        instructions: true,
-        language: 'en',
-        geometry_simplify: false,
-        continue_straight: false
-      })
+        'Accept': 'application/json'
+      }
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenRouteService API error: ${response.status} - ${errorText}`);
-      throw new Error(`OpenRouteService API error: ${response.status}`);
+      console.error(`🚶 ❌ Mapbox API error: ${response.status} - ${errorText}`);
+      
+      // Check for specific error types
+      if (response.status === 401) {
+        console.error('🚶 ❌ Invalid Mapbox token - check your VITE_MAPBOX_ACCESS_TOKEN');
+      } else if (response.status === 422) {
+        console.error('🚶 ❌ Invalid coordinates or request parameters');
+        console.error('🚶 🔍 Debug info:', {
+          fromLat, fromLng, toLat, toLng,
+          coordinates,
+          isValidFrom: isValidCoordinate(fromLat, fromLng),
+          isValidTo: isValidCoordinate(toLat, toLng)
+        });
+      }
+      
+      return null;
     }
     
     const data = await response.json();
-    console.log('🚶 OpenRouteService raw response:', data);
+    console.log('🚶 📨 Mapbox response received:', {
+      code: data.code,
+      routes: data.routes?.length || 0,
+      message: data.message
+    });
     
-    if (data.features && data.features.length > 0) {
-      const route = data.features[0];
-      const properties = route.properties;
+    // Check for API errors
+    if (data.code !== 'Ok') {
+      console.error('🚶 ❌ Mapbox API returned error code:', data.code, data.message);
+      return null;
+    }
+    
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
       
-      if (!route.geometry || !route.geometry.coordinates) {
-        console.error('No geometry in OpenRouteService response');
+      if (!route.geometry?.coordinates) {
+        console.error('🚶 ❌ No geometry in Mapbox response');
         return null;
       }
       
@@ -194,163 +174,97 @@ async function tryOpenRouteService(
         [coord[1], coord[0]] as [number, number]
       );
       
-      console.log('🚶 OpenRouteService success:', {
-        distance: properties.summary?.distance,
-        duration: properties.summary?.duration,
-        geometryPoints: geometry.length
-      });
-      
-      return {
-        distance: Math.round(properties.summary?.distance || 0),
-        duration: Math.round(properties.summary?.duration || 0),
-        geometry,
-        steps: properties.segments?.[0]?.steps?.map((step: any) => ({
-          instruction: step.instruction || 'Continue',
-          distance: step.distance || 0,
-          duration: step.duration || 0,
-          coordinates: step.way_points?.map((wp: number[]) => [wp[1], wp[0]] as [number, number]) || []
-        })) || []
-      };
-    }
-    
-    console.warn('No routes found in OpenRouteService response');
-    return null;
-  } catch (error) {
-    console.error('OpenRouteService routing error:', error);
-    return null;
-  }
-}
-
-/**
- * Try OSRM (Open Source Routing Machine) - free public API
- */
-async function tryOSRMRoute(
-  fromLat: number,
-  fromLng: number,
-  toLat: number,
-  toLng: number
-): Promise<WalkingRoute | null> {
-  try {
-    const url = `https://router.project-osrm.org/route/v1/walking/` +
-      `${fromLng},${fromLat};${toLng},${toLat}?` +
-      `overview=full&geometries=geojson&steps=true`;
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`OSRM API error: ${response.status}`);
-    
-    const data = await response.json();
-    
-    if (data.routes && data.routes.length > 0) {
-      const route = data.routes[0];
-      
-      // Convert GeoJSON coordinates [lng, lat] to [lat, lng]
-      const geometry = route.geometry.coordinates.map((coord: number[]) => 
-        [coord[1], coord[0]] as [number, number]
-      );
-      
-      return {
-        distance: Math.round(route.distance),
-        duration: Math.round(route.duration),
-        geometry,
-        steps: route.legs?.[0]?.steps?.map((step: any) => ({
+      // Process walking steps with detailed instructions
+      const steps = route.legs?.[0]?.steps?.map((step: any) => {
+        const stepGeometry = step.geometry?.coordinates?.map((coord: number[]) => 
+          [coord[1], coord[0]] as [number, number]
+        ) || [];
+        
+        return {
           instruction: step.maneuver?.instruction || 'Continue',
           distance: step.distance || 0,
           duration: step.duration || 0,
-          coordinates: step.geometry?.coordinates?.map((coord: number[]) => 
-            [coord[1], coord[0]] as [number, number]
-          ) || []
-        })) || []
+          coordinates: stepGeometry,
+          maneuver: {
+            type: step.maneuver?.type || 'continue',
+            modifier: step.maneuver?.modifier,
+            bearing_after: step.maneuver?.bearing_after,
+            bearing_before: step.maneuver?.bearing_before
+          },
+          voiceInstruction: step.voiceInstructions?.[0]?.announcement
+        };
+      }) || [];
+      
+      console.log('🚶 ✅ Mapbox route processed:', {
+        distance: `${(route.distance / 1000).toFixed(2)}km`,
+        duration: `${Math.round(route.duration / 60)}min`,
+        geometryPoints: geometry.length,
+        steps: steps.length
+      });
+      
+      return {
+        distance: Math.round(route.distance || 0),
+        duration: Math.round(route.duration || 0),
+        geometry,
+        steps,
+        confidence: 'high',
+        source: 'mapbox'
       };
     }
     
+    console.warn('🚶 ⚠️ No routes found in Mapbox response');
     return null;
   } catch (error) {
-    console.error('OSRM routing error:', error);
+    console.error('🚶 ❌ Mapbox routing error:', error);
     return null;
   }
 }
 
 /**
- * Fallback: Calculate estimated walking route with realistic path
+ * Fallback estimated route when Mapbox is unavailable
  */
-export const calculateEstimatedWalkingRoute = async (
+function calculateEstimatedWalkingRoute(
   fromLat: number,
   fromLng: number,
   toLat: number,
   toLng: number
-): Promise<WalkingRoute | null> => {
-  try {
-    // Calculate straight-line distance
-    const straightLineDistance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
-    
-    // Apply walking factor for London streets (1.4x is realistic for urban areas)
-    const walkingFactor = 1.4;
-    const estimatedDistance = straightLineDistance * walkingFactor;
-    
-    // Estimate duration (average walking speed: 5 km/h = 1.39 m/s)
-    const walkingSpeed = 1.39; // m/s
-    const estimatedDuration = estimatedDistance / walkingSpeed;
-    
-    // Create a more realistic path with some intermediate points
-    const geometry = createRealisticPath(fromLat, fromLng, toLat, toLng);
-    
-    return {
-      distance: Math.round(estimatedDistance),
-      duration: Math.round(estimatedDuration),
-      geometry,
-      steps: [
-        {
-          instruction: `Walk ${formatDistance(estimatedDistance)} to destination`,
-          distance: estimatedDistance,
-          duration: estimatedDuration,
-          coordinates: geometry
-        }
-      ]
-    };
-  } catch (error) {
-    console.error('Error calculating estimated walking route:', error);
-    return null;
-  }
-};
-
-/**
- * Create a more realistic walking path instead of straight line
- */
-function createRealisticPath(
-  fromLat: number,
-  fromLng: number,
-  toLat: number,
-  toLng: number
-): [number, number][] {
-  const points: [number, number][] = [[fromLat, fromLng]];
+): WalkingRoute {
+  // Calculate straight-line distance
+  const straightLineDistance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
   
-  // Add intermediate points to simulate street routing
-  const latDiff = toLat - fromLat;
-  const lngDiff = toLng - fromLng;
+  // Apply walking factor for urban areas (1.4x for London streets)
+  const walkingFactor = 1.4;
+  const estimatedDistance = straightLineDistance * walkingFactor;
   
-  // For longer distances, add more intermediate points
-  const distance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
-  const numPoints = Math.min(Math.max(Math.floor(distance / 200), 1), 8); // 1-8 intermediate points
+  // Estimate duration (average walking speed: 5 km/h = 1.39 m/s)
+  const walkingSpeed = 1.39; // m/s
+  const estimatedDuration = estimatedDistance / walkingSpeed;
   
-  for (let i = 1; i < numPoints; i++) {
-    const ratio = i / numPoints;
-    
-    // Add some randomness to simulate street layout
-    const randomOffsetLat = (Math.random() - 0.5) * 0.0005; // ~50m variation
-    const randomOffsetLng = (Math.random() - 0.5) * 0.0005;
-    
-    const intermediateLat = fromLat + (latDiff * ratio) + randomOffsetLat;
-    const intermediateLng = fromLng + (lngDiff * ratio) + randomOffsetLng;
-    
-    points.push([intermediateLat, intermediateLng]);
-  }
+  // Create simple path
+  const geometry: [number, number][] = [
+    [fromLat, fromLng],
+    [toLat, toLng]
+  ];
   
-  points.push([toLat, toLng]);
-  return points;
+  return {
+    distance: Math.round(estimatedDistance),
+    duration: Math.round(estimatedDuration),
+    geometry,
+    steps: [
+      {
+        instruction: `Walk ${formatDistance(estimatedDistance)} to destination`,
+        distance: estimatedDistance,
+        duration: estimatedDuration,
+        coordinates: geometry
+      }
+    ],
+    confidence: 'low',
+    source: 'estimated'
+  };
 }
 
 /**
- * Calculate route for multiple waypoints - ENHANCED: Better debugging and error handling
+ * Calculate route for multiple waypoints using Mapbox
  */
 export const calculateMultiWaypointRoute = async (
   waypoints: Plaque[]
@@ -360,10 +274,9 @@ export const calculateMultiWaypointRoute = async (
   segments: RouteSegment[];
   error?: string;
 }> => {
-  console.log('🚶 WalkingDistanceService: Calculating route for', waypoints.length, 'waypoints');
+  console.log('🚶 Calculating Mapbox route for', waypoints.length, 'waypoints');
   
   if (waypoints.length < 2) {
-    console.log('🚶 Not enough waypoints for route calculation');
     return {
       totalDistance: 0,
       totalDuration: 0,
@@ -376,94 +289,76 @@ export const calculateMultiWaypointRoute = async (
   let totalDistance = 0;
   let totalDuration = 0;
   let hasErrors = false;
-  let apiCallsSuccessful = 0;
-  let apiCallsFailed = 0;
   
-  // Calculate route between each consecutive pair of waypoints
+  // Calculate route between each consecutive pair
   for (let i = 0; i < waypoints.length - 1; i++) {
     const from = waypoints[i];
     const to = waypoints[i + 1];
     
-    console.log(`🚶 Processing segment ${i + 1}/${waypoints.length - 1}: ${from.title} → ${to.title}`);
+    console.log(`🚶 Segment ${i + 1}/${waypoints.length - 1}: ${from.title} → ${to.title}`);
     
-    if (!from.latitude || !from.longitude || !to.latitude || !to.longitude) {
-      console.warn(`❌ Skipping route segment ${i} due to missing coordinates`);
-      apiCallsFailed++;
-      continue;
-    }
-    
-    // FIXED: Safe coordinate conversion
     const fromLat = parseCoordinate(from.latitude);
     const fromLng = parseCoordinate(from.longitude);
     const toLat = parseCoordinate(to.latitude);
     const toLng = parseCoordinate(to.longitude);
     
     if (fromLat === null || fromLng === null || toLat === null || toLng === null) {
-      console.warn(`❌ Skipping route segment ${i} due to invalid coordinates:`, {
-        from: { lat: fromLat, lng: fromLng },
-        to: { lat: toLat, lng: toLng }
-      });
-      apiCallsFailed++;
+      console.warn(`🚶 ❌ Invalid coordinates for segment ${i + 1}`);
+      hasErrors = true;
       continue;
     }
     
     try {
-      // Calculate route for this segment with timeout
-      const routePromise = calculateWalkingRoute(fromLat, fromLng, toLat, toLng);
-      const timeoutPromise = new Promise<null>((_, reject) => 
-        setTimeout(() => reject(new Error('Route calculation timeout')), 10000) // 10 second timeout
-      );
-      
-      const route = await Promise.race([routePromise, timeoutPromise]);
+      const route = await calculateWalkingRoute(fromLat, fromLng, toLat, toLng);
       
       if (route && route.distance > 0) {
         segments.push({ from, to, route });
         totalDistance += route.distance;
         totalDuration += route.duration;
-        apiCallsSuccessful++;
         
-        console.log(`✅ Segment ${i + 1} calculated:`, {
+        console.log(`🚶 ✅ Segment ${i + 1} calculated:`, {
           distance: `${(route.distance / 1000).toFixed(2)}km`,
           duration: `${Math.round(route.duration / 60)}min`,
-          geometryPoints: route.geometry.length
+          source: route.source
         });
       } else {
-        console.error(`❌ Failed to calculate route for segment ${i + 1}: No valid route returned`);
-        apiCallsFailed++;
+        console.error(`🚶 ❌ Failed to calculate segment ${i + 1}`);
         hasErrors = true;
       }
     } catch (error) {
-      console.error(`❌ Error calculating route for segment ${i + 1}:`, error);
-      apiCallsFailed++;
+      console.error(`🚶 ❌ Error calculating segment ${i + 1}:`, error);
       hasErrors = true;
     }
     
-    // Add a small delay between API calls to avoid rate limiting
+    // Rate limiting delay
     if (i < waypoints.length - 2) {
-      await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
   
-  const result = {
-    totalDistance: Math.round(totalDistance),
-    totalDuration: Math.round(totalDuration),
-    segments,
-    error: hasErrors ? 
-      `Some routes could not be calculated (${apiCallsSuccessful} successful, ${apiCallsFailed} failed)` : 
-      undefined
-  };
-  
   console.log('🚶 Route calculation complete:', {
-    waypoints: waypoints.length,
+    totalDistance: `${(totalDistance / 1000).toFixed(2)}km`,
+    totalDuration: `${Math.round(totalDuration / 60)}min`,
     segments: segments.length,
-    totalDistance: `${(result.totalDistance / 1000).toFixed(2)}km`,
-    totalDuration: `${Math.round(result.totalDuration / 60)}min`,
-    successfulCalls: apiCallsSuccessful,
-    failedCalls: apiCallsFailed,
     hasErrors
   });
   
-  return result;
+  return {
+    totalDistance: Math.round(totalDistance),
+    totalDuration: Math.round(totalDuration),
+    segments,
+    error: hasErrors ? 'Some route segments could not be calculated' : undefined
+  };
+};
+
+/**
+ * SIMPLIFIED: Basic route optimization (no Mapbox Optimization API needed)
+ */
+export const optimizeRouteWithMapbox = async (waypoints: Plaque[]): Promise<Plaque[]> => {
+  // For now, just return the original order
+  // You can implement nearest-neighbor optimization here if needed
+  console.log('🚶 ℹ️ Using original waypoint order (optimization disabled)');
+  return waypoints;
 };
 
 /**
@@ -489,52 +384,6 @@ function calculateHaversineDistance(
 }
 
 /**
- * Decode polyline (for GraphHopper and other services) - FIXED SIGNATURE
- */
-function decodePolyline(encoded: string): [number, number][] {
-  // Add input validation
-  if (typeof encoded !== 'string' || encoded.length === 0) {
-    return [];
-  }
-
-  const points: [number, number][] = [];
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-  
-  try {
-    while (index < encoded.length) {
-      let b;
-      let shift = 0;
-      let result = 0;
-      do {
-        b = encoded.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      const deltaLat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
-      lat += deltaLat;
-      
-      shift = 0;
-      result = 0;
-      do {
-        b = encoded.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      const deltaLng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
-      lng += deltaLng;
-      
-      points.push([lat / 1e5, lng / 1e5]);
-    }
-  } catch (error) {
-    console.error('Error decoding polyline:', error);
-    return [];
-  }
-  
-  return points;
-}
-/**
  * Format distance for display
  */
 export const formatDistance = (meters: number): string => {
@@ -558,7 +407,7 @@ export const formatDuration = (seconds: number): string => {
 };
 
 /**
- * Cache for route calculations to avoid repeated API calls
+ * Route cache for avoiding repeated API calls
  */
 class RouteCache {
   private cache = new Map<string, WalkingRoute>();
@@ -570,18 +419,21 @@ class RouteCache {
   
   get(fromLat: number, fromLng: number, toLat: number, toLng: number): WalkingRoute | null {
     const key = this.getCacheKey(fromLat, fromLng, toLat, toLng);
-    return this.cache.get(key) || null;
+    const cached = this.cache.get(key);
+    if (cached) {
+      console.log('🚶 📦 Using cached route');
+      return cached;
+    }
+    return null;
   }
   
   set(fromLat: number, fromLng: number, toLat: number, toLng: number, route: WalkingRoute): void {
     const key = this.getCacheKey(fromLat, fromLng, toLat, toLng);
     
-    // Simple LRU: remove oldest entries when cache is full
+    // Simple LRU: remove oldest when full
     if (this.cache.size >= this.maxCacheSize) {
       const firstKey = this.cache.keys().next().value;
-      if (typeof firstKey === 'string') {
-        this.cache.delete(firstKey);
-      }
+      if (firstKey) this.cache.delete(firstKey);
     }
     
     this.cache.set(key, route);

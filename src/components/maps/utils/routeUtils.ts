@@ -1,4 +1,4 @@
-// src/components/maps/utils/routeUtils.ts
+// src/components/maps/utils/routeUtils.ts - ENHANCED: With Mapbox optimization
 import { Plaque } from '@/types/plaque';
 
 export interface RoutePoint {
@@ -15,7 +15,7 @@ export interface SavedRoute {
   points: RoutePoint[];
 }
 
-// FIXED: Helper function for safe coordinate conversion
+// Helper function for safe coordinate conversion
 function parseCoordinate(coord: string | number | undefined): number {
   if (coord === undefined || coord === null) return 0;
   return typeof coord === 'string' ? parseFloat(coord) : coord;
@@ -63,7 +63,7 @@ export function calculateRouteDistance(points: Plaque[]): number {
     
     if (!start.latitude || !start.longitude || !end.latitude || !end.longitude) continue;
     
-    // FIXED: Use helper function for safe coordinate conversion
+    // Use helper function for safe coordinate conversion
     const startLat = parseCoordinate(start.latitude);
     const startLng = parseCoordinate(start.longitude);
     const endLat = parseCoordinate(end.latitude);
@@ -98,7 +98,27 @@ export function calculateWalkingTime(distanceKm: number, useImperial = false): s
 }
 
 /**
- * Optimize route using a nearest-neighbor algorithm
+ * ENHANCED: Optimize route using Mapbox Optimization API
+ * This is a wrapper that calls the WalkingDistanceService function
+ */
+export async function optimizeRouteOrder(routePoints: Plaque[]): Promise<Plaque[]> {
+  if (routePoints.length < 3) {
+    return routePoints;
+  }
+
+  try {
+    // Import the Mapbox optimization function
+    const { optimizeRouteWithMapbox } = await import('@/services/WalkingDistanceService');
+    return await optimizeRouteWithMapbox(routePoints);
+  } catch (error) {
+    console.error('Route optimization failed, falling back to nearest-neighbor:', error);
+    // Fallback to the existing nearest-neighbor algorithm
+    return optimizeRoute(routePoints);
+  }
+}
+
+/**
+ * Optimize route using a nearest-neighbor algorithm (FALLBACK)
  * Keeps start and end points fixed, optimizes middle points
  */
 export function optimizeRoute(routePoints: Plaque[]): Plaque[] {
@@ -124,7 +144,7 @@ export function optimizeRoute(routePoints: Plaque[]): Plaque[] {
         continue;
       }
       
-      // FIXED: Use helper function for safe coordinate conversion
+      // Use helper function for safe coordinate conversion
       const startLat = parseCoordinate(current.latitude);
       const startLng = parseCoordinate(current.longitude);
       const endLat = parseCoordinate(middle[i].latitude);
@@ -236,7 +256,7 @@ export function saveRoute(
     return null;
   }
   
-  // Create route object - FIXED: Use helper function for coordinate conversion
+  // Create route object - Use helper function for coordinate conversion
   const route: SavedRoute = {
     id: Date.now(),
     name,
@@ -259,4 +279,98 @@ export function saveRoute(
   localStorage.setItem('plaqueRoutes', JSON.stringify(savedRoutes));
   
   return route;
+}
+
+/**
+ * NEW: Get route quality score based on optimization potential
+ */
+export function getRouteQualityScore(routePoints: Plaque[]): {
+  score: number; // 0-100
+  improvementPotential: number; // estimated % improvement from optimization
+  recommendation: string;
+} {
+  if (routePoints.length < 3) {
+    return {
+      score: 100,
+      improvementPotential: 0,
+      recommendation: "Route is optimal"
+    };
+  }
+
+  // Calculate current total distance
+  const currentDistance = calculateRouteDistance(routePoints);
+  
+  // Calculate optimized distance using nearest-neighbor
+  const optimizedRoute = optimizeRoute(routePoints);
+  const optimizedDistance = calculateRouteDistance(optimizedRoute);
+  
+  if (currentDistance === 0) {
+    return {
+      score: 0,
+      improvementPotential: 0,
+      recommendation: "Cannot calculate route quality"
+    };
+  }
+
+  const improvementPotential = Math.max(0, ((currentDistance - optimizedDistance) / currentDistance) * 100);
+  const score = Math.max(0, 100 - improvementPotential);
+
+  let recommendation = "Route is optimal";
+  if (improvementPotential > 20) {
+    recommendation = "Route can be significantly improved";
+  } else if (improvementPotential > 10) {
+    recommendation = "Route has room for improvement";
+  } else if (improvementPotential > 5) {
+    recommendation = "Route is fairly good";
+  }
+
+  return {
+    score: Math.round(score),
+    improvementPotential: Math.round(improvementPotential),
+    recommendation
+  };
+}
+
+/**
+ * NEW: Generate smart route suggestions
+ */
+export function generateRouteSuggestions(routePoints: Plaque[]): {
+  type: 'optimization' | 'reorder' | 'split' | 'none';
+  suggestion: string;
+  action?: () => void;
+} {
+  if (routePoints.length < 2) {
+    return {
+      type: 'none',
+      suggestion: "Add more plaques to build a route"
+    };
+  }
+
+  const qualityScore = getRouteQualityScore(routePoints);
+
+  if (routePoints.length > 8) {
+    return {
+      type: 'split',
+      suggestion: `Consider splitting this ${routePoints.length}-stop route into smaller routes for better walking experience`
+    };
+  }
+
+  if (qualityScore.improvementPotential > 15) {
+    return {
+      type: 'optimization',
+      suggestion: `This route can be optimized to save ~${qualityScore.improvementPotential}% walking distance`
+    };
+  }
+
+  if (routePoints.length >= 3 && qualityScore.improvementPotential > 5) {
+    return {
+      type: 'reorder',
+      suggestion: `Minor reordering could make this route ${qualityScore.improvementPotential}% more efficient`
+    };
+  }
+
+  return {
+    type: 'none',
+    suggestion: "This route is well-optimized!"
+  };
 }
