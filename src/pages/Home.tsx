@@ -5,8 +5,10 @@ import {
   ChevronRight,
   Map,
   Navigation,
-  Info,
-  CheckCircle,
+  Bookmark,
+  Route,
+  CheckSquare,
+  Library,
   Filter as FilterIcon,
   MapPin,
 } from 'lucide-react';
@@ -368,28 +370,33 @@ const Home = () => {
     }
   };
 
-  // Onboarding steps content
-  const onboardingSteps = [
-    {
-      title: 'Welcome to Plaquer',
-      description:
-        "Discover, track and collect London's iconic blue plaques marking historical sites across the city.",
-      icon: <Info size={40} className="text-blue-500" />,
-    },
-    {
-      title: 'Find Plaques',
-      description:
-        'Use our interactive map to locate blue plaques near you or search for specific historical figures.',
-      icon: <Map size={40} className="text-blue-500" />,
-    },
-    {
-      title: 'Build Your Collection',
-      description:
-        'Visit plaques in person, mark them as visited, and create themed collections of your favorites.',
-      icon: <CheckCircle size={40} className="text-blue-500" />,
-    },
-  ];
-
+const onboardingSteps = [
+ {
+icon: <MapPin size={40} className="text-blue-500" />, // Represents discovery and location
+ title: 'Begin Your Adventure',
+ description: 'Welcome! Discover the rich history hidden all around you, one plaque at a time.',
+ },
+ {
+icon: <Bookmark size={40} className="text-blue-500" />, // Represents saving and collecting
+title: 'Build Your Personal Museum',
+ description: 'Found a plaque you love? Save it to a custom collection. Group them by theme, area, or personal interest.',
+},
+{
+ icon: <Route size={40} className="text-blue-500" />, // Represents planning and journeys
+title: 'Create the Perfect Walk',
+ description: 'Plan a custom route between plaques to design your own historical walking tour and see how long it will take.',
+},
+{
+ icon: <CheckSquare size={40} className="text-blue-500" />, // Represents tracking and achievement
+ title: 'Track Your Discoveries',
+ description: "Mark plaques as 'visited' to create a beautiful record of your travels and see your progress grow.",
+},
+ {
+ icon: <Library size={40} className="text-blue-500" />, // Represents the user's personal space
+ title: 'Explore Your Library',
+ description: 'All your saved collections, routes, and visited plaques live here. Your personal history hub awaits!',
+}
+];
   return (
     <PageContainer
       activePage="home"
