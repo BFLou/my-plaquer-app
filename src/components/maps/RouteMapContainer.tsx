@@ -1,7 +1,8 @@
-// src/components/maps/RouteMapContainer.tsx - FIXED: Proper coordinate type handling
-import React, { useEffect, useRef } from 'react';
+// src/components/maps/RouteMapContainer.tsx - FIXED: No route duplication
+import React, { useEffect, useRef, useState } from 'react';
 import { Plaque } from '@/types/plaque';
 import { RouteData } from '@/hooks/useRoutes';
+import { calculateMultiWaypointRoute } from '@/services/WalkingDistanceService';
 
 interface RouteMapContainerProps {
   route: RouteData;
@@ -10,6 +11,7 @@ interface RouteMapContainerProps {
   className?: string;
   showRoute?: boolean;
   routeColor?: string;
+  useWalkingRoutes?: boolean;
   onError?: () => void;
 }
 
@@ -52,11 +54,54 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
   className = '',
   showRoute = true,
   routeColor = '#22c55e',
+  useWalkingRoutes = false,
   onError
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const initializingRef = useRef(false);
+  const [walkingRouteGeometry, setWalkingRouteGeometry] = useState<[number, number][][]>([]);
+  const [isLoadingWalkingRoute, setIsLoadingWalkingRoute] = useState(false);
+
+  // Load walking route data
+  const loadWalkingRoute = async (validPlaques: Array<Plaque & { validCoords: [number, number] }>) => {
+    if (!useWalkingRoutes || validPlaques.length < 2) {
+      console.log('🚶 Walking routes disabled or insufficient plaques:', { 
+        useWalkingRoutes, 
+        plaqueCount: validPlaques.length 
+      });
+      setIsLoadingWalkingRoute(false);
+      return;
+    }
+
+    try {
+      setIsLoadingWalkingRoute(true);
+      console.log('🚶 Loading walking route for', validPlaques.length, 'plaques');
+      
+      const routeData = await calculateMultiWaypointRoute(validPlaques);
+      
+      console.log('🚶 Walking route result:', {
+        totalDistance: routeData.totalDistance,
+        totalDuration: routeData.totalDuration,
+        segmentCount: routeData.segments?.length || 0,
+        hasError: !!routeData.error
+      });
+      
+      if (routeData.segments && routeData.segments.length > 0) {
+        const geometry = routeData.segments.map(segment => segment.route.geometry);
+        setWalkingRouteGeometry(geometry);
+        console.log('✅ Walking route loaded successfully - should show GREEN lines');
+      } else {
+        console.log('⚠️ No walking route geometry available - will show YELLOW fallback');
+        setWalkingRouteGeometry([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading walking route - will show YELLOW fallback:', error);
+      setWalkingRouteGeometry([]);
+    } finally {
+      setIsLoadingWalkingRoute(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -188,21 +233,18 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           markers.push(marker);
         });
 
-        // FIXED: Add route line with proper coordinate types
-        if (showRoute && validPlaques.length > 1) {
-          const routeCoords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
+        // FIXED: DON'T add any routes here - wait for walking routes to load
+        console.log('🗺️ Map initialized, deferring route rendering until walking route calculation completes');
 
-          if (routeCoords.length > 1) {
-            L.polyline(routeCoords, {
-              color: routeColor,
-              weight: 3,
-              opacity: 0.7,
-              dashArray: '8, 4'
-            }).addTo(map);
-          }
+        // Load walking route if enabled
+        if (useWalkingRoutes) {
+          await loadWalkingRoute(validPlaques);
+        } else {
+          // If not using walking routes, set loading to false so fallback renders
+          setIsLoadingWalkingRoute(false);
         }
 
-        // FIXED: Calculate bounds directly from coordinates instead of using featureGroup
+        // FIXED: Calculate bounds directly from coordinates
         if (validPlaques.length > 0) {
           const coords: [number, number][] = validPlaques.map(p => p.validCoords);
           const bounds = L.latLngBounds(coords);
@@ -229,28 +271,90 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
     };
   }, []); // Empty dependency array - only initialize once
 
-  // FIXED: Handle plaques changes without reinitializing map
+  // FIXED: Handle route rendering - only add ONE type of route
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
+    const L = (window as any).L;
     const validPlaques = getValidPlaques(plaques);
-    if (!validPlaques.length) return;
+    
+    // Remove ALL existing route lines
+    mapInstanceRef.current.eachLayer((layer: any) => {
+      if (layer.options?.className === 'walking-route-line' || 
+          layer.options?.className === 'fallback-route-line') {
+        mapInstanceRef.current.removeLayer(layer);
+      }
+    });
 
-    // Just re-fit bounds when plaques change
-    try {
-      const L = (window as any).L;
-      if (L && mapInstanceRef.current) {
-        const coords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
+    // Only add routes after walking route calculation is complete AND if we should show routes
+    if (!isLoadingWalkingRoute && showRoute && validPlaques.length > 1) {
+      if (useWalkingRoutes && walkingRouteGeometry.length > 0) {
+        // Add REAL walking routes (GREEN, SOLID)
+        console.log('✅ Adding real walking routes (GREEN)');
+        walkingRouteGeometry.forEach((geometry, index) => {
+          if (geometry && geometry.length >= 2) {
+            const routeLine = L.polyline(geometry, {
+              color: routeColor, // Green
+              weight: 4,
+              opacity: 0.8,
+              smoothFactor: 1,
+              className: 'walking-route-line'
+            });
 
-        if (coords.length > 0) {
-          const bounds = L.latLngBounds(coords);
-          mapInstanceRef.current.fitBounds(bounds.pad(0.05));
+            routeLine.on('mouseover', function(this: L.Polyline) {
+              this.setStyle({
+                weight: 6,
+                opacity: 1
+              });
+            });
+
+            routeLine.on('mouseout', function(this: L.Polyline) {
+              this.setStyle({
+                weight: 4,
+                opacity: 0.8
+              });
+            });
+
+            routeLine.bindPopup(`
+              <div class="text-sm">
+                <div class="font-medium">🚶 Walking Route Segment ${index + 1}</div>
+                <div class="text-xs text-green-600 mt-1">
+                  ✅ Real walking path
+                </div>
+              </div>
+            `);
+
+            routeLine.addTo(mapInstanceRef.current);
+          }
+        });
+      } else {
+        // Only add fallback if walking routes failed or disabled (YELLOW, DASHED)
+        console.log('⚠️ Adding fallback straight-line route (YELLOW/ORANGE)');
+        const routeCoords: [number, number][] = validPlaques.map(plaque => plaque.validCoords);
+        
+        if (routeCoords.length > 1) {
+          const fallbackLine = L.polyline(routeCoords, {
+            color: '#f59e0b', // Amber for fallback
+            weight: 3,
+            opacity: 0.7,
+            dashArray: '8, 4',
+            className: 'fallback-route-line'
+          });
+
+          fallbackLine.bindPopup(`
+            <div class="text-sm">
+              <div class="font-medium">📍 Estimated Route</div>
+              <div class="text-xs text-amber-600 mt-1">
+                ⚠️ Direct line estimate
+              </div>
+            </div>
+          `);
+
+          fallbackLine.addTo(mapInstanceRef.current);
         }
       }
-    } catch (error) {
-      console.warn('Error updating map bounds:', error);
     }
-  }, [plaques.map(p => p.id).join(',')]); // Only when plaque IDs change
+  }, [walkingRouteGeometry, routeColor, isLoadingWalkingRoute, showRoute, useWalkingRoutes, plaques.map(p => p.id).join(',')]);
 
   // FIXED: Get valid plaques for display
   const validPlaques = getValidPlaques(plaques);
@@ -277,6 +381,12 @@ const RouteMapContainer: React.FC<RouteMapContainerProps> = ({
           <div>📍 {validPlaques.length} stops</div>
           <div>📏 {route.total_distance.toFixed(1)} km</div>
           <div>⏱️ ~{Math.ceil(route.total_distance * 12)} min walk</div>
+          {useWalkingRoutes && (
+            <div className={isLoadingWalkingRoute ? "text-blue-600" : walkingRouteGeometry.length > 0 ? "text-green-600" : "text-amber-600"}>
+              {isLoadingWalkingRoute ? '🔄 Loading walking route...' : 
+               walkingRouteGeometry.length > 0 ? '✅ Real walking paths' : '⚠️ Estimated paths'}
+            </div>
+          )}
         </div>
         {plaques.length !== validPlaques.length && (
           <div className="text-xs text-amber-600 mt-1">
