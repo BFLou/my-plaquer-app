@@ -186,12 +186,6 @@ const RoutesSection: React.FC<RoutesSectionProps> = ({
                             Public
                           </Badge>
                         )}
-                        {route.views && route.views > 0 && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs flex items-center gap-1">
-                            <Eye size={8} />
-                            <span className="hidden sm:inline">{route.views}</span>
-                          </Badge>
-                        )}
                       </div>
                       <span className="text-xs text-gray-400 truncate max-w-[100px] sm:max-w-none">
                         {formatTimeAgo(route.updated_at || route.created_at)}
