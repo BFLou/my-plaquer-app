@@ -268,7 +268,7 @@ export const useRoutes = () => {
         try {
           toast.info('Recalculating walking distances...');
           const routeData = await calculateMultiWaypointRoute(updates.points);
-          firebaseUpdates.totalDistance = routeData.totalDistance / 1000;
+          firebaseUpdates.total_distance = routeData.totalDistance / 1000;
 
           // FIX: Transform the points from Plaque[] to RoutePoint[]
           firebaseUpdates.points = updates.points.map((plaque, index) => ({
