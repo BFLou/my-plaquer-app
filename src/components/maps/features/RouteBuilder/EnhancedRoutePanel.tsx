@@ -244,18 +244,22 @@ export const EnhancedRoutePanel: React.FC<EnhancedRoutePanelProps> = ({
   // Empty state
   if (points.length === 0) {
     return (
-      <div style={panelStyle} className={className}>
+ <div style={panelStyle} className={className}>
         <div className="bg-white rounded-t-xl md:rounded-xl shadow-xl border border-gray-200">
-          <div className="p-4 text-center">
-            <Route className="mx-auto mb-3 text-gray-300" size={32} />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Plan Your Route</h3>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="p-6 text-center">
+            <div className="mb-4">
+              <Route className="mx-auto mb-3 text-gray-400" size={48} />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3 leading-tight">
+              Plan Your Route
+            </h3>
+            <p className="text-base text-gray-600 mb-6 leading-relaxed max-w-sm mx-auto">
               Click plaques on the map to add them to your route
             </p>
             <MobileButton
               onClick={onClose}
               variant="outline"
-              className="w-full"
+              className="w-full font-medium"
               touchOptimized={mobile}
             >
               Exit Route Mode
