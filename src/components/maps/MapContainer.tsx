@@ -1,5 +1,4 @@
-// src/components/maps/MapContainer.tsx - COMPLETE VERSION WITHOUT SEARCHBAR
-
+// src/components/maps/MapContainer.tsx - UPDATED FOR STREAMLINED ROUTE PLANNER
 import React, { useReducer, useMemo, useCallback, useEffect, useRef } from 'react';
 import { MapView } from './MapView';
 import { EnhancedRoutePanel } from './features/RouteBuilder/EnhancedRoutePanel';
@@ -7,7 +6,7 @@ import { UnifiedControlPanel } from './features/UnifiedControlPanel';
 import { Plaque } from '@/types/plaque';
 import { calculateDistance } from './utils/routeUtils';
 import { toast } from 'sonner';
-import { isMobile } from '@/utils/mobileUtils';
+import { isMobile, triggerHapticFeedback } from '@/utils/mobileUtils';
 
 // Helper function for safe coordinate conversion
 function parseCoordinate(coord: string | number | undefined): number {
@@ -106,7 +105,8 @@ function mapReducer(state: MapState, action: MapAction): MapState {
       return { 
         ...state, 
         routeMode: !state.routeMode,
-        routePoints: state.routeMode ? [] : state.routePoints 
+        // Clear route when exiting route mode
+        routePoints: !state.routeMode ? state.routePoints : []
       };
     
     case 'ADD_TO_ROUTE':
@@ -244,7 +244,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     toastTimeouts.current.set(key, timeout);
   }, []);
 
-  // Filter plaques based on current state (SearchBar now handles its own filtering)
+  // Filter plaques based on current state
   const visiblePlaques = useMemo(() => {
     let filtered = plaques;
     
@@ -298,18 +298,47 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     isFavorite
   ]);
 
-  // Handle plaque clicks
+  // Enhanced route mode toggle with smart feedback
+  const handleToggleRouteMode = useCallback(() => {
+    console.log('🗺️ MapContainer: Toggling route mode');
+    
+    if (mobile) triggerHapticFeedback('medium');
+    
+    if (state.routeMode) {
+      // Exiting route mode
+      if (state.routePoints.length > 0) {
+        showToastOnce('route-exit', 'Route mode disabled', 'info');
+      } else {
+        showToastOnce('route-exit', 'Route mode disabled', 'info');
+      }
+    } else {
+      // Entering route mode
+      showToastOnce('route-enter', 'Route mode active - click plaques to add them to your route', 'success');
+    }
+    
+    dispatch({ type: 'TOGGLE_ROUTE_MODE' });
+  }, [state.routeMode, state.routePoints.length, mobile, showToastOnce]);
+
+  // Handle plaque clicks - enhanced for route mode
   const handlePlaqueClick = useCallback((plaque: Plaque) => {
     console.log('🗺️ MapContainer: Plaque clicked:', plaque.title, 'Route mode:', state.routeMode);
     
-    if (onPlaqueClick) {
-      onPlaqueClick(plaque);
+    if (mobile) triggerHapticFeedback('selection');
+    
+    if (state.routeMode) {
+      // In route mode, add to route instead of showing details
+      handleAddToRoute(plaque);
     } else {
-      dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque });
+      // Normal mode, show details or call external handler
+      if (onPlaqueClick) {
+        onPlaqueClick(plaque);
+      } else {
+        dispatch({ type: 'SHOW_PLAQUE_DETAILS', plaque });
+      }
     }
-  }, [state.routeMode, onPlaqueClick]);
+  }, [state.routeMode, onPlaqueClick, mobile]);
 
-  // Add to route with proper toast management
+  // Add to route with enhanced feedback
   const handleAddToRoute = useCallback((plaque: Plaque) => {
     console.log('➕ MapContainer: Adding to route:', plaque.title);
     
@@ -317,12 +346,14 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     
     if (alreadyExists) {
       showToastOnce(`duplicate-${plaque.id}`, `"${plaque.title}" is already in your route`, 'info');
+      if (mobile) triggerHapticFeedback('error');
       return;
     }
     
     dispatch({ type: 'ADD_TO_ROUTE', plaque });
     showToastOnce(`added-${plaque.id}`, `Added "${plaque.title}" to route`, 'success');
-  }, [state.routePoints, showToastOnce]);
+    if (mobile) triggerHapticFeedback('success');
+  }, [state.routePoints, showToastOnce, mobile]);
 
   // Location filter handlers
   const handleLocationFilterSet = useCallback(async (coords: [number, number]) => {
@@ -429,29 +460,48 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     showToastOnce('filter-cleared', 'Distance filter cleared - showing all plaques', 'info');
   }, [onDistanceFilterChange, showToastOnce]);
 
-  // Route handlers
+  // Route handlers with enhanced feedback
   const handleRemoveFromRoute = useCallback((id: number) => {
     const plaque = state.routePoints.find(p => p.id === id);
     dispatch({ type: 'REMOVE_FROM_ROUTE', plaqueId: id });
     
+    if (mobile) triggerHapticFeedback('light');
+    
     if (plaque) {
       showToastOnce(`removed-${id}`, `Removed "${plaque.title}" from route`, 'info');
     }
-  }, [state.routePoints, showToastOnce]);
+  }, [state.routePoints, showToastOnce, mobile]);
 
   const handleReorderRoute = useCallback((fromIndex: number, toIndex: number) => {
     if (fromIndex !== toIndex) {
       dispatch({ type: 'REORDER_ROUTE', fromIndex, toIndex });
+      if (mobile) triggerHapticFeedback('light');
       showToastOnce('route-reordered', 'Route reordered', 'info');
     }
-  }, [showToastOnce]);
+  }, [showToastOnce, mobile]);
 
   const handleClearRoute = useCallback(() => {
     if (state.routePoints.length > 0) {
       dispatch({ type: 'CLEAR_ROUTE' });
+      if (mobile) triggerHapticFeedback('medium');
       showToastOnce('route-cleared', 'Route cleared', 'info');
     }
-  }, [state.routePoints.length, showToastOnce]);
+  }, [state.routePoints.length, showToastOnce, mobile]);
+
+  // Enhanced route action handler
+  const handleRouteAction = useCallback((routeData: any) => {
+    console.log('🗺️ MapContainer: Route action triggered:', routeData);
+    
+    if (mobile) triggerHapticFeedback('success');
+    
+    // Pass to external handler if provided
+    if (onRouteAction) {
+      onRouteAction(routeData);
+    }
+    
+    // Show success feedback
+    showToastOnce('route-saved', 'Route saved successfully!', 'success');
+  }, [onRouteAction, showToastOnce, mobile]);
 
   // Sync with external distance filter changes
   useEffect(() => {
@@ -510,7 +560,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         onResetStandardFilters={() => dispatch({ type: 'RESET_STANDARD_FILTERS' })}
         
         routeMode={state.routeMode}
-        onToggleRoute={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
+        onToggleRoute={handleToggleRouteMode}
         routePointsCount={state.routePoints.length}
         
         onResetView={() => dispatch({ type: 'SET_VIEW', center: [51.505, -0.09], zoom: 13 })}
@@ -520,27 +570,17 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         className="unified-control-panel"
       />
 
-      {/* Enhanced Route Panel - Positioned for both mobile and desktop */}
+      {/* Enhanced Route Panel - Google Maps Style */}
       {state.routeMode && (
-        <div className={`absolute ${
-          mobile 
-            ? 'bottom-0 left-0 right-0' 
-            : 'right-4 top-20 bottom-20'
-        } z-[1000] ${
-          mobile 
-            ? 'w-full' 
-            : 'w-80 max-w-[calc(100vw-14rem)]'
-        }`}>
-          <EnhancedRoutePanel
-            points={state.routePoints}
-            onRemove={handleRemoveFromRoute}
-            onReorder={handleReorderRoute}
-            onClear={handleClearRoute}
-            onClose={() => dispatch({ type: 'TOGGLE_ROUTE_MODE' })}
-            onRouteAction={onRouteAction}
-            className={mobile ? 'w-full mobile-route-panel' : ''}
-          />
-        </div>
+        <EnhancedRoutePanel
+          points={state.routePoints}
+          onRemove={handleRemoveFromRoute}
+          onReorder={handleReorderRoute}
+          onClear={handleClearRoute}
+          onClose={handleToggleRouteMode}
+          onRouteAction={handleRouteAction}
+          className="enhanced-route-panel"
+        />
       )}
 
       {/* Status Bar - Positioned properly for both mobile and desktop */}
@@ -571,7 +611,7 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
         </div>
       )}
 
-      {/* The Map - Full height and width without competing containers */}
+      {/* The Map - Full height and width with enhanced route mode */}
       <MapView
         plaques={visiblePlaques}
         center={state.center}

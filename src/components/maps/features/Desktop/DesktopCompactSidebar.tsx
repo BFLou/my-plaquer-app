@@ -1,4 +1,4 @@
-// src/components/maps/features/desktop/DesktopCompactSidebar.tsx
+// src/components/maps/features/Desktop/DesktopCompactSidebar.tsx - UPDATED
 import React, { useState } from 'react';
 import { 
   Filter, 
@@ -188,15 +188,23 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
           )}
         </Button>
         
-        {/* Quick route toggle */}
+        {/* SINGLE Route toggle button */}
         <Button
           variant={routeMode ? "default" : "outline"}
           size="sm"
-          className="h-8 w-8 rounded-full shadow-md bg-white/95 backdrop-blur-sm"
+          className="h-8 w-8 rounded-full shadow-md bg-white/95 backdrop-blur-sm relative"
           onClick={onToggleRoute}
           title="Route Mode"
         >
           <Route size={12} />
+          {routePointsCount > 0 && (
+            <Badge 
+              variant="secondary" 
+              className="absolute -top-1 -right-1 h-3 w-3 text-xs p-0 flex items-center justify-center min-w-[12px]"
+            >
+              {routePointsCount}
+            </Badge>
+          )}
         </Button>
       </div>
     );
@@ -261,23 +269,7 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (prop
               )}
             </Button>
 
-            {/* Route Planning */}
-            <Button
-              variant={routeMode ? "default" : "outline"}
-              size="sm"
-              className="w-full h-9 justify-between text-xs"
-              onClick={onToggleRoute}
-            >
-              <div className="flex items-center gap-1.5">
-                <Route size={14} />
-                <span>Route</span>
-              </div>
-              {routePointsCount > 0 && (
-                <Badge variant="secondary" className="text-xs px-1 h-5">
-                  {routePointsCount}
-                </Badge>
-              )}
-            </Button>
+            {/* Route Planning - REMOVED from here, now in floating controls */}
 
             {/* Quick Actions */}
             <div className="border-t pt-2 mt-2">

@@ -1,4 +1,4 @@
-// src/components/maps/features/mobile/MobileBottomSheet.tsx - FIXED: Added distance filter functionality
+// src/components/maps/features/mobile/MobileBottomSheet.tsx - UPDATED
 import React, { useState } from 'react';
 import {
   Filter,
@@ -103,7 +103,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
   const [showStandardFilters, setShowStandardFilters] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-
   const activeStandardFilters = selectedColors.length + selectedPostcodes.length +
     selectedProfessions.length + selectedOrganisations.length + (onlyVisited ? 1 : 0) + (onlyFavorites ? 1 : 0);
   const totalActiveFilters = activeStandardFilters + (distanceFilter.enabled ? 1 : 0);
@@ -190,7 +189,6 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
       { timeout: 10000, enableHighAccuracy: true }
     );
   };
-
 
   return (
     <>
@@ -279,7 +277,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                   </MobileButton>
 
                   <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
-                    庁 Try: "NW1 2DB", "Camden", "Westminster Bridge"
+                    💡 Try: "NW1 2DB", "Camden", "Westminster Bridge"
                   </div>
                 </div>
               ) : (
@@ -289,7 +287,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm font-medium text-green-800">
-                          桃 {distanceFilter.locationName}
+                          📍 {distanceFilter.locationName}
                         </div>
                         <div className="text-xs text-green-600">
                           Within {distanceFilter.radius < 1
@@ -360,7 +358,7 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
               )}
             </div>
 
-            {/* Primary Actions - 2x2 grid */}
+            {/* Primary Actions - Updated grid */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <MobileButton
                 variant={activeStandardFilters > 0 ? "default" : "outline"}
@@ -375,17 +373,25 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                 </div>
               </MobileButton>
 
+              {/* SINGLE Route button */}
               <MobileButton
                 variant={routeMode ? "default" : "outline"}
-                className="h-14 flex-col gap-1 text-center"
+                className="h-14 flex-col gap-1 text-center relative"
                 onClick={onToggleRoute}
                 touchOptimized
               >
                 <Route size={18} />
                 <div className="text-xs">
                   Route
-                  {routePointsCount > 0 && ` (${routePointsCount})`}
                 </div>
+                {routePointsCount > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="absolute -top-1 -right-1 h-5 w-5 text-xs p-0 flex items-center justify-center"
+                  >
+                    {routePointsCount}
+                  </Badge>
+                )}
               </MobileButton>
 
               <MobileButton
@@ -419,10 +425,10 @@ export const MobileBottomSheet: React.FC<MobileBottomSheetProps> = (props) => {
                 <div className="text-sm font-medium text-blue-800 mb-1">Active Filters</div>
                 <div className="space-y-1 text-xs text-blue-700">
                   {distanceFilter.enabled && (
-                    <div>桃 {distanceFilter.locationName}</div>
+                    <div>📍 {distanceFilter.locationName}</div>
                   )}
                   {activeStandardFilters > 0 && (
-                    <div>剥 {activeStandardFilters} attribute filter{activeStandardFilters > 1 ? 's' : ''}</div>
+                    <div>🏷️ {activeStandardFilters} attribute filter{activeStandardFilters > 1 ? 's' : ''}</div>
                   )}
                 </div>
               </div>
