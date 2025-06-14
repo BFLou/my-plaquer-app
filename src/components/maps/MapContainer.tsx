@@ -1,4 +1,4 @@
-// src/components/maps/MapContainer.tsx - FIXED: Route saving completion and walking routes
+// src/components/maps/MapContainer.tsx - COMPLETE FIXED: Route saving completion and auto-centering
 import React, {
   useReducer,
   useMemo,
@@ -198,6 +198,9 @@ interface MapContainerProps {
   isPlaqueVisited?: (id: number) => boolean;
   isFavorite?: (id: number) => boolean;
   onRouteAction?: (routeData: any) => void;
+  initialCenter?: [number, number];
+  initialZoom?: number;
+  forceCenter?: boolean;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = (props) => {
@@ -210,6 +213,9 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
     isPlaqueVisited,
     isFavorite,
     onRouteAction,
+    initialCenter,
+    initialZoom,
+    forceCenter,
   } = props;
 
   // Route saving hook
@@ -220,6 +226,8 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
 
   const [state, dispatch] = useReducer(mapReducer, {
     ...initialState,
+    center: initialCenter || initialState.center,
+    zoom: initialZoom || initialState.zoom,
     filterCenter: distanceFilter?.center || null,
     filterRadius: distanceFilter?.radius || 1,
     filterEnabled: distanceFilter?.enabled || false,
@@ -702,6 +710,61 @@ export const MapContainer: React.FC<MapContainerProps> = (props) => {
       onRouteAction,
     ]
   );
+
+  // CRITICAL FIX: Auto-center when distance filter is enabled or changes
+  useEffect(() => {
+    // Auto-center map when distance filter is enabled or location changes
+    if (distanceFilter?.enabled && distanceFilter.center) {
+      console.log('🗺️ MapContainer: Auto-centering on distance filter:', {
+        center: distanceFilter.center,
+        location: distanceFilter.locationName,
+        radius: distanceFilter.radius
+      });
+      
+      // Calculate appropriate zoom based on radius
+      let autoZoom = 14;
+      if (distanceFilter.radius <= 0.5) autoZoom = 15;
+      else if (distanceFilter.radius <= 1) autoZoom = 14;
+      else if (distanceFilter.radius <= 2) autoZoom = 13;
+      else if (distanceFilter.radius <= 5) autoZoom = 12;
+      else autoZoom = 11;
+      
+      // Update map view to center on the filter location
+      dispatch({ 
+        type: 'SET_VIEW', 
+        center: distanceFilter.center, 
+        zoom: autoZoom
+      });
+      
+      // Show brief feedback for user location
+      if (distanceFilter.locationName === 'Your Location') {
+        setTimeout(() => {
+          console.log('🗺️ Map successfully centered on your location');
+          
+          // Optional: Dispatch custom event for additional effects
+          window.dispatchEvent(new CustomEvent('forceMapCenter', {
+            detail: {
+              center: distanceFilter.center,
+              zoom: autoZoom,
+              showMarker: true // Show the location marker
+            }
+          }));
+        }, 300);
+      }
+    }
+  }, [distanceFilter?.enabled, distanceFilter?.center, distanceFilter?.locationName, distanceFilter?.radius]);
+
+  // ADDITIONAL: Handle force center prop
+  useEffect(() => {
+    if (forceCenter && initialCenter) {
+      console.log('🗺️ MapContainer: Force centering to:', initialCenter);
+      dispatch({ 
+        type: 'SET_VIEW', 
+        center: initialCenter, 
+        zoom: initialZoom || 14 
+      });
+    }
+  }, [forceCenter, initialCenter, initialZoom]);
 
   // Sync with external distance filter changes
   useEffect(() => {

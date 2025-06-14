@@ -1,4 +1,4 @@
-// src/pages/Discover.tsx - COMPLETE FIXED VERSION with organisations and subjectTypes
+// src/pages/Discover.tsx - COMPLETE FIXED VERSION with enhanced location handling
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { capitalizeWords } from '@/utils/stringUtils';
 import { adaptPlaquesData } from '@/utils/plaqueAdapter';
@@ -191,125 +191,109 @@ const Discover = () => {
     }
   }, [urlState.modalPlaque, allPlaques]);
 
-  // Load plaque data
+  // CRITICAL: Enhanced auto-location handling with immediate map centering
   useEffect(() => {
-    try {
-      setLoading(true);
-
-      const adaptedData = adaptPlaquesData(plaqueData as any);
-      setAllPlaques(adaptedData);
-
-      // Generate filter options
-      const postcodeCount: Record<string, number> = {};
-      const colorCount: Record<string, number> = {};
-      const professionCount: Record<string, number> = {};
-      const organisationCount: Record<string, number> = {};
-
-      adaptedData.forEach((plaque) => {
-        // Postcode counting
-        if (plaque.postcode && plaque.postcode !== 'Unknown') {
-          postcodeCount[plaque.postcode] =
-            (postcodeCount[plaque.postcode] || 0) + 1;
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    const radius = searchParams.get('radius');
+    const locationName = searchParams.get('locationName');
+    const autoLocate = searchParams.get('autoLocate');
+    
+    // Only process if this is an auto-location request
+    if (lat && lng && autoLocate === 'true') {
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lng);
+      const searchRadius = radius ? parseFloat(radius) : 2;
+      
+      // Validate coordinates
+      if (!isNaN(latitude) && !isNaN(longitude) && 
+          latitude >= -90 && latitude <= 90 && 
+          longitude >= -180 && longitude <= 180) {
+        
+        console.log('🌍 Setting up location filter from URL:', {
+          latitude,
+          longitude,
+          radius: searchRadius,
+          locationName
+        });
+        
+        // Set distance filter immediately
+        const newDistanceFilter: DistanceFilter = {
+          enabled: true,
+          center: [latitude, longitude],
+          radius: searchRadius,
+          locationName: locationName || 'Your Location'
+        };
+        
+        setDistanceFilter(newDistanceFilter);
+        
+        // Force map view if not already selected
+        if (urlState.view !== 'map') {
+          updateUrlState({ view: 'map' });
         }
-
-        // Color counting
-        const color = plaque.color?.toLowerCase();
-        if (color && color !== 'unknown') {
-          colorCount[color] = (colorCount[color] || 0) + 1;
-        }
-
-        // Profession counting
-        if (plaque.profession && plaque.profession !== 'Unknown') {
-          professionCount[plaque.profession] =
-            (professionCount[plaque.profession] || 0) + 1;
-        }
-
-        // Organisation counting - handle both array and string formats
-        if (
-          (plaque as any).organisations &&
-          (plaque as any).organisations !== 'Unknown' &&
-          (plaque as any).organisations !== '[]' &&
-          (plaque as any).organisations !== ''
-        ) {
-          const orgField = (plaque as any).organisations;
-
-          try {
-            // Try to parse as JSON array first
-            const orgs = JSON.parse(orgField);
-            if (Array.isArray(orgs) && orgs.length > 0) {
-              orgs.forEach((org) => {
-                if (org && typeof org === 'string' && org.trim()) {
-                  const cleanOrg = org.trim();
-                  organisationCount[cleanOrg] =
-                    (organisationCount[cleanOrg] || 0) + 1;
-                }
-              });
+        
+        // Reset pagination when location filter is applied
+        setCurrentPage(1);
+        
+        // IMMEDIATE: Force map centering with custom event
+        setTimeout(() => {
+          console.log('🗺️ Discover: Force centering map on auto-location');
+          window.dispatchEvent(new CustomEvent('forceMapCenter', {
+            detail: {
+              center: [latitude, longitude],
+              zoom: searchRadius <= 1 ? 15 : searchRadius <= 2 ? 14 : 13,
+              showMarker: true
             }
-          } catch (e) {
-            // If it's not valid JSON, treat as single organisation string
-            if (
-              typeof orgField === 'string' &&
-              orgField.trim() &&
-              orgField !== '[]'
-            ) {
-              const cleanOrg = orgField.trim();
-              organisationCount[cleanOrg] =
-                (organisationCount[cleanOrg] || 0) + 1;
-            }
-          }
-        }
-      });
-
-      setPostcodeOptions(
-        Object.entries(postcodeCount)
-          .map(([value, count]) => ({ label: value, value, count }))
-          .sort((a, b) => b.count - a.count)
-      );
-
-      setColorOptions(
-        Object.entries(colorCount)
-          .map(([value, count]) => ({
-            label: capitalizeWords(value),
-            value,
-            count,
-          }))
-          .sort((a, b) => b.count - a.count)
-      );
-
-      setProfessionOptions(
-        Object.entries(professionCount)
-          .map(([value, count]) => ({
-            label: capitalizeWords(value),
-            value,
-            count,
-          }))
-          .sort((a, b) => b.count - a.count)
-      );
-
-      setOrganisationOptions(
-        Object.entries(organisationCount)
-          .map(([value, count]) => ({
-            label: value, // Don't capitalize organisations as they may be proper names
-            value,
-            count,
-          }))
-          .sort((a, b) => b.count - a.count)
-      );
-
-      console.log('Filter options generated:');
-      console.log('Organisations:', Object.keys(organisationCount).length);
-      console.log(
-        'Sample organisations:',
-        Object.keys(organisationCount).slice(0, 5)
-      );
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading plaque data:', error);
-      setLoading(false);
-      toast.error('Could not load the plaque data. Please try again later.');
+          }));
+        }, 200);
+        
+        // Clean up URL to remove auto-location parameters
+        const newParams = new URLSearchParams(searchParams);
+        ['lat', 'lng', 'radius', 'locationName', 'autoLocate'].forEach(param => {
+          newParams.delete(param);
+        });
+        
+        // Ensure map view is set in URL
+        newParams.set('view', 'map');
+        
+        // Update URL without the auto-location parameters
+        const newUrl = newParams.toString() 
+          ? `${location.pathname}?${newParams.toString()}`
+          : `${location.pathname}?view=map`;
+        
+        // Use replace to avoid adding to browser history
+        window.history.replaceState({}, '', newUrl);
+        
+        console.log('🌍 Location filter applied, will show results message after filtering...');
+        
+      } else {
+        console.warn('🌍 Invalid coordinates from URL:', { lat, lng });
+        toast.error('Invalid location data', {
+          description: 'The location information was corrupted'
+        });
+      }
     }
-  }, []);
+  }, [searchParams, location.pathname, updateUrlState, urlState.view]);
+
+  // ADDITIONAL: Force map center when distance filter changes and we're in map view
+  useEffect(() => {
+    if (urlState.view === 'map' && distanceFilter.enabled && distanceFilter.center) {
+      console.log('🗺️ Discover: Distance filter active in map view - ensuring center');
+      
+      // Small delay to ensure map is mounted and ready
+      const timeout = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('forceMapCenter', {
+          detail: {
+            center: distanceFilter.center,
+            zoom: distanceFilter.radius <= 1 ? 15 : distanceFilter.radius <= 2 ? 14 : 13,
+            showMarker: distanceFilter.locationName === 'Your Location'
+          }
+        }));
+      }, 100);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [urlState.view, distanceFilter.enabled, distanceFilter.center, distanceFilter.radius, distanceFilter.locationName]);
 
   // Enhanced filtered plaques with proper boolean filtering
   const filteredPlaques = useMemo(() => {
@@ -446,6 +430,167 @@ const Discover = () => {
     distanceFilter.center,
     distanceFilter.radius,
   ]);
+
+  // Show success/error message after location filtering is complete
+  useEffect(() => {
+    // Only show message if distance filter was just enabled from auto-location
+    if (distanceFilter.enabled && distanceFilter.locationName === 'Your Location') {
+      // Use a timeout to ensure filtering has completed
+      const timeout = setTimeout(() => {
+        const plaqueCount = filteredPlaques.length;
+        
+        if (plaqueCount > 0) {
+          toast.success(`Found ${plaqueCount} plaque${plaqueCount === 1 ? '' : 's'} near you`, {
+            description: `Within ${distanceFilter.radius}km of your location`
+          });
+        } else {
+          toast.info('No plaques found nearby', {
+            description: 'Try increasing the search radius or exploring other areas',
+            action: {
+              label: 'View All',
+              onClick: () => {
+                setDistanceFilter({
+                  enabled: false,
+                  center: null,
+                  radius: 1,
+                  locationName: null
+                });
+              }
+            }
+          });
+        }
+        
+        // Clear the "Your Location" name after showing the message so it doesn't repeat
+        setDistanceFilter(prev => ({
+          ...prev,
+          locationName: prev.locationName === 'Your Location' ? 'Current Location' : prev.locationName
+        }));
+        
+      }, 500); // Short delay to let filtering complete
+
+      return () => clearTimeout(timeout);
+    }
+  }, [distanceFilter.enabled, distanceFilter.locationName, filteredPlaques.length, distanceFilter.radius]);
+
+  // Load plaque data
+  useEffect(() => {
+    try {
+      setLoading(true);
+
+      const adaptedData = adaptPlaquesData(plaqueData as any);
+      setAllPlaques(adaptedData);
+
+      // Generate filter options
+      const postcodeCount: Record<string, number> = {};
+      const colorCount: Record<string, number> = {};
+      const professionCount: Record<string, number> = {};
+      const organisationCount: Record<string, number> = {};
+
+      adaptedData.forEach((plaque) => {
+        // Postcode counting
+        if (plaque.postcode && plaque.postcode !== 'Unknown') {
+          postcodeCount[plaque.postcode] =
+            (postcodeCount[plaque.postcode] || 0) + 1;
+        }
+
+        // Color counting
+        const color = plaque.color?.toLowerCase();
+        if (color && color !== 'unknown') {
+          colorCount[color] = (colorCount[color] || 0) + 1;
+        }
+
+        // Profession counting
+        if (plaque.profession && plaque.profession !== 'Unknown') {
+          professionCount[plaque.profession] =
+            (professionCount[plaque.profession] || 0) + 1;
+        }
+
+        // Organisation counting - handle both array and string formats
+        if (
+          (plaque as any).organisations &&
+          (plaque as any).organisations !== 'Unknown' &&
+          (plaque as any).organisations !== '[]' &&
+          (plaque as any).organisations !== ''
+        ) {
+          const orgField = (plaque as any).organisations;
+
+          try {
+            // Try to parse as JSON array first
+            const orgs = JSON.parse(orgField);
+            if (Array.isArray(orgs) && orgs.length > 0) {
+              orgs.forEach((org) => {
+                if (org && typeof org === 'string' && org.trim()) {
+                  const cleanOrg = org.trim();
+                  organisationCount[cleanOrg] =
+                    (organisationCount[cleanOrg] || 0) + 1;
+                }
+              });
+            }
+          } catch (e) {
+            // If it's not valid JSON, treat as single organisation string
+            if (
+              typeof orgField === 'string' &&
+              orgField.trim() &&
+              orgField !== '[]'
+            ) {
+              const cleanOrg = orgField.trim();
+              organisationCount[cleanOrg] =
+                (organisationCount[cleanOrg] || 0) + 1;
+            }
+          }
+        }
+      });
+
+      setPostcodeOptions(
+        Object.entries(postcodeCount)
+          .map(([value, count]) => ({ label: value, value, count }))
+          .sort((a, b) => b.count - a.count)
+      );
+
+      setColorOptions(
+        Object.entries(colorCount)
+          .map(([value, count]) => ({
+            label: capitalizeWords(value),
+            value,
+            count,
+          }))
+          .sort((a, b) => b.count - a.count)
+      );
+
+      setProfessionOptions(
+        Object.entries(professionCount)
+          .map(([value, count]) => ({
+            label: capitalizeWords(value),
+            value,
+            count,
+          }))
+          .sort((a, b) => b.count - a.count)
+      );
+
+      setOrganisationOptions(
+        Object.entries(organisationCount)
+          .map(([value, count]) => ({
+            label: value, // Don't capitalize organisations as they may be proper names
+            value,
+            count,
+          }))
+          .sort((a, b) => b.count - a.count)
+      );
+
+      console.log('Filter options generated:');
+      console.log('Organisations:', Object.keys(organisationCount).length);
+      console.log(
+        'Sample organisations:',
+        Object.keys(organisationCount).slice(0, 5)
+      );
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading plaque data:', error);
+      setLoading(false);
+      toast.error('Could not load the plaque data. Please try again later.');
+    }
+  }, []);
 
   // Active filters count including distance filter
   const activeFiltersCount = useMemo(() => {
@@ -637,50 +782,87 @@ const Discover = () => {
     [updateUrlState]
   );
 
-  // Mobile-specific handlers
-  const handleQuickLocationAccess = () => {
+  // Enhanced quick location access for mobile
+  const handleQuickLocationAccess = async () => {
     triggerHapticFeedback('medium');
 
-    if (navigator.geolocation) {
-      const loadingToast = toast.loading('Finding your location...');
+    const loadingToast = toast.loading('Finding your location...');
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          toast.dismiss(loadingToast);
-          triggerHapticFeedback('success');
-          const { latitude, longitude } = position.coords;
+    try {
+      // Import the location service
+      const { locationService } = await import('@/services/LocationService');
+      
+      const locationResult = await locationService.getCurrentLocation({
+        timeout: 10000,
+        enableHighAccuracy: true,
+        maximumAge: 300000 // 5 minutes cache for quick access
+      });
 
-          setDistanceFilter({
-            enabled: true,
-            center: [latitude, longitude],
-            radius: 2,
-            locationName: 'Your Location',
-          });
+      toast.dismiss(loadingToast);
 
-          // Switch to map view on mobile for better location experience
-          if (isMobile()) {
-            updateUrlState({ view: 'map' });
-          }
+      if (locationResult.success && locationResult.latitude && locationResult.longitude) {
+        triggerHapticFeedback('success');
+        
+        // Set distance filter directly without URL navigation
+        setDistanceFilter({
+          enabled: true,
+          center: [locationResult.latitude, locationResult.longitude],
+          radius: 2,
+          locationName: 'Your Location'
+        });
 
-          toast.success('Showing plaques near you');
-        },
-        () => {
-          toast.dismiss(loadingToast);
-          triggerHapticFeedback('error');
-          toast.error(
-            'Could not determine your location. Please allow location access.'
-          );
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000,
+        // Switch to map view on mobile for better location experience
+        if (isMobile() && urlState.view !== 'map') {
+          updateUrlState({ view: 'map' });
         }
-      );
-    } else {
-      toast.error('Geolocation is not supported by your browser');
+
+        // Reset pagination
+        setCurrentPage(1);
+
+        const accuracy = locationResult.accuracy ? `±${Math.round(locationResult.accuracy)}m` : '';
+        toast.success('Location set!', {
+          description: `Showing plaques within 2km ${accuracy}`.trim()
+        });
+        
+      } else {
+        triggerHapticFeedback('error');
+        
+        const { locationService: ls } = await import('@/services/LocationService');
+        const advice = ls.getErrorAdvice(locationResult.errorCode);
+        
+        toast.error(advice.message, {
+          description: advice.actions[0]
+        });
+      }
+      
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      triggerHapticFeedback('error');
+      console.error('Location error:', error);
+      toast.error('Could not access location', {
+        description: 'Please try manual search instead'
+      });
     }
   };
+
+  // Calculate map center and zoom based on distance filter
+  const mapCenter = useMemo(() => {
+    if (distanceFilter.enabled && distanceFilter.center) {
+      return distanceFilter.center;
+    }
+    return [51.505, -0.09] as [number, number]; // Default London center
+  }, [distanceFilter.enabled, distanceFilter.center]);
+
+  const mapZoom = useMemo(() => {
+    if (distanceFilter.enabled) {
+      // Adjust zoom based on radius for better view
+      if (distanceFilter.radius <= 1) return 15;
+      if (distanceFilter.radius <= 2) return 14;
+      if (distanceFilter.radius <= 5) return 13;
+      return 12;
+    }
+    return 13; // Default zoom
+  }, [distanceFilter.enabled, distanceFilter.radius]);
 
   // Render content with proper layout hierarchy
   const renderContent = () => {
@@ -718,6 +900,10 @@ const Discover = () => {
             isPlaqueVisited={isPlaqueVisited}
             isFavorite={isFavorite}
             onRouteAction={handlePendingRouteAction}
+            // Pass map centering props
+            initialCenter={mapCenter}
+            initialZoom={mapZoom}
+            forceCenter={distanceFilter.enabled}
           />
         </div>
       );
@@ -881,8 +1067,6 @@ const Discover = () => {
 
         {/* Header with compact spacing */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200 sticky top-0 z-30">
-          {' '}
-          {/* Remove md:top-[61px] */}
           <DiscoverHeader
             viewMode={urlState.view}
             onViewModeChange={handleViewModeChange}

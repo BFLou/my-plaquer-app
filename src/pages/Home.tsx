@@ -335,40 +335,89 @@ const Home = () => {
   };
 
   // Handle near me button click with mobile optimization
-  const handleNearMe = () => {
-    triggerHapticFeedback('medium');
+const handleNearMe = async () => {
+  triggerHapticFeedback('medium');
 
-    if (navigator.geolocation) {
-      const loadingToast = toast.loading('Finding your location...');
+  // Show loading state immediately
+  const loadingToast = toast.loading('Finding your location...', {
+    description: 'Please allow location access when prompted'
+  });
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          toast.dismiss(loadingToast);
-          triggerHapticFeedback('success');
-          const { latitude, longitude } = position.coords;
-          navigate(
-            `/discover?view=map&lat=${latitude}&lng=${longitude}&zoom=15`
-          );
-        },
-        (positionError) => {
-          toast.dismiss(loadingToast);
-          triggerHapticFeedback('error');
-          toast.error(
-            'Could not determine your location. Please allow location access.'
-          );
-          console.error('Geolocation error:', positionError);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000, // 5 minutes
-        }
-      );
-    } else {
+  // Check if geolocation is supported
+  if (!navigator.geolocation) {
+    toast.dismiss(loadingToast);
+    triggerHapticFeedback('error');
+    toast.error('Location not supported', {
+      description: 'Your browser doesn\'t support location services',
+      action: {
+        label: 'Browse All Plaques',
+        onClick: () => navigate('/discover')
+      }
+    });
+    return;
+  }
+
+  // Get current location with proper error handling
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      toast.dismiss(loadingToast);
+      triggerHapticFeedback('success');
+      
+      const { latitude, longitude } = position.coords;
+      
+      console.log('🌍 Location obtained:', { latitude, longitude });
+      
+      // CRITICAL: Navigate with URL parameters for auto-location
+      const params = new URLSearchParams({
+        view: 'map',  // Force map view for location-based search
+        lat: latitude.toString(),
+        lng: longitude.toString(),
+        radius: '2', // 2km default radius
+        locationName: 'Your Location',
+        autoLocate: 'true' // This triggers the auto-location logic
+      });
+      
+      const targetUrl = `/discover?${params.toString()}`;
+      console.log('🌍 Navigating to:', targetUrl);
+      
+      navigate(targetUrl);
+    },
+    (positionError) => {
+      toast.dismiss(loadingToast);
       triggerHapticFeedback('error');
-      toast.error('Geolocation is not supported by your browser');
+      
+      let errorMessage = 'Could not access your location.';
+      let actionText = 'Try Manual Search';
+      
+      switch (positionError.code) {
+        case positionError.PERMISSION_DENIED:
+          errorMessage = 'Location permission denied. You can enable it in your browser settings.';
+          actionText = 'Search by Postcode';
+          break;
+        case positionError.POSITION_UNAVAILABLE:
+          errorMessage = 'Location unavailable. GPS might be disabled.';
+          break;
+        case positionError.TIMEOUT:
+          errorMessage = 'Location request timed out. Please try again.';
+          break;
+      }
+      
+      console.error('🌍 Geolocation error:', positionError);
+      
+      toast.error(errorMessage, {
+        action: {
+          label: actionText,
+          onClick: () => navigate('/discover')
+        }
+      });
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 60000, // 1 minute cache
     }
-  };
+  );
+};
 
 const onboardingSteps = [
  {
