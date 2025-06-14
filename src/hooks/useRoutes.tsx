@@ -14,15 +14,23 @@ import { calculateMultiWaypointRoute } from '../services/WalkingDistanceService'
 import { Plaque } from '@/types/plaque';
 import { toast } from 'sonner';
 
+// Re-exporting RouteData for convenience in other parts of the app
 export { type RouteData } from '../services/RouteService';
 
+/**
+ * Custom hook to manage all route-related logic, including fetching, creating,
+ * updating, deleting, and duplicating routes. It handles user authentication,
+ * state management for routes, loading, and errors.
+ */
 export const useRoutes = () => {
   const { user } = useAuth();
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load user's routes
+  /**
+   * Fetches all routes for the currently logged-in user from Firebase.
+   */
   const loadRoutes = async () => {
     if (!user?.uid) {
       setRoutes([]);
@@ -51,12 +59,19 @@ export const useRoutes = () => {
     }
   };
 
-  // Load routes when user changes
+  // Effect to automatically load routes when the user's authentication state changes.
   useEffect(() => {
     loadRoutes();
   }, [user?.uid]);
 
-  // Create route with real walking distances
+  /**
+   * Creates a new route, calculating the real walking distance between points.
+   * @param name - The name of the route.
+   * @param description - The description of the route.
+   * @param points - An array of Plaque objects representing the stops on the route.
+   * @param totalDistance - Optional pre-calculated distance in km.
+   * @returns The newly created RouteData object or null on failure.
+   */
   const createRoute = async (
     name: string,
     description: string,
@@ -76,13 +91,13 @@ export const useRoutes = () => {
     try {
       let finalDistance = totalDistance;
       
-      // Calculate real walking distance if not provided
+      // Calculate real walking distance if it wasn't provided.
       if (!totalDistance) {
         toast.info('Calculating walking distances...');
         
         try {
           const routeData = await calculateMultiWaypointRoute(points);
-          finalDistance = routeData.totalDistance / 1000;
+          finalDistance = routeData.totalDistance / 1000; // Convert to km
           
           if (routeData.error) {
             toast.warning('Some distances estimated due to API limitations');
@@ -92,38 +107,27 @@ export const useRoutes = () => {
         } catch (walkingError) {
           console.warn('Failed to calculate walking distances, using fallback:', walkingError);
           
-          // Fallback to straight-line distance calculation
+          // Fallback to straight-line (Haversine) distance calculation with a walking factor.
           let fallbackDistance = 0;
           for (let i = 0; i < points.length - 1; i++) {
             const start = points[i];
             const end = points[i + 1];
             
             if (start.latitude && start.longitude && end.latitude && end.longitude) {
-              // Fixed: Proper type conversion for coordinates
-              const startLat = typeof start.latitude === 'string' 
-                ? parseFloat(start.latitude) 
-                : start.latitude as number;
-              const startLng = typeof start.longitude === 'string' 
-                ? parseFloat(start.longitude) 
-                : start.longitude as number;
-              const endLat = typeof end.latitude === 'string' 
-                ? parseFloat(end.latitude) 
-                : end.latitude as number;
-              const endLng = typeof end.longitude === 'string' 
-                ? parseFloat(end.longitude) 
-                : end.longitude as number;
+              const startLat = typeof start.latitude === 'string' ? parseFloat(start.latitude) : start.latitude as number;
+              const startLng = typeof start.longitude === 'string' ? parseFloat(start.longitude) : start.longitude as number;
+              const endLat = typeof end.latitude === 'string' ? parseFloat(end.latitude) : end.latitude as number;
+              const endLng = typeof end.longitude === 'string' ? parseFloat(end.longitude) : end.longitude as number;
               
-              // Haversine distance * walking factor
-              const R = 6371;
+              const R = 6371; // Radius of the Earth in km
               const dLat = (endLat - startLat) * Math.PI / 180;
               const dLng = (endLng - startLng) * Math.PI / 180;
               const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(startLat * Math.PI / 180) * Math.cos(endLat * Math.PI / 180) * 
-                Math.sin(dLng/2) * Math.sin(dLng/2);
+                Math.cos(startLat * Math.PI / 180) * Math.cos(endLat * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
               const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
               const distance = R * c;
               
-              fallbackDistance += distance * 1.4;
+              fallbackDistance += distance * 1.4; // Apply walking factor
             }
           }
           
@@ -142,7 +146,7 @@ export const useRoutes = () => {
 
       if (result.success && result.data) {
         toast.success('Route saved successfully!');
-        await loadRoutes();
+        await loadRoutes(); // Refresh the list of routes
         return result.data;
       } else {
         toast.error(result.error?.message || 'Failed to save route');
@@ -154,8 +158,15 @@ export const useRoutes = () => {
       throw error;
     }
   };
-
-  // Create route with pre-calculated walking data
+  
+    /**
+   * Creates a new route with pre-calculated walking data from the map.
+   * @param name - The name of the route.
+   * @param description - The description of the route.
+   * @param points - An array of Plaque objects.
+   * @param walkingData - Pre-calculated distance, duration, and segments.
+   * @returns The newly created RouteData object or null on failure.
+   */
   const createRouteWithWalkingData = async (
     name: string,
     description: string,
@@ -183,7 +194,7 @@ export const useRoutes = () => {
       );
 
       if (result.success && result.data) {
-        toast.success(`Route saved! ${Math.round(walkingData.totalDistance / 1000 * 10) / 10}km walking distance`);
+        toast.success(`Route saved! ${distanceInKm.toFixed(1)}km walking distance`);
         await loadRoutes();
         return result.data;
       } else {
@@ -197,7 +208,12 @@ export const useRoutes = () => {
     }
   };
 
-  // Update route function
+  /**
+   * Updates an existing route in Firebase.
+   * @param routeId - The ID of the route to update.
+   * @param updates - An object containing the fields to update.
+   * @returns The updated RouteData object or null on failure.
+   */
   const updateRoute = async (
     routeId: string,
     updates: {
@@ -214,26 +230,47 @@ export const useRoutes = () => {
     }
 
     try {
-      // If points are being updated, recalculate walking distance
-      if (updates.points && updates.points.length >= 2) {
-        try {
-          toast.info('Recalculating walking distances...');
-          const routeData = await calculateMultiWaypointRoute(updates.points);
-          updates.totalDistance = routeData.totalDistance / 1000;
-          
-          if (routeData.error) {
-            toast.warning('Some distances estimated due to API limitations');
-          }
-        } catch (walkingError) {
-          console.warn('Failed to recalculate walking distances:', walkingError);
-        }
-      }
+        // This will be the payload for Firebase, correctly typed.
+        const firebaseUpdates: Partial<RouteData> = {
+            name: updates.name,
+            description: updates.description,
+            is_favorite: updates.is_favorite,
+        };
 
-      const result = await updateRouteInFirebase(
-        routeId,
-        updates,
-        user.uid
-      );
+        // If points are being updated, we must transform them and recalculate distance.
+        if (updates.points && updates.points.length >= 2) {
+            try {
+                toast.info('Recalculating walking distances...');
+                const routeData = await calculateMultiWaypointRoute(updates.points);
+                firebaseUpdates.totalDistance = routeData.totalDistance / 1000;
+
+                // FIX: Transform the points from Plaque[] to RoutePoint[]
+                firebaseUpdates.points = updates.points.map((plaque, index) => ({
+                    plaque_id: plaque.id,
+                    title: plaque.title,
+                    lat: typeof plaque.latitude === 'string' ? parseFloat(plaque.latitude) : (plaque.latitude as number),
+                    lng: typeof plaque.longitude === 'string' ? parseFloat(plaque.longitude) : (plaque.longitude as number),
+                    order: index,
+                }));
+                
+                if (routeData.error) {
+                    toast.warning('Some distances estimated due to API limitations');
+                }
+            } catch (walkingError) {
+                console.warn('Failed to recalculate walking distances:', walkingError);
+            }
+        } else if (updates.totalDistance !== undefined) {
+             firebaseUpdates.total_distance = updates.totalDistance;
+        }
+
+        // Remove undefined properties so Firestore doesn't try to write them
+        Object.keys(firebaseUpdates).forEach(key => (firebaseUpdates as any)[key] === undefined && delete (firebaseUpdates as any)[key]);
+        
+        const result = await updateRouteInFirebase(
+            routeId,
+            firebaseUpdates,
+            user.uid
+        );
 
       if (result.success && result.data) {
         toast.success('Route updated successfully!');
@@ -250,7 +287,11 @@ export const useRoutes = () => {
     }
   };
 
-  // Delete route
+  /**
+   * Deletes a route from Firebase.
+   * @param routeId - The ID of the route to delete.
+   * @returns True on success, false on failure.
+   */
   const deleteRoute = async (routeId: string): Promise<boolean> => {
     if (!user?.uid) {
       toast.error('You must be logged in to delete routes');
@@ -275,7 +316,11 @@ export const useRoutes = () => {
     }
   };
 
-  // Get single route by ID
+  /**
+   * Retrieves a single route by its ID.
+   * @param routeId - The ID of the route to fetch.
+   * @returns The RouteData object or null if not found.
+   */
   const getRoute = async (routeId: string): Promise<RouteData | null> => {
     if (!user?.uid) {
       return null;
@@ -296,16 +341,21 @@ export const useRoutes = () => {
     }
   };
 
-  // Get route statistics
+  /**
+   * Retrieves aggregate statistics about the user's routes.
+   * @returns An object containing route statistics.
+   */
   const getUserRouteStats = async () => {
+    const defaultStats = {
+      totalRoutes: 0,
+      totalDistance: 0,
+      totalPlaques: 0,
+      averageDistance: 0,
+      averagePlaques: 0
+    };
+    
     if (!user?.uid) {
-      return {
-        totalRoutes: 0,
-        totalDistance: 0,
-        totalPlaques: 0,
-        averageDistance: 0,
-        averagePlaques: 0
-      };
+      return defaultStats;
     }
 
     try {
@@ -315,27 +365,20 @@ export const useRoutes = () => {
         return result.data;
       } else {
         console.error('Error getting route stats:', result.error);
-        return {
-          totalRoutes: 0,
-          totalDistance: 0,
-          totalPlaques: 0,
-          averageDistance: 0,
-          averagePlaques: 0
-        };
+        return defaultStats;
       }
     } catch (error) {
       console.error('Error getting route stats:', error);
-      return {
-        totalRoutes: 0,
-        totalDistance: 0,
-        totalPlaques: 0,
-        averageDistance: 0,
-        averagePlaques: 0
-      };
+      return defaultStats;
     }
   };
 
-  // Duplicate route - FIXED: Proper implementation with correct Plaque structure
+  /**
+   * Duplicates an existing route.
+   * @param originalRoute - The route to duplicate.
+   * @param newName - An optional new name for the duplicated route.
+   * @returns The duplicated RouteData object or null on failure.
+   */
   const duplicateRoute = async (originalRoute: RouteData, newName?: string): Promise<RouteData | null> => {
     if (!user?.uid) {
       toast.error('You must be logged in to duplicate routes');
@@ -343,13 +386,12 @@ export const useRoutes = () => {
     }
 
     try {
-      // Convert route points back to Plaque format with proper typing
+      // Convert route points back to Plaque format to be used in create function
       const plaques: Plaque[] = originalRoute.points.map(point => ({
         id: point.plaque_id,
         title: point.title,
-        // Fixed: Proper coordinate handling based on Plaque interface
-        latitude: point.lat, // Keep as number if Plaque.latitude is number
-        longitude: point.lng, // Keep as number if Plaque.longitude is number
+        latitude: point.lat,
+        longitude: point.lng,
         // Add other required Plaque properties with defaults
         address: '',
         location: '',
