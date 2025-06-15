@@ -1,5 +1,5 @@
-// src/components/maps/features/Desktop/DesktopCompactSidebar.tsx - UPDATED
-import React, { useState } from 'react';
+// src/components/maps/features/Desktop/DesktopCompactSidebar.tsx - FIXED: Z-index coordination
+import React, { useState, useEffect } from 'react';
 import {
   Filter,
   Route,
@@ -104,6 +104,22 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
     filters: false,
   });
 
+  // CRITICAL FIX: Auto-expand distance section when filter becomes active from homepage
+  useEffect(() => {
+    if (distanceFilter.enabled && distanceFilter.locationName === 'Your Location') {
+      console.log('🗺️ DesktopCompactSidebar: Auto-expanding distance section for new location');
+      setExpandedSections(prev => ({
+        ...prev,
+        distance: true
+      }));
+      
+      // Also expand the entire sidebar if it's collapsed
+      if (isCollapsed) {
+        onToggleCollapse();
+      }
+    }
+  }, [distanceFilter.enabled, distanceFilter.locationName, isCollapsed, onToggleCollapse]);
+
   const activeStandardFilters =
     selectedColors.length +
     selectedPostcodes.length +
@@ -180,40 +196,61 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
     }));
   };
 
-  // Collapsed state - minimal floating controls
+  // Collapsed state - minimal floating controls with enhanced z-index
   if (isCollapsed) {
     return (
-      <div className="fixed left-3 top-1/2 -translate-y-1/2 z-[999] flex flex-col gap-1">
+      <div 
+        className="fixed left-3 top-1/2 -translate-y-1/2 z-[999] flex flex-col gap-1"
+        style={{
+          // CRITICAL FIX: Ensure collapsed controls are visible
+          zIndex: 1010, // Higher than discover filters and distance filter
+          isolation: 'isolate',
+        }}
+      >
         <Button
           variant="default"
           size="sm"
           className="h-10 w-10 rounded-full shadow-lg bg-white/95 backdrop-blur-sm border border-gray-200 hover:bg-white text-gray-700 relative"
           onClick={onToggleCollapse}
+          style={{
+            position: 'relative',
+            zIndex: 1011,
+          }}
         >
           <ChevronRight size={16} />
           {totalActiveFilters > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-4 w-4 text-xs p-0 flex items-center justify-center min-w-[16px]"
+              style={{
+                zIndex: 1012,
+              }}
             >
               {totalActiveFilters}
             </Badge>
           )}
         </Button>
 
-        {/* SINGLE Route toggle button */}
+        {/* Route toggle button */}
         <Button
           variant={routeMode ? 'default' : 'outline'}
           size="sm"
           className="h-8 w-8 rounded-full shadow-md bg-white/95 backdrop-blur-sm relative"
           onClick={onToggleRoute}
           title="Route Mode"
+          style={{
+            position: 'relative',
+            zIndex: 1011,
+          }}
         >
           <Route size={12} />
           {routePointsCount > 0 && (
             <Badge
               variant="secondary"
               className="absolute -top-1 -right-1 h-3 w-3 text-xs p-0 flex items-center justify-center min-w-[12px]"
+              style={{
+                zIndex: 1012,
+              }}
             >
               {routePointsCount}
             </Badge>
@@ -223,13 +260,33 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
     );
   }
 
-  // Expanded state - compact sidebar
+  // Expanded state - compact sidebar with enhanced z-index
   return (
     <>
-      <div className="fixed left-3 top-20 bottom-20 z-[999] w-64 max-w-[calc(100vw-1.5rem)]">
-        <Card className="h-full shadow-lg border bg-white/98 backdrop-blur-sm flex flex-col">
+      <div 
+        className="fixed left-3 top-20 bottom-20 z-[999] w-64 max-w-[calc(100vw-1.5rem)]"
+        style={{
+          // CRITICAL FIX: Ensure sidebar is above all discover components
+          zIndex: 1010, // Higher than discover filters (1002) but below dialogs
+          isolation: 'isolate',
+        }}
+      >
+        <Card 
+          className="h-full shadow-lg border bg-white/98 backdrop-blur-sm flex flex-col"
+          style={{
+            position: 'relative',
+            zIndex: 1011,
+            isolation: 'isolate',
+          }}
+        >
           {/* Compact header */}
-          <div className="p-3 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+          <div 
+            className="p-3 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg"
+            style={{
+              position: 'relative',
+              zIndex: 1012,
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Layers size={16} className="text-blue-600" />
@@ -253,9 +310,15 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
             </div>
           </div>
 
-          {/* Compact content */}
-          <CardContent className="flex-1 p-3 space-y-2 overflow-y-auto">
-            {/* Distance Filter */}
+          {/* Compact content with enhanced z-index management */}
+          <CardContent 
+            className="flex-1 p-3 space-y-2 overflow-y-auto"
+            style={{
+              position: 'relative',
+              zIndex: 1012,
+            }}
+          >
+            {/* Distance Filter - CRITICAL FIX: Enhanced z-index */}
             <CompactDistanceFilter
               distanceFilter={distanceFilter}
               onSetLocation={onSetLocation}
@@ -271,6 +334,10 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
               size="sm"
               className="w-full h-9 justify-between text-xs"
               onClick={() => setShowStandardFilters(true)}
+              style={{
+                position: 'relative',
+                zIndex: 1013,
+              }}
             >
               <div className="flex items-center gap-1.5">
                 <Filter size={14} />
@@ -282,8 +349,6 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
                 </Badge>
               )}
             </Button>
-
-            {/* Route Planning - REMOVED from here, now in floating controls */}
 
             {/* Quick Actions */}
             <div className="border-t pt-2 mt-2">
@@ -297,6 +362,10 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
                   size="sm"
                   className="w-full h-7 text-xs justify-start"
                   onClick={onResetView}
+                  style={{
+                    position: 'relative',
+                    zIndex: 1013,
+                  }}
                 >
                   <Navigation2 size={12} className="mr-1.5" />
                   Reset View
@@ -311,6 +380,10 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
                       onClearDistanceFilter();
                       onResetStandardFilters();
                     }}
+                    style={{
+                      position: 'relative',
+                      zIndex: 1013,
+                    }}
                   >
                     <RotateCcw size={12} className="mr-1.5" />
                     Clear All
@@ -322,7 +395,7 @@ export const DesktopCompactSidebar: React.FC<DesktopCompactSidebarProps> = (
         </Card>
       </div>
 
-      {/* Standard Filters Dialog */}
+      {/* Standard Filters Dialog - CRITICAL FIX: Highest z-index */}
       <DiscoverFilterDialog
         isOpen={showStandardFilters}
         onClose={() => setShowStandardFilters(false)}

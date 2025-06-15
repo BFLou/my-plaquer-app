@@ -227,3 +227,163 @@
   min-height: 0;
   position: relative;
 }
+
+/* ==================== DISCOVER PAGE Z-INDEX COORDINATION ==================== */
+
+/* Ensure discover header has correct z-index */
+.discover-page .discover-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1001 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  isolation: isolate !important;
+}
+
+/* Discover filters container - below sidebar controls */
+.discover-page .discover-filters-container {
+  position: relative !important;
+  z-index: 1002 !important;
+  isolation: isolate !important;
+}
+
+/* Filter status bar - below sidebar controls */
+.discover-page .filter-status-bar-component {
+  position: relative !important;
+  z-index: 1003 !important;
+  isolation: isolate !important;
+}
+
+/* Map container - lowest priority */
+.discover-page .map-container {
+  position: relative !important;
+  z-index: 1 !important;
+  isolation: isolate !important;
+}
+
+/* Unified control panel - highest priority for map controls */
+.discover-page .unified-control-panel {
+  z-index: 1010 !important;
+  isolation: isolate !important;
+}
+
+/* Enhanced route panel - high priority */
+.discover-page .enhanced-route-panel {
+  z-index: 1000 !important;
+  isolation: isolate !important;
+}
+
+/* Search bar on map - very high priority */
+.discover-page .search-bar-container {
+  z-index: 1020 !important;
+  isolation: isolate !important;
+}
+
+/* ==================== SPECIFIC FIXES FOR HOMEPAGE TO DISCOVER NAVIGATION ==================== */
+
+/* When distance filter is auto-enabled from homepage */
+.discover-page[data-auto-location="true"] .compact-distance-filter-container {
+  z-index: 1015 !important; /* Even higher when auto-activated */
+  isolation: isolate !important;
+  animation: highlight-auto-filter 0.8s ease-out;
+}
+
+@keyframes highlight-auto-filter {
+  0% {
+    background-color: #ecfdf5;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    background-color: #f0fdf4;
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    background-color: white;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* Force map view layout adjustments */
+.discover-page.map-view {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.discover-page.map-view .discover-content {
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.discover-page.map-view .map-container {
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+/* ==================== MOBILE SPECIFIC FIXES ==================== */
+
+@media (max-width: 768px) {
+  /* Ensure mobile controls are properly positioned */
+  .discover-page .mobile-floating-tab {
+    z-index: 999 !important;
+    bottom: calc(env(safe-area-inset-bottom) + 0.75rem) !important;
+  }
+  
+  .discover-page .mobile-bottom-sheet {
+    z-index: 1000 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+  
+  /* Mobile discover header adjustments */
+  .discover-page .discover-header {
+    position: sticky !important;
+    top: 0 !important; /* No offset needed on mobile */
+    z-index: 1001 !important;
+  }
+}
+
+/* ==================== DESKTOP SPECIFIC FIXES ==================== */
+
+@media (min-width: 769px) {
+  /* Desktop discover header with navbar offset */
+  .discover-page .discover-header {
+    top: 61px !important; /* Height of desktop navbar */
+  }
+  
+  /* Desktop sidebar positioning */
+  .discover-page .desktop-compact-sidebar {
+    top: 80px !important; /* Below navbar + some spacing */
+    bottom: 20px !important;
+  }
+}
+
+/* ==================== ANIMATION STATES ==================== */
+
+/* Loading state for discover page */
+.discover-page.loading .unified-control-panel {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Transition states */
+.discover-page-transition-enter {
+  opacity: 0;
+}
+
+.discover-page-transition-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-in;
+}
+
+.discover-page-transition-exit {
+  opacity: 1;
+}
+
+.discover-page-transition-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}

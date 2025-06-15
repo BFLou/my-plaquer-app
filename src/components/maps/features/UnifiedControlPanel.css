@@ -931,3 +931,569 @@
     display: none !important;
   }
 }
+
+/* src/components/maps/features/UnifiedControlPanel.css - FIXED: Z-index hierarchy */
+
+/* ==================== CRITICAL Z-INDEX HIERARCHY FIXES ==================== */
+
+/* Discover page base z-index levels */
+.discover-header {
+  z-index: 1001 !important;
+}
+
+.discover-filters-container {
+  z-index: 1002 !important;
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+.filter-status-bar-component {
+  z-index: 1003 !important;
+  position: relative !important;
+  isolation: isolate !important;
+}
+
+/* ==================== DESKTOP COMPACT SIDEBAR - ENHANCED Z-INDEX ==================== */
+
+/* Desktop sidebar - above discover components */
+.desktop-compact-sidebar {
+  z-index: 1010 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 280px;
+}
+
+/* Collapsed floating button - highest priority */
+.desktop-floating-toggle {
+  z-index: 1011 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.desktop-floating-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== COMPACT DISTANCE FILTER - ENHANCED Z-INDEX ==================== */
+
+/* Main distance filter container - above discover filters */
+.compact-distance-filter-container {
+  z-index: 1005 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  transition: all 0.2s ease;
+}
+
+/* Expanded content - even higher */
+.distance-filter-expanded-content {
+  z-index: 1006 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  background: white !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Active location display - top priority within distance filter */
+.active-location-display {
+  z-index: 1007 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1px solid #a7f3d0;
+  animation: glow-green 0.5s ease-out;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
+}
+
+/* Quick radius buttons */
+.radius-quick-buttons {
+  z-index: 1007 !important;
+  position: relative !important;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.radius-quick-button {
+  z-index: 1008 !important;
+  position: relative !important;
+  transition: all 0.2s ease;
+}
+
+.radius-quick-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.radius-quick-button.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  transform: scale(1.05);
+  z-index: 1009 !important;
+}
+
+/* Fine control buttons */
+.radius-fine-control {
+  z-index: 1007 !important;
+  position: relative !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.radius-fine-button {
+  z-index: 1008 !important;
+  position: relative !important;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radius-fine-button:hover {
+  transform: scale(1.1);
+  background-color: #f3f4f6;
+}
+
+.radius-fine-button:active {
+  transform: scale(0.95);
+}
+
+/* ==================== MOBILE BOTTOM SHEET - ENHANCED Z-INDEX ==================== */
+
+/* Mobile bottom sheet base */
+.mobile-bottom-sheet {
+  z-index: 1000 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  will-change: transform;
+  touch-action: pan-y;
+}
+
+/* Mobile floating tab */
+.mobile-floating-tab {
+  z-index: 999 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.mobile-floating-tab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.mobile-floating-tab:active {
+  transform: translateY(-1px);
+  transition: transform 0.1s ease;
+}
+
+/* ==================== ANIMATION ENHANCEMENTS ==================== */
+
+/* Distance filter expansion animation */
+.distance-filter-expanded {
+  animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Active location glow animation */
+@keyframes glow-green {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+/* ==================== RESPONSIVE DESIGN FIXES ==================== */
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .desktop-compact-sidebar,
+  .desktop-floating-toggle {
+    display: none !important;
+  }
+
+  .mobile-bottom-sheet,
+  .mobile-floating-tab {
+    display: flex !important;
+  }
+
+  /* Ensure mobile controls are above everything */
+  .mobile-floating-controls {
+    z-index: 999 !important;
+  }
+
+  .mobile-filter-status {
+    z-index: 1002 !important;
+  }
+}
+
+/* Desktop optimization */
+@media (min-width: 769px) {
+  .desktop-compact-sidebar {
+    display: flex !important;
+  }
+
+  .mobile-bottom-sheet,
+  .mobile-floating-tab {
+    display: none !important;
+  }
+}
+
+/* ==================== COMPONENT SPECIFIC FIXES ==================== */
+
+/* Compact section styling */
+.compact-section {
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1005;
+}
+
+.compact-section-header {
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1006;
+  overflow: hidden;
+}
+
+.compact-section-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.compact-section-header:hover::before {
+  left: 100%;
+}
+
+.compact-section-content {
+  animation: expand 0.2s ease-out;
+  position: relative;
+  z-index: 1005;
+}
+
+@keyframes expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==================== ENHANCED BUTTON STYLES ==================== */
+
+.control-panel-button {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  z-index: 1006;
+}
+
+.control-panel-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+  z-index: -1;
+}
+
+.control-panel-button:hover::before {
+  left: 100%;
+}
+
+.control-panel-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.control-panel-button:active {
+  transform: translateY(0);
+  transition: transform 0.1s ease;
+}
+
+/* ==================== BADGE ENHANCEMENTS ==================== */
+
+.control-badge {
+  animation: pulse-badge 2s infinite;
+  font-weight: 600;
+  z-index: 1007;
+  position: relative;
+}
+
+@keyframes pulse-badge {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.badge-destructive {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.badge-secondary {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* ==================== DIALOG AND MODAL Z-INDEX ==================== */
+
+/* Standard Filters Dialog - highest priority */
+.discover-filter-dialog {
+  z-index: 9000 !important;
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  z-index: 8000 !important;
+}
+
+/* Plaque detail modal */
+.plaque-detail-modal {
+  z-index: 9100 !important;
+}
+
+/* Toast notifications */
+[data-sonner-toaster] {
+  z-index: 9999 !important;
+}
+
+/* ==================== ACCESSIBILITY ENHANCEMENTS ==================== */
+
+/* Focus indicators */
+.control-button:focus-visible,
+.compact-section-header:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .desktop-compact-sidebar,
+  .mobile-bottom-sheet {
+    border: 2px solid;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+
+  .desktop-floating-toggle,
+  .mobile-floating-tab {
+    border: 2px solid;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: white;
+  }
+
+  .control-badge {
+    border: 1px solid;
+  }
+
+  .active-location-display {
+    border: 2px solid #16a34a;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .desktop-compact-sidebar,
+  .mobile-bottom-sheet,
+  .desktop-floating-toggle,
+  .mobile-floating-tab,
+  .compact-section,
+  .radius-quick-button,
+  .radius-fine-button,
+  .control-panel-button {
+    animation: none;
+    transition: none;
+  }
+
+  .compact-section-header::before,
+  .control-panel-button::before {
+    display: none;
+  }
+
+  .active-location-display {
+    animation: none;
+  }
+}
+
+/* ==================== DARK MODE SUPPORT ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .desktop-compact-sidebar {
+    background-color: rgba(17, 24, 39, 0.95);
+    border-color: rgba(55, 65, 81, 0.8);
+    color: white;
+  }
+
+  .mobile-bottom-sheet {
+    background-color: #111827;
+    border-color: #374151;
+    color: white;
+  }
+
+  .desktop-floating-toggle,
+  .mobile-floating-tab {
+    background-color: rgba(17, 24, 39, 0.95);
+    border-color: rgba(55, 65, 81, 0.8);
+    color: white;
+  }
+
+  .active-location-display {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    border-color: #047857;
+    color: #a7f3d0;
+  }
+
+  .badge-secondary {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    color: #d1d5db;
+    border-color: #6b7280;
+  }
+
+  .distance-filter-expanded-content {
+    background: #1f2937 !important;
+    border-color: #374151;
+  }
+}
+
+/* ==================== PERFORMANCE OPTIMIZATIONS ==================== */
+
+/* GPU acceleration */
+.desktop-compact-sidebar,
+.mobile-bottom-sheet,
+.desktop-floating-toggle,
+.mobile-floating-tab,
+.radius-quick-button,
+.distance-filter-expanded-content {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize repaints */
+.control-badge,
+.radius-quick-button,
+.radius-fine-button {
+  contain: layout style paint;
+}
+
+/* ==================== LOADING STATES ==================== */
+
+.control-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.control-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Location loading spinner */
+.location-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+  .desktop-compact-sidebar,
+  .mobile-bottom-sheet,
+  .desktop-floating-toggle,
+  .mobile-floating-tab {
+    display: none !important;
+  }
+}
